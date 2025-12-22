@@ -1054,3 +1054,151 @@ export async function updateJobNumber(
 
 	return true
 }
+
+/**
+ * Submit an existing draft order
+ * Takes a draft order ID and submits it with required information
+ */
+export async function submitOrder(
+	draftId: string,
+	userId: string,
+	companyId: string,
+	request: {
+		eventStartDate: string
+		eventEndDate: string
+		venueName: string
+		venueCountry: string
+		venueCity: string
+		venueAddress: string
+		venueAccessNotes?: string
+		contactName: string
+		contactEmail: string
+		contactPhone: string
+		specialInstructions?: string
+		brand?: string
+	}
+): Promise<{
+	orderId: string
+	status: string
+	submittedAt: Date
+	message: string
+}> {
+	// Validate dates
+	const eventStart = new Date(request.eventStartDate)
+	const eventEnd = new Date(request.eventEndDate)
+	const today = new Date()
+	today.setHours(0, 0, 0, 0)
+
+	if (eventStart < today) {
+		throw new Error('Event start date cannot be in the past')
+	}
+
+	if (eventEnd < eventStart) {
+		throw new Error('Event end date must be on or after start date')
+	}
+
+	// Get the draft order
+	const [draftOrder] = await db
+		.select()
+		.from(orders)
+		.where(
+			and(
+				eq(orders.id, draftId),
+				eq(orders.userId, userId),
+				eq(orders.company, companyId),
+				eq(orders.status, 'DRAFT')
+			)
+		)
+
+	if (!draftOrder) {
+		throw new Error('Draft order not found')
+	}
+
+	// Get order items for availability check
+	const items = await db
+		.select()
+		.from(orderItems)
+		.where(eq(orderItems.order, draftId))
+
+	if (items.length === 0) {
+		throw new Error('Draft order has no items')
+	}
+
+	// Check availability
+	const availabilityCheck = await checkMultipleAssetsAvailability(
+		items.map(item => ({
+			assetId: item.asset,
+			quantity: item.quantity,
+		})),
+		eventStart,
+		eventEnd
+	)
+
+	if (!availabilityCheck.allAvailable) {
+		const unavailableList = availabilityCheck.unavailableItems
+			.map(
+				item =>
+					`${item.assetName}: requested ${item.requested}, available ${item.available}${
+						item.nextAvailableDate
+							? ` (available from ${item.nextAvailableDate.toLocaleDateString()})`
+							: ''
+					}`
+			)
+			.join('; ')
+		throw new Error(
+			`Insufficient availability for requested dates: ${unavailableList}`
+		)
+	}
+
+	// Find pricing tier
+	const volume = parseFloat(draftOrder.calculatedVolume)
+	const matchingTiers = await db
+		.select()
+		.from(pricingTiers)
+		.where(
+			and(
+				sql`LOWER(${pricingTiers.country}) = LOWER(${request.venueCountry})`,
+				sql`LOWER(${pricingTiers.city}) = LOWER(${request.venueCity})`,
+				eq(pricingTiers.isActive, true),
+				lte(sql`CAST(${pricingTiers.volumeMin} AS DECIMAL)`, volume),
+				sql`CAST(${pricingTiers.volumeMax} AS DECIMAL) > ${volume}`
+			)
+		)
+		.orderBy(
+			sql`CAST(${pricingTiers.volumeMax} AS DECIMAL) - CAST(${pricingTiers.volumeMin} AS DECIMAL)`
+		)
+		.limit(1)
+
+	const pricingTier = matchingTiers[0] || null
+
+	// Update the draft order to PRICING_REVIEW status
+	const [updatedOrder] = await db
+		.update(orders)
+		.set({
+			status: 'PRICING_REVIEW',
+			financialStatus: 'PENDING_QUOTE',
+			contactName: request.contactName,
+			contactEmail: request.contactEmail,
+			contactPhone: request.contactPhone,
+			eventStartDate: eventStart,
+			eventEndDate: eventEnd,
+			venueName: request.venueName,
+			venueCountry: request.venueCountry,
+			venueCity: request.venueCity,
+			venueAddress: request.venueAddress,
+			venueAccessNotes: request.venueAccessNotes || null,
+			specialInstructions: request.specialInstructions || null,
+			brand: request.brand || null,
+			pricingTier: pricingTier?.id || null,
+			updatedAt: new Date(),
+		})
+		.where(eq(orders.id, draftId))
+		.returning()
+
+	return {
+		orderId: updatedOrder.orderId,
+		status: 'PRICING_REVIEW',
+		submittedAt: updatedOrder.updatedAt,
+		message: 'Order submitted successfully for pricing review',
+	}
+}

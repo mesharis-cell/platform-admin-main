@@ -63,99 +63,99 @@ type NavItem = {
 const navigation: NavItem[] = [
 	{
 		name: 'Analytics',
-		href: '/admin/analytics',
+		href: '/analytics',
 		icon: BarChart3,
 		requiredPermission: 'analytics:view_revenue',
 	},
 	{
 		name: 'Orders',
-		href: '/admin/orders',
+		href: '/orders',
 		icon: ShoppingCart,
 		requiredPermission: 'orders:read',
 	},
 	{
 		name: 'Pricing Review',
-		href: '/admin/orders/pricing-review',
+		href: '/orders/pricing-review',
 		icon: DollarSign,
 		badge: 'A2',
 		requiredPermission: 'pricing:review',
 	},
 	{
 		name: 'Pending Approval',
-		href: '/admin/orders/pending-approval',
+		href: '/orders/pending-approval',
 		icon: AlertCircle,
 		badge: 'PMG',
 		requiredPermission: 'pricing:pmg_approve',
 	},
 	{
 		name: 'Scanning',
-		href: '/admin/scanning',
+		href: '/scanning',
 		icon: ScanLine,
 		requiredPermission: 'scanning:scan_out',
 	},
 	{
 		name: 'Conditions',
-		href: '/admin/conditions',
+		href: '/conditions',
 		icon: AlertCircle,
 		requiredPermission: 'conditions:view_history',
 	},
 	{
 		name: 'Invoices',
-		href: '/admin/invoices',
+		href: '/invoices',
 		icon: Receipt,
 		requiredPermission: 'invoices:read',
 	},
 	{
 		name: 'Notifications',
-		href: '/admin/notifications',
+		href: '/notifications',
 		icon: Mail,
 		requiredPermission: 'notifications:view_failed',
 	},
 	{
 		name: 'Users',
-		href: '/admin/users',
+		href: '/users',
 		icon: Users,
 		requiredPermission: 'users:read',
 	},
 	{
 		name: 'Companies',
-		href: '/admin/companies',
+		href: '/companies',
 		icon: Building,
 		requiredPermission: 'companies:read',
 	},
 	{
 		name: 'Warehouses',
-		href: '/admin/warehouses',
+		href: '/warehouses',
 		icon: Warehouse,
 		requiredPermission: 'warehouses:read',
 	},
 	{
 		name: 'Zones',
-		href: '/admin/zones',
+		href: '/zones',
 		icon: Grid3x3,
 		requiredPermission: 'zones:read',
 	},
 	{
 		name: 'Brands',
-		href: '/admin/brands',
+		href: '/brands',
 		icon: Tag,
 		requiredPermission: 'brands:read',
 	},
 	{
 		name: 'Assets',
-		href: '/admin/assets',
+		href: '/assets',
 		icon: Package,
 		requiredPermission: 'assets:read',
 	},
 	{
 		name: 'Collections',
-		href: '/admin/collections',
+		href: '/collections',
 		icon: Layers,
 		requiredPermission: 'collections:read',
 	},
 	{
 		name: 'Pricing Tiers',
-		href: '/admin/pricing-tiers',
+		href: '/pricing-tiers',
 		icon: DollarSign,
 		requiredPermission: 'pricing_tiers:read',
 	},
@@ -193,7 +193,7 @@ function AdminSidebarContent() {
 				)}
 
 				<div className='flex justify-center items-center gap-3 '>
-					<div className='h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/30 relative overflow-hidden flex-shrink-0'>
+					<div className='h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/30 relative overflow-hidden shrink-0'>
 						<Box
 							className='h-5 w-5 text-primary relative z-10'
 							strokeWidth={2.5}
@@ -269,7 +269,7 @@ function AdminSidebarContent() {
 												<div className='absolute left-0 top-0 bottom-0 w-1 bg-primary-foreground/30' />
 											)}
 
-											<Icon className='h-4 w-4 relative z-10 flex-shrink-0' />
+											<Icon className='h-4 w-4 relative z-10 shrink-0' />
 											{!isCollapsed && (
 												<>
 													<span className='flex-1 relative z-10 uppercase tracking-wide text-xs'>
@@ -280,7 +280,7 @@ function AdminSidebarContent() {
 														item.badge && (
 															<span
 																className={cn(
-																	'px-1.5 py-0.5 text-[10px] font-mono rounded uppercase tracking-wider relative z-10 flex-shrink-0',
+																	'px-1.5 py-0.5 text-[10px] font-mono rounded uppercase tracking-wider relative z-10 shrink-0',
 																	isActive
 																		? 'bg-primary-foreground/20 text-primary-foreground'
 																		: 'bg-primary/10 text-primary border border-primary/20'
@@ -338,7 +338,7 @@ function AdminSidebarContent() {
 				) : (
 					<>
 						<div className='flex items-center gap-3 px-2 py-1'>
-							<Avatar className='h-10 w-10 border-2 border-primary/20 flex-shrink-0'>
+							<Avatar className='h-10 w-10 border-2 border-primary/20 shrink-0'>
 								<AvatarFallback className='bg-primary/10 text-primary font-mono text-sm font-bold'>
 									{session?.user?.name
 										?.charAt(0)

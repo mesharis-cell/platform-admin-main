@@ -33,10 +33,10 @@ export default function HomePage() {
 
 		if (permissionTemplate === 'PMG_ADMIN') {
 			// PMG Admin goes to analytics dashboard
-			router.push('/admin/analytics');
+			router.push('/analytics');
 		} else if (permissionTemplate === 'A2_STAFF') {
 			// A2 Staff goes to orders dashboard
-			router.push('/admin/orders');
+			router.push('/orders');
 		} else if (permissionTemplate === 'CLIENT_USER') {
 			// Client goes to client dashboard
 			router.push('/client-dashboard');

@@ -17,15 +17,6 @@ import { orders } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 
-// Initialize S3 client
-const s3Client = new S3Client({
-	region: process.env.AWS_REGION!,
-	credentials: {
-		accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-		secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
-	},
-});
-
 export async function GET(
 	request: NextRequest,
 	{ params }: { params: Promise<{ invoiceNumber: string }> }
@@ -79,6 +70,15 @@ export async function GET(
 		const s3Key = pdfUrl.includes('amazonaws.com')
 			? pdfUrl.split('.com/')[1]
 			: urlParts.slice(3).join('/');
+
+		// Initialize S3 client
+		const s3Client = new S3Client({
+			region: process.env.AWS_REGION || 'us-east-1',
+			credentials: {
+				accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+				secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+			},
+		});
 
 		// Fetch PDF from S3
 		const command = new GetObjectCommand({
