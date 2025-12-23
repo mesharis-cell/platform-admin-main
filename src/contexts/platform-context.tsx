@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import { PlatformDomain } from "../types/platform-domain";
 import { apiClient, setPlatformId } from "@/lib/api/api-client";
 import LoadingState from "@/components/loading-state";
@@ -35,12 +35,12 @@ export const PlatformProvider = ({ children }: { children: React.ReactNode }) =>
   useEffect(() => {
     if (platform) {
       // Set platform ID for API client
-      setPlatformId(platform.platforms.id);
+      setPlatformId(platform.id);
       // Site primary color takes precedence, fallback to platform primary color
-      const sitePrimaryColor = platform.platforms.config.primary_color;
-      const siteSecondaryColor = platform.platforms.config.secondary_color;
-      const primaryColor = sitePrimaryColor ?? platform.platforms.config.primary_color;
-      const secondaryColor = siteSecondaryColor ?? platform.platforms.config.secondary_color;
+      const sitePrimaryColor = platform.config.primary_color;
+      const siteSecondaryColor = platform.config.secondary_color;
+      const primaryColor = sitePrimaryColor ?? platform.config.primary_color;
+      const secondaryColor = siteSecondaryColor ?? platform.config.secondary_color;
 
       if (primaryColor) {
         document.documentElement.style.setProperty('--primary', primaryColor);
@@ -63,4 +63,8 @@ export const PlatformProvider = ({ children }: { children: React.ReactNode }) =>
       {loading ? <LoadingState /> : children}
     </PLATFORM_CONTEXT.Provider>
   );
+};
+
+export const usePlatform = () => {
+  return useContext(PLATFORM_CONTEXT);
 };

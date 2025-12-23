@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useLogin } from "@/hooks/use-auth";
+import { useLogin, useLogout } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +13,7 @@ import { Eye, EyeOff, Lock, Mail, Package } from "lucide-react";
 import { useToken } from "@/lib/auth/use-token";
 import { jwtDecode, JwtPayload } from "jwt-decode";
 import LoadingState from "@/components/loading-state";
+import { usePlatform } from "@/contexts/platform-context";
 
 interface CustomJwtPayload extends JwtPayload {
 	role: string;
@@ -26,6 +27,8 @@ export default function HomePage() {
 	const [isLoading, setIsLoading] = useState(false);
 	const { mutateAsync: login } = useLogin();
 	const { access_token, loading } = useToken();
+	const { platform } = usePlatform();
+	const { mutateAsync: signout } = useLogout()
 
 	useEffect(() => {
 		if (access_token) {
@@ -53,6 +56,8 @@ export default function HomePage() {
 
 				router.push('/analytics')
 			} else {
+				// User is not an admin, sign out and invalidate token
+				await signout()
 				toast.success("Access Denied", {
 					description: "You do not have access to this platform.",
 				});
@@ -109,7 +114,7 @@ export default function HomePage() {
 							</div>
 							<div>
 								<h1 className="text-2xl font-bold tracking-tight font-mono uppercase">
-									PMG Platform
+									{platform?.platforms?.config?.logistics_partner_name || "PMG Platform"}
 								</h1>
 								<p className="text-xs text-muted-foreground font-mono tracking-wider">
 									Asset Fulfillment System
