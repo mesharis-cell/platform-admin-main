@@ -152,7 +152,8 @@ export interface ZoneListResponse {
 
 export interface Brand {
 	id: string;
-	company: string; // UUID reference
+	company_id: string; // UUID reference
+	company: Company;
 	name: string;
 	description?: string | null;
 	logoUrl?: string | null;
@@ -164,7 +165,7 @@ export interface Brand {
 }
 
 export interface CreateBrandRequest {
-	company: string;
+	company_id: string;
 	name: string;
 	description?: string;
 	logoUrl?: string;
@@ -186,10 +187,12 @@ export interface BrandListParams {
 }
 
 export interface BrandListResponse {
-	brands: Brand[];
-	total: number;
-	limit: number;
-	offset: number;
+	data: Brand[];
+	meta: {
+		total: number;
+		limit: number;
+		offset: number;
+	}
 }
 
 // ============================================================

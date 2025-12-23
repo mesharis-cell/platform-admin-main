@@ -1,5 +1,8 @@
+"use client";
+
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { Brand, BrandListResponse } from '@/types';
+import type { Brand, BrandListResponse, CreateBrandRequest, UpdateBrandRequest } from '@/types';
+import { apiClient } from '@/lib/api/api-client';
 
 // Query keys
 export const brandKeys = {
@@ -13,49 +16,26 @@ export const brandKeys = {
 // Fetch brands list
 async function fetchBrands(params?: Record<string, string>): Promise<BrandListResponse> {
   const searchParams = new URLSearchParams(params);
-  const response = await fetch(`/api/brands?${searchParams}`);
-  if (!response.ok) {
-    throw new Error('Failed to fetch brands');
-  }
-  return response.json();
+  const response = await apiClient.get(`/operations/v1/brand?${searchParams}`);
+  return response.data;
 }
 
 // Create brand
-async function createBrand(data: Partial<Brand>): Promise<Brand> {
-  const response = await fetch('/api/brands', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  });
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to create brand');
-  }
-  return response.json();
+async function createBrand(data: CreateBrandRequest): Promise<Brand> {
+  const response = await apiClient.post('/operations/v1/brand', data);
+  return response.data;
 }
 
 // Update brand
-async function updateBrand({ id, data }: { id: string; data: Partial<Brand> }): Promise<Brand> {
-  const response = await fetch(`/api/brands/${id}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  });
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to update brand');
-  }
-  return response.json();
+async function updateBrand({ id, data }: { id: string; data: UpdateBrandRequest }): Promise<Brand> {
+  const response = await apiClient.patch(`/operations/v1/brand/${id}`, data);
+  return response.data;
 }
 
 // Delete brand
 async function deleteBrand(id: string): Promise<void> {
-  const response = await fetch(`/api/brands/${id}`, {
-    method: 'DELETE',
-  });
-  if (!response.ok) {
-    throw new Error('Failed to delete brand');
-  }
+  const response = await apiClient.delete(`/operations/v1/brand/${id}`);
+  return response.data;
 }
 
 // Hooks

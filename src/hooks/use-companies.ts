@@ -22,19 +22,19 @@ async function fetchCompanies(params?: Record<string, string>): Promise<CompanyL
 
 // Create company
 async function createCompany(data: Partial<Company>): Promise<Company> {
-  const response = await apiClient.post('/companies', data);
+  const response = await apiClient.post('/operations/v1/company', data);
   return response.data;
 }
 
 // Update company
 async function updateCompany({ id, data }: { id: string; data: Partial<Company> }): Promise<Company> {
-  const response = await apiClient.put(`/companies/${id}`, data);
+  const response = await apiClient.patch(`/operations/v1/company/${id}`, data);
   return response.data;
 }
 
 // Archive company
 async function archiveCompany(id: string): Promise<void> {
-  const response = await apiClient.delete(`/companies/${id}`);
+  const response = await apiClient.delete(`/operations/v1/company/${id}`);
   return response.data;
 }
 

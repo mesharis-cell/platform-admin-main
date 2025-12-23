@@ -75,7 +75,6 @@ export default function CompaniesPage() {
 	const companies = data?.data || [];
 	const total = data?.meta.total || 0;
 
-	console.log(companies);
 	// Mutations
 	const createMutation = useCreateCompany();
 	const updateMutation = useUpdateCompany();
@@ -584,7 +583,7 @@ export default function CompaniesPage() {
 									>
 										<TableCell className="font-mono font-medium">
 											<div className="flex items-center gap-2">
-												<div className="h-10 w-10 rounded-lg overflow-hidden bg-background border border-border flex items-center justify-center flex-shrink-0">
+												<div className="h-10 w-10 rounded-lg overflow-hidden bg-background border border-border flex items-center justify-center shrink-0">
 													{company.logoUrl ? (
 														<img
 															src={company.logoUrl}

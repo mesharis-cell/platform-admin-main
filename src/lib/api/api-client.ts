@@ -124,7 +124,7 @@ apiClient.interceptors.response.use(
                 processQueue(error, null);
                 // Redirect to login page
                 if (typeof window !== "undefined") {
-                    window.location.href = "/login";
+                    window.location.href = "/";
                 }
                 return Promise.reject(error);
             }
@@ -159,7 +159,7 @@ apiClient.interceptors.response.use(
                 isRefreshing = false;
 
                 if (typeof window !== "undefined") {
-                    window.location.href = "/login";
+                    window.location.href = "/";
                 }
 
                 return Promise.reject(refreshError);
