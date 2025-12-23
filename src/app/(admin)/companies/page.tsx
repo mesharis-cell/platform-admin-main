@@ -35,7 +35,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import type { Company, CompanyListResponse } from "@/types";
+import type { Company } from "@/types";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 export default function CompaniesPage() {

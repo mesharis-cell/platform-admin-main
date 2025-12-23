@@ -53,12 +53,7 @@ import {
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
-import type {
-	Brand,
-	BrandListResponse,
-	Company,
-	CompanyListResponse,
-} from '@/types'
+import type { Brand } from '@/types'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 
 export default function BrandsPage() {
@@ -86,10 +81,10 @@ export default function BrandsPage() {
 			limit: '100',
 			offset: '0',
 		}
-		if (searchQuery) params.search = searchQuery
+		if (searchQuery) params.search_term = searchQuery
 		if (companyFilter && companyFilter !== 'all')
-			params.company = companyFilter
-		if (includeDeleted) params.includeDeleted = 'true'
+			params.company_id = companyFilter
+		if (includeDeleted) params.include_inactive = 'true'
 		return params
 	}, [searchQuery, companyFilter, includeDeleted])
 
