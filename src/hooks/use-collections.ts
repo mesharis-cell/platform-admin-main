@@ -27,10 +27,10 @@ export function useCollections(params: CollectionListParams = {}) {
 			try {
 				const queryParams = new URLSearchParams();
 
-				if (params.company) queryParams.set('company', params.company);
-				if (params.brand) queryParams.set('brand', params.brand);
+				if (params.company_id && params.company_id !== '_all_') queryParams.set('company_id', params.company_id);
+				if (params.brand_id && params.brand_id !== '_all_') queryParams.set('brand_id', params.brand_id);
 				if (params.category) queryParams.set('category', params.category);
-				if (params.search) queryParams.set('search', params.search);
+				if (params.search_term) queryParams.set('search_term', params.search_term);
 				if (params.includeDeleted) queryParams.set('includeDeleted', 'true');
 				if (params.limit) queryParams.set('limit', params.limit.toString());
 				if (params.offset) queryParams.set('offset', params.offset.toString());
