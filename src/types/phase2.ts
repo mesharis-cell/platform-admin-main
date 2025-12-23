@@ -46,10 +46,12 @@ export interface CompanyListParams {
 }
 
 export interface CompanyListResponse {
-	companies: Company[];
-	total: number;
-	limit: number;
-	offset: number;
+	data: Company[];
+	meta: {
+		total: number;
+		limit: number;
+		page: number;
+	}
 }
 
 // ============================================================

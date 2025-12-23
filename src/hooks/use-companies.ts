@@ -1,5 +1,8 @@
+"use client";
+
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Company, CompanyListResponse } from '@/types';
+import { apiClient } from '@/lib/api/api-client';
 
 // Query keys
 export const companyKeys = {
@@ -13,49 +16,26 @@ export const companyKeys = {
 // Fetch companies list
 async function fetchCompanies(params?: Record<string, string>): Promise<CompanyListResponse> {
   const searchParams = new URLSearchParams(params);
-  const response = await fetch(`/api/companies?${searchParams}`);
-  if (!response.ok) {
-    throw new Error('Failed to fetch companies');
-  }
-  return response.json();
+  const response = await apiClient.get(`/operations/v1/company?${searchParams}`);
+  return response.data;
 }
 
 // Create company
 async function createCompany(data: Partial<Company>): Promise<Company> {
-  const response = await fetch('/api/companies', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  });
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to create company');
-  }
-  return response.json();
+  const response = await apiClient.post('/companies', data);
+  return response.data;
 }
 
 // Update company
 async function updateCompany({ id, data }: { id: string; data: Partial<Company> }): Promise<Company> {
-  const response = await fetch(`/api/companies/${id}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  });
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to update company');
-  }
-  return response.json();
+  const response = await apiClient.put(`/companies/${id}`, data);
+  return response.data;
 }
 
 // Archive company
 async function archiveCompany(id: string): Promise<void> {
-  const response = await fetch(`/api/companies/${id}`, {
-    method: 'DELETE',
-  });
-  if (!response.ok) {
-    throw new Error('Failed to archive company');
-  }
+  const response = await apiClient.delete(`/companies/${id}`);
+  return response.data;
 }
 
 // Hooks

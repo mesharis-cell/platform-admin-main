@@ -72,9 +72,10 @@ export default function CompaniesPage() {
 
 	// Fetch companies
 	const { data, isLoading: loading } = useCompanies(queryParams);
-	const companies = data?.companies || [];
-	const total = data?.total || 0;
+	const companies = data?.data || [];
+	const total = data?.meta.total || 0;
 
+	console.log(companies);
 	// Mutations
 	const createMutation = useCreateCompany();
 	const updateMutation = useUpdateCompany();
