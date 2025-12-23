@@ -3,12 +3,14 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { signIn } from "@/lib/auth";
+import { useLogin } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import axios from "axios";
 import { Eye, EyeOff, Lock, Mail, Package } from "lucide-react";
+import { useToken } from "@/lib/auth/use-token";
 
 export default function LoginPage() {
 	const router = useRouter();
@@ -16,32 +18,32 @@ export default function LoginPage() {
 	const [password, setPassword] = useState("");
 	const [showPassword, setShowPassword] = useState(false);
 	const [isLoading, setIsLoading] = useState(false);
+	const { mutateAsync: login } = useLogin();
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
 		setIsLoading(true);
 
 		try {
-			const result = await signIn.email({
-				email,
-				password,
-			});
+			const res = await login({ email, password });
 
-			if (result.error) {
-				toast.error("Authentication Failed", {
-					description: "Invalid email or password. Please try again.",
+			if (res.data.data.role === 'ADMIN') {
+				toast.success("Access Granted", {
+					description: "Welcome to the fulfillment platform.",
 				});
-				return;
+
+				router.push('/analytics')
+			} else {
+				toast.success("Access Denied", {
+					description: "You do not have access to this platform.",
+				});
 			}
 
-			toast.success("Access Granted", {
-				description: "Welcome to the fulfillment platform.",
-			});
-
-			router.push("/");
-		} catch (error) {
-			toast.error("System Error", {
-				description: "Unable to process authentication request.",
+		} catch (error: unknown) {
+			toast.error("Authentication Failed", {
+				description: axios.isAxiosError(error) && error.response?.data?.message
+					? error.response.data.message
+					: "Unable to process authentication request.",
 			});
 		} finally {
 			setIsLoading(false);
