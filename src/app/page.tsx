@@ -34,12 +34,6 @@ export default function HomePage() {
 		if (permissionTemplate === 'PMG_ADMIN') {
 			// PMG Admin goes to analytics dashboard
 			router.push('/analytics');
-		} else if (permissionTemplate === 'A2_STAFF') {
-			// A2 Staff goes to orders dashboard
-			router.push('/orders');
-		} else if (permissionTemplate === 'CLIENT_USER') {
-			// Client goes to client dashboard
-			router.push('/client-dashboard');
 		} else {
 			// Unknown role, redirect to login
 			router.push('/login');

@@ -51,6 +51,7 @@ import {
 	SidebarTrigger,
 	useSidebar,
 } from '@/components/ui/sidebar'
+import Providers from '@/providers'
 
 type NavItem = {
 	name: string
@@ -392,31 +393,33 @@ export default function AdminLayout({
 	children: React.ReactNode
 }) {
 	return (
-		<SidebarProvider defaultOpen={true}>
-			<div className='flex min-h-screen w-full bg-background'>
-				{/* Industrial Command Center Sidebar */}
-				<Sidebar
-					collapsible='icon'
-					className='border-r border-border bg-muted/30'
-				>
-					{/* Grid pattern overlay */}
-					<div
-						className='absolute inset-0 opacity-[0.03] pointer-events-none'
-						style={{
-							backgroundImage: `
+		<Providers>
+			<SidebarProvider defaultOpen={true}>
+				<div className='flex min-h-screen w-full bg-background'>
+					{/* Industrial Command Center Sidebar */}
+					<Sidebar
+						collapsible='icon'
+						className='border-r border-border bg-muted/30'
+					>
+						{/* Grid pattern overlay */}
+						<div
+							className='absolute inset-0 opacity-[0.03] pointer-events-none'
+							style={{
+								backgroundImage: `
 								linear-gradient(to right, hsl(var(--foreground)) 1px, transparent 1px),
 								linear-gradient(to bottom, hsl(var(--foreground)) 1px, transparent 1px)
 							`,
-							backgroundSize: '32px 32px',
-						}}
-					/>
+								backgroundSize: '32px 32px',
+							}}
+						/>
 
-					<AdminSidebarContent />
-				</Sidebar>
+						<AdminSidebarContent />
+					</Sidebar>
 
-				{/* Main Content */}
-				<SidebarInset>{children}</SidebarInset>
-			</div>
-		</SidebarProvider>
+					{/* Main Content */}
+					<SidebarInset>{children}</SidebarInset>
+				</div>
+			</SidebarProvider>
+		</Providers>
 	)
 }
