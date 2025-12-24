@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { Company, CompanyListResponse } from '@/types';
+import type { Company, CompanyListResponse, CreateCompanyRequest } from '@/types';
 import { apiClient } from '@/lib/api/api-client';
 
 // Query keys
@@ -21,7 +21,7 @@ async function fetchCompanies(params?: Record<string, string>): Promise<CompanyL
 }
 
 // Create company
-async function createCompany(data: Partial<Company>): Promise<Company> {
+async function createCompany(data: Partial<CreateCompanyRequest>): Promise<Company> {
   const response = await apiClient.post('/operations/v1/company', data);
   return response.data;
 }

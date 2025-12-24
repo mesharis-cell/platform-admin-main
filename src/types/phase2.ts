@@ -7,26 +7,56 @@
 // Company Types
 // ============================================================
 
+// eslint-disable-next-line import/export
 export interface Company {
-	id: string;
-	name: string;
-	description?: string | null;
-	logoUrl?: string | null;
-	pmgMarginPercent: string; // Decimal stored as string
-	contactEmail?: string | null;
-	contactPhone?: string | null;
-	archivedAt?: Date | null;
-	createdAt: Date;
-	updatedAt: Date;
+    id: string;
+    platform_id: string;
+    name: string;
+    domain: string;
+		platform_margin_percent: number;
+		contact_email: string;
+		contact_phone: string;
+    settings: {
+        branding: {
+            title: string,
+            primary_color: string,
+            secondary_color: string,
+						logo_url: string
+        }
+    },
+    is_active: boolean,
+    created_at: Date,
+    updated_at: Date,
+    deleted_at: Date | null,
+    domains: [
+        {
+            id: string,
+            platform_id: string,
+            company_id: string,
+            hostname: string,
+            type: string,
+            is_verified: boolean,
+            is_active: boolean,
+            created_at: Date,
+            updated_at: Date
+        }
+    ]
 }
 
 export interface CreateCompanyRequest {
 	name: string;
-	description?: string;
-	logoUrl?: string;
-	pmgMarginPercent?: number; // Accepts number, will be formatted to 2 decimals
-	contactEmail?: string;
-	contactPhone?: string;
+	domain: string;
+	platform_margin_percent?: number;
+	contact_email?: string;
+	contact_phone?: string;
+	settings?: {
+		branding: {
+			title?: string;
+			primary_color?: string;
+			secondary_color?: string;
+			logo_url?: string;
+		}
+	}
 }
 
 export interface UpdateCompanyRequest {
