@@ -61,12 +61,12 @@ export default function CollectionsPage() {
 
 	// Fetch data
 	const { data: collectionsData, isLoading } = useCollections({
-		search: searchQuery || undefined,
-		company:
+		search_term: searchQuery || undefined,
+		company_id:
 			selectedCompany && selectedCompany !== ''
 				? selectedCompany
 				: undefined,
-		brand:
+		brand_id:
 			selectedBrand && selectedBrand !== '' ? selectedBrand : undefined,
 		limit: 100,
 	})
@@ -85,10 +85,10 @@ export default function CollectionsPage() {
 
 	// Brands for filter dropdown (based on selectedCompany)
 	const { data: brandsData } = useBrands({
-		company:
+		company_id:
 			selectedCompany &&
-			selectedCompany !== '' &&
-			selectedCompany !== '_all_'
+				selectedCompany !== '' &&
+				selectedCompany !== ''
 				? selectedCompany
 				: undefined,
 		limit: '100',
@@ -96,7 +96,7 @@ export default function CollectionsPage() {
 
 	// Brands for create dialog (based on formData.company)
 	const { data: formBrandsData } = useBrands({
-		company: formData.company || undefined,
+		company_id: formData.company || undefined,
 		limit: '100',
 	})
 
@@ -145,11 +145,11 @@ export default function CollectionsPage() {
 
 			// Create collection
 			await createMutation.mutateAsync({
-				company: formData.company,
-				brand: formData.brand || null,
+				company_id: formData.company,
+				brand_id: formData.brand || undefined,
 				name: formData.name,
-				description: formData.description || null,
-				category: formData.category || null,
+				description: formData.description || '',
+				category: formData.category || '',
 				images: imageUrls,
 			})
 
@@ -193,10 +193,10 @@ export default function CollectionsPage() {
 		}
 	}
 
-	const collections = collectionsData?.collections || []
-	const companies = companiesData?.companies || []
-	const brands = brandsData?.brands || []
-	const formBrands = formBrandsData?.brands || []
+	const collections = collectionsData?.data || []
+	const companies = companiesData?.data || []
+	const brands = brandsData?.data || []
+	const formBrands = formBrandsData?.data || []
 
 	return (
 		<div className='min-h-screen bg-background'>
@@ -207,9 +207,9 @@ export default function CollectionsPage() {
 				stats={
 					collectionsData
 						? {
-								label: 'TOTAL COLLECTIONS',
-								value: collectionsData.collections.length,
-							}
+							label: 'TOTAL COLLECTIONS',
+							value: collectionsData.data.length,
+						}
 						: undefined
 				}
 				actions={
@@ -439,7 +439,7 @@ export default function CollectionsPage() {
 									}
 								>
 									{createMutation.isPending ||
-									uploadMutation.isPending
+										uploadMutation.isPending
 										? 'Creating...'
 										: 'Create Collection'}
 								</Button>
@@ -466,7 +466,10 @@ export default function CollectionsPage() {
 					{/* Company Filter */}
 					<Select
 						value={selectedCompany}
-						onValueChange={setSelectedCompany}
+						onValueChange={(value) => {
+							setSelectedCompany(value)
+							setSelectedBrand('') // Reset brand when company changes
+						}}
 					>
 						<SelectTrigger>
 							<SelectValue placeholder='All companies' />
@@ -493,12 +496,18 @@ export default function CollectionsPage() {
 							<SelectValue placeholder='All brands' />
 						</SelectTrigger>
 						<SelectContent>
-							<SelectItem value='_all_'>All brands</SelectItem>
-							{brands.map(brand => (
-								<SelectItem key={brand.id} value={brand.id}>
-									{brand.name}
-								</SelectItem>
-							))}
+							{brands.length > 0 ? (
+								<>
+									<SelectItem value='_all_'>All brands</SelectItem>
+									{brands.map(brand => (
+										<SelectItem key={brand.id} value={brand.id}>
+											{brand.name}
+										</SelectItem>
+									))}
+								</>
+							) : (
+								<SelectItem value='_all_' disabled>No brands available</SelectItem>
+							)}
 						</SelectContent>
 					</Select>
 				</div>
@@ -539,7 +548,7 @@ export default function CollectionsPage() {
 								className='overflow-hidden hover:shadow-lg transition-all duration-300 group'
 							>
 								<Link
-									href={`/admin/collections/${collection.id}`}
+									href={`/collections/${collection.id}`}
 								>
 									<div className='aspect-video bg-muted relative overflow-hidden'>
 										{collection.images.length > 0 ? (
@@ -556,7 +565,7 @@ export default function CollectionsPage() {
 										)}
 
 										{/* Overlay with item count */}
-										<div className='absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-4'>
+										<div className='absolute bottom-0 left-0 right-0 bg-linear-gradient-to-t from-black/60 to-transparent p-4'>
 											<Badge
 												variant='secondary'
 												className='bg-background/40 backdrop-blur-sm'

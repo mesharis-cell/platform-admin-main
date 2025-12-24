@@ -7,26 +7,56 @@
 // Company Types
 // ============================================================
 
+// eslint-disable-next-line import/export
 export interface Company {
-	id: string;
-	name: string;
-	description?: string | null;
-	logoUrl?: string | null;
-	pmgMarginPercent: string; // Decimal stored as string
-	contactEmail?: string | null;
-	contactPhone?: string | null;
-	archivedAt?: Date | null;
-	createdAt: Date;
-	updatedAt: Date;
+    id: string;
+    platform_id: string;
+    name: string;
+    domain: string;
+		platform_margin_percent: number;
+		contact_email: string;
+		contact_phone: string;
+    settings: {
+        branding: {
+            title: string,
+            primary_color: string,
+            secondary_color: string,
+						logo_url: string
+        }
+    },
+    is_active: boolean,
+    created_at: Date,
+    updated_at: Date,
+    deleted_at: Date | null,
+    domains: [
+        {
+            id: string,
+            platform_id: string,
+            company_id: string,
+            hostname: string,
+            type: string,
+            is_verified: boolean,
+            is_active: boolean,
+            created_at: Date,
+            updated_at: Date
+        }
+    ]
 }
 
 export interface CreateCompanyRequest {
 	name: string;
-	description?: string;
-	logoUrl?: string;
-	pmgMarginPercent?: number; // Accepts number, will be formatted to 2 decimals
-	contactEmail?: string;
-	contactPhone?: string;
+	domain: string;
+	platform_margin_percent?: number;
+	contact_email?: string;
+	contact_phone?: string;
+	settings?: {
+		branding: {
+			title?: string;
+			primary_color?: string;
+			secondary_color?: string;
+			logo_url?: string;
+		}
+	}
 }
 
 export interface UpdateCompanyRequest {
@@ -46,10 +76,12 @@ export interface CompanyListParams {
 }
 
 export interface CompanyListResponse {
-	companies: Company[];
-	total: number;
-	limit: number;
-	offset: number;
+	data: Company[];
+	meta: {
+		total: number;
+		limit: number;
+		page: number;
+	}
 }
 
 // ============================================================
@@ -62,9 +94,13 @@ export interface Warehouse {
 	country: string;
 	city: string;
 	address: string;
-	archivedAt?: Date | null;
+	coordinates?: {
+		lat: number;
+		lng: number;
+	}
 	createdAt: Date;
 	updatedAt: Date;
+	is_active?: boolean;
 }
 
 export interface CreateWarehouseRequest {
@@ -72,6 +108,10 @@ export interface CreateWarehouseRequest {
 	country: string;
 	city: string;
 	address: string;
+	coordinates?: {
+		lat: number;
+		lng: number;
+	}
 }
 
 export interface UpdateWarehouseRequest {
@@ -79,6 +119,10 @@ export interface UpdateWarehouseRequest {
 	country?: string;
 	city?: string;
 	address?: string;
+	coordinates?: {
+		lat: number;
+		lng: number;
+	}
 }
 
 export interface WarehouseListParams {
@@ -91,10 +135,12 @@ export interface WarehouseListParams {
 }
 
 export interface WarehouseListResponse {
-	warehouses: Warehouse[];
-	total: number;
-	limit: number;
-	offset: number;
+	data: Warehouse[];
+	meta: {
+		total: number;
+		limit: number;
+		page: number;
+	}
 }
 
 // ============================================================
@@ -103,11 +149,12 @@ export interface WarehouseListResponse {
 
 export interface Zone {
 	id: string;
-	warehouse: string; // UUID reference
-	company: string; // UUID reference
+	warehouse: Warehouse; // UUID reference
+	company: Company; // UUID reference
 	name: string;
+	capacity?: number;
 	description?: string | null;
-	deletedAt?: Date | null;
+	is_active?: boolean;
 	createdAt: Date;
 	updatedAt: Date;
 	// Populated from joins
@@ -138,10 +185,12 @@ export interface ZoneListParams {
 }
 
 export interface ZoneListResponse {
-	zones: Zone[];
-	total: number;
-	limit: number;
-	offset: number;
+	data: Zone[];
+	meta: {
+		total: number;
+		limit: number;
+		page: number;
+	}
 }
 
 // ============================================================
@@ -150,7 +199,8 @@ export interface ZoneListResponse {
 
 export interface Brand {
 	id: string;
-	company: string; // UUID reference
+	company_id: string; // UUID reference
+	company: Company;
 	name: string;
 	description?: string | null;
 	logoUrl?: string | null;
@@ -162,7 +212,7 @@ export interface Brand {
 }
 
 export interface CreateBrandRequest {
-	company: string;
+	company_id: string;
 	name: string;
 	description?: string;
 	logoUrl?: string;
@@ -184,10 +234,12 @@ export interface BrandListParams {
 }
 
 export interface BrandListResponse {
-	brands: Brand[];
-	total: number;
-	limit: number;
-	offset: number;
+	data: Brand[];
+	meta: {
+		total: number;
+		limit: number;
+		offset: number;
+	}
 }
 
 // ============================================================

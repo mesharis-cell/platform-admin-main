@@ -1,5 +1,8 @@
+"use client";
+
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { Warehouse, WarehouseListResponse } from '@/types';
+import type { CreateWarehouseRequest, Warehouse, WarehouseListResponse } from '@/types';
+import { apiClient } from '@/lib/api/api-client';
 
 // Query keys
 export const warehouseKeys = {
@@ -13,49 +16,26 @@ export const warehouseKeys = {
 // Fetch warehouses list
 async function fetchWarehouses(params?: Record<string, string>): Promise<WarehouseListResponse> {
   const searchParams = new URLSearchParams(params);
-  const response = await fetch(`/api/warehouses?${searchParams}`);
-  if (!response.ok) {
-    throw new Error('Failed to fetch warehouses');
-  }
-  return response.json();
+  const response = await apiClient.get(`/operations/v1/warehouse?${searchParams}`);
+  return response.data;
 }
 
 // Create warehouse
-async function createWarehouse(data: Partial<Warehouse>): Promise<Warehouse> {
-  const response = await fetch('/api/warehouses', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  });
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to create warehouse');
-  }
-  return response.json();
+async function createWarehouse(data: Partial<CreateWarehouseRequest>): Promise<Warehouse> {
+  const response = await apiClient.post('/operations/v1/warehouse', data);
+  return response.data;
 }
 
 // Update warehouse
 async function updateWarehouse({ id, data }: { id: string; data: Partial<Warehouse> }): Promise<Warehouse> {
-  const response = await fetch(`/api/warehouses/${id}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  });
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to update warehouse');
-  }
-  return response.json();
+  const response = await apiClient.patch(`/operations/v1/warehouse/${id}`, data);
+  return response.data;
 }
 
 // Archive warehouse
 async function archiveWarehouse(id: string): Promise<void> {
-  const response = await fetch(`/api/warehouses/${id}`, {
-    method: 'DELETE',
-  });
-  if (!response.ok) {
-    throw new Error('Failed to archive warehouse');
-  }
+  const response = await apiClient.delete(`/operations/v1/warehouse/${id}`);
+  return response.data;
 }
 
 // Hooks

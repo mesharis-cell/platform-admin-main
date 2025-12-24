@@ -82,7 +82,9 @@ export default function CollectionDetailPage() {
 
 	// Fetch data
 	const { data: collectionData, isLoading } = useCollection(collectionId)
-	const collection = collectionData?.collection
+	const collection = collectionData?.data
+
+	console.log(collection)
 
 	const updateMutation = useUpdateCollection(collectionId)
 	const deleteMutation = useDeleteCollection()
@@ -93,7 +95,7 @@ export default function CollectionDetailPage() {
 
 	// Fetch assets for adding to collection
 	// Note: collection.company is an object with { name }, so we need the ID from the raw data
-	const companyId = collection?.company
+	const companyId = collection?.company_id
 	const { data: assetsData } = useAssets({
 		company: typeof companyId === 'string' ? companyId : undefined,
 		limit: '200',
@@ -283,12 +285,12 @@ export default function CollectionDetailPage() {
 	}
 
 	const assets = assetsData?.assets || []
-	const totalVolume = collection.items.reduce(
+	const totalVolume = collection?.items.reduce(
 		(sum, item) =>
 			sum + parseFloat(item.assetDetails.volume) * item.defaultQuantity,
 		0
 	)
-	const totalWeight = collection.items.reduce(
+	const totalWeight = collection?.items.reduce(
 		(sum, item) =>
 			sum + parseFloat(item.assetDetails.weight) * item.defaultQuantity,
 		0
@@ -532,7 +534,7 @@ export default function CollectionDetailPage() {
 										}
 									>
 										{updateMutation.isPending ||
-										uploadMutation.isPending
+											uploadMutation.isPending
 											? 'Updating...'
 											: 'Update Collection'}
 									</Button>
@@ -747,7 +749,7 @@ export default function CollectionDetailPage() {
 										{/* Asset Image */}
 										<div className='w-24 h-24 rounded-lg overflow-hidden border border-border flex-shrink-0'>
 											{item.assetDetails.images.length >
-											0 ? (
+												0 ? (
 												<Image
 													src={
 														item.assetDetails
@@ -850,7 +852,7 @@ export default function CollectionDetailPage() {
 												<Badge variant='outline'>
 													{item.assetDetails
 														.availableQuantity >=
-													item.defaultQuantity ? (
+														item.defaultQuantity ? (
 														<>
 															<CheckCircle className='w-3 h-3 mr-1' />
 															Available

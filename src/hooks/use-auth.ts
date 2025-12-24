@@ -22,12 +22,20 @@ async function confirmPasswordReset(data: { token: string; newPassword: string }
 }
 
 // Hooks
-
 export function useLogin() {
   return useMutation({
     mutationFn: async (data: { email: string; password: string }) => {
       const response = await apiClient.post('/auth/login', data);
       return response
+    },
+  });
+}
+
+export function useLogout() {
+  return useMutation({
+    mutationFn: async () => {
+      const response = await apiClient.post('/auth/logout');
+      return response;
     },
   });
 }

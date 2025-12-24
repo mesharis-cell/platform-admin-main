@@ -35,7 +35,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import type { Company, CompanyListResponse } from "@/types";
+import type { Company } from "@/types";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 export default function CompaniesPage() {
@@ -48,11 +48,18 @@ export default function CompaniesPage() {
 	// Create/Edit form state
 	const [formData, setFormData] = useState({
 		name: "",
-		description: "",
-		pmgMarginPercent: 25,
-		contactEmail: "",
-		contactPhone: "",
-		logoUrl: "",
+		domain: "",
+		settings: {
+			branding: {
+				title: "",
+				logo_url: undefined,
+				primary_color: "",
+				secondary_color: "",
+			},
+		},
+		platform_margin_percent: 0.3,
+		contact_email: undefined,
+		contact_phone: "",
 	});
 
 	// Logo upload state
@@ -63,17 +70,17 @@ export default function CompaniesPage() {
 	const queryParams = useMemo(() => {
 		const params: Record<string, string> = {
 			limit: "100",
-			offset: "0",
+			page: "1",
 		};
-		if (searchQuery) params.search = searchQuery;
-		if (includeArchived) params.includeArchived = "true";
+		if (searchQuery) params.search_term = searchQuery;
+		if (includeArchived) params.include_deleted = "true";
 		return params;
 	}, [searchQuery, includeArchived]);
 
 	// Fetch companies
 	const { data, isLoading: loading } = useCompanies(queryParams);
-	const companies = data?.companies || [];
-	const total = data?.total || 0;
+	const companies = data?.data || [];
+	const total = data?.meta.total || 0;
 
 	// Mutations
 	const createMutation = useCreateCompany();
@@ -109,7 +116,15 @@ export default function CompaniesPage() {
 	const handleRemoveLogo = () => {
 		setSelectedLogo(null);
 		setLogoPreview("");
-		setFormData({ ...formData, logoUrl: "" });
+		setFormData({
+			...formData,
+			settings: {
+				branding: {
+					...formData.settings.branding,
+					logo_url: undefined
+				}
+			}
+		});
 
 		// Revoke object URL
 		if (logoPreview && logoPreview.startsWith("blob:")) {
@@ -123,7 +138,7 @@ export default function CompaniesPage() {
 
 		try {
 			// Upload logo if selected
-			let logoUrl = formData.logoUrl;
+			let logoUrl = formData.settings.branding.logo_url;
 			if (selectedLogo) {
 				const uploadFormData = new FormData();
 				uploadFormData.append('file', selectedLogo);
@@ -143,8 +158,12 @@ export default function CompaniesPage() {
 
 			const payload = {
 				...formData,
-				logoUrl: logoUrl || null,
-				pmgMarginPercent: formData.pmgMarginPercent.toString(),
+				settings: {
+					branding: {
+						...formData.settings.branding,
+						logo_url: logoUrl || undefined,
+					}
+				},
 			};
 
 			if (editingCompany) {
@@ -166,9 +185,14 @@ export default function CompaniesPage() {
 			setEditingCompany(null);
 			resetForm();
 		} catch (error) {
+			let errorMessage = "Unknown error";
+			if (error instanceof Error) {
+				// Check if it's an Axios error with a response
+				const axiosError = error as { response?: { data?: { message?: string } } };
+				errorMessage = axiosError.response?.data?.message || error.message;
+			}
 			toast.error("Operation failed", {
-				description:
-					error instanceof Error ? error.message : "Unknown error",
+				description: errorMessage,
 			});
 		}
 	};
@@ -192,11 +216,18 @@ export default function CompaniesPage() {
 	const resetForm = () => {
 		setFormData({
 			name: "",
-			description: "",
-			pmgMarginPercent: 25,
-			contactEmail: "",
-			contactPhone: "",
-			logoUrl: "",
+			domain: "",
+			settings: {
+				branding: {
+					title: "",
+					logo_url: undefined,
+					primary_color: "",
+					secondary_color: "",
+				},
+			},
+			platform_margin_percent: 0.3,
+			contact_email: undefined,
+			contact_phone: "",
 		});
 		setSelectedLogo(null);
 		setLogoPreview("");
@@ -206,14 +237,21 @@ export default function CompaniesPage() {
 		setEditingCompany(company);
 		setFormData({
 			name: company.name,
-			description: company.description || "",
-			pmgMarginPercent: parseFloat(company.pmgMarginPercent),
-			contactEmail: company.contactEmail || "",
-			contactPhone: company.contactPhone || "",
-			logoUrl: company.logoUrl || "",
+			domain: company.domain,
+			settings: {
+				branding: {
+					title: company.settings.branding.title,
+					logo_url: company.settings.branding.logo_url,
+					primary_color: company.settings.branding.primary_color,
+					secondary_color: company.settings.branding.secondary_color,
+				},
+			},
+			platform_margin_percent: parseFloat(String(company.platform_margin_percent)),
+			contact_email: company.contact_email || undefined,
+			contact_phone: company.contact_phone || "",
 		});
 		setSelectedLogo(null);
-		setLogoPreview(company.logoUrl || "");
+		setLogoPreview(company.settings.branding.logo_url || "");
 		setIsCreateOpen(true);
 	};
 
@@ -269,7 +307,7 @@ export default function CompaniesPage() {
 										NEW COMPANY
 									</Button>
 								</DialogTrigger>
-								<DialogContent className="max-w-2xl">
+								<DialogContent className="max-w-2xl max-h-[calc(100vh-10rem)] overflow-y-auto">
 									<DialogHeader>
 										<DialogTitle className="font-mono">
 											{editingCompany
@@ -303,36 +341,37 @@ export default function CompaniesPage() {
 											/>
 										</div>
 
-										{/* Description */}
+										{/* Domain */}
 										<div className="space-y-2">
 											<Label
-												htmlFor="description"
+												htmlFor="domain"
 												className="font-mono text-xs"
 											>
-												DESCRIPTION
+												DOMAIN *
 											</Label>
 											<Input
-												id="description"
-												value={formData.description}
+												id="domain"
+												value={formData.domain}
 												onChange={(e) =>
 													setFormData({
 														...formData,
-														description: e.target.value,
+														domain: e.target.value,
 													})
 												}
-												placeholder="Brief company description"
+												placeholder="e.g., pernodricard.com"
 												className="font-mono"
+												required
 											/>
 										</div>
 
-										{/* PMG Margin */}
+										{/* Platform Margin */}
 										<div className="space-y-2">
 											<Label
 												htmlFor="margin"
 												className="font-mono text-xs flex items-center gap-2"
 											>
 												<Percent className="h-3 w-3" />
-												PMG MARGIN PERCENT *
+												PLATFORM MARGIN PERCENT
 											</Label>
 											<div className="flex items-center gap-2">
 												<Input
@@ -340,25 +379,24 @@ export default function CompaniesPage() {
 													type="number"
 													step="0.01"
 													min="0"
-													value={formData.pmgMarginPercent}
+													value={formData.platform_margin_percent}
 													onChange={(e) =>
 														setFormData({
 															...formData,
-															pmgMarginPercent: parseFloat(
+															platform_margin_percent: parseFloat(
 																e.target.value,
 															),
 														})
 													}
-													required
 													className="font-mono"
 												/>
 												<span className="text-sm text-muted-foreground font-mono">
 													%
 												</span>
 											</div>
-											<p className="text-xs text-muted-foreground font-mono">
+											{/* <p className="text-xs text-muted-foreground font-mono">
 												Default margin applied to orders (2 decimal places)
-											</p>
+											</p> */}
 										</div>
 
 										{/* Contact Information */}
@@ -374,11 +412,11 @@ export default function CompaniesPage() {
 												<Input
 													id="email"
 													type="email"
-													value={formData.contactEmail}
+													value={formData.contact_email}
 													onChange={(e) =>
 														setFormData({
 															...formData,
-															contactEmail: e.target.value,
+															contact_email: e.target.value,
 														})
 													}
 													placeholder="contact@company.com"
@@ -395,11 +433,11 @@ export default function CompaniesPage() {
 												</Label>
 												<Input
 													id="phone"
-													value={formData.contactPhone}
+													value={formData.contact_phone}
 													onChange={(e) =>
 														setFormData({
 															...formData,
-															contactPhone: e.target.value,
+															contact_phone: e.target.value,
 														})
 													}
 													placeholder="+971-50-123-4567"
@@ -408,60 +446,147 @@ export default function CompaniesPage() {
 											</div>
 										</div>
 
-										{/* Company Logo */}
-										<div className="space-y-2">
-											<Label className="font-mono text-xs flex items-center gap-2">
-												<ImageIcon className="h-3 w-3" />
-												COMPANY LOGO (Optional)
-											</Label>
+										<div className='px-2 py-2'>
+											<div className='flex items-center gap-2'>
+												<div className='h-px flex-1 bg-border' />
+												<span className='font-mono text-muted-foreground tracking-[0.2em] uppercase'>
+													Brand Settings
+												</span>
+												<div className='h-px flex-1 bg-border' />
+											</div>
+										</div>
 
-											{logoPreview ? (
-												<div className="relative group border-2 border-border rounded-lg p-4 bg-muted/30">
-													<div className="flex items-center gap-4">
-														<div className="relative h-20 w-20 rounded-lg overflow-hidden border border-border bg-background flex-shrink-0">
-															<img
-																src={logoPreview}
-																alt="Company logo"
-																className="w-full h-full object-contain"
-															/>
+										{/* Settings */}
+										<div className="space-y-6">
+											{/* Title */}
+											<div className="space-y-2">
+												<Label className="font-mono text-xs flex items-center gap-2">
+													TITLE (Optional)
+												</Label>
+												<Input
+													id="title"
+													value={formData.settings.branding.title}
+													onChange={(e) =>
+														setFormData({
+															...formData,
+															settings: {
+																...formData.settings,
+																branding: {
+																	...formData.settings.branding,
+																	title: e.target.value,
+																},
+															},
+														})
+													}
+													placeholder="Company title"
+												/>
+											</div>
+
+											{/* Primary color */}
+											<div className="space-y-2">
+												<Label className="font-mono text-xs flex items-center gap-2">
+													PRIMARY COLOR (Optional)
+												</Label>
+												<Input
+													id="primary-color"
+													value={formData.settings.branding.primary_color}
+													type="color"
+													className="size-14 border-none p-0"
+													onChange={(e) =>
+														setFormData({
+															...formData,
+															settings: {
+																...formData.settings,
+																branding: {
+																	...formData.settings.branding,
+																	primary_color: e.target.value,
+																},
+															},
+														})
+													}
+												/>
+											</div>
+
+											{/* Secondary color */}
+											<div className="space-y-2">
+												<Label className="font-mono text-xs flex items-center gap-2">
+													SECONDARY COLOR (Optional)
+												</Label>
+												<Input
+													id="secondary-color"
+													value={formData.settings.branding.secondary_color}
+													type="color"
+													className="size-14 border-none p-0"
+													onChange={(e) =>
+														setFormData({
+															...formData,
+															settings: {
+																...formData.settings,
+																branding: {
+																	...formData.settings.branding,
+																	secondary_color: e.target.value,
+																},
+															},
+														})
+													}
+												/>
+											</div>
+
+											{/* Company Logo */}
+											<div className="space-y-2">
+												<Label className="font-mono text-xs flex items-center gap-2">
+													<ImageIcon className="h-3 w-3" />
+													COMPANY LOGO (Optional)
+												</Label>
+
+												{logoPreview ? (
+													<div className="relative group border-2 border-border rounded-lg p-4 bg-muted/30">
+														<div className="flex items-center gap-4">
+															<div className="relative h-20 w-20 rounded-lg overflow-hidden border border-border bg-background shrink-0">
+																<img
+																	src={logoPreview}
+																	alt="Company logo"
+																	className="w-full h-full object-contain"
+																/>
+															</div>
+															<div className="flex-1">
+																<p className="text-sm font-mono font-semibold">Logo uploaded</p>
+																<p className="text-xs text-muted-foreground font-mono mt-1">
+																	{selectedLogo ? selectedLogo.name : "Current logo"}
+																</p>
+															</div>
+															<Button
+																type="button"
+																variant="ghost"
+																size="sm"
+																onClick={handleRemoveLogo}
+																className="shrink-0"
+															>
+																<X className="h-4 w-4" />
+															</Button>
 														</div>
-														<div className="flex-1">
-															<p className="text-sm font-mono font-semibold">Logo uploaded</p>
-															<p className="text-xs text-muted-foreground font-mono mt-1">
-																{selectedLogo ? selectedLogo.name : "Current logo"}
-															</p>
-														</div>
-														<Button
-															type="button"
-															variant="ghost"
-															size="sm"
-															onClick={handleRemoveLogo}
-															className="flex-shrink-0"
-														>
-															<X className="h-4 w-4" />
-														</Button>
 													</div>
-												</div>
-											) : (
-												<div className="border-2 border-dashed border-border rounded-lg p-6 hover:border-primary/50 transition-colors">
-													<input
-														type="file"
-														id="logo-upload"
-														accept="image/png,image/jpg,image/jpeg,image/webp,image/svg+xml"
-														onChange={handleLogoSelect}
-														className="hidden"
-													/>
-													<label htmlFor="logo-upload" className="cursor-pointer flex flex-col items-center">
-														<Upload className="h-8 w-8 text-muted-foreground mb-2" />
-														<span className="text-sm font-mono text-muted-foreground">
-															Click to upload logo
-														</span>
-														<span className="text-xs font-mono text-muted-foreground mt-1">
-															PNG, JPG, WebP, SVG (max 5MB)
-														</span>
-													</label>
-												</div>
-											)}
+												) : (
+													<div className="border-2 border-dashed border-border rounded-lg p-6 hover:border-primary/50 transition-colors">
+														<input
+															type="file"
+															id="logo-upload"
+															accept="image/png,image/jpg,image/jpeg,image/webp,image/svg+xml"
+															onChange={handleLogoSelect}
+															className="hidden"
+														/>
+														<label htmlFor="logo-upload" className="cursor-pointer flex flex-col items-center">
+															<Upload className="h-8 w-8 text-muted-foreground mb-2" />
+															<span className="text-sm font-mono text-muted-foreground">
+																Click to upload logo
+															</span>
+															<span className="text-xs font-mono text-muted-foreground mt-1">
+																PNG, JPG, WebP, SVG (max 5MB)
+															</span>
+														</label>
+													</div>
+												)}
+											</div>
 										</div>
 
 										{/* Actions */}
@@ -558,10 +683,10 @@ export default function CompaniesPage() {
 										COMPANY
 									</TableHead>
 									<TableHead className="font-mono text-xs font-bold">
-										DESCRIPTION
+										DOMAIN
 									</TableHead>
 									<TableHead className="font-mono text-xs font-bold text-right">
-										PMG MARGIN
+										PLATFORM MARGIN PERCENT
 									</TableHead>
 									<TableHead className="font-mono text-xs font-bold">
 										CONTACT
@@ -583,10 +708,10 @@ export default function CompaniesPage() {
 									>
 										<TableCell className="font-mono font-medium">
 											<div className="flex items-center gap-2">
-												<div className="h-10 w-10 rounded-lg overflow-hidden bg-background border border-border flex items-center justify-center flex-shrink-0">
-													{company.logoUrl ? (
+												<div className="h-10 w-10 rounded-lg overflow-hidden bg-background border border-border flex items-center justify-center shrink-0">
+													{company.settings.branding.logo_url ? (
 														<img
-															src={company.logoUrl}
+															src={company.settings.branding.logo_url}
 															alt={`${company.name} logo`}
 															className="w-full h-full object-contain p-1"
 														/>
@@ -609,32 +734,32 @@ export default function CompaniesPage() {
 											</div>
 										</TableCell>
 										<TableCell className="font-mono text-sm text-muted-foreground max-w-xs">
-											{company.description || "—"}
+											{company.domain || "—"}
 										</TableCell>
 										<TableCell className="text-right">
 											<div className="flex items-center justify-end gap-2">
-												<Percent className="h-3.5 w-3.5 text-primary" />
+												{/* <Percent className="h-3.5 w-3.5 text-primary" /> */}
 												<span className="font-mono font-bold text-primary">
 													{parseFloat(
-														company.pmgMarginPercent,
+														String(company.platform_margin_percent),
 													).toFixed(2)}%
 												</span>
 											</div>
 										</TableCell>
 										<TableCell className="font-mono text-sm">
-											{company.contactEmail ||
-												company.contactPhone ? (
+											{company.contact_email ||
+												company.contact_phone ? (
 												<div className="space-y-1">
-													{company.contactEmail && (
+													{company.contact_email && (
 														<div className="flex items-center gap-2 text-xs">
 															<Mail className="h-3 w-3 text-muted-foreground" />
-															{company.contactEmail}
+															{company.contact_email}
 														</div>
 													)}
-													{company.contactPhone && (
+													{company.contact_phone && (
 														<div className="flex items-center gap-2 text-xs">
 															<Phone className="h-3 w-3 text-muted-foreground" />
-															{company.contactPhone}
+															{company.contact_phone}
 														</div>
 													)}
 												</div>
@@ -645,7 +770,7 @@ export default function CompaniesPage() {
 											)}
 										</TableCell>
 										<TableCell>
-											{company.archivedAt ? (
+											{company.deleted_at ? (
 												<Badge
 													variant="secondary"
 													className="font-mono text-xs"
@@ -662,27 +787,27 @@ export default function CompaniesPage() {
 											)}
 										</TableCell>
 										<TableCell>
-											<DropdownMenu>
-												<DropdownMenuTrigger asChild>
-													<Button
-														variant="ghost"
-														size="sm"
-														className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-													>
-														<MoreVertical className="h-4 w-4" />
-													</Button>
-												</DropdownMenuTrigger>
-												<DropdownMenuContent align="end">
-													<DropdownMenuItem
-														onClick={() =>
-															openEditDialog(company)
-														}
-														className="font-mono text-xs"
-													>
-														<Pencil className="h-3.5 w-3.5 mr-2" />
-														Edit Company
-													</DropdownMenuItem>
-													{!company.archivedAt && (
+											{!company.deleted_at && (
+												<DropdownMenu>
+													<DropdownMenuTrigger asChild>
+														<Button
+															variant="ghost"
+															size="sm"
+															className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+														>
+															<MoreVertical className="h-4 w-4" />
+														</Button>
+													</DropdownMenuTrigger>
+													<DropdownMenuContent align="end">
+														<DropdownMenuItem
+															onClick={() =>
+																openEditDialog(company)
+															}
+															className="font-mono text-xs"
+														>
+															<Pencil className="h-3.5 w-3.5 mr-2" />
+															Edit Company
+														</DropdownMenuItem>
 														<DropdownMenuItem
 															onClick={() =>
 																setConfirmArchive(company)
@@ -692,9 +817,9 @@ export default function CompaniesPage() {
 															<Archive className="h-3.5 w-3.5 mr-2" />
 															Archive Company
 														</DropdownMenuItem>
-													)}
-												</DropdownMenuContent>
-											</DropdownMenu>
+													</DropdownMenuContent>
+												</DropdownMenu>
+											)}
 										</TableCell>
 									</TableRow>
 								))}

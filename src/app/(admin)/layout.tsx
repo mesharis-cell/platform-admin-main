@@ -33,7 +33,7 @@ import {
 	Box,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useSession, signOut } from '@/lib/auth'
+import { useSession } from '@/lib/auth'
 import { hasPermission } from '@/lib/auth/permissions'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -48,10 +48,11 @@ import {
 	SidebarMenuButton,
 	SidebarMenuItem,
 	SidebarProvider,
-	SidebarTrigger,
 	useSidebar,
 } from '@/components/ui/sidebar'
 import Providers from '@/providers'
+import { useLogout } from '@/hooks/use-auth'
+import { toast } from 'sonner'
 
 type NavItem = {
 	name: string
@@ -66,99 +67,83 @@ const navigation: NavItem[] = [
 		name: 'Analytics',
 		href: '/analytics',
 		icon: BarChart3,
-		requiredPermission: 'analytics:view_revenue',
 	},
 	{
 		name: 'Orders',
 		href: '/orders',
 		icon: ShoppingCart,
-		requiredPermission: 'orders:read',
 	},
 	{
 		name: 'Pricing Review',
 		href: '/orders/pricing-review',
 		icon: DollarSign,
 		badge: 'A2',
-		requiredPermission: 'pricing:review',
 	},
 	{
 		name: 'Pending Approval',
 		href: '/orders/pending-approval',
 		icon: AlertCircle,
 		badge: 'PMG',
-		requiredPermission: 'pricing:pmg_approve',
 	},
 	{
 		name: 'Scanning',
 		href: '/scanning',
 		icon: ScanLine,
-		requiredPermission: 'scanning:scan_out',
 	},
 	{
 		name: 'Conditions',
 		href: '/conditions',
 		icon: AlertCircle,
-		requiredPermission: 'conditions:view_history',
 	},
 	{
 		name: 'Invoices',
 		href: '/invoices',
 		icon: Receipt,
-		requiredPermission: 'invoices:read',
 	},
 	{
 		name: 'Notifications',
 		href: '/notifications',
 		icon: Mail,
-		requiredPermission: 'notifications:view_failed',
 	},
 	{
 		name: 'Users',
 		href: '/users',
 		icon: Users,
-		requiredPermission: 'users:read',
 	},
 	{
 		name: 'Companies',
 		href: '/companies',
 		icon: Building,
-		requiredPermission: 'companies:read',
 	},
 	{
 		name: 'Warehouses',
 		href: '/warehouses',
 		icon: Warehouse,
-		requiredPermission: 'warehouses:read',
 	},
 	{
 		name: 'Zones',
 		href: '/zones',
 		icon: Grid3x3,
-		requiredPermission: 'zones:read',
 	},
 	{
 		name: 'Brands',
 		href: '/brands',
 		icon: Tag,
-		requiredPermission: 'brands:read',
 	},
 	{
 		name: 'Assets',
 		href: '/assets',
 		icon: Package,
-		requiredPermission: 'assets:read',
 	},
 	{
 		name: 'Collections',
 		href: '/collections',
 		icon: Layers,
-		requiredPermission: 'collections:read',
 	},
 	{
 		name: 'Pricing Tiers',
 		href: '/pricing-tiers',
 		icon: DollarSign,
-		requiredPermission: 'pricing_tiers:read',
 	},
 ]
 
@@ -167,18 +152,12 @@ function AdminSidebarContent() {
 	const router = useRouter()
 	const { data: session, isPending } = useSession()
 	const { state } = useSidebar()
+	const { mutate: signOut } = useLogout()
 
-	const filteredNavigation = navigation.filter(item => {
-		if (!item.requiredPermission) return true
-		return hasPermission(
-			(session?.user as any) || null,
-			item.requiredPermission
-		)
-	})
-
-	const handleSignOut = async () => {
-		await signOut()
-		router.push('/login')
+	const handleSignOut = () => {
+		signOut()
+		router.push('/');
+		toast.success('You have been signed out.')
 	}
 
 	const isCollapsed = state === 'collapsed'
@@ -231,10 +210,10 @@ function AdminSidebarContent() {
 							))}
 						</>
 					) : (
-						filteredNavigation.map(item => {
+						navigation.map(item => {
 							const Icon = item.icon
 							// Find the most specific matching route
-							const matchingRoutes = filteredNavigation.filter(
+							const matchingRoutes = navigation.filter(
 								navItem =>
 									pathname === navItem.href ||
 									pathname.startsWith(navItem.href + '/')

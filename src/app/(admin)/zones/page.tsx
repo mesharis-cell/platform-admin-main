@@ -11,7 +11,6 @@ import { useWarehouses } from "@/hooks/use-warehouses";
 import { useCompanies } from "@/hooks/use-companies";
 import {
 	Plus,
-	Search,
 	Trash2,
 	Pencil,
 	Box,
@@ -75,34 +74,35 @@ export default function ZonesPage() {
 	const [confirmDelete, setConfirmDelete] = useState<Zone | null>(null);
 
 	const [formData, setFormData] = useState({
-		warehouse: "",
-		company: "",
+		warehouse_id: "",
+		company_id: "",
 		name: "",
 		description: "",
+		capacity: undefined,
 	});
 
 	// Fetch reference data
 	const { data: warehousesData } = useWarehouses({ limit: "100" });
 	const { data: companiesData } = useCompanies({ limit: "100" });
-	const warehouses = warehousesData?.warehouses || [];
-	const companies = companiesData?.companies || [];
+	const warehouses = warehousesData?.data || [];
+	const companies = companiesData?.data || [];
 
 	// Build query params for zones
 	const queryParams = useMemo(() => {
 		const params: Record<string, string> = {
 			limit: "100",
-			offset: "0",
+			page: "1",
 		};
-		if (warehouseFilter && warehouseFilter !== "all") params.warehouse = warehouseFilter;
-		if (companyFilter && companyFilter !== "all") params.company = companyFilter;
-		if (includeDeleted) params.includeDeleted = "true";
+		if (warehouseFilter && warehouseFilter !== "all") params.warehouse_id = warehouseFilter;
+		if (companyFilter && companyFilter !== "all") params.company_id = companyFilter;
+		if (includeDeleted) params.include_inactive = "true";
 		return params;
 	}, [warehouseFilter, companyFilter, includeDeleted]);
 
 	// Fetch zones
 	const { data, isLoading: loading } = useZones(queryParams);
-	const zones = data?.zones || [];
-	const total = data?.total || 0;
+	const zones = data?.data || [];
+	const total = data?.meta?.total || 0;
 
 	// Mutations
 	const createMutation = useCreateZone();
@@ -113,16 +113,21 @@ export default function ZonesPage() {
 		e.preventDefault();
 
 		try {
+			const payload = {
+				...formData,
+				capacity: Number(formData.capacity),
+			};
+
 			if (editingZone) {
 				await updateMutation.mutateAsync({
 					id: editingZone.id,
-					data: formData,
+					data: payload,
 				});
 				toast.success("Zone updated", {
 					description: `${formData.name} has been updated.`,
 				});
 			} else {
-				await createMutation.mutateAsync(formData);
+				await createMutation.mutateAsync(payload);
 				toast.success("Zone created", {
 					description: `${formData.name} has been created.`,
 				});
@@ -132,9 +137,14 @@ export default function ZonesPage() {
 			setEditingZone(null);
 			resetForm();
 		} catch (error) {
+			let errorMessage = "Unknown error";
+			if (error instanceof Error) {
+				// Check if it's an Axios error with a response
+				const axiosError = error as { response?: { data?: { message?: string } } };
+				errorMessage = axiosError.response?.data?.message || error.message;
+			}
 			toast.error("Operation failed", {
-				description:
-					error instanceof Error ? error.message : "Unknown error",
+				description: errorMessage,
 			});
 		}
 	};
@@ -159,20 +169,22 @@ export default function ZonesPage() {
 
 	const resetForm = () => {
 		setFormData({
-			warehouse: "",
-			company: "",
+			warehouse_id: "",
+			company_id: "",
 			name: "",
 			description: "",
+			capacity: undefined,
 		});
 	};
 
 	const openEditDialog = (zone: Zone) => {
 		setEditingZone(zone);
 		setFormData({
-			warehouse: zone.warehouse,
-			company: zone.company,
+			warehouse_id: zone.warehouse.id,
+			company_id: zone.company.id,
 			name: zone.name,
 			description: zone.description || "",
+			capacity: zone.capacity || undefined,
 		});
 		setIsCreateOpen(true);
 	};
@@ -201,163 +213,193 @@ export default function ZonesPage() {
 								NEW ZONE
 							</Button>
 						</DialogTrigger>
-								<DialogContent className="max-w-2xl">
-									<DialogHeader>
-										<DialogTitle className="font-mono">
-											{editingZone ? "EDIT ZONE" : "CREATE NEW ZONE"}
-										</DialogTitle>
-										<DialogDescription className="font-mono text-xs">
-											{editingZone
-												? "Update zone details and assignments"
-												: "Allocate company-exclusive area within warehouse"}
-										</DialogDescription>
-									</DialogHeader>
-									<form onSubmit={handleSubmit} className="space-y-6">
-										<div className="grid grid-cols-2 gap-4">
-											<div className="space-y-2">
-												<Label
-													htmlFor="warehouse"
-													className="font-mono text-xs flex items-center gap-2"
-												>
-													<Warehouse className="h-3 w-3" />
-													WAREHOUSE *
-												</Label>
-												<Select
-													value={formData.warehouse}
-													onValueChange={(value) =>
-														setFormData({
-															...formData,
-															warehouse: value,
-														})
-													}
-													required
-												>
-													<SelectTrigger className="font-mono">
-														<SelectValue placeholder="Select warehouse" />
-													</SelectTrigger>
-													<SelectContent>
-														{warehouses.map((wh) => (
-															<SelectItem
-																key={wh.id}
-																value={wh.id}
-																className="font-mono"
-															>
-																{wh.name} · {wh.city}
-															</SelectItem>
-														))}
-													</SelectContent>
-												</Select>
-											</div>
+						<DialogContent className="max-w-2xl">
+							<DialogHeader>
+								<DialogTitle className="font-mono">
+									{editingZone ? "EDIT ZONE" : "CREATE NEW ZONE"}
+								</DialogTitle>
+								<DialogDescription className="font-mono text-xs">
+									{editingZone
+										? "Update zone details and assignments"
+										: "Allocate company-exclusive area within warehouse"}
+								</DialogDescription>
+							</DialogHeader>
+							<form onSubmit={handleSubmit} className="space-y-6">
+								<div className="grid grid-cols-2 gap-4">
 
-											<div className="space-y-2">
-												<Label
-													htmlFor="company"
-													className="font-mono text-xs flex items-center gap-2"
-												>
-													<Building2 className="h-3 w-3" />
-													COMPANY *
-												</Label>
-												<Select
-													value={formData.company}
-													onValueChange={(value) =>
-														setFormData({
-															...formData,
-															company: value,
-														})
-													}
-													required
-												>
-													<SelectTrigger className="font-mono">
-														<SelectValue placeholder="Select company" />
-													</SelectTrigger>
-													<SelectContent>
-														{companies.map((co) => (
-															<SelectItem
-																key={co.id}
-																value={co.id}
-																className="font-mono"
-															>
-																{co.name}
-															</SelectItem>
-														))}
-													</SelectContent>
-												</Select>
-											</div>
-										</div>
+									{/* Warehouse Selection */}
+									<div className="space-y-2">
+										<Label
+											htmlFor="warehouse"
+											className="font-mono text-xs flex items-center gap-2"
+										>
+											<Warehouse className="h-3 w-3" />
+											WAREHOUSE *
+										</Label>
+										<Select
+											value={formData.warehouse_id}
+											onValueChange={(value) =>
+												setFormData({
+													...formData,
+													warehouse_id: value,
+												})
+											}
+											required
+										>
+											<SelectTrigger className="font-mono">
+												<SelectValue placeholder="Select warehouse" />
+											</SelectTrigger>
+											<SelectContent>
+												{warehouses.map((wh) => (
+													<SelectItem
+														key={wh.id}
+														value={wh.id}
+														className="font-mono"
+													>
+														{wh.name} · {wh.city}
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
+									</div>
 
-										<div className="space-y-2">
-											<Label htmlFor="name" className="font-mono text-xs">
-												ZONE NAME *
-											</Label>
-											<Input
-												id="name"
-												value={formData.name}
-												onChange={(e) =>
-													setFormData({
-														...formData,
-														name: e.target.value,
-													})
-												}
-												placeholder="e.g., Zone A"
-												required
-												className="font-mono"
-											/>
-											<p className="text-xs text-muted-foreground font-mono">
-												Must be unique per warehouse-company combination
-											</p>
-										</div>
+									{/* Company Selection */}
+									<div className="space-y-2">
+										<Label
+											htmlFor="company"
+											className="font-mono text-xs flex items-center gap-2"
+										>
+											<Building2 className="h-3 w-3" />
+											COMPANY *
+										</Label>
+										<Select
+											value={formData.company_id}
+											onValueChange={(value) =>
+												setFormData({
+													...formData,
+													company_id: value,
+												})
+											}
+											required
+										>
+											<SelectTrigger className="font-mono">
+												<SelectValue placeholder="Select company" />
+											</SelectTrigger>
+											<SelectContent>
+												{companies.map((co) => (
+													<SelectItem
+														key={co.id}
+														value={co.id}
+														className="font-mono"
+													>
+														{co.name}
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
+									</div>
+								</div>
 
-										<div className="space-y-2">
-											<Label
-												htmlFor="description"
-												className="font-mono text-xs"
-											>
-												DESCRIPTION
-											</Label>
-											<Input
-												id="description"
-												value={formData.description}
-												onChange={(e) =>
-													setFormData({
-														...formData,
-														description: e.target.value,
-													})
-												}
-												placeholder="Optional zone description"
-												className="font-mono"
-											/>
-										</div>
+								{/* Zone Name */}
+								<div className="space-y-2">
+									<Label htmlFor="name" className="font-mono text-xs">
+										ZONE NAME *
+									</Label>
+									<Input
+										id="name"
+										value={formData.name}
+										onChange={(e) =>
+											setFormData({
+												...formData,
+												name: e.target.value,
+											})
+										}
+										placeholder="e.g., Zone A"
+										required
+										className="font-mono"
+									/>
+									<p className="text-xs text-muted-foreground font-mono">
+										Must be unique per warehouse-company combination
+									</p>
+								</div>
 
-										<div className="flex justify-end gap-3 pt-4 border-t">
-											<Button
-												type="button"
-												variant="outline"
-												onClick={() => {
-													setIsCreateOpen(false);
-													setEditingZone(null);
-													resetForm();
-												}}
-												disabled={createMutation.isPending || updateMutation.isPending}
-												className="font-mono"
-											>
-												CANCEL
-											</Button>
-											<Button
-												type="submit"
-												disabled={createMutation.isPending || updateMutation.isPending}
-												className="font-mono"
-											>
-												{createMutation.isPending || updateMutation.isPending
-													? "PROCESSING..."
-													: editingZone
-														? "UPDATE"
-														: "CREATE"}
-											</Button>
-										</div>
-									</form>
-								</DialogContent>
-							</Dialog>
-						}
+								{/* Zone Capacity */}
+								<div className="space-y-2">
+									<Label
+										htmlFor="capacity"
+										className="font-mono text-xs"
+									>
+										CAPACITY
+									</Label>
+									<Input
+										id="capacity"
+										type="number"
+										required
+										min={1}
+										value={formData.capacity}
+										onChange={(e) =>
+											setFormData({
+												...formData,
+												capacity: e.target.value,
+											})
+										}
+										placeholder="e.g., 200"
+										className="font-mono"
+									/>
+								</div>
+
+								{/* Zone Description */}
+								<div className="space-y-2">
+									<Label
+										htmlFor="description"
+										className="font-mono text-xs"
+									>
+										DESCRIPTION
+									</Label>
+									<Input
+										id="description"
+										value={formData.description}
+										onChange={(e) =>
+											setFormData({
+												...formData,
+												description: e.target.value,
+											})
+										}
+										placeholder="Optional zone description"
+										className="font-mono"
+									/>
+								</div>
+
+								<div className="flex justify-end gap-3 pt-4 border-t">
+									<Button
+										type="button"
+										variant="outline"
+										onClick={() => {
+											setIsCreateOpen(false);
+											setEditingZone(null);
+											resetForm();
+										}}
+										disabled={createMutation.isPending || updateMutation.isPending}
+										className="font-mono"
+									>
+										CANCEL
+									</Button>
+									<Button
+										type="submit"
+										disabled={createMutation.isPending || updateMutation.isPending}
+										className="font-mono"
+									>
+										{createMutation.isPending || updateMutation.isPending
+											? "PROCESSING..."
+											: editingZone
+												? "UPDATE"
+												: "CREATE"}
+									</Button>
+								</div>
+							</form>
+						</DialogContent>
+					</Dialog>
+				}
 			/>
 
 			{/* Control Panel with Relationship Filters */}
@@ -454,6 +496,9 @@ export default function ZonesPage() {
 										ASSIGNED COMPANY
 									</TableHead>
 									<TableHead className="font-mono text-xs font-bold">
+										CAPACITY
+									</TableHead>
+									<TableHead className="font-mono text-xs font-bold">
 										DESCRIPTION
 									</TableHead>
 									<TableHead className="font-mono text-xs font-bold">
@@ -488,7 +533,7 @@ export default function ZonesPage() {
 											<div className="flex items-center gap-2">
 												<Warehouse className="h-3.5 w-3.5 text-secondary" />
 												<span className="text-sm">
-													{zone.warehouseName || zone.warehouse}
+													{zone.warehouse?.name || "-"}
 												</span>
 											</div>
 										</TableCell>
@@ -496,15 +541,20 @@ export default function ZonesPage() {
 											<div className="flex items-center gap-2">
 												<Building2 className="h-3.5 w-3.5 text-primary" />
 												<span className="text-sm font-medium">
-													{zone.companyName || zone.company}
+													{zone.company?.name || "-"}
 												</span>
 											</div>
+										</TableCell>
+										<TableCell className="font-mono">
+											<span className="text-sm font-medium">
+												{zone.capacity || "—"}
+											</span>
 										</TableCell>
 										<TableCell className="font-mono text-sm text-muted-foreground max-w-xs">
 											{zone.description || "—"}
 										</TableCell>
 										<TableCell>
-											{zone.deletedAt ? (
+											{zone.is_active ? (
 												<Badge
 													variant="secondary"
 													className="font-mono text-xs"
@@ -539,7 +589,7 @@ export default function ZonesPage() {
 														<Pencil className="h-3.5 w-3.5 mr-2" />
 														Edit Zone
 													</DropdownMenuItem>
-													{!zone.deletedAt && (
+													{!zone.is_active && (
 														<DropdownMenuItem
 															onClick={() => setConfirmDelete(zone)}
 															className="font-mono text-xs text-destructive"
@@ -563,17 +613,17 @@ export default function ZonesPage() {
 				ZONE: ADMIN-ZONES · SEC-LEVEL: PMG-ADMIN
 			</div>
 
-		{/* Confirm Delete Dialog */}
-		<ConfirmDialog
-			open={!!confirmDelete}
-			onOpenChange={(open) => !open && setConfirmDelete(null)}
-			onConfirm={handleDelete}
-			title="Delete Zone"
-			description={`Are you sure you want to delete ${confirmDelete?.name}? This will soft-delete the zone. Assets must be relocated first.`}
-			confirmText="Delete"
-			cancelText="Cancel"
-			variant="destructive"
-		/>
+			{/* Confirm Delete Dialog */}
+			<ConfirmDialog
+				open={!!confirmDelete}
+				onOpenChange={(open) => !open && setConfirmDelete(null)}
+				onConfirm={handleDelete}
+				title="Delete Zone"
+				description={`Are you sure you want to delete ${confirmDelete?.name}? This will soft-delete the zone. Assets must be relocated first.`}
+				confirmText="Delete"
+				cancelText="Cancel"
+				variant="destructive"
+			/>
 		</div>
 	);
 }

@@ -53,12 +53,7 @@ import {
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
-import type {
-	Brand,
-	BrandListResponse,
-	Company,
-	CompanyListResponse,
-} from '@/types'
+import type { Brand } from '@/types'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 
 export default function BrandsPage() {
@@ -70,7 +65,7 @@ export default function BrandsPage() {
 	const [confirmDelete, setConfirmDelete] = useState<Brand | null>(null)
 
 	const [formData, setFormData] = useState({
-		company: '',
+		company_id: '',
 		name: '',
 		description: '',
 		logoUrl: '',
@@ -78,7 +73,7 @@ export default function BrandsPage() {
 
 	// Fetch companies for reference
 	const { data: companiesData } = useCompanies({ limit: '100' })
-	const companies = companiesData?.companies || []
+	const companies = companiesData?.data || []
 
 	// Build query params for brands
 	const queryParams = useMemo(() => {
@@ -86,17 +81,17 @@ export default function BrandsPage() {
 			limit: '100',
 			offset: '0',
 		}
-		if (searchQuery) params.search = searchQuery
+		if (searchQuery) params.search_term = searchQuery
 		if (companyFilter && companyFilter !== 'all')
-			params.company = companyFilter
-		if (includeDeleted) params.includeDeleted = 'true'
+			params.company_id = companyFilter
+		if (includeDeleted) params.include_inactive = 'true'
 		return params
 	}, [searchQuery, companyFilter, includeDeleted])
 
 	// Fetch brands
 	const { data, isLoading: loading } = useBrands(queryParams)
-	const brands = data?.brands || []
-	const total = data?.total || 0
+	const brands = data?.data || []
+	const total = data?.meta?.total || 0
 
 	// Mutations
 	const createMutation = useCreateBrand()
@@ -109,7 +104,7 @@ export default function BrandsPage() {
 		try {
 			if (editingBrand) {
 				// Exclude company field when updating (cannot be changed)
-				const { company, ...updateData } = formData
+				const { company_id, ...updateData } = formData
 				await updateMutation.mutateAsync({
 					id: editingBrand.id,
 					data: updateData,
@@ -152,7 +147,7 @@ export default function BrandsPage() {
 
 	const resetForm = () => {
 		setFormData({
-			company: '',
+			company_id: '',
 			name: '',
 			description: '',
 			logoUrl: '',
@@ -162,7 +157,7 @@ export default function BrandsPage() {
 	const openEditDialog = (brand: Brand) => {
 		setEditingBrand(brand)
 		setFormData({
-			company: brand.company, // Note: cannot be changed
+			company_id: brand.company.id, // Note: cannot be changed
 			name: brand.name,
 			description: brand.description || '',
 			logoUrl: brand.logoUrl || '',
@@ -217,11 +212,11 @@ export default function BrandsPage() {
 										PARENT COMPANY *
 									</Label>
 									<Select
-										value={formData.company}
+										value={formData.company_id}
 										onValueChange={value =>
 											setFormData({
 												...formData,
-												company: value,
+												company_id: value,
 											})
 										}
 										disabled={!!editingBrand} // Cannot change company for existing brand
@@ -348,7 +343,7 @@ export default function BrandsPage() {
 										className='font-mono'
 									>
 										{createMutation.isPending ||
-										updateMutation.isPending
+											updateMutation.isPending
 											? 'PROCESSING...'
 											: editingBrand
 												? 'UPDATE'
@@ -466,7 +461,7 @@ export default function BrandsPage() {
 									>
 										<TableCell className='font-mono font-medium'>
 											<div className='flex items-center gap-3'>
-												<div className='h-10 w-10 rounded-md border-2 border-primary/20 flex items-center justify-center overflow-hidden bg-gradient-to-br from-primary/5 to-primary/10'>
+												<div className='h-10 w-10 rounded-md border-2 border-primary/20 flex items-center justify-center overflow-hidden bg-linear-gradient-to-br from-primary/5 to-primary/10'>
 													{brand.logoUrl ? (
 														<img
 															src={brand.logoUrl}
@@ -493,8 +488,7 @@ export default function BrandsPage() {
 											<div className='flex items-center gap-2'>
 												<Building2 className='h-3.5 w-3.5 text-muted-foreground' />
 												<span className='text-sm'>
-													{brand.companyName ||
-														brand.company}
+													{brand.company.name || 'Unknown'}
 												</span>
 											</div>
 										</TableCell>

@@ -34,7 +34,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
 					>
 						<NextTopLoader easing="ease" showSpinner={false} color="var(--primary)" />
 						{children}
-						<Toaster position="top-center" />
+						<Toaster position="top-center" richColors />
 					</ThemeProvider>
 				</QueryClientProvider>
 			</PlatformProvider>

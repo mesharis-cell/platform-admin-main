@@ -61,8 +61,8 @@ export interface CollectionItemWithAsset extends CollectionItem {
 // ========================================
 
 export interface CreateCollectionRequest {
-	company: string
-	brand?: string | null
+	company_id: string
+	brand_id?: string | null
 	name: string
 	description?: string | null
 	category?: string | null
@@ -74,14 +74,14 @@ export interface UpdateCollectionRequest {
 	description?: string | null
 	category?: string | null
 	images?: string[]
-	brand?: string | null
+	brand_id?: string | null
 }
 
 export interface CollectionListParams {
-	company?: string
-	brand?: string
+	company_id?: string
+	brand_id?: string
 	category?: string
-	search?: string
+	search_term?: string
 	includeDeleted?: boolean
 	limit?: number
 	offset?: number
