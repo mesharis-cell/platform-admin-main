@@ -1,5 +1,8 @@
+"use client";
+
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Zone, ZoneListResponse } from '@/types';
+import { apiClient } from '@/lib/api/api-client';
 
 // Query keys
 export const zoneKeys = {
@@ -13,50 +16,26 @@ export const zoneKeys = {
 // Fetch zones list
 async function fetchZones(params?: Record<string, string>): Promise<ZoneListResponse> {
   const searchParams = new URLSearchParams(params);
-  const response = await fetch(`/api/zones?${searchParams}`);
-  if (!response.ok) {
-    throw new Error('Failed to fetch zones');
-  }
-  return response.json();
+  const response = await apiClient.get(`/operations/v1/zone?${searchParams}`);
+  return response.data;
 }
 
 // Create zone
 async function createZone(data: Partial<Zone>): Promise<Zone> {
-  const response = await fetch('/api/zones', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  });
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to create zone');
-  }
-  return response.json();
+  const response = await apiClient.post('/operations/v1/zone', data);
+  return response.data;
 }
 
 // Update zone
 async function updateZone({ id, data }: { id: string; data: Partial<Zone> }): Promise<Zone> {
-  const response = await fetch(`/api/zones/${id}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  });
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to update zone');
-  }
-  return response.json();
+  const response = await apiClient.patch(`/operations/v1/zone/${id}`, data);
+  return response.data;
 }
 
 // Delete zone
 async function deleteZone(id: string): Promise<void> {
-  const response = await fetch(`/api/zones/${id}`, {
-    method: 'DELETE',
-  });
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to delete zone');
-  }
+  const response = await apiClient.delete(`/operations/v1/zone/${id}`);
+  return response.data;
 }
 
 // Hooks

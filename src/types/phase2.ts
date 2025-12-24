@@ -149,11 +149,12 @@ export interface WarehouseListResponse {
 
 export interface Zone {
 	id: string;
-	warehouse: string; // UUID reference
-	company: string; // UUID reference
+	warehouse: Warehouse; // UUID reference
+	company: Company; // UUID reference
 	name: string;
+	capacity?: number;
 	description?: string | null;
-	deletedAt?: Date | null;
+	is_active?: boolean;
 	createdAt: Date;
 	updatedAt: Date;
 	// Populated from joins
@@ -184,10 +185,12 @@ export interface ZoneListParams {
 }
 
 export interface ZoneListResponse {
-	zones: Zone[];
-	total: number;
-	limit: number;
-	offset: number;
+	data: Zone[];
+	meta: {
+		total: number;
+		limit: number;
+		page: number;
+	}
 }
 
 // ============================================================

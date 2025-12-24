@@ -461,7 +461,7 @@ export default function BrandsPage() {
 									>
 										<TableCell className='font-mono font-medium'>
 											<div className='flex items-center gap-3'>
-												<div className='h-10 w-10 rounded-md border-2 border-primary/20 flex items-center justify-center overflow-hidden bg-gradient-to-br from-primary/5 to-primary/10'>
+												<div className='h-10 w-10 rounded-md border-2 border-primary/20 flex items-center justify-center overflow-hidden bg-linear-gradient-to-br from-primary/5 to-primary/10'>
 													{brand.logoUrl ? (
 														<img
 															src={brand.logoUrl}

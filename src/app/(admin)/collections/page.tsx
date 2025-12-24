@@ -565,7 +565,7 @@ export default function CollectionsPage() {
 										)}
 
 										{/* Overlay with item count */}
-										<div className='absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-4'>
+										<div className='absolute bottom-0 left-0 right-0 bg-linear-gradient-to-t from-black/60 to-transparent p-4'>
 											<Badge
 												variant='secondary'
 												className='bg-background/40 backdrop-blur-sm'

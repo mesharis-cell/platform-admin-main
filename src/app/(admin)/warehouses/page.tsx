@@ -118,9 +118,14 @@ export default function WarehousesPage() {
 			setEditingWarehouse(null);
 			resetForm();
 		} catch (error) {
+			let errorMessage = "Unknown error";
+			if (error instanceof Error) {
+				// Check if it's an Axios error with a response
+				const axiosError = error as { response?: { data?: { message?: string } } };
+				errorMessage = axiosError.response?.data?.message || error.message;
+			}
 			toast.error("Operation failed", {
-				description:
-					error instanceof Error ? error.message : "Unknown error",
+				description: errorMessage,
 			});
 		}
 	};
