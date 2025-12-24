@@ -63,53 +63,53 @@ type NavItem = {
 }
 
 const navigation: NavItem[] = [
-	{
-		name: 'Analytics',
-		href: '/analytics',
-		icon: BarChart3,
-	},
-	{
-		name: 'Orders',
-		href: '/orders',
-		icon: ShoppingCart,
-	},
-	{
-		name: 'Pricing Review',
-		href: '/orders/pricing-review',
-		icon: DollarSign,
-		badge: 'A2',
-	},
-	{
-		name: 'Pending Approval',
-		href: '/orders/pending-approval',
-		icon: AlertCircle,
-		badge: 'PMG',
-	},
-	{
-		name: 'Scanning',
-		href: '/scanning',
-		icon: ScanLine,
-	},
-	{
-		name: 'Conditions',
-		href: '/conditions',
-		icon: AlertCircle,
-	},
-	{
-		name: 'Invoices',
-		href: '/invoices',
-		icon: Receipt,
-	},
-	{
-		name: 'Notifications',
-		href: '/notifications',
-		icon: Mail,
-	},
-	{
-		name: 'Users',
-		href: '/users',
-		icon: Users,
-	},
+	// {
+	// 	name: 'Analytics',
+	// 	href: '/analytics',
+	// 	icon: BarChart3,
+	// },
+	// {
+	// 	name: 'Orders',
+	// 	href: '/orders',
+	// 	icon: ShoppingCart,
+	// },
+	// {
+	// 	name: 'Pricing Review',
+	// 	href: '/orders/pricing-review',
+	// 	icon: DollarSign,
+	// 	badge: 'A2',
+	// },
+	// {
+	// 	name: 'Pending Approval',
+	// 	href: '/orders/pending-approval',
+	// 	icon: AlertCircle,
+	// 	badge: 'PMG',
+	// },
+	// {
+	// 	name: 'Scanning',
+	// 	href: '/scanning',
+	// 	icon: ScanLine,
+	// },
+	// {
+	// 	name: 'Conditions',
+	// 	href: '/conditions',
+	// 	icon: AlertCircle,
+	// },
+	// {
+	// 	name: 'Invoices',
+	// 	href: '/invoices',
+	// 	icon: Receipt,
+	// },
+	// {
+	// 	name: 'Notifications',
+	// 	href: '/notifications',
+	// 	icon: Mail,
+	// },
+	// {
+	// 	name: 'Users',
+	// 	href: '/users',
+	// 	icon: Users,
+	// },
 	{
 		name: 'Companies',
 		href: '/companies',
@@ -130,21 +130,21 @@ const navigation: NavItem[] = [
 		href: '/brands',
 		icon: Tag,
 	},
-	{
-		name: 'Assets',
-		href: '/assets',
-		icon: Package,
-	},
+	// {
+	// 	name: 'Assets',
+	// 	href: '/assets',
+	// 	icon: Package,
+	// },
 	{
 		name: 'Collections',
 		href: '/collections',
 		icon: Layers,
 	},
-	{
-		name: 'Pricing Tiers',
-		href: '/pricing-tiers',
-		icon: DollarSign,
-	},
+	// {
+	// 	name: 'Pricing Tiers',
+	// 	href: '/pricing-tiers',
+	// 	icon: DollarSign,
+	// },
 ]
 
 function AdminSidebarContent() {

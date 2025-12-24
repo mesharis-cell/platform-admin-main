@@ -3,8 +3,6 @@ import { NextResponse, type NextRequest } from 'next/server'
 // Routes that don't require authentication
 const publicRoutes = ['/', '/reset-password']
 
-// Nahid @123
-
 export async function middleware(request: NextRequest) {
 	const { pathname } = request.nextUrl
 
