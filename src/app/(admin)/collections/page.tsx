@@ -96,7 +96,7 @@ export default function CollectionsPage() {
 
 	// Brands for create dialog (based on formData.company)
 	const { data: formBrandsData } = useBrands({
-		company: formData.company || undefined,
+		company_id: formData.company || undefined,
 		limit: '100',
 	})
 

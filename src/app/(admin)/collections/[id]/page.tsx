@@ -84,6 +84,8 @@ export default function CollectionDetailPage() {
 	const { data: collectionData, isLoading } = useCollection(collectionId)
 	const collection = collectionData?.data
 
+	console.log(collection)
+
 	const updateMutation = useUpdateCollection(collectionId)
 	const deleteMutation = useDeleteCollection()
 	const addItemMutation = useAddCollectionItem(collectionId)
@@ -283,12 +285,12 @@ export default function CollectionDetailPage() {
 	}
 
 	const assets = assetsData?.assets || []
-	const totalVolume = collection.items.reduce(
+	const totalVolume = collection?.items.reduce(
 		(sum, item) =>
 			sum + parseFloat(item.assetDetails.volume) * item.defaultQuantity,
 		0
 	)
-	const totalWeight = collection.items.reduce(
+	const totalWeight = collection?.items.reduce(
 		(sum, item) =>
 			sum + parseFloat(item.assetDetails.weight) * item.defaultQuantity,
 		0
