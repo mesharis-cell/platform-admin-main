@@ -1,3 +1,4 @@
+import { cookies } from 'next/headers'
 import { NextResponse, type NextRequest } from 'next/server'
 
 // Routes that don't require authentication
@@ -5,6 +6,7 @@ const publicRoutes = ['/', '/reset-password']
 
 export async function middleware(request: NextRequest) {
 	const { pathname } = request.nextUrl
+	const cookieStore = await cookies()
 
 	// Check if the current path is a public route
 	const isPublicRoute = publicRoutes.some(route =>
@@ -17,7 +19,7 @@ export async function middleware(request: NextRequest) {
 	}
 
 	// Check for access_token cookie
-	const accessToken = request.cookies.get('access_token')?.value
+	const accessToken = cookieStore.get('access_token')?.value || null
 
 	// If no token and trying to access protected route, redirect to homepage
 	if (!accessToken) {
