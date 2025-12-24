@@ -54,7 +54,7 @@ export default function HomePage() {
 					description: "Welcome to the fulfillment platform.",
 				});
 
-				router.push('/analytics')
+				router.push('/companies')
 			} else {
 				// User is not an admin, sign out and invalidate token
 				await signout()
