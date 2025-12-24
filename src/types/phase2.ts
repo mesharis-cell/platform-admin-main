@@ -94,9 +94,13 @@ export interface Warehouse {
 	country: string;
 	city: string;
 	address: string;
-	archivedAt?: Date | null;
+	coordinates?: {
+		lat: number;
+		lng: number;
+	}
 	createdAt: Date;
 	updatedAt: Date;
+	is_active?: boolean;
 }
 
 export interface CreateWarehouseRequest {
@@ -104,6 +108,10 @@ export interface CreateWarehouseRequest {
 	country: string;
 	city: string;
 	address: string;
+	coordinates?: {
+		lat: number;
+		lng: number;
+	}
 }
 
 export interface UpdateWarehouseRequest {
@@ -111,6 +119,10 @@ export interface UpdateWarehouseRequest {
 	country?: string;
 	city?: string;
 	address?: string;
+	coordinates?: {
+		lat: number;
+		lng: number;
+	}
 }
 
 export interface WarehouseListParams {
@@ -123,10 +135,12 @@ export interface WarehouseListParams {
 }
 
 export interface WarehouseListResponse {
-	warehouses: Warehouse[];
-	total: number;
-	limit: number;
-	offset: number;
+	data: Warehouse[];
+	meta: {
+		total: number;
+		limit: number;
+		page: number;
+	}
 }
 
 // ============================================================

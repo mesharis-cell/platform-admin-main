@@ -66,25 +66,29 @@ export default function WarehousesPage() {
 		country: "",
 		city: "",
 		address: "",
+		coordinates: {
+			lat: undefined,
+			lng: undefined,
+		}
 	});
 
 	// Build query params
 	const queryParams = useMemo(() => {
 		const params: Record<string, string> = {
 			limit: "100",
-			offset: "0",
+			page: "1",
 		};
-		if (searchQuery) params.search = searchQuery;
+		if (searchQuery) params.search_term = searchQuery;
 		if (countryFilter) params.country = countryFilter;
 		if (cityFilter) params.city = cityFilter;
-		if (includeArchived) params.includeArchived = "true";
+		if (includeArchived) params.include_inactive = "true";
 		return params;
 	}, [searchQuery, countryFilter, cityFilter, includeArchived]);
 
 	// Fetch warehouses
 	const { data, isLoading: loading } = useWarehouses(queryParams);
-	const warehouses = data?.warehouses || [];
-	const total = data?.total || 0;
+	const warehouses = data?.data || [];
+	const total = data?.meta?.total || 0;
 
 	// Mutations
 	const createMutation = useCreateWarehouse();
@@ -142,6 +146,10 @@ export default function WarehousesPage() {
 			country: "",
 			city: "",
 			address: "",
+			coordinates: {
+				lat: undefined,
+				lng: undefined,
+			}
 		});
 	};
 
@@ -152,6 +160,10 @@ export default function WarehousesPage() {
 			country: warehouse.country,
 			city: warehouse.city,
 			address: warehouse.address,
+			coordinates: {
+				lat: warehouse.coordinates?.lat || undefined,
+				lng: warehouse.coordinates?.lng || undefined,
+			}
 		});
 		setIsCreateOpen(true);
 	};
@@ -188,138 +200,188 @@ export default function WarehousesPage() {
 								NEW FACILITY
 							</Button>
 						</DialogTrigger>
-								<DialogContent className="max-w-2xl">
-									<DialogHeader>
-										<DialogTitle className="font-mono">
-											{editingWarehouse
-												? "EDIT WAREHOUSE"
-												: "CREATE NEW WAREHOUSE"}
-										</DialogTitle>
-										<DialogDescription className="font-mono text-xs">
-											{editingWarehouse
-												? "Update warehouse facility details"
-												: "Add new storage location to network"}
-										</DialogDescription>
-									</DialogHeader>
-									<form onSubmit={handleSubmit} className="space-y-6">
-										<div className="space-y-2">
-											<Label htmlFor="name" className="font-mono text-xs">
-												FACILITY NAME *
-											</Label>
-											<Input
-												id="name"
-												value={formData.name}
-												onChange={(e) =>
-													setFormData({
-														...formData,
-														name: e.target.value,
-													})
-												}
-												placeholder="e.g., Dubai Main Warehouse"
-												required
-												className="font-mono"
-											/>
-										</div>
+						<DialogContent className="max-w-2xl">
+							<DialogHeader>
+								<DialogTitle className="font-mono">
+									{editingWarehouse
+										? "EDIT WAREHOUSE"
+										: "CREATE NEW WAREHOUSE"}
+								</DialogTitle>
+								<DialogDescription className="font-mono text-xs">
+									{editingWarehouse
+										? "Update warehouse facility details"
+										: "Add new storage location to network"}
+								</DialogDescription>
+							</DialogHeader>
+							<form onSubmit={handleSubmit} className="space-y-6">
+								<div className="space-y-2">
+									<Label htmlFor="name" className="font-mono text-xs">
+										FACILITY NAME *
+									</Label>
+									<Input
+										id="name"
+										value={formData.name}
+										onChange={(e) =>
+											setFormData({
+												...formData,
+												name: e.target.value,
+											})
+										}
+										placeholder="e.g., Dubai Main Warehouse"
+										required
+										className="font-mono"
+									/>
+								</div>
 
-										<div className="grid grid-cols-2 gap-4">
-											<div className="space-y-2">
-												<Label
-													htmlFor="country"
-													className="font-mono text-xs flex items-center gap-2"
-												>
-													<Globe className="h-3 w-3" />
-													COUNTRY *
-												</Label>
-												<Input
-													id="country"
-													value={formData.country}
-													onChange={(e) =>
-														setFormData({
-															...formData,
-															country: e.target.value,
-														})
+								<div className="grid grid-cols-2 gap-4">
+									<div className="space-y-2">
+										<Label
+											htmlFor="country"
+											className="font-mono text-xs flex items-center gap-2"
+										>
+											<Globe className="h-3 w-3" />
+											COUNTRY *
+										</Label>
+										<Input
+											id="country"
+											value={formData.country}
+											onChange={(e) =>
+												setFormData({
+													...formData,
+													country: e.target.value,
+												})
+											}
+											placeholder="United Arab Emirates"
+											required
+											className="font-mono"
+										/>
+									</div>
+									<div className="space-y-2">
+										<Label
+											htmlFor="city"
+											className="font-mono text-xs flex items-center gap-2"
+										>
+											<MapPin className="h-3 w-3" />
+											CITY *
+										</Label>
+										<Input
+											id="city"
+											value={formData.city}
+											onChange={(e) =>
+												setFormData({
+													...formData,
+													city: e.target.value,
+												})
+											}
+											placeholder="Dubai"
+											required
+											className="font-mono"
+										/>
+									</div>
+								</div>
+
+								<div className="space-y-2">
+									<Label
+										htmlFor="address"
+										className="font-mono text-xs"
+									>
+										FULL ADDRESS *
+									</Label>
+									<Input
+										id="address"
+										value={formData.address}
+										onChange={(e) =>
+											setFormData({
+												...formData,
+												address: e.target.value,
+											})
+										}
+										placeholder="Building 123, Street Name, Area, Dubai, UAE"
+										required
+										className="font-mono"
+									/>
+								</div>
+
+								<div className="flex items-center gap-4">
+									<div className="w-full space-y-2">
+										<Label
+											htmlFor="latitude"
+											className="font-mono text-xs"
+										>
+											LATITUDE
+										</Label>
+										<Input
+											id="latitude"
+											type="number"
+											value={formData.coordinates?.lat?.toString()}
+											onChange={(e) =>
+												setFormData({
+													...formData,
+													coordinates: {
+														lat: Number(e.target.value),
+														lng: formData.coordinates?.lng || undefined,
 													}
-													placeholder="United Arab Emirates"
-													required
-													className="font-mono"
-												/>
-											</div>
-											<div className="space-y-2">
-												<Label
-													htmlFor="city"
-													className="font-mono text-xs flex items-center gap-2"
-												>
-													<MapPin className="h-3 w-3" />
-													CITY *
-												</Label>
-												<Input
-													id="city"
-													value={formData.city}
-													onChange={(e) =>
-														setFormData({
-															...formData,
-															city: e.target.value,
-														})
+												})
+											}
+											className="font-mono"
+										/>
+									</div>
+
+									<div className="w-full space-y-2">
+										<Label
+											htmlFor="longitude"
+											className="font-mono text-xs"
+										>
+											LONGITUDE
+										</Label>
+										<Input
+											id="longitude"
+											type="number"
+											value={formData.coordinates?.lng?.toString()}
+											onChange={(e) =>
+												setFormData({
+													...formData,
+													coordinates: {
+														lat: Number(formData.coordinates?.lat),
+														lng: Number(e.target.value),
 													}
-													placeholder="Dubai"
-													required
-													className="font-mono"
-												/>
-											</div>
-										</div>
+												})
+											}
+											className="font-mono"
+										/>
+									</div>
+								</div>
 
-										<div className="space-y-2">
-											<Label
-												htmlFor="address"
-												className="font-mono text-xs"
-											>
-												FULL ADDRESS *
-											</Label>
-											<Input
-												id="address"
-												value={formData.address}
-												onChange={(e) =>
-													setFormData({
-														...formData,
-														address: e.target.value,
-													})
-												}
-												placeholder="Building 123, Street Name, Area, Dubai, UAE"
-												required
-												className="font-mono"
-											/>
-										</div>
-
-										<div className="flex justify-end gap-3 pt-4 border-t">
-											<Button
-												type="button"
-												variant="outline"
-												onClick={() => {
-													setIsCreateOpen(false);
-													setEditingWarehouse(null);
-													resetForm();
-												}}
-												disabled={createMutation.isPending || updateMutation.isPending}
-												className="font-mono"
-											>
-												CANCEL
-											</Button>
-											<Button
-												type="submit"
-												disabled={createMutation.isPending || updateMutation.isPending}
-												className="font-mono"
-											>
-												{createMutation.isPending || updateMutation.isPending
-													? "PROCESSING..."
-													: editingWarehouse
-														? "UPDATE"
-														: "CREATE"}
-											</Button>
-										</div>
-									</form>
-								</DialogContent>
-							</Dialog>
-						}
+								<div className="flex justify-end gap-3 pt-4 border-t">
+									<Button
+										type="button"
+										variant="outline"
+										onClick={() => {
+											setIsCreateOpen(false);
+											setEditingWarehouse(null);
+											resetForm();
+										}}
+										disabled={createMutation.isPending || updateMutation.isPending}
+										className="font-mono"
+									>
+										CANCEL
+									</Button>
+									<Button
+										type="submit"
+										disabled={createMutation.isPending || updateMutation.isPending}
+										className="font-mono"
+									>
+										{createMutation.isPending || updateMutation.isPending
+											? "PROCESSING..."
+											: editingWarehouse
+												? "UPDATE"
+												: "CREATE"}
+									</Button>
+								</div>
+							</form>
+						</DialogContent>
+					</Dialog>
+				}
 			/>
 
 			{/* Control Panel with Geographic Filters */}
@@ -412,6 +474,9 @@ export default function WarehousesPage() {
 										LOCATION
 									</TableHead>
 									<TableHead className="font-mono text-xs font-bold">
+										COORDINATES
+									</TableHead>
+									<TableHead className="font-mono text-xs font-bold">
 										ADDRESS
 									</TableHead>
 									<TableHead className="font-mono text-xs font-bold">
@@ -458,11 +523,28 @@ export default function WarehousesPage() {
 												</div>
 											</div>
 										</TableCell>
+
+										{/* Coordinates */}
+										<TableCell className="font-mono">
+											<div className="space-y-1">
+												<div className="flex items-center gap-2 text-sm">
+													{warehouse.coordinates?.lat ? <Globe className="h-3.5 w-3.5 text-muted-foreground" /> : null}
+													<span className="font-medium">
+														{warehouse.coordinates?.lat}
+													</span>
+												</div>
+												<div className="flex items-center gap-2 text-sm">
+													{warehouse.coordinates?.lng ? <MapPin className="h-3.5 w-3.5" /> : null}
+													{warehouse.coordinates?.lng}
+												</div>
+											</div>
+										</TableCell>
+
 										<TableCell className="font-mono text-sm text-muted-foreground max-w-md">
 											{warehouse.address}
 										</TableCell>
 										<TableCell>
-											{warehouse.archivedAt ? (
+											{!warehouse?.is_active ? (
 												<Badge
 													variant="secondary"
 													className="font-mono text-xs"
@@ -499,7 +581,7 @@ export default function WarehousesPage() {
 														<Pencil className="h-3.5 w-3.5 mr-2" />
 														Edit Warehouse
 													</DropdownMenuItem>
-													{!warehouse.archivedAt && (
+													{warehouse.is_active && (
 														<DropdownMenuItem
 															onClick={() =>
 																setConfirmArchive(warehouse)
@@ -525,17 +607,17 @@ export default function WarehousesPage() {
 				ZONE: ADMIN-WAREHOUSES · SEC-LEVEL: PMG-ADMIN
 			</div>
 
-		{/* Confirm Archive Dialog */}
-		<ConfirmDialog
-			open={!!confirmArchive}
-			onOpenChange={(open) => !open && setConfirmArchive(null)}
-			onConfirm={handleArchive}
-			title="Archive Warehouse"
-			description={`Are you sure you want to archive ${confirmArchive?.name}? This will soft-delete the warehouse.`}
-			confirmText="Archive"
-			cancelText="Cancel"
-			variant="destructive"
-		/>
+			{/* Confirm Archive Dialog */}
+			<ConfirmDialog
+				open={!!confirmArchive}
+				onOpenChange={(open) => !open && setConfirmArchive(null)}
+				onConfirm={handleArchive}
+				title="Archive Warehouse"
+				description={`Are you sure you want to archive ${confirmArchive?.name}? This will soft-delete the warehouse.`}
+				confirmText="Archive"
+				cancelText="Cancel"
+				variant="destructive"
+			/>
 		</div>
 	);
 }
