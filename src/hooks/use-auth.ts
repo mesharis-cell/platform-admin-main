@@ -31,15 +31,6 @@ export function useLogin() {
   });
 }
 
-export function useLogout() {
-  return useMutation({
-    mutationFn: async () => {
-      const response = await apiClient.post('/auth/logout');
-      return response;
-    },
-  });
-}
-
 export function useRequestPasswordReset() {
   return useMutation({
     mutationFn: requestPasswordReset,

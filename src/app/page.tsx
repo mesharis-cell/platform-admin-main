@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useLogin, useLogout } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,6 +13,8 @@ import { useToken } from "@/lib/auth/use-token";
 import { jwtDecode, JwtPayload } from "jwt-decode";
 import LoadingState from "@/components/loading-state";
 import { usePlatform } from "@/contexts/platform-context";
+import { login } from "@/actions/login";
+import Cookies from "js-cookie";
 
 interface CustomJwtPayload extends JwtPayload {
 	role: string;
@@ -25,10 +26,8 @@ export default function HomePage() {
 	const [password, setPassword] = useState("");
 	const [showPassword, setShowPassword] = useState(false);
 	const [isLoading, setIsLoading] = useState(false);
-	const { mutateAsync: login } = useLogin();
 	const { access_token, loading } = useToken();
 	const { platform } = usePlatform();
-	const { mutateAsync: signout } = useLogout()
 
 	useEffect(() => {
 		if (access_token) {
@@ -37,7 +36,7 @@ export default function HomePage() {
 
 			if (role === 'ADMIN') {
 				// PMG Admin goes to analytics dashboard
-				router.push('/analytics');
+				router.push('/companies');
 			}
 		}
 	}, [access_token, loading, router]);
@@ -47,9 +46,9 @@ export default function HomePage() {
 		setIsLoading(true);
 
 		try {
-			const res = await login({ email, password });
+			const res = await login(email, password, platform?.id);
 
-			if (res.data.data.role === 'ADMIN') {
+			if (res.data.role === 'ADMIN') {
 				toast.success("Access Granted", {
 					description: "Welcome to the fulfillment platform.",
 				});
@@ -57,7 +56,8 @@ export default function HomePage() {
 				router.push('/companies')
 			} else {
 				// User is not an admin, sign out and invalidate token
-				await signout()
+				Cookies.remove('access_token')
+				Cookies.remove('refresh_token')
 				toast.success("Access Denied", {
 					description: "You do not have access to this platform.",
 				});
