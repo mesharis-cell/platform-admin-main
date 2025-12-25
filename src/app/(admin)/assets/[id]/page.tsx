@@ -90,16 +90,18 @@ export default function AssetDetailPage({
 	// Handle error
 	if (error) {
 		toast.error('Failed to load asset')
-		router.push('/admin/assets')
+		router.push('/assets')
 	}
 
 	function downloadQRCode() {
 		if (!qrCodeImage || !asset) return
 
-		const link = document.createElement('a')
-		link.href = qrCodeImage
-		link.download = `QR-${asset.qr_code}.png`
-		link.click()
+		if (typeof document !== 'undefined') {
+			const link = document.createElement('a')
+			link.href = qrCodeImage
+			link.download = `QR-${asset.qr_code}.png`
+			link.click()
+		}
 	}
 
 	async function handleDelete() {
