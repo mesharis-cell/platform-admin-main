@@ -1,27 +1,9 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import {
-	useUsers,
-	useCreateUser,
-	useUpdateUser,
-	useDeactivateUser,
-	useReactivateUser,
-} from "@/hooks/use-users";
-import { useCompanies } from "@/hooks/use-companies";
+import { AdminHeader } from "@/components/admin-header";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Separator } from "@/components/ui/separator";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "@/components/ui/table";
 import {
 	Dialog,
 	DialogContent,
@@ -30,7 +12,9 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
 	Select,
 	SelectContent,
@@ -38,23 +22,36 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { toast } from "sonner";
-import { AdminHeader } from "@/components/admin-header";
+import { Separator } from "@/components/ui/separator";
 import {
-	Package,
-	Plus,
-	Search,
-	UserPlus,
-	Users,
-	Edit,
+	Table,
+	TableBody,
+	TableCell,
+	TableHead,
+	TableHeader,
+	TableRow,
+} from "@/components/ui/table";
+import { useCompanies } from "@/hooks/use-companies";
+import {
+	useCreateUser,
+	useUpdateUser,
+	useUsers
+} from "@/hooks/use-users";
+import { cn } from "@/lib/utils";
+import { PERMISSION_TEMPLATES, PermissionTemplate, User } from "@/types/auth";
+import {
+	AlertCircle,
 	Ban,
 	CheckCircle,
+	Edit,
 	Filter,
-	AlertCircle,
+	Package,
+	Search,
+	UserPlus,
+	Users
 } from "lucide-react";
-import { User, PermissionTemplate, PERMISSION_TEMPLATES } from "@/types/auth";
-import { cn } from "@/lib/utils";
+import { useMemo, useState } from "react";
+import { toast } from "sonner";
 
 // All available permissions grouped by category
 const PERMISSION_GROUPS = {
@@ -124,8 +121,6 @@ export default function UsersManagementPage() {
 	// Mutations
 	const createMutation = useCreateUser();
 	const updateMutation = useUpdateUser();
-	const deactivateMutation = useDeactivateUser();
-	const reactivateMutation = useReactivateUser();
 
 	// Toggle permission
 	const togglePermission = (permission: string) => {
@@ -324,14 +319,10 @@ export default function UsersManagementPage() {
 			// If using template
 			if (editFormData.permissionTemplate !== "CUSTOM") {
 				payload.permission_template = editFormData.permissionTemplate;
-				// For companies: User cannot change company scope easily in edit yet without knowing role context properly, 
-				// but assuming we respect current 'selectedCompany' state
-				payload.company_id = editFormData.selectedCompany;
 			} else {
 				// Custom permissions
 				payload.permission_template = null;
 				payload.permissions = editFormData.customPermissions;
-				payload.company_id = editFormData.selectedCompany;
 			}
 
 			await updateMutation.mutateAsync({ userId: editingUser.id, data: payload });
@@ -346,7 +337,7 @@ export default function UsersManagementPage() {
 	// Deactivate user
 	const handleDeactivate = async (userId: string) => {
 		try {
-			await deactivateMutation.mutateAsync(userId);
+			await updateMutation.mutateAsync({ userId, data: { is_active: false } });
 			toast.success("User deactivated successfully");
 		} catch (error) {
 			toast.error(error instanceof Error ? error.message : "Failed to deactivate user");
@@ -356,7 +347,7 @@ export default function UsersManagementPage() {
 	// Reactivate user
 	const handleReactivate = async (userId: string) => {
 		try {
-			await reactivateMutation.mutateAsync(userId);
+			await updateMutation.mutateAsync({ userId, data: { is_active: true } });
 			toast.success("User reactivated successfully");
 		} catch (error) {
 			toast.error(error instanceof Error ? error.message : "Failed to reactivate user");

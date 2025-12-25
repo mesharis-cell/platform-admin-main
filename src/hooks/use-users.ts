@@ -24,18 +24,6 @@ async function createUser(data: Partial<User> & { password: string }): Promise<U
   return response.data;
 }
 
-// Deactivate user
-async function deactivateUser(userId: string): Promise<void> {
-  const response = await apiClient.patch(`/operations/v1/user/${userId}`, { is_active: false });
-  return response.data;
-}
-
-// Reactivate user
-async function reactivateUser(userId: string): Promise<void> {
-  const response = await apiClient.patch(`/operations/v1/user/${userId}`, { is_active: true });
-  return response.data;
-}
-
 // Update user
 async function updateUser(userId: string, data: Partial<User>): Promise<User> {
   const response = await apiClient.patch(`/operations/v1/user/${userId}`, data);
@@ -61,27 +49,6 @@ export function useCreateUser() {
   });
 }
 
-export function useDeactivateUser() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: deactivateUser,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: userKeys.lists() });
-    },
-  });
-}
-
-export function useReactivateUser() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: reactivateUser,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: userKeys.lists() });
-    },
-  });
-}
 
 export function useUpdateUser() {
   const queryClient = useQueryClient();
