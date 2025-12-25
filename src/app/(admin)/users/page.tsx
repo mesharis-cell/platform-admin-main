@@ -89,7 +89,7 @@ export default function UsersManagementPage() {
 			params.permission_template = filterTemplate;
 		if (filterActive !== "all")
 			params.is_active = filterActive === "active" ? "true" : "false";
-		if (searchQuery) params.search = searchQuery;
+		if (searchQuery) params.search_term = searchQuery;
 		return params;
 	}, [filterTemplate, filterActive, searchQuery]);
 
