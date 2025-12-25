@@ -1,4 +1,4 @@
-'use client'
+"use client"
 
 /**
  * Asset Detail Page - Comprehensive View with QR Code Display
@@ -47,6 +47,7 @@ import { MaintenanceCompletionDialog } from '@/components/conditions/maintenance
 import { AddNotesDialog } from '@/components/conditions/add-notes-dialog'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { EditAssetDialog } from '@/components/assets/edit-asset-dialog'
+import { generateQRCode } from '@/lib/services/qu-code'
 
 export default function AssetDetailPage({
 	params,
@@ -61,18 +62,13 @@ export default function AssetDetailPage({
 
 	// Fetch asset
 	const { data, isLoading: loading, error } = useAsset(resolvedParams.id)
-	const asset = data?.asset || null
-
-	// Fetch condition history
-	const { data: conditionHistoryData, refetch: refetchHistory } =
-		useConditionHistory(resolvedParams.id)
+	const asset = data?.data || null
 
 	// Fetch availability stats
 	const { data: availabilityStats, isLoading: statsLoading } =
 		useAssetAvailabilityStats(resolvedParams.id)
 
 	// Generate QR code
-	const generateQRMutation = useGenerateQRCode()
 	const [qrCodeImage, setQrCodeImage] = useState<string | null>(null)
 
 	// Delete mutation
@@ -80,17 +76,16 @@ export default function AssetDetailPage({
 
 	// Generate QR code when asset loads
 	useEffect(() => {
-		if (asset?.qrCode && !qrCodeImage) {
-			generateQRMutation
-				.mutateAsync(asset.qrCode)
+		if (asset?.qr_code && !qrCodeImage) {
+			generateQRCode(asset.qr_code)
 				.then(data => {
-					setQrCodeImage(data.qrCodeImage)
+					setQrCodeImage(data)
 				})
 				.catch(error => {
 					console.error('Failed to generate QR code:', error)
 				})
 		}
-	}, [asset?.qrCode])
+	}, [asset?.qr_code])
 
 	// Handle error
 	if (error) {
@@ -103,7 +98,7 @@ export default function AssetDetailPage({
 
 		const link = document.createElement('a')
 		link.href = qrCodeImage
-		link.download = `QR-${asset.qrCode}.png`
+		link.download = `QR-${asset.qr_code}.png`
 		link.click()
 	}
 
@@ -113,7 +108,7 @@ export default function AssetDetailPage({
 		try {
 			await deleteMutation.mutateAsync(asset.id)
 			toast.success('Asset deleted successfully')
-			router.push('/admin/assets')
+			router.push('/assets')
 		} catch (error) {
 			toast.error(
 				error instanceof Error
@@ -201,7 +196,7 @@ export default function AssetDetailPage({
 				<div className='max-w-[1400px] mx-auto px-6 py-6'>
 					<div className='flex items-center justify-between mb-4'>
 						<Button variant='ghost' asChild className='font-mono'>
-							<Link href='/admin/assets'>
+							<Link href='/assets'>
 								<ArrowLeft className='w-4 h-4 mr-2' />
 								Back to Assets
 							</Link>
@@ -258,7 +253,7 @@ export default function AssetDetailPage({
 									•
 								</span>
 								<span className='text-sm text-muted-foreground font-mono'>
-									{asset.trackingMethod}
+									{asset.tracking_method}
 								</span>
 							</div>
 						</div>
@@ -272,10 +267,10 @@ export default function AssetDetailPage({
 					{/* Main content */}
 					<div className='lg:col-span-2 space-y-6'>
 						{/* Image gallery */}
-						{asset.images.length > 0 && (
+						{asset?.images?.length > 0 && (
 							<Card>
 								<CardContent className='p-6'>
-									<div className='relative aspect-[16/10] bg-muted rounded-lg overflow-hidden mb-4'>
+									<div className='relative aspect-16/10 bg-muted rounded-lg overflow-hidden mb-4'>
 										<Image
 											src={
 												asset.images[currentImageIndex]
@@ -285,7 +280,7 @@ export default function AssetDetailPage({
 											className='object-cover'
 										/>
 
-										{asset.images.length > 1 && (
+										{asset?.images?.length > 1 && (
 											<>
 												<button
 													onClick={() =>
@@ -320,9 +315,9 @@ export default function AssetDetailPage({
 										)}
 									</div>
 
-									{asset.images.length > 1 && (
+									{asset?.images?.length > 1 && (
 										<div className='flex gap-2 overflow-x-auto'>
-											{asset.images.map((img, index) => (
+											{asset?.images?.map((img, index) => (
 												<button
 													key={index}
 													onClick={() =>
@@ -330,12 +325,11 @@ export default function AssetDetailPage({
 															index
 														)
 													}
-													className={`relative w-20 h-20 flex-shrink-0 rounded-md overflow-hidden border-2 ${
-														index ===
+													className={`relative w-20 h-20 shrink-0 rounded-md overflow-hidden border-2 ${index ===
 														currentImageIndex
-															? 'border-primary'
-															: 'border-border hover:border-primary/50'
-													} transition-colors`}
+														? 'border-primary'
+														: 'border-border hover:border-primary/50'
+														} transition-colors`}
 												>
 													<Image
 														src={img}
@@ -352,7 +346,7 @@ export default function AssetDetailPage({
 						)}
 
 						{/* Description */}
-						{asset.description && (
+						{asset?.description && (
 							<Card>
 								<CardHeader>
 									<CardTitle className='font-mono text-sm'>
@@ -361,7 +355,7 @@ export default function AssetDetailPage({
 								</CardHeader>
 								<CardContent>
 									<p className='text-sm text-muted-foreground font-mono whitespace-pre-wrap'>
-										{asset.description}
+										{asset?.description}
 									</p>
 								</CardContent>
 							</Card>
@@ -382,7 +376,7 @@ export default function AssetDetailPage({
 											Length
 										</p>
 										<p className='text-sm font-semibold font-mono'>
-											{asset.dimensionLength} cm
+											{asset?.dimensions?.length} cm
 										</p>
 									</div>
 									<div className='space-y-1'>
@@ -390,7 +384,7 @@ export default function AssetDetailPage({
 											Width
 										</p>
 										<p className='text-sm font-semibold font-mono'>
-											{asset.dimensionWidth} cm
+											{asset?.dimensions?.width} cm
 										</p>
 									</div>
 									<div className='space-y-1'>
@@ -398,7 +392,7 @@ export default function AssetDetailPage({
 											Height
 										</p>
 										<p className='text-sm font-semibold font-mono'>
-											{asset.dimensionHeight} cm
+											{asset?.dimensions?.height} cm
 										</p>
 									</div>
 									<div className='space-y-1'>
@@ -406,7 +400,7 @@ export default function AssetDetailPage({
 											Weight
 										</p>
 										<p className='text-sm font-semibold font-mono'>
-											{asset.weight} kg
+											{asset?.weight_per_unit} kg
 										</p>
 									</div>
 								</div>
@@ -419,17 +413,17 @@ export default function AssetDetailPage({
 											Total Volume
 										</p>
 										<p className='text-lg font-bold font-mono text-primary'>
-											{asset.volume} m³
+											{asset?.volume_per_unit} m³
 										</p>
 									</div>
 
-									{asset.handlingTags.length > 0 && (
+									{asset?.handling_tags?.length > 0 && (
 										<div className='space-y-2'>
 											<p className='text-xs text-muted-foreground font-mono'>
 												Handling Requirements
 											</p>
 											<div className='flex flex-wrap gap-1 justify-end'>
-												{asset.handlingTags.map(tag => (
+												{asset?.handling_tags?.map(tag => (
 													<Badge
 														key={tag}
 														variant='outline'
@@ -461,10 +455,10 @@ export default function AssetDetailPage({
 											Warehouse
 										</p>
 										<p className='text-sm font-semibold font-mono'>
-											{asset.warehouseDetails.name}
+											{asset?.warehouse?.name}
 										</p>
 										<p className='text-xs text-muted-foreground font-mono'>
-											{asset.warehouseDetails.city}
+											{asset?.warehouse?.city}
 										</p>
 									</div>
 								</div>
@@ -476,7 +470,7 @@ export default function AssetDetailPage({
 											Zone
 										</p>
 										<p className='text-sm font-semibold font-mono'>
-											{asset.zoneDetails.name}
+											{asset?.zone?.name}
 										</p>
 									</div>
 								</div>
@@ -506,7 +500,7 @@ export default function AssetDetailPage({
 										</div>
 										<div className='space-y-2'>
 											<p className='text-xs text-muted-foreground font-mono text-center'>
-												{asset.qrCode}
+												{asset?.qr_code}
 											</p>
 											<Button
 												onClick={downloadQRCode}
@@ -541,7 +535,7 @@ export default function AssetDetailPage({
 											Total Quantity
 										</span>
 										<span className='font-semibold'>
-											{asset.totalQuantity}
+											{asset?.total_quantity}
 										</span>
 									</div>
 									<Separator />
@@ -554,7 +548,7 @@ export default function AssetDetailPage({
 											<Skeleton className='h-6 w-full' />
 											<Skeleton className='h-6 w-full' />
 										</div>
-									) : availabilityStats ? (
+									) : availabilityStats.data ? (
 										<div className='space-y-2'>
 											<div className='flex items-center justify-between text-sm font-mono'>
 												<span className='text-emerald-600'>
@@ -562,7 +556,7 @@ export default function AssetDetailPage({
 												</span>
 												<span className='font-semibold text-emerald-600'>
 													{
-														availabilityStats.availableQuantity
+														availabilityStats.data.available_quantity
 													}
 												</span>
 											</div>
@@ -572,7 +566,7 @@ export default function AssetDetailPage({
 												</span>
 												<span className='font-semibold text-amber-600'>
 													{
-														availabilityStats.bookedQuantity
+														availabilityStats.data.booked_quantity
 													}
 												</span>
 											</div>
@@ -582,7 +576,7 @@ export default function AssetDetailPage({
 												</span>
 												<span className='font-semibold text-purple-600'>
 													{
-														availabilityStats.outQuantity
+														availabilityStats.data.out_quantity
 													}
 												</span>
 											</div>
@@ -592,7 +586,7 @@ export default function AssetDetailPage({
 												</span>
 												<span className='font-semibold'>
 													{
-														availabilityStats.inMaintenanceQuantity
+														availabilityStats.data.in_maintenance_quantity
 													}
 												</span>
 											</div>
@@ -608,9 +602,10 @@ export default function AssetDetailPage({
 											</p>
 										</div>
 									)}
+
 								</div>
 
-								{asset.packaging && (
+								{asset?.packaging && (
 									<>
 										<Separator />
 										<div className='space-y-1'>
@@ -625,9 +620,9 @@ export default function AssetDetailPage({
 								)}
 
 								{/* Feedback #2: Display refurb estimate for damaged items */}
-								{asset.refurbDaysEstimate &&
-									(asset.condition === 'ORANGE' ||
-										asset.condition === 'RED') && (
+								{asset?.refurb_days_estimate &&
+									(asset?.condition === 'ORANGE' ||
+										asset?.condition === 'RED') && (
 										<>
 											<Separator />
 											<div className='space-y-1'>
@@ -635,7 +630,7 @@ export default function AssetDetailPage({
 													Estimated Refurb Time
 												</p>
 												<p className='text-sm font-mono font-semibold text-amber-600'>
-													~{asset.refurbDaysEstimate}{' '}
+													~{asset.refurb_days_estimate}{' '}
 													days
 												</p>
 											</div>
@@ -658,10 +653,10 @@ export default function AssetDetailPage({
 										Company
 									</p>
 									<p className='text-sm font-semibold font-mono'>
-										{asset.companyDetails.name}
+										{asset?.company?.name}
 									</p>
 								</div>
-								{asset.brandDetails && (
+								{asset?.brand && (
 									<>
 										<Separator />
 										<div className='space-y-1'>
@@ -669,7 +664,7 @@ export default function AssetDetailPage({
 												Brand
 											</p>
 											<p className='text-sm font-semibold font-mono'>
-												{asset.brandDetails.name}
+												{asset?.brand?.name}
 											</p>
 										</div>
 									</>
@@ -692,7 +687,7 @@ export default function AssetDetailPage({
 									</p>
 									<p>
 										{new Date(
-											asset.createdAt
+											asset?.created_at
 										).toLocaleString()}
 									</p>
 								</div>
@@ -703,11 +698,11 @@ export default function AssetDetailPage({
 									</p>
 									<p>
 										{new Date(
-											asset.updatedAt
+											asset?.updated_at
 										).toLocaleString()}
 									</p>
 								</div>
-								{asset.lastScannedAt && (
+								{asset?.last_scanned_at && (
 									<>
 										<Separator />
 										<div className='space-y-1'>
@@ -716,7 +711,7 @@ export default function AssetDetailPage({
 											</p>
 											<p>
 												{new Date(
-													asset.lastScannedAt
+													asset?.last_scanned_at
 												).toLocaleString()}
 											</p>
 										</div>
@@ -737,21 +732,21 @@ export default function AssetDetailPage({
 										<AddNotesDialog
 											assetId={asset.id}
 											assetName={asset.name}
-											onSuccess={() => refetchHistory()}
+											onSuccess={() => { }}
 										/>
 										<MaintenanceCompletionDialog
 											assetId={asset.id}
 											assetName={asset.name}
 											currentCondition={asset.condition}
-											onSuccess={() => refetchHistory()}
+											onSuccess={() => { }}
 										/>
 									</div>
 								</div>
 							</CardHeader>
 							<CardContent>
-								{conditionHistoryData ? (
+								{asset?.condition_history ? (
 									<ConditionHistoryTimeline
-										history={conditionHistoryData.history}
+										history={asset?.condition_history}
 										assetName={asset.name}
 									/>
 								) : (

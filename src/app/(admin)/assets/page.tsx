@@ -312,7 +312,7 @@ export default function AssetsPage() {
 						{assets.map(asset => (
 							<Link
 								key={asset.id}
-								href={`/admin/assets/${asset.id}`}
+								href={`/assets/${asset.id}`}
 							>
 								<Card className='group overflow-hidden hover:border-primary/50 transition-all duration-300 hover:shadow-lg cursor-pointer'>
 									{/* Asset image */}
@@ -390,7 +390,7 @@ export default function AssetsPage() {
 						{assets.map(asset => (
 							<Link
 								key={asset.id}
-								href={`/admin/assets/${asset.id}`}
+								href={`/assets/${asset.id}`}
 							>
 								<Card className='group hover:border-primary/50 transition-all hover:shadow-md cursor-pointer'>
 									<CardContent className='p-4'>

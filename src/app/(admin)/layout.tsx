@@ -377,7 +377,7 @@ export default function AdminLayout({
 					{/* Industrial Command Center Sidebar */}
 					<Sidebar
 						collapsible='icon'
-						className='border-r border-border bg-muted/30'
+						className='border-r border-border bg-muted/30 sticky top-0'
 					>
 						{/* Grid pattern overlay */}
 						<div

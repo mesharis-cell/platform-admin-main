@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { Asset, AssetWithDetails, CreateAssetRequest } from '@/types/asset';
+import type { Asset, AssetsDetails, AssetWithDetails, CreateAssetRequest } from '@/types/asset';
 import { apiClient } from '@/lib/api/api-client';
 
 // Query keys
@@ -21,7 +21,7 @@ async function fetchAssets(params?: Record<string, string>): Promise<{ data: Ass
 }
 
 // Fetch single asset
-async function fetchAsset(id: string): Promise<{ asset: AssetWithDetails }> {
+async function fetchAsset(id: string): Promise<{ data: AssetsDetails }> {
   const response = await apiClient.get(`/operations/v1/asset/${id}`);
   return response.data;
 }
@@ -34,7 +34,7 @@ async function createAsset(data: CreateAssetRequest): Promise<Asset> {
 
 // Update asset
 async function updateAsset(id: string, data: Partial<CreateAssetRequest>): Promise<Asset> {
-  const response = await apiClient.put(`/operations/v1/asset/${id}`, data);
+  const response = await apiClient.patch(`/operations/v1/asset/${id}`, data);
   return response.data;
 }
 
