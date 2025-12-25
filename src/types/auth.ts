@@ -168,12 +168,12 @@ export interface User {
 		id: string;
 		name: string;
 	} | null;
-	permissionTemplate: PermissionTemplate | null;
-	isActive: boolean;
-	lastLoginAt: Date | null;
-	createdAt: Date;
-	updatedAt: Date;
-	deletedAt: Date | null;
+	permission_template: PermissionTemplate | null;
+	is_active: boolean;
+	last_login_at: Date | null;
+	created_at: Date;
+	updated_at: Date;
+	deleted_at: Date | null;
 }
 
 // Session object

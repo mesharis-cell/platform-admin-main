@@ -108,9 +108,9 @@ export default function UsersManagementPage() {
 	const queryParams = useMemo(() => {
 		const params: Record<string, string> = {};
 		if (filterTemplate !== "all")
-			params.permissionTemplate = filterTemplate;
+			params.permission_template = filterTemplate;
 		if (filterActive !== "all")
-			params.isActive = filterActive === "active" ? "true" : "false";
+			params.is_active = filterActive === "active" ? "true" : "false";
 		if (searchQuery) params.search = searchQuery;
 		return params;
 	}, [filterTemplate, filterActive, searchQuery]);
@@ -219,13 +219,13 @@ export default function UsersManagementPage() {
 		setEditingUser(user);
 
 		// Determine if custom or template
-		const isCustom = !user.permissionTemplate ||
-			!PERMISSION_TEMPLATES[user.permissionTemplate as PermissionTemplate] ||
-			JSON.stringify(user.permissions.sort()) !== JSON.stringify(PERMISSION_TEMPLATES[user.permissionTemplate as PermissionTemplate].permissions.sort());
+		const isCustom = !user.permission_template ||
+			!PERMISSION_TEMPLATES[user.permission_template as PermissionTemplate] ||
+			JSON.stringify(user.permissions.sort()) !== JSON.stringify(PERMISSION_TEMPLATES[user.permission_template as PermissionTemplate].permissions.sort());
 
 		setEditFormData({
 			name: user.name,
-			permissionTemplate: isCustom ? "CUSTOM" : (user.permissionTemplate as PermissionTemplate),
+			permissionTemplate: isCustom ? "CUSTOM" : (user.permission_template as PermissionTemplate),
 			customPermissions: user.permissions,
 			selectedCompany: user.company?.id || null,
 		});
@@ -1161,7 +1161,7 @@ export default function UsersManagementPage() {
 										</TableCell>
 										<TableCell>
 											<Badge variant="outline" className="font-mono text-xs">
-												{user.permissionTemplate || "Custom"}
+												{user.permission_template || "Custom"}
 											</Badge>
 										</TableCell>
 										<TableCell>
@@ -1173,11 +1173,11 @@ export default function UsersManagementPage() {
 											<span className="font-mono text-xs">
 												{user.company
 													? user.company.name
-													: "All Companies (*)"}
+													: "-"}
 											</span>
 										</TableCell>
 										<TableCell>
-											{user.isActive ? (
+											{user.is_active ? (
 												<Badge
 													variant="outline"
 													className="font-mono text-xs border-primary/20 bg-primary/10 text-primary"
@@ -1195,8 +1195,8 @@ export default function UsersManagementPage() {
 										</TableCell>
 										<TableCell>
 											<span className="text-xs text-muted-foreground font-mono">
-												{user.lastLoginAt
-													? new Date(user.lastLoginAt).toLocaleDateString()
+												{user.last_login_at
+													? new Date(user.last_login_at).toLocaleDateString()
 													: "Never"}
 											</span>
 										</TableCell>
@@ -1211,7 +1211,7 @@ export default function UsersManagementPage() {
 													<Edit className="h-3 w-3 mr-1" />
 													Edit
 												</Button>
-												{user.isActive ? (
+												{user.is_active ? (
 													<Button
 														size="sm"
 														variant="ghost"
@@ -1245,8 +1245,8 @@ export default function UsersManagementPage() {
 				< div className="mt-6 flex items-center justify-between text-xs text-muted-foreground font-mono" >
 					<p>Total users: {users.length}</p>
 					<p>
-						Active: {users.filter((u) => u.isActive).length} • Inactive:{" "}
-						{users.filter((u) => !u.isActive).length}
+						Active: {users.filter((u) => u.is_active).length} • Inactive:{" "}
+						{users.filter((u) => !u.is_active).length}
 					</p>
 				</div >
 			</main >
