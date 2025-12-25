@@ -224,12 +224,32 @@ export interface UserListResponse {
 	}
 }
 
+// All available permissions grouped by category
+export const PERMISSION_GROUPS = {
+	"Authentication": ["auth:login", "auth:logout", "auth:reset_password", "auth:manage_session"],
+	"User Management": ["users:create", "users:read", "users:update", "users:deactivate", "users:assign_permissions", "users:set_company_scope"],
+	"Company Management": ["companies:create", "companies:read", "companies:update", "companies:archive", "companies:set_margin"],
+	"Warehouse Management": ["warehouses:create", "warehouses:read", "warehouses:update", "warehouses:archive"],
+	"Zone Management": ["zones:create", "zones:read", "zones:update", "zones:delete", "zones:assign_company"],
+	"Brand Management": ["brands:create", "brands:read", "brands:update", "brands:delete"],
+	"Asset Management": ["assets:create", "assets:read", "assets:update", "assets:delete", "assets:generate_qr", "assets:upload_photos"],
+	"Collection Management": ["collections:create", "collections:read", "collections:update", "collections:delete", "collections:assign_assets"],
+	"Pricing Configuration": ["pricing_tiers:create", "pricing_tiers:read", "pricing_tiers:update", "pricing_tiers:activate", "pricing_tiers:deactivate"],
+	"Pricing & Quoting": ["pricing:review", "pricing:approve_standard", "pricing:adjust", "pricing:pmg_review_adjustment", "pricing:pmg_approve", "quotes:approve", "quotes:decline"],
+	"Order Management": ["orders:create", "orders:read", "orders:update", "orders:add_job_number", "orders:add_time_windows", "orders:view_status_history", "orders:export"],
+	"Invoicing": ["invoices:generate", "invoices:read", "invoices:download", "invoices:confirm_payment", "invoices:track_payment_status"],
+	"QR Scanning": ["scanning:scan_out", "scanning:scan_in", "scanning:capture_truck_photos"],
+	"Inventory Tracking": ["inventory:monitor_availability", "inventory:track_status", "inventory:update_quantities"],
+	"Condition Management": ["conditions:update", "conditions:view_history", "conditions:view_items_needing_attention", "conditions:complete_maintenance"],
+	"Lifecycle & Notifications": ["lifecycle:progress_status", "lifecycle:receive_notifications", "notifications:view_failed", "notifications:retry"],
+	"Analytics": ["analytics:view_revenue", "analytics:track_margin", "analytics:filter_by_company"],
+};
+
 // Permission template default configurations
 export const PERMISSION_TEMPLATES: Record<
 	PermissionTemplate,
 	{
 		permissions: string[];
-		defaultCompanies: string[];
 	}
 > = {
 	PLATFORM_ADMIN: {
@@ -255,7 +275,6 @@ export const PERMISSION_TEMPLATES: Record<
 			"quotes:*",
 			"scanning:*"
 		],
-		defaultCompanies: ["*"],
 	},
 	LOGISTICS_STAFF: {
 		permissions: [
@@ -279,7 +298,6 @@ export const PERMISSION_TEMPLATES: Record<
 			"inventory:*",
 			"conditions:*",
 		],
-		defaultCompanies: ["*"],
 	},
 	CLIENT_USER: {
 		permissions: [
@@ -297,6 +315,5 @@ export const PERMISSION_TEMPLATES: Record<
 			"invoices:download",
 			"lifecycle:receive_notifications",
 		],
-		defaultCompanies: [], // Will be set to specific company on creation
 	},
 };

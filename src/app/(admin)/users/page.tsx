@@ -38,7 +38,7 @@ import {
 	useUsers
 } from "@/hooks/use-users";
 import { cn } from "@/lib/utils";
-import { PERMISSION_TEMPLATES, PermissionTemplate, User } from "@/types/auth";
+import { PERMISSION_GROUPS, PERMISSION_TEMPLATES, PermissionTemplate, User } from "@/types/auth";
 import {
 	AlertCircle,
 	Ban,
@@ -53,26 +53,7 @@ import {
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
-// All available permissions grouped by category
-const PERMISSION_GROUPS = {
-	"Authentication": ["auth:login", "auth:logout", "auth:reset_password", "auth:manage_session"],
-	"User Management": ["users:create", "users:read", "users:update", "users:deactivate", "users:assign_permissions", "users:set_company_scope"],
-	"Company Management": ["companies:create", "companies:read", "companies:update", "companies:archive", "companies:set_margin"],
-	"Warehouse Management": ["warehouses:create", "warehouses:read", "warehouses:update", "warehouses:archive"],
-	"Zone Management": ["zones:create", "zones:read", "zones:update", "zones:delete", "zones:assign_company"],
-	"Brand Management": ["brands:create", "brands:read", "brands:update", "brands:delete"],
-	"Asset Management": ["assets:create", "assets:read", "assets:update", "assets:delete", "assets:generate_qr", "assets:upload_photos"],
-	"Collection Management": ["collections:create", "collections:read", "collections:update", "collections:delete", "collections:assign_assets"],
-	"Pricing Configuration": ["pricing_tiers:create", "pricing_tiers:read", "pricing_tiers:update", "pricing_tiers:activate", "pricing_tiers:deactivate"],
-	"Pricing & Quoting": ["pricing:review", "pricing:approve_standard", "pricing:adjust", "pricing:pmg_review_adjustment", "pricing:pmg_approve", "quotes:approve", "quotes:decline"],
-	"Order Management": ["orders:create", "orders:read", "orders:update", "orders:add_job_number", "orders:add_time_windows", "orders:view_status_history", "orders:export"],
-	"Invoicing": ["invoices:generate", "invoices:read", "invoices:download", "invoices:confirm_payment", "invoices:track_payment_status"],
-	"QR Scanning": ["scanning:scan_out", "scanning:scan_in", "scanning:capture_truck_photos"],
-	"Inventory Tracking": ["inventory:monitor_availability", "inventory:track_status", "inventory:update_quantities"],
-	"Condition Management": ["conditions:update", "conditions:view_history", "conditions:view_items_needing_attention", "conditions:complete_maintenance"],
-	"Lifecycle & Notifications": ["lifecycle:progress_status", "lifecycle:receive_notifications", "notifications:view_failed", "notifications:retry"],
-	"Analytics": ["analytics:view_revenue", "analytics:track_margin", "analytics:filter_by_company"],
-};
+
 
 export default function UsersManagementPage() {
 	const [searchQuery, setSearchQuery] = useState("");
@@ -680,83 +661,6 @@ export default function UsersManagementPage() {
 
 
 											{/* Separator between sections */}
-											{newUser.userType === "admin" && <Separator />}
-
-											{/* Company Access - Both Admin and Client */}
-											<div className="space-y-4">
-												<h3 className="font-semibold text-sm font-mono uppercase flex items-center gap-2">
-													<Package className="h-4 w-4" />
-													Company Access Scope
-												</h3>
-
-												{(newUser.userType === "admin" || newUser.userType === "logistic") ? (
-													<>
-														<div className="flex items-center space-x-2">
-															<Checkbox
-																id="allCompanies"
-																checked={true}
-																disabled={true}
-															/>
-															<Label htmlFor="allCompanies" className="font-mono text-sm cursor-pointer">
-																All Companies (*) - Full Platform Access
-															</Label>
-														</div>
-														<p className="text-xs text-muted-foreground font-mono">
-															{newUser.userType === "admin" ? "Admin" : "Logistic"} users have access to all companies by default
-														</p>
-													</>
-												) : (
-													<>
-														<div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-															<div className="flex items-center gap-2 text-yellow-700">
-																<AlertCircle className="h-4 w-4" />
-																<p className="text-xs font-mono font-semibold">
-																	CLIENT_USER must belong to a company
-																</p>
-															</div>
-														</div>
-														<div className="space-y-2 border border-border rounded-lg p-4 bg-muted/30">
-															<Label className="font-mono uppercase text-xs">
-																Select Company *
-															</Label>
-															<div className="space-y-2">
-																{companies.map(company => (
-																	<div key={company.id} className="flex items-center space-x-2">
-																		<input
-																			type="radio"
-																			id={`company-${company.id}`}
-																			name="client-company"
-																			checked={newUser.selectedCompany === company.id}
-																			onChange={() => handleCompanyChange(company.id)}
-																			className="h-4 w-4"
-																		/>
-																		<Label
-																			htmlFor={`company-${company.id}`}
-																			className="text-sm font-mono cursor-pointer flex-1"
-																		>
-																			{company.name}
-																		</Label>
-																	</div>
-																))}
-															</div>
-
-															{companies.length === 0 && (
-																<p className="text-xs text-muted-foreground font-mono italic">
-																	No companies available. Create companies first.
-																</p>
-															)}
-
-															{!newUser.selectedCompany && companies.length > 0 && (
-																<div className="flex items-center gap-2 text-amber-600 text-xs font-mono mt-2">
-																	<AlertCircle className="h-4 w-4" />
-																	Please select a company
-																</div>
-															)}
-														</div>
-													</>
-												)}
-											</div>
-
 											<Separator />
 
 											{/* Summary */}
