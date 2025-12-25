@@ -91,8 +91,7 @@ export default function UsersManagementPage() {
 		userType: "" as "admin" | "client" | "",
 		permissionTemplate: "" as PermissionTemplate | "CUSTOM" | "",
 		customPermissions: [] as string[],
-		allCompanies: true,
-		selectedCompanies: [] as string[],
+		selectedCompany: null as string | null,
 	});
 
 	// Edit user dialog state
@@ -102,8 +101,7 @@ export default function UsersManagementPage() {
 		name: "",
 		permissionTemplate: "" as PermissionTemplate | "CUSTOM" | "",
 		customPermissions: [] as string[],
-		allCompanies: true,
-		selectedCompanies: [] as string[],
+		selectedCompany: null as string | null,
 	});
 
 	// Build query params
@@ -118,10 +116,10 @@ export default function UsersManagementPage() {
 	}, [filterTemplate, filterActive, searchQuery]);
 
 	// Fetch data
-	const { data, isLoading } = useUsers(queryParams);
+	const { data: usersData, isLoading: loading } = useUsers(queryParams);
+	const users = usersData?.data || [];
 	const { data: companiesData } = useCompanies({});
-	const users = data?.users || [];
-	const companies = companiesData?.companies || [];
+	const companies = companiesData?.data || [];
 
 	// Mutations
 	const createMutation = useCreateUser();
@@ -139,23 +137,19 @@ export default function UsersManagementPage() {
 		}));
 	};
 
-	// Toggle company (for create)
-	const toggleCompany = (companyId: string) => {
+	// Apply company (for create)
+	const handleCompanyChange = (companyId: string) => {
 		setNewUser(prev => ({
 			...prev,
-			selectedCompanies: prev.selectedCompanies.includes(companyId)
-				? prev.selectedCompanies.filter(c => c !== companyId)
-				: [...prev.selectedCompanies, companyId],
+			selectedCompany: companyId,
 		}));
 	};
 
-	// Toggle company (for edit)
-	const toggleCompanyEdit = (companyId: string) => {
+	// Apply company (for edit)
+	const handleCompanyChangeEdit = (companyId: string) => {
 		setEditFormData(prev => ({
 			...prev,
-			selectedCompanies: prev.selectedCompanies.includes(companyId)
-				? prev.selectedCompanies.filter(c => c !== companyId)
-				: [...prev.selectedCompanies, companyId],
+			selectedCompany: companyId,
 		}));
 	};
 
@@ -177,7 +171,6 @@ export default function UsersManagementPage() {
 			// If switching to template, load template permissions
 			...(value !== "CUSTOM" && value !== "" && {
 				customPermissions: PERMISSION_TEMPLATES[value as PermissionTemplate]?.permissions || [],
-				allCompanies: PERMISSION_TEMPLATES[value as PermissionTemplate]?.defaultCompanies.includes("*") || false,
 			}),
 		}));
 	};
@@ -190,7 +183,6 @@ export default function UsersManagementPage() {
 			// If switching to template, load template permissions
 			...(value !== "CUSTOM" && value !== "" && {
 				customPermissions: PERMISSION_TEMPLATES[value as PermissionTemplate]?.permissions || [],
-				allCompanies: PERMISSION_TEMPLATES[value as PermissionTemplate]?.defaultCompanies.includes("*") || false,
 			}),
 		}));
 	};
@@ -208,8 +200,7 @@ export default function UsersManagementPage() {
 			name: user.name,
 			permissionTemplate: isCustom ? "CUSTOM" : (user.permissionTemplate as PermissionTemplate),
 			customPermissions: user.permissions,
-			allCompanies: user.companies.includes("*"),
-			selectedCompanies: user.companies.includes("*") ? [] : user.companies,
+			selectedCompany: user.company?.id || null,
 		});
 		setIsEditDialogOpen(true);
 	};
@@ -235,15 +226,15 @@ export default function UsersManagementPage() {
 				return;
 			}
 
-			if (!newUser.allCompanies) {
-				toast.error("Admin users must have access to all companies");
+			if (newUser.selectedCompany) {
+				toast.error("Admin user cannot be assigned to a specific company");
 				return;
 			}
 		}
 
 		if (newUser.userType === "client") {
-			if (newUser.selectedCompanies.length !== 1) {
-				toast.error("CLIENT_USER must belong to exactly one company");
+			if (!newUser.selectedCompany) {
+				toast.error("CLIENT_USER must belong to a company");
 				return;
 			}
 		}
@@ -262,17 +253,14 @@ export default function UsersManagementPage() {
 				payload.permissionTemplate = newUser.permissionTemplate;
 				// Use template permissions
 				payload.permissions = template.permissions;
-				// For companies: Use form selection, not template defaults
-				// This allows flexibility (e.g., CLIENT_USER with specific companies instead of template's default)
-				payload.companies = newUser.allCompanies ? ["*"] : newUser.selectedCompanies;
+				// For companies: Use form selection
+				payload.company_id = newUser.userType === "admin" ? null : newUser.selectedCompany;
 			} else {
 				// Custom permissions
 				payload.permissionTemplate = null;
 				payload.permissions = newUser.customPermissions;
-				payload.companies = newUser.allCompanies ? ["*"] : newUser.selectedCompanies;
+				payload.company_id = newUser.userType === "admin" ? null : newUser.selectedCompany;
 			}
-
-			console.log('Creating user with payload:', payload); // Debug log
 
 			await createMutation.mutateAsync(payload);
 			toast.success("User created successfully");
@@ -285,11 +273,9 @@ export default function UsersManagementPage() {
 				userType: "",
 				permissionTemplate: "",
 				customPermissions: [],
-				allCompanies: true,
-				selectedCompanies: [],
+				selectedCompany: null,
 			});
 		} catch (error) {
-			console.error('Error creating user:', error); // Debug log
 			toast.error(error instanceof Error ? error.message : "Failed to create user");
 		}
 	};
@@ -311,8 +297,8 @@ export default function UsersManagementPage() {
 			return;
 		}
 
-		if (!editFormData.allCompanies && editFormData.selectedCompanies.length === 0) {
-			toast.error("Please select at least one company or enable 'All Companies'");
+		if (editFormData.permissionTemplate === "CUSTOM" && editFormData.customPermissions.length === 0) {
+			toast.error("Please select at least one permission for custom user");
 			return;
 		}
 
@@ -328,24 +314,21 @@ export default function UsersManagementPage() {
 				payload.permissionTemplate = editFormData.permissionTemplate;
 				// Use template permissions
 				payload.permissions = template.permissions;
-				// For companies: Use user's selection (allCompanies checkbox + selectedCompanies)
-				// NOT template defaults - user may want different company scope than template default
-				payload.companies = editFormData.allCompanies ? ["*"] : editFormData.selectedCompanies;
+				// For companies: User cannot change company scope easily in edit yet without knowing role context properly, 
+				// but assuming we respect current 'selectedCompany' state
+				payload.company_id = editFormData.selectedCompany;
 			} else {
 				// Custom permissions
 				payload.permissionTemplate = null;
 				payload.permissions = editFormData.customPermissions;
-				payload.companies = editFormData.allCompanies ? ["*"] : editFormData.selectedCompanies;
+				payload.company_id = editFormData.selectedCompany;
 			}
-
-			console.log('Updating user with payload:', payload); // Debug log
 
 			await updateMutation.mutateAsync({ userId: editingUser.id, data: payload });
 			toast.success("User updated successfully");
 			setIsEditDialogOpen(false);
 			setEditingUser(null);
 		} catch (error) {
-			console.error('Error updating user:', error); // Debug log
 			toast.error(error instanceof Error ? error.message : "Failed to update user");
 		}
 	};
@@ -376,7 +359,7 @@ export default function UsersManagementPage() {
 				icon={Users}
 				title="USER MANAGEMENT"
 				description="Create · Permissions · Access Control"
-				stats={data ? { label: 'TOTAL USERS', value: data.total } : undefined}
+				stats={usersData ? { label: 'TOTAL USERS', value: usersData.meta.total } : undefined}
 			/>
 
 			{/* Main Content */}
@@ -520,8 +503,7 @@ export default function UsersManagementPage() {
 														...prev,
 														userType: "admin",
 														permissionTemplate: "",
-														allCompanies: true,
-														selectedCompanies: [],
+														selectedCompany: null,
 													}));
 												}}
 												className={cn(
@@ -543,8 +525,7 @@ export default function UsersManagementPage() {
 														...prev,
 														userType: "client",
 														permissionTemplate: "CLIENT_USER",
-														allCompanies: false,
-														selectedCompanies: [],
+														selectedCompany: null,
 													}));
 												}}
 												className={cn(
@@ -689,10 +670,7 @@ export default function UsersManagementPage() {
 														<div className="flex items-center space-x-2">
 															<Checkbox
 																id="allCompanies"
-																checked={newUser.allCompanies}
-																onCheckedChange={(checked) =>
-																	setNewUser({ ...newUser, allCompanies: checked as boolean, selectedCompanies: [] })
-																}
+																checked={true}
 																disabled={true}
 															/>
 															<Label htmlFor="allCompanies" className="font-mono text-sm cursor-pointer">
@@ -709,7 +687,7 @@ export default function UsersManagementPage() {
 															<div className="flex items-center gap-2 text-yellow-700">
 																<AlertCircle className="h-4 w-4" />
 																<p className="text-xs font-mono font-semibold">
-																	CLIENT_USER must belong to exactly ONE company
+																	CLIENT_USER must belong to a company
 																</p>
 															</div>
 														</div>
@@ -724,8 +702,8 @@ export default function UsersManagementPage() {
 																			type="radio"
 																			id={`company-${company.id}`}
 																			name="client-company"
-																			checked={newUser.selectedCompanies.includes(company.id)}
-																			onChange={() => setNewUser({ ...newUser, selectedCompanies: [company.id] })}
+																			checked={newUser.selectedCompany === company.id}
+																			onChange={() => handleCompanyChange(company.id)}
 																			className="h-4 w-4"
 																		/>
 																		<Label
@@ -744,7 +722,7 @@ export default function UsersManagementPage() {
 																</p>
 															)}
 
-															{newUser.selectedCompanies.length === 0 && companies.length > 0 && (
+															{!newUser.selectedCompany && companies.length > 0 && (
 																<div className="flex items-center gap-2 text-amber-600 text-xs font-mono mt-2">
 																	<AlertCircle className="h-4 w-4" />
 																	Please select a company
@@ -782,9 +760,11 @@ export default function UsersManagementPage() {
 													<div className="flex justify-between">
 														<span className="text-muted-foreground">Company Access:</span>
 														<span className="font-semibold">
-															{newUser.allCompanies
+															{newUser.userType === "admin"
 																? "All Companies (*)"
-																: `${newUser.selectedCompanies.length} companies`}
+																: newUser.selectedCompany
+																	? companies.find(c => c.id === newUser.selectedCompany)?.name || "Unknown"
+																	: "None"}
 														</span>
 													</div>
 												</div>
@@ -975,37 +955,44 @@ export default function UsersManagementPage() {
 									<Separator />
 
 									{/* Company Access */}
+									{/* Company Access */}
 									<div className="space-y-4">
 										<h3 className="font-semibold text-sm font-mono uppercase flex items-center gap-2">
 											<Package className="h-4 w-4" />
 											Company Access Scope
 										</h3>
 
-										<div className="flex items-center space-x-2">
-											<Checkbox
-												id="edit-allCompanies"
-												checked={editFormData.allCompanies}
-												onCheckedChange={(checked) =>
-													setEditFormData({ ...editFormData, allCompanies: checked as boolean, selectedCompanies: [] })
-												}
-											/>
-											<Label htmlFor="edit-allCompanies" className="font-mono text-sm cursor-pointer">
-												All Companies (*) - Full Platform Access
-											</Label>
-										</div>
+										{/* Admin logic - always global */}
+										{(editFormData.permissionTemplate === "PMG_ADMIN" || editFormData.permissionTemplate === "A2_STAFF") && (
+											<div className="bg-muted/50 rounded-lg p-3 border border-border">
+												<div className="flex items-center gap-2">
+													<CheckCircle className="h-4 w-4 text-primary" />
+													<span className="text-sm font-mono">
+														Global Access (All Companies)
+													</span>
+												</div>
+												<p className="text-xs text-muted-foreground font-mono mt-1 ml-6">
+													Admin users have access to all companies by default
+												</p>
+											</div>
+										)}
 
-										{!editFormData.allCompanies && (
+										{/* Client/Custom logic - specific company */}
+										{(editFormData.permissionTemplate === "CLIENT_USER" || editFormData.permissionTemplate === "CUSTOM") && (
 											<div className="space-y-2 border border-border rounded-lg p-4 bg-muted/30">
 												<Label className="font-mono uppercase text-xs">
-													Select Specific Companies *
+													Select Specific Company *
 												</Label>
 												<div className="grid grid-cols-2 gap-2">
 													{companies.map(company => (
 														<div key={company.id} className="flex items-center space-x-2">
-															<Checkbox
+															<input
+																type="radio"
 																id={`edit-company-${company.id}`}
-																checked={editFormData.selectedCompanies.includes(company.id)}
-																onCheckedChange={() => toggleCompanyEdit(company.id)}
+																name="edit-client-company"
+																checked={editFormData.selectedCompany === company.id}
+																onChange={() => handleCompanyChangeEdit(company.id)}
+																className="h-4 w-4"
 															/>
 															<Label
 																htmlFor={`edit-company-${company.id}`}
@@ -1017,10 +1004,10 @@ export default function UsersManagementPage() {
 													))}
 												</div>
 
-												{editFormData.selectedCompanies.length === 0 && companies.length > 0 && (
+												{!editFormData.selectedCompany && companies.length > 0 && (
 													<div className="flex items-center gap-2 text-amber-600 text-xs font-mono mt-2">
 														<AlertCircle className="h-4 w-4" />
-														No companies selected - user won't see any data
+														Please select a company
 													</div>
 												)}
 											</div>
@@ -1054,9 +1041,9 @@ export default function UsersManagementPage() {
 											<div className="flex justify-between">
 												<span className="text-muted-foreground">Company Access:</span>
 												<span className="font-semibold">
-													{editFormData.allCompanies
-														? "All Companies (*)"
-														: `${editFormData.selectedCompanies.length} companies`}
+													{editFormData.selectedCompany
+														? companies.find(c => c.id === editFormData.selectedCompany)?.name || "Unknown"
+														: "All Companies (*)"}
 												</span>
 											</div>
 										</div>
@@ -1102,7 +1089,7 @@ export default function UsersManagementPage() {
 									Permissions
 								</TableHead>
 								<TableHead className="font-mono uppercase text-xs">
-									Companies
+									Company
 								</TableHead>
 								<TableHead className="font-mono uppercase text-xs">
 									Status
@@ -1116,7 +1103,7 @@ export default function UsersManagementPage() {
 							</TableRow>
 						</TableHeader>
 						<TableBody>
-							{isLoading ? (
+							{loading ? (
 								<TableRow>
 									<TableCell colSpan={7} className="text-center py-12">
 										<p className="text-muted-foreground font-mono">
@@ -1155,9 +1142,9 @@ export default function UsersManagementPage() {
 										</TableCell>
 										<TableCell>
 											<span className="font-mono text-xs">
-												{user.companies.includes("*")
-													? "All"
-													: `${user.companies.length} companies`}
+												{user.company
+													? user.company.name
+													: "All Companies (*)"}
 											</span>
 										</TableCell>
 										<TableCell>

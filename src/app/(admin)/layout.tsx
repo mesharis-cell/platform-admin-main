@@ -105,11 +105,11 @@ const navigation: NavItem[] = [
 	// 	href: '/notifications',
 	// 	icon: Mail,
 	// },
-	// {
-	// 	name: 'Users',
-	// 	href: '/users',
-	// 	icon: Users,
-	// },
+	{
+		name: 'Users',
+		href: '/users',
+		icon: Users,
+	},
 	{
 		name: 'Companies',
 		href: '/companies',

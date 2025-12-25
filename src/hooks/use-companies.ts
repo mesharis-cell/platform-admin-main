@@ -17,6 +17,8 @@ export const companyKeys = {
 async function fetchCompanies(params?: Record<string, string>): Promise<CompanyListResponse> {
   const searchParams = new URLSearchParams(params);
   const response = await apiClient.get(`/operations/v1/company?${searchParams}`);
+  console.log('company response.data..............', response.data);
+
   return response.data;
 }
 

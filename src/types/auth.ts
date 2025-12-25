@@ -161,7 +161,10 @@ export interface User {
 	email: string;
 	name: string;
 	permissions: string[];
-	companies: string[];
+	company?: {
+		id: string;
+		name: string;
+	} | null;
 	permissionTemplate: PermissionTemplate | null;
 	isActive: boolean;
 	lastLoginAt: Date | null;
@@ -183,20 +186,20 @@ export interface CreateUserRequest {
 	password: string;
 	permissionTemplate?: PermissionTemplate | null;
 	permissions?: string[];
-	companies?: string[];
+	company_id?: string | null;
 }
 
 // Update user request
 export interface UpdateUserRequest {
 	name?: string;
 	permissions?: string[];
-	companies?: string[];
+	company_id?: string | null;
 	permissionTemplate?: PermissionTemplate | null;
 }
 
 // User list query params
 export interface UserListParams {
-	company?: string;
+	company_id?: string;
 	permissionTemplate?: PermissionTemplate;
 	isActive?: boolean;
 	search?: string;
@@ -206,10 +209,12 @@ export interface UserListParams {
 
 // User list response
 export interface UserListResponse {
-	users: User[];
-	total: number;
-	limit: number;
-	offset: number;
+	data: User[];
+	meta: {
+		total: number;
+		limit: number;
+		page: number;
+	}
 }
 
 // Permission template default configurations
