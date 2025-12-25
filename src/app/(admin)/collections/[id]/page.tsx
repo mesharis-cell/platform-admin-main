@@ -73,8 +73,7 @@ export default function CollectionDetailPage() {
 
 	const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
 	const [isAddItemDialogOpen, setIsAddItemDialogOpen] = useState(false)
-	const [confirmDeleteCollection, setConfirmDeleteCollection] =
-		useState(false)
+	const [confirmDeleteCollection, setConfirmDeleteCollection] = useState(false)
 	const [confirmRemoveItem, setConfirmRemoveItem] = useState<{
 		id: string
 		name: string
@@ -82,9 +81,8 @@ export default function CollectionDetailPage() {
 
 	// Fetch data
 	const { data: collectionData, isLoading } = useCollection(collectionId)
-	const collection = collectionData?.data
 
-	console.log(collection)
+	const collection = collectionData?.data
 
 	const updateMutation = useUpdateCollection(collectionId)
 	const deleteMutation = useDeleteCollection()
@@ -94,8 +92,8 @@ export default function CollectionDetailPage() {
 	const uploadMutation = useUploadCollectionImages()
 
 	// Fetch assets for adding to collection
-	// Note: collection.company is an object with { name }, so we need the ID from the raw data
 	const companyId = collection?.company_id
+
 	const { data: assetsData } = useAssets({
 		company: typeof companyId === 'string' ? companyId : undefined,
 		limit: '200',
@@ -111,9 +109,9 @@ export default function CollectionDetailPage() {
 
 	// Add item form state
 	const [addItemFormData, setAddItemFormData] = useState({
-		asset: '',
-		defaultQuantity: 1,
-		notes: '',
+		asset_id: '',
+		default_quantity: 1,
+		notes: undefined,
 	})
 
 	const [selectedImages, setSelectedImages] = useState<File[]>([])
@@ -206,23 +204,23 @@ export default function CollectionDetailPage() {
 
 	const handleAddItem = async () => {
 		try {
-			if (!addItemFormData.asset || addItemFormData.defaultQuantity < 1) {
+			if (!addItemFormData.asset_id || addItemFormData.default_quantity < 1) {
 				toast.error('Asset and positive quantity are required')
 				return
 			}
 
 			await addItemMutation.mutateAsync({
-				asset: addItemFormData.asset,
-				defaultQuantity: addItemFormData.defaultQuantity,
+				asset_id: addItemFormData.asset_id,
+				default_quantity: addItemFormData.default_quantity,
 				notes: addItemFormData.notes || null,
 			})
 
 			toast.success('Item added to collection')
 			setIsAddItemDialogOpen(false)
 			setAddItemFormData({
-				asset: '',
-				defaultQuantity: 1,
-				notes: '',
+				asset_id: '',
+				default_quantity: 1,
+				notes: undefined,
 			})
 		} catch (error) {
 			toast.error(
@@ -284,13 +282,13 @@ export default function CollectionDetailPage() {
 		)
 	}
 
-	const assets = assetsData?.assets || []
-	const totalVolume = collection?.items.reduce(
+	const assets = assetsData?.data || []
+	const totalVolume = collection?.assets?.reduce(
 		(sum, item) =>
 			sum + parseFloat(item.assetDetails.volume) * item.defaultQuantity,
 		0
 	)
-	const totalWeight = collection?.items.reduce(
+	const totalWeight = collection?.assets?.reduce(
 		(sum, item) =>
 			sum + parseFloat(item.assetDetails.weight) * item.defaultQuantity,
 		0
@@ -520,9 +518,7 @@ export default function CollectionDetailPage() {
 								<DialogFooter>
 									<Button
 										variant='outline'
-										onClick={() =>
-											setIsEditDialogOpen(false)
-										}
+										onClick={() => setIsEditDialogOpen(false)}
 									>
 										Cancel
 									</Button>
@@ -637,11 +633,11 @@ export default function CollectionDetailPage() {
 								<div className='space-y-2'>
 									<Label htmlFor='add-asset'>Asset</Label>
 									<Select
-										value={addItemFormData.asset}
+										value={addItemFormData.asset_id}
 										onValueChange={value =>
 											setAddItemFormData({
 												...addItemFormData,
-												asset: value,
+												asset_id: value,
 											})
 										}
 									>
@@ -655,7 +651,7 @@ export default function CollectionDetailPage() {
 													value={asset.id}
 												>
 													{asset.name} (Available:{' '}
-													{asset.availableQuantity})
+													{asset?.available_quantity})
 												</SelectItem>
 											))}
 										</SelectContent>
@@ -670,11 +666,11 @@ export default function CollectionDetailPage() {
 										id='add-quantity'
 										type='number'
 										min='1'
-										value={addItemFormData.defaultQuantity}
+										value={addItemFormData.default_quantity}
 										onChange={e =>
 											setAddItemFormData({
 												...addItemFormData,
-												defaultQuantity:
+												default_quantity:
 													parseInt(e.target.value) ||
 													1,
 											})
@@ -722,7 +718,7 @@ export default function CollectionDetailPage() {
 					</Dialog>
 				</div>
 
-				{collection.items.length === 0 ? (
+				{collection?.assets?.length === 0 ? (
 					<Card className='p-12 text-center'>
 						<Package className='w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-50' />
 						<h3 className='text-lg font-semibold mb-2'>
@@ -739,7 +735,7 @@ export default function CollectionDetailPage() {
 					</Card>
 				) : (
 					<div className='space-y-4'>
-						{collection.items.map(item => (
+						{collection?.assets?.map(item => (
 							<Card
 								key={item.id}
 								className='overflow-hidden hover:shadow-md transition-shadow'

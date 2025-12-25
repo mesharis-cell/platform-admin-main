@@ -132,7 +132,7 @@ export interface ItemsNeedingAttentionResponse {
 // ===== Add Maintenance Notes =====
 
 export interface AddMaintenanceNotesRequest {
-	assetId: string
+	asset_id: string
 	notes: string // Detailed maintenance notes
 }
 

@@ -31,24 +31,27 @@ export interface Asset {
 	description?: string
 	category: AssetCategory
 	images: string[]
-	trackingMethod: TrackingMethod
-	totalQuantity: number
-	qrCode: string
+	tracking_method: TrackingMethod
+	total_quantity: number
+	available_quantity: number
+	qr_code: string
 	packaging?: string
 	weight: number // kg
-	dimensionLength: number // cm
-	dimensionWidth: number // cm
-	dimensionHeight: number // cm
-	volume: number // m³
+	dimensions: {
+		length: number
+		width: number
+		height: number
+	}
+	volume_per_unit: number // m³
 	condition: Condition
 	status: AssetStatus
-	refurbDaysEstimate?: number | null // Feedback #2: Estimated days to refurbish
-	handlingTags: string[]
-	lastScannedAt?: string
-	lastScannedBy?: string
-	deletedAt?: string
-	createdAt: string
-	updatedAt: string
+	refurb_days_estimate?: number | null // Feedback #2: Estimated days to refurbish
+	handling_tags: string[]
+	last_scanned_at?: string
+	last_scanned_by?: string
+	deleted_at?: string
+	created_at: string
+	updated_at: string
 }
 
 // Asset with related entity details (for detail view)

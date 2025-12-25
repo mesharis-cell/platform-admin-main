@@ -19,6 +19,8 @@ import type {
 	FilterByConditionResponse,
 	UploadDamagePhotosResponse,
 } from "@/types/condition";
+import { apiClient } from "@/lib/api/api-client";
+import { assetKeys } from "./use-assets";
 
 // ===== Update Condition =====
 
@@ -163,24 +165,17 @@ export function useAddMaintenanceNotes() {
 		AddMaintenanceNotesRequest
 	>({
 		mutationFn: async (data: AddMaintenanceNotesRequest) => {
-			const response = await fetch("/api/conditions/notes/add", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify(data),
-			});
+			const response = await apiClient.post(
+				`/operations/v1/asset/condition/add`,
+				data
+			);
 
-			if (!response.ok) {
-				const error = await response.json();
-				throw new Error(error.error || "Failed to add maintenance notes");
-			}
-
-			return response.json();
+			return response.data;
 		},
 		onSuccess: (data, variables) => {
 			// Invalidate condition history for the asset
-			queryClient.invalidateQueries({
-				queryKey: ["condition-history", variables.assetId],
-			});
+			queryClient.invalidateQueries({ queryKey: assetKeys.lists() });
+			queryClient.invalidateQueries({ queryKey: assetKeys.detail(variables.asset_id) });
 		},
 	});
 }
