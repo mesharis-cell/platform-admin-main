@@ -139,6 +139,16 @@ export default function UsersManagementPage() {
 		}));
 	};
 
+	// Helper to resolve wildcards to specific permissions
+	const resolvePermissions = (templatePerms: string[]) => {
+		const allPermissions = Object.values(PERMISSION_GROUPS).flat();
+		return allPermissions.filter(p =>
+			templatePerms.includes(p) ||
+			templatePerms.includes("*") ||
+			templatePerms.some(tp => tp.endsWith("*") && p.startsWith(tp.replace("*", "")))
+		);
+	};
+
 	// Apply template (for create)
 	const handleTemplateChange = (value: string) => {
 		setNewUser(prev => {
@@ -149,7 +159,8 @@ export default function UsersManagementPage() {
 				const baseTemplate = prev.userType === "admin" ? "PLATFORM_ADMIN"
 					: prev.userType === "logistic" ? "LOGISTICS_STAFF"
 						: "CLIENT_USER";
-				newCustomPermissions = PERMISSION_TEMPLATES[baseTemplate as PermissionTemplate].permissions;
+				const templatePerms = PERMISSION_TEMPLATES[baseTemplate as PermissionTemplate].permissions;
+				newCustomPermissions = resolvePermissions(templatePerms);
 			} else if (value !== "") {
 				// Load template permissions
 				newCustomPermissions = PERMISSION_TEMPLATES[value as PermissionTemplate]?.permissions || [];
@@ -176,7 +187,8 @@ export default function UsersManagementPage() {
 						: "CLIENT_USER";
 
 				// Handle case where role might match multiple or mapped differently if needed, but for now simple map
-				newCustomPermissions = PERMISSION_TEMPLATES[baseTemplate as PermissionTemplate]?.permissions || [];
+				const templatePerms = PERMISSION_TEMPLATES[baseTemplate as PermissionTemplate]?.permissions || [];
+				newCustomPermissions = resolvePermissions(templatePerms);
 			} else if (value !== "") {
 				// Load template permissions
 				newCustomPermissions = PERMISSION_TEMPLATES[value as PermissionTemplate]?.permissions || [];
@@ -295,6 +307,7 @@ export default function UsersManagementPage() {
 			// Build payload
 			const payload: any = {
 				name: editFormData.name,
+				company_id: editFormData.selectedCompany,
 			};
 
 			// If using template
@@ -334,6 +347,8 @@ export default function UsersManagementPage() {
 			toast.error(error instanceof Error ? error.message : "Failed to reactivate user");
 		}
 	};
+
+	console.log('editFormData.........', editFormData);
 
 	return (
 		<div className="min-h-screen bg-background">
@@ -664,6 +679,84 @@ export default function UsersManagementPage() {
 											<Separator />
 
 											{/* Summary */}
+											{/* Company Access - Both Admin and Client */}
+											<div className="space-y-4">
+												<h3 className="font-semibold text-sm font-mono uppercase flex items-center gap-2">
+													<Package className="h-4 w-4" />
+													Company Access Scope
+												</h3>
+
+												{(newUser.userType === "admin" || newUser.userType === "logistic") ? (
+													<>
+														<div className="flex items-center space-x-2">
+															<Checkbox
+																id="allCompanies"
+																checked={true}
+																disabled={true}
+															/>
+															<Label htmlFor="allCompanies" className="font-mono text-sm cursor-pointer">
+																All Companies (*) - Full Platform Access
+															</Label>
+														</div>
+														<p className="text-xs text-muted-foreground font-mono">
+															{newUser.userType === "admin" ? "Admin" : "Logistic"} users have access to all companies by default
+														</p>
+													</>
+												) : (
+													<>
+														<div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+															<div className="flex items-center gap-2 text-yellow-700">
+																<AlertCircle className="h-4 w-4" />
+																<p className="text-xs font-mono font-semibold">
+																	CLIENT_USER must belong to a company
+																</p>
+															</div>
+														</div>
+														<div className="space-y-2 border border-border rounded-lg p-4 bg-muted/30">
+															<Label className="font-mono uppercase text-xs">
+																Select Company *
+															</Label>
+															<div className="space-y-2">
+																{companies.map(company => (
+																	<div key={company.id} className="flex items-center space-x-2">
+																		<input
+																			type="radio"
+																			id={`company-${company.id}`}
+																			name="client-company"
+																			checked={newUser.selectedCompany === company.id}
+																			onChange={() => handleCompanyChange(company.id)}
+																			className="h-4 w-4"
+																		/>
+																		<Label
+																			htmlFor={`company-${company.id}`}
+																			className="text-sm font-mono cursor-pointer flex-1"
+																		>
+																			{company.name}
+																		</Label>
+																	</div>
+																))}
+															</div>
+
+															{companies.length === 0 && (
+																<p className="text-xs text-muted-foreground font-mono italic">
+																	No companies available. Create companies first.
+																</p>
+															)}
+
+															{!newUser.selectedCompany && companies.length > 0 && (
+																<div className="flex items-center gap-2 text-amber-600 text-xs font-mono mt-2">
+																	<AlertCircle className="h-4 w-4" />
+																	Please select a company
+																</div>
+															)}
+														</div>
+													</>
+												)}
+											</div>
+
+											<Separator />
+
+											{/* Summary */}
 											<div className="bg-muted/50 rounded-lg p-4 border border-border">
 												<h4 className="font-mono text-xs font-semibold uppercase mb-3">Configuration Summary</h4>
 												<div className="space-y-2 text-xs font-mono">
@@ -809,6 +902,7 @@ export default function UsersManagementPage() {
 										</div>
 
 										{/* Show template preview */}
+
 
 
 										{/* Custom Permissions Selector */}
