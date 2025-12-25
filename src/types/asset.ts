@@ -87,33 +87,37 @@ export interface AssetConditionHistoryEntry {
 
 // Create Asset Request
 export interface CreateAssetRequest {
-	company: string // uuid
-	brand?: string // uuid
-	warehouse: string // uuid
-	zone: string // uuid
+	company_id: string // uuid
+	brand_id?: string // uuid
+	warehouse_id: string // uuid
+	zone_id: string // uuid
 	name: string
 	description?: string
 	category: AssetCategory
 	images: string[] // array of uploaded image URLs
-	trackingMethod: TrackingMethod
-	totalQuantity: number
+	tracking_method: TrackingMethod
+	total_quantity: number
+	available_quantity: number
 	packaging?: string // required if BATCH
-	weight: number // kg
-	dimensionLength: number // cm
-	dimensionWidth: number // cm
-	dimensionHeight: number // cm
-	volume: number // m³
+	weight_per_unit: number // kg
+	dimensions?: {
+		length?: number // cm
+		width?: number // cm
+		height?: number // cm
+	}
+	volume_per_unit: number // m³
 	condition?: Condition // optional, defaults to GREEN if not provided
-	refurbDaysEstimate?: number // Feedback #2: Required for ORANGE/RED items
-	conditionNotes?: string // Feedback #2: Required for ORANGE/RED items
-	handlingTags?: string[]
+	condition_notes?: string // Feedback #2: Required for ORANGE/RED items
+	handling_tags?: string[]
+	refurb_days_estimate?: number
+	status?: AssetStatus // optional, defaults to AVAILABLE
 }
 
 // Update Asset Request
 export interface UpdateAssetRequest {
-	brand?: string // uuid
-	warehouse?: string // uuid
-	zone?: string // uuid
+	brand_id?: string // uuid
+	warehouse_id?: string // uuid
+	zone_id?: string // uuid
 	name?: string
 	description?: string
 	category?: AssetCategory

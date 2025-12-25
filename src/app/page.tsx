@@ -14,7 +14,6 @@ import { jwtDecode, JwtPayload } from "jwt-decode";
 import LoadingState from "@/components/loading-state";
 import { usePlatform } from "@/contexts/platform-context";
 import { login } from "@/actions/login";
-import Cookies from "js-cookie";
 
 interface CustomJwtPayload extends JwtPayload {
 	role: string;
@@ -55,10 +54,7 @@ export default function HomePage() {
 
 				router.push('/companies')
 			} else {
-				// User is not an admin, sign out and invalidate token
-				Cookies.remove('access_token')
-				Cookies.remove('refresh_token')
-				toast.success("Access Denied", {
+				toast.error("Access Denied", {
 					description: "You do not have access to this platform.",
 				});
 			}

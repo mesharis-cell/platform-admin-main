@@ -1,5 +1,8 @@
+"use client";
+
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Asset, AssetWithDetails, CreateAssetRequest } from '@/types/asset';
+import { apiClient } from '@/lib/api/api-client';
 
 // Query keys
 export const assetKeys = {
@@ -11,61 +14,34 @@ export const assetKeys = {
 };
 
 // Fetch assets list
-async function fetchAssets(params?: Record<string, string>): Promise<{ assets: Asset[]; total: number; limit: number; offset: number }> {
+async function fetchAssets(params?: Record<string, string>): Promise<{ data: Asset[]; meta: { total: number; limit: number; page: number } }> {
   const searchParams = new URLSearchParams(params);
-  const response = await fetch(`/api/assets?${searchParams}`);
-  if (!response.ok) {
-    throw new Error('Failed to fetch assets');
-  }
-  return response.json();
+  const response = await apiClient.get(`/operations/v1/asset?${searchParams}`);
+  return response.data;
 }
 
 // Fetch single asset
 async function fetchAsset(id: string): Promise<{ asset: AssetWithDetails }> {
-  const response = await fetch(`/api/assets/${id}`);
-  if (!response.ok) {
-    throw new Error('Failed to fetch asset');
-  }
-  return response.json();
+  const response = await apiClient.get(`/operations/v1/asset/${id}`);
+  return response.data;
 }
 
 // Create asset
 async function createAsset(data: CreateAssetRequest): Promise<Asset> {
-  const response = await fetch('/api/assets', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  });
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to create asset');
-  }
-  return response.json();
+  const response = await apiClient.post(`/operations/v1/asset`, data);
+  return response.data;
 }
 
 // Update asset
 async function updateAsset(id: string, data: Partial<CreateAssetRequest>): Promise<Asset> {
-  const response = await fetch(`/api/assets/${id}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  });
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to update asset');
-  }
-  return response.json();
+  const response = await apiClient.put(`/operations/v1/asset/${id}`, data);
+  return response.data;
 }
 
 // Delete asset
 async function deleteAsset(id: string): Promise<void> {
-  const response = await fetch(`/api/assets/${id}`, {
-    method: 'DELETE',
-  });
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to delete asset');
-  }
+  const response = await apiClient.delete(`/operations/v1/asset/${id}`);
+  return response.data;
 }
 
 // Upload image

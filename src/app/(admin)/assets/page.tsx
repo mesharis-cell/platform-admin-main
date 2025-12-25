@@ -69,7 +69,7 @@ export default function AssetsPage() {
 	// Build query params
 	const queryParams = useMemo(() => {
 		const params: Record<string, string> = {}
-		if (searchQuery) params.search = searchQuery
+		if (searchQuery) params.search_term = searchQuery
 		if (filters.category && filters.category !== 'all')
 			params.category = filters.category
 		if (filters.condition && filters.condition !== 'all')
@@ -77,13 +77,13 @@ export default function AssetsPage() {
 		if (filters.status && filters.status !== 'all')
 			params.status = filters.status
 		if (filters.warehouse && filters.warehouse !== 'all')
-			params.warehouse = filters.warehouse
+			params.warehouse_id = filters.warehouse
 		return params
 	}, [searchQuery, filters])
 
 	// Fetch assets
 	const { data, isLoading: loading } = useAssets(queryParams)
-	const assets = data?.assets || []
+	const assets = data?.data || []
 
 	function getConditionColor(condition: string) {
 		switch (condition) {
@@ -121,7 +121,7 @@ export default function AssetsPage() {
 				description='Physical Items · QR Codes · Tracking'
 				stats={
 					data
-						? { label: 'TOTAL ASSETS', value: data.total }
+						? { label: 'TOTAL ASSETS', value: data.meta.total }
 						: undefined
 				}
 				actions={
