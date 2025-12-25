@@ -1,5 +1,7 @@
 // Permission Templates
-export type PermissionTemplate = "PMG_ADMIN" | "A2_STAFF" | "CLIENT_USER";
+export type PermissionTemplate = "PLATFORM_ADMIN" | "LOGISTICS_STAFF" | "CLIENT_USER";
+
+export type UserRole = "ADMIN" | "LOGISTICS" | "CLIENT";
 
 // Permission strings for granular access control
 export type Permission =
@@ -160,6 +162,7 @@ export interface User {
 	id: string;
 	email: string;
 	name: string;
+	role: UserRole;
 	permissions: string[];
 	company?: {
 		id: string;
@@ -184,17 +187,21 @@ export interface CreateUserRequest {
 	email: string;
 	name: string;
 	password: string;
-	permissionTemplate?: PermissionTemplate | null;
+	role: UserRole;
+	permission_template?: PermissionTemplate | null;
 	permissions?: string[];
 	company_id?: string | null;
+	is_active?: boolean;
 }
 
 // Update user request
 export interface UpdateUserRequest {
 	name?: string;
+	role?: UserRole;
 	permissions?: string[];
 	company_id?: string | null;
-	permissionTemplate?: PermissionTemplate | null;
+	permission_template?: PermissionTemplate | null;
+	is_active?: boolean;
 }
 
 // User list query params
@@ -225,7 +232,7 @@ export const PERMISSION_TEMPLATES: Record<
 		defaultCompanies: string[];
 	}
 > = {
-	PMG_ADMIN: {
+	PLATFORM_ADMIN: {
 		permissions: [
 			"auth:*",
 			"users:*",
@@ -250,7 +257,7 @@ export const PERMISSION_TEMPLATES: Record<
 		],
 		defaultCompanies: ["*"],
 	},
-	A2_STAFF: {
+	LOGISTICS_STAFF: {
 		permissions: [
 			"auth:*",
 			"users:read",

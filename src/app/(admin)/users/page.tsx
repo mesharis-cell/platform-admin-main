@@ -88,7 +88,7 @@ export default function UsersManagementPage() {
 		name: "",
 		email: "",
 		password: "",
-		userType: "" as "admin" | "client" | "",
+		userType: "" as "admin" | "logistic" | "client" | "",
 		permissionTemplate: "" as PermissionTemplate | "CUSTOM" | "",
 		customPermissions: [] as string[],
 		selectedCompany: null as string | null,
@@ -211,23 +211,13 @@ export default function UsersManagementPage() {
 
 		// Validation
 		if (!newUser.userType) {
-			toast.error("Please select user type (Admin or Client)");
+			toast.error("Please select user type (Admin, Logistic, or Client)");
 			return;
 		}
 
-		if (newUser.userType === "admin") {
-			if (!newUser.permissionTemplate) {
-				toast.error("Please select a permission template for admin user");
-				return;
-			}
-
+		if (newUser.userType === "admin" || newUser.userType === "logistic") {
 			if (newUser.permissionTemplate === "CUSTOM" && newUser.customPermissions.length === 0) {
 				toast.error("Please select at least one permission for custom user");
-				return;
-			}
-
-			if (newUser.selectedCompany) {
-				toast.error("Admin user cannot be assigned to a specific company");
 				return;
 			}
 		}
@@ -245,21 +235,20 @@ export default function UsersManagementPage() {
 				name: newUser.name,
 				email: newUser.email,
 				password: newUser.password,
+				role: newUser.userType === 'admin' ? 'ADMIN' : newUser.userType === 'logistic' ? 'LOGISTICS' : 'CLIENT',
+				is_active: true,
 			};
 
 			// If using template
 			if (newUser.permissionTemplate !== "CUSTOM") {
-				const template = PERMISSION_TEMPLATES[newUser.permissionTemplate as PermissionTemplate];
-				payload.permissionTemplate = newUser.permissionTemplate;
-				// Use template permissions
-				payload.permissions = template.permissions;
+				payload.permission_template = newUser.permissionTemplate;
 				// For companies: Use form selection
-				payload.company_id = newUser.userType === "admin" ? null : newUser.selectedCompany;
+				payload.company_id = (newUser.userType === "admin" || newUser.userType === "logistic") ? null : newUser.selectedCompany;
 			} else {
 				// Custom permissions
-				payload.permissionTemplate = null;
+				payload.permission_template = null;
 				payload.permissions = newUser.customPermissions;
-				payload.company_id = newUser.userType === "admin" ? null : newUser.selectedCompany;
+				payload.company_id = (newUser.userType === "admin" || newUser.userType === "logistic") ? null : newUser.selectedCompany;
 			}
 
 			await createMutation.mutateAsync(payload);
@@ -297,10 +286,7 @@ export default function UsersManagementPage() {
 			return;
 		}
 
-		if (editFormData.permissionTemplate === "CUSTOM" && editFormData.customPermissions.length === 0) {
-			toast.error("Please select at least one permission for custom user");
-			return;
-		}
+
 
 		try {
 			// Build payload
@@ -310,16 +296,13 @@ export default function UsersManagementPage() {
 
 			// If using template
 			if (editFormData.permissionTemplate !== "CUSTOM") {
-				const template = PERMISSION_TEMPLATES[editFormData.permissionTemplate as PermissionTemplate];
-				payload.permissionTemplate = editFormData.permissionTemplate;
-				// Use template permissions
-				payload.permissions = template.permissions;
+				payload.permission_template = editFormData.permissionTemplate;
 				// For companies: User cannot change company scope easily in edit yet without knowing role context properly, 
 				// but assuming we respect current 'selectedCompany' state
 				payload.company_id = editFormData.selectedCompany;
 			} else {
 				// Custom permissions
-				payload.permissionTemplate = null;
+				payload.permission_template = null;
 				payload.permissions = editFormData.customPermissions;
 				payload.company_id = editFormData.selectedCompany;
 			}
@@ -385,8 +368,8 @@ export default function UsersManagementPage() {
 							</SelectTrigger>
 							<SelectContent>
 								<SelectItem value="all">All Templates</SelectItem>
-								<SelectItem value="PMG_ADMIN">PMG Admin</SelectItem>
-								<SelectItem value="A2_STAFF">A2 Staff</SelectItem>
+								<SelectItem value="PLATFORM_ADMIN">Platform Admin</SelectItem>
+								<SelectItem value="LOGISTICS_STAFF">Logistics Staff</SelectItem>
 								<SelectItem value="CLIENT_USER">Client User</SelectItem>
 							</SelectContent>
 						</Select>
@@ -495,14 +478,15 @@ export default function UsersManagementPage() {
 											User Type
 										</h3>
 
-										<div className="grid grid-cols-2 gap-4">
+										<div className="grid grid-cols-3 gap-4">
 											<button
 												type="button"
 												onClick={() => {
 													setNewUser(prev => ({
 														...prev,
 														userType: "admin",
-														permissionTemplate: "",
+														// Default for Admin
+														permissionTemplate: "PLATFORM_ADMIN",
 														selectedCompany: null,
 													}));
 												}}
@@ -516,6 +500,29 @@ export default function UsersManagementPage() {
 												<div className="font-mono font-bold text-sm mb-1">ADMIN USER</div>
 												<div className="text-xs text-muted-foreground">
 													PMG Admin or A2 Staff with wildcard access
+												</div>
+											</button>
+											<button
+												type="button"
+												onClick={() => {
+													setNewUser(prev => ({
+														...prev,
+														userType: "logistic",
+														// Default for Logistic
+														permissionTemplate: "LOGISTICS_STAFF",
+														selectedCompany: null,
+													}));
+												}}
+												className={cn(
+													"p-4 border-2 rounded-lg text-left transition-all",
+													newUser.userType === "logistic"
+														? "border-primary bg-primary/5"
+														: "border-border hover:border-primary/50"
+												)}
+											>
+												<div className="font-mono font-bold text-sm mb-1">LOGISTICS USER</div>
+												<div className="text-xs text-muted-foreground">
+													Warehouse & Inventory Staff
 												</div>
 											</button>
 											<button
@@ -546,84 +553,82 @@ export default function UsersManagementPage() {
 									{newUser.userType && (
 										<>
 											<Separator />
+											{/* Permission Configuration Section */}
+											<div className="space-y-4">
+												<h3 className="font-semibold text-sm font-mono uppercase flex items-center gap-2">
+													<Filter className="h-4 w-4" />
+													Permission Configuration
+												</h3>
 
-											{/* Permission Template - Admin Only */}
-											{newUser.userType === "admin" && (
-												<div className="space-y-4">
-													<h3 className="font-semibold text-sm font-mono uppercase flex items-center gap-2">
-														<Filter className="h-4 w-4" />
-														Permission Configuration
-													</h3>
-
-													<div>
-														<Label htmlFor="template" className="font-mono uppercase text-xs">
-															Permission Template *
-														</Label>
-														<Select
-															value={newUser.permissionTemplate}
-															onValueChange={handleTemplateChange}
-														>
-															<SelectTrigger className="font-mono">
-																<SelectValue placeholder="Select template or custom" />
-															</SelectTrigger>
-															<SelectContent>
-																<SelectItem value="PMG_ADMIN">
-																	PMG Admin (Full Platform Access)
+												<div>
+													<Label htmlFor="template" className="font-mono uppercase text-xs">
+														Permission Template *
+													</Label>
+													<Select
+														key={newUser.userType}
+														value={newUser.permissionTemplate}
+														onValueChange={handleTemplateChange}
+													>
+														<SelectTrigger className="font-mono">
+															<SelectValue placeholder="Select template or custom" />
+														</SelectTrigger>
+														<SelectContent>
+															{newUser.userType === "admin" && (
+																<SelectItem value="PLATFORM_ADMIN">
+																	Platform Admin (Full Platform Access)
 																</SelectItem>
-																<SelectItem value="A2_STAFF">
-																	A2 Staff (Inventory & Fulfillment)
+															)}
+															{newUser.userType === "logistic" && (
+																<SelectItem value="LOGISTICS_STAFF">
+																	Logistics Staff (Inventory & Fulfillment)
 																</SelectItem>
+															)}
+															{newUser.userType === "client" && (
 																<SelectItem value="CLIENT_USER">
 																	Client User (Catalog & Ordering)
 																</SelectItem>
-																<SelectItem value="CUSTOM">
-																	Custom (Select Individual Permissions)
-																</SelectItem>
-															</SelectContent>
-														</Select>
-													</div>
+															)}
+															<SelectItem value="CUSTOM">
+																Custom (Select Individual Permissions)
+															</SelectItem>
+														</SelectContent>
+													</Select>
+												</div>
 
-													{newUser.permissionTemplate && newUser.permissionTemplate !== "CUSTOM" && (
-														<div className="bg-muted/50 rounded-lg p-4 border border-border">
-															<p className="text-xs font-mono mb-2 text-muted-foreground">
-																Template includes {PERMISSION_TEMPLATES[newUser.permissionTemplate as PermissionTemplate].permissions.length} permissions:
-															</p>
-															<div className="flex flex-wrap gap-1">
-																{PERMISSION_TEMPLATES[newUser.permissionTemplate as PermissionTemplate].permissions.slice(0, 10).map(perm => (
-																	<Badge key={perm} variant="secondary" className="font-mono text-[10px]">
-																		{perm}
-																	</Badge>
-																))}
-																{PERMISSION_TEMPLATES[newUser.permissionTemplate as PermissionTemplate].permissions.length > 10 && (
-																	<Badge variant="outline" className="font-mono text-[10px]">
-																		+{PERMISSION_TEMPLATES[newUser.permissionTemplate as PermissionTemplate].permissions.length - 10} more
-																	</Badge>
-																)}
-															</div>
+												{/* Custom Permissions Selector - Only show for CUSTOM */}
+												{newUser.permissionTemplate === "CUSTOM" && (
+													<div className="space-y-4 border border-border rounded-lg p-4 bg-muted/30">
+														<div className="flex items-center justify-between">
+															<Label className="font-mono uppercase text-xs">
+																Select Individual Permissions *
+															</Label>
+															<Badge variant="outline" className="font-mono text-xs">
+																{newUser.customPermissions.length} selected
+															</Badge>
 														</div>
-													)}
 
-													{/* Custom Permissions Selector */}
-													{newUser.permissionTemplate === "CUSTOM" && (
-														<div className="space-y-4 border border-border rounded-lg p-4 bg-muted/30">
-															<div className="flex items-center justify-between">
-																<Label className="font-mono uppercase text-xs">
-																	Select Individual Permissions *
-																</Label>
-																<Badge variant="outline" className="font-mono text-xs">
-																	{newUser.customPermissions.length} selected
-																</Badge>
-															</div>
+														<ScrollArea className="h-[300px] pr-4">
+															<div className="space-y-4">
+																{Object.entries(PERMISSION_GROUPS).map(([category, permissions]) => {
+																	// Filter permissions based on user role's base template
+																	const baseTemplate = newUser.userType === "admin" ? "PLATFORM_ADMIN"
+																		: newUser.userType === "logistic" ? "LOGISTICS_STAFF"
+																			: "CLIENT_USER";
 
-															<ScrollArea className="h-[300px] pr-4">
-																<div className="space-y-4">
-																	{Object.entries(PERMISSION_GROUPS).map(([category, permissions]) => (
+																	const allowedPermissions = PERMISSION_TEMPLATES[baseTemplate as PermissionTemplate].permissions;
+
+																	// Only show permissions available in the base template
+																	const availablePermissions = permissions.filter(p => allowedPermissions.includes(p) || allowedPermissions.includes("*") || allowedPermissions.some(ap => ap.endsWith("*") && p.startsWith(ap.replace("*", ""))));
+
+																	if (availablePermissions.length === 0) return null;
+
+																	return (
 																		<div key={category} className="space-y-2">
 																			<h4 className="font-mono text-xs font-semibold text-muted-foreground uppercase tracking-wider">
 																				{category}
 																			</h4>
 																			<div className="grid grid-cols-2 gap-2 ml-2">
-																				{permissions.map(permission => (
+																				{availablePermissions.map(permission => (
 																					<div key={permission} className="flex items-center space-x-2">
 																						<Checkbox
 																							id={permission}
@@ -640,20 +645,21 @@ export default function UsersManagementPage() {
 																				))}
 																			</div>
 																		</div>
-																	))}
-																</div>
-															</ScrollArea>
+																	);
+																})}
+															</div>
+														</ScrollArea>
 
-															{newUser.customPermissions.length === 0 && (
-																<div className="flex items-center gap-2 text-amber-600 text-xs font-mono">
-																	<AlertCircle className="h-4 w-4" />
-																	No permissions selected - user won't be able to access anything
-																</div>
-															)}
-														</div>
-													)}
-												</div>
-											)}
+														{newUser.customPermissions.length === 0 && (
+															<div className="flex items-center gap-2 text-amber-600 text-xs font-mono">
+																<AlertCircle className="h-4 w-4" />
+																No permissions selected - user won't be able to access anything
+															</div>
+														)}
+													</div>
+												)}
+											</div>
+
 
 											{/* Separator between sections */}
 											{newUser.userType === "admin" && <Separator />}
@@ -665,7 +671,7 @@ export default function UsersManagementPage() {
 													Company Access Scope
 												</h3>
 
-												{newUser.userType === "admin" ? (
+												{(newUser.userType === "admin" || newUser.userType === "logistic") ? (
 													<>
 														<div className="flex items-center space-x-2">
 															<Checkbox
@@ -678,7 +684,7 @@ export default function UsersManagementPage() {
 															</Label>
 														</div>
 														<p className="text-xs text-muted-foreground font-mono">
-															Admin users have access to all companies by default
+															{newUser.userType === "admin" ? "Admin" : "Logistic"} users have access to all companies by default
 														</p>
 													</>
 												) : (
@@ -760,7 +766,7 @@ export default function UsersManagementPage() {
 													<div className="flex justify-between">
 														<span className="text-muted-foreground">Company Access:</span>
 														<span className="font-semibold">
-															{newUser.userType === "admin"
+															{(newUser.userType === "admin" || newUser.userType === "logistic")
 																? "All Companies (*)"
 																: newUser.selectedCompany
 																	? companies.find(c => c.id === newUser.selectedCompany)?.name || "Unknown"
@@ -864,11 +870,11 @@ export default function UsersManagementPage() {
 													<SelectValue placeholder="Select template or custom" />
 												</SelectTrigger>
 												<SelectContent>
-													<SelectItem value="PMG_ADMIN">
-														PMG Admin (Full Platform Access)
+													<SelectItem value="PLATFORM_ADMIN">
+														Platform Admin (Full Platform Access)
 													</SelectItem>
-													<SelectItem value="A2_STAFF">
-														A2 Staff (Inventory & Fulfillment)
+													<SelectItem value="LOGISTICS_STAFF">
+														Logistics Staff (Inventory & Fulfillment)
 													</SelectItem>
 													<SelectItem value="CLIENT_USER">
 														Client User (Catalog & Ordering)
@@ -881,25 +887,7 @@ export default function UsersManagementPage() {
 										</div>
 
 										{/* Show template preview */}
-										{editFormData.permissionTemplate && editFormData.permissionTemplate !== "CUSTOM" && (
-											<div className="bg-muted/50 rounded-lg p-4 border border-border">
-												<p className="text-xs font-mono mb-2 text-muted-foreground">
-													Template includes {PERMISSION_TEMPLATES[editFormData.permissionTemplate as PermissionTemplate].permissions.length} permissions
-												</p>
-												<div className="flex flex-wrap gap-1">
-													{PERMISSION_TEMPLATES[editFormData.permissionTemplate as PermissionTemplate].permissions.slice(0, 10).map(perm => (
-														<Badge key={perm} variant="secondary" className="font-mono text-[10px]">
-															{perm}
-														</Badge>
-													))}
-													{PERMISSION_TEMPLATES[editFormData.permissionTemplate as PermissionTemplate].permissions.length > 10 && (
-														<Badge variant="outline" className="font-mono text-[10px]">
-															+{PERMISSION_TEMPLATES[editFormData.permissionTemplate as PermissionTemplate].permissions.length - 10} more
-														</Badge>
-													)}
-												</div>
-											</div>
-										)}
+
 
 										{/* Custom Permissions Selector */}
 										{editFormData.permissionTemplate === "CUSTOM" && (
@@ -915,30 +903,45 @@ export default function UsersManagementPage() {
 
 												<ScrollArea className="h-[300px] pr-4">
 													<div className="space-y-4">
-														{Object.entries(PERMISSION_GROUPS).map(([category, permissions]) => (
-															<div key={category} className="space-y-2">
-																<h4 className="font-mono text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-																	{category}
-																</h4>
-																<div className="grid grid-cols-2 gap-2 ml-2">
-																	{permissions.map(permission => (
-																		<div key={permission} className="flex items-center space-x-2">
-																			<Checkbox
-																				id={`edit-${permission}`}
-																				checked={editFormData.customPermissions.includes(permission)}
-																				onCheckedChange={() => togglePermissionEdit(permission)}
-																			/>
-																			<Label
-																				htmlFor={`edit-${permission}`}
-																				className="text-xs font-mono cursor-pointer"
-																			>
-																				{permission}
-																			</Label>
-																		</div>
-																	))}
+														{Object.entries(PERMISSION_GROUPS).map(([category, permissions]) => {
+															// Filter permissions based on user role
+															const baseTemplate = editingUser?.role === "ADMIN" ? "PLATFORM_ADMIN"
+																: editingUser?.role === "LOGISTICS" ? "LOGISTICS_STAFF"
+																	: "CLIENT_USER";
+
+															// Safe check if template exists
+															const allowedPermissions = PERMISSION_TEMPLATES[baseTemplate as PermissionTemplate]?.permissions || [];
+
+															// Only show permissions available in the base template
+															const availablePermissions = permissions.filter(p => allowedPermissions.includes(p) || allowedPermissions.includes("*") || allowedPermissions.some(ap => ap.endsWith("*") && p.startsWith(ap.replace("*", ""))));
+
+															if (availablePermissions.length === 0) return null;
+
+															return (
+																<div key={category} className="space-y-2">
+																	<h4 className="font-mono text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+																		{category}
+																	</h4>
+																	<div className="grid grid-cols-2 gap-2 ml-2">
+																		{availablePermissions.map(permission => (
+																			<div key={permission} className="flex items-center space-x-2">
+																				<Checkbox
+																					id={`edit-${permission}`}
+																					checked={editFormData.customPermissions.includes(permission)}
+																					onCheckedChange={() => togglePermissionEdit(permission)}
+																				/>
+																				<Label
+																					htmlFor={`edit-${permission}`}
+																					className="text-xs font-mono cursor-pointer"
+																				>
+																					{permission}
+																				</Label>
+																			</div>
+																		))}
+																	</div>
 																</div>
-															</div>
-														))}
+															);
+														})}
 													</div>
 												</ScrollArea>
 
@@ -955,7 +958,6 @@ export default function UsersManagementPage() {
 									<Separator />
 
 									{/* Company Access */}
-									{/* Company Access */}
 									<div className="space-y-4">
 										<h3 className="font-semibold text-sm font-mono uppercase flex items-center gap-2">
 											<Package className="h-4 w-4" />
@@ -963,7 +965,7 @@ export default function UsersManagementPage() {
 										</h3>
 
 										{/* Admin logic - always global */}
-										{(editFormData.permissionTemplate === "PMG_ADMIN" || editFormData.permissionTemplate === "A2_STAFF") && (
+										{(editFormData.permissionTemplate === "PLATFORM_ADMIN" || editFormData.permissionTemplate === "LOGISTICS_STAFF") && (
 											<div className="bg-muted/50 rounded-lg p-3 border border-border">
 												<div className="flex items-center gap-2">
 													<CheckCircle className="h-4 w-4 text-primary" />
@@ -1072,10 +1074,10 @@ export default function UsersManagementPage() {
 							</ScrollArea>
 						</DialogContent>
 					</Dialog>
-				</div>
+				</div >
 
 				{/* Users Table */}
-				<div className="bg-card border border-border rounded-xl overflow-hidden">
+				< div className="bg-card border border-border rounded-xl overflow-hidden" >
 					<Table>
 						<TableHeader>
 							<TableRow>
@@ -1210,16 +1212,16 @@ export default function UsersManagementPage() {
 							)}
 						</TableBody>
 					</Table>
-				</div>
+				</div >
 
 				{/* Summary */}
-				<div className="mt-6 flex items-center justify-between text-xs text-muted-foreground font-mono">
+				< div className="mt-6 flex items-center justify-between text-xs text-muted-foreground font-mono" >
 					<p>Total users: {users.length}</p>
 					<p>
 						Active: {users.filter((u) => u.isActive).length} • Inactive:{" "}
 						{users.filter((u) => !u.isActive).length}
 					</p>
-				</div>
+				</div >
 			</main >
 		</div >
 	);
