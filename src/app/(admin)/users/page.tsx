@@ -165,26 +165,53 @@ export default function UsersManagementPage() {
 
 	// Apply template (for create)
 	const handleTemplateChange = (value: string) => {
-		setNewUser(prev => ({
-			...prev,
-			permissionTemplate: value as PermissionTemplate | "CUSTOM",
-			// If switching to template, load template permissions
-			...(value !== "CUSTOM" && value !== "" && {
-				customPermissions: PERMISSION_TEMPLATES[value as PermissionTemplate]?.permissions || [],
-			}),
-		}));
+		setNewUser(prev => {
+			let newCustomPermissions = prev.customPermissions;
+
+			if (value === "CUSTOM") {
+				// Populate with default permissions for the role
+				const baseTemplate = prev.userType === "admin" ? "PLATFORM_ADMIN"
+					: prev.userType === "logistic" ? "LOGISTICS_STAFF"
+						: "CLIENT_USER";
+				newCustomPermissions = PERMISSION_TEMPLATES[baseTemplate as PermissionTemplate].permissions;
+			} else if (value !== "") {
+				// Load template permissions
+				newCustomPermissions = PERMISSION_TEMPLATES[value as PermissionTemplate]?.permissions || [];
+			}
+
+			return {
+				...prev,
+				permissionTemplate: value as PermissionTemplate | "CUSTOM",
+				customPermissions: newCustomPermissions,
+			};
+		});
 	};
 
 	// Apply template (for edit)
 	const handleTemplateChangeEdit = (value: string) => {
-		setEditFormData(prev => ({
-			...prev,
-			permissionTemplate: value as PermissionTemplate | "CUSTOM",
-			// If switching to template, load template permissions
-			...(value !== "CUSTOM" && value !== "" && {
-				customPermissions: PERMISSION_TEMPLATES[value as PermissionTemplate]?.permissions || [],
-			}),
-		}));
+		setEditFormData(prev => {
+			let newCustomPermissions = prev.customPermissions;
+
+			if (value === "CUSTOM") {
+				// Populate with default permissions for the role
+				const role = editingUser?.role;
+				const baseTemplate = role === "ADMIN" ? "PLATFORM_ADMIN"
+					: role === "LOGISTICS" ? "LOGISTICS_STAFF"
+						: "CLIENT_USER";
+
+				// Handle case where role might match multiple or mapped differently if needed, but for now simple map
+				newCustomPermissions = PERMISSION_TEMPLATES[baseTemplate as PermissionTemplate]?.permissions || [];
+			} else if (value !== "") {
+				// Load template permissions
+				newCustomPermissions = PERMISSION_TEMPLATES[value as PermissionTemplate]?.permissions || [];
+			}
+
+			return {
+				...prev,
+				permissionTemplate: value as PermissionTemplate | "CUSTOM",
+				customPermissions: newCustomPermissions,
+			};
+		});
 	};
 
 	// Open edit dialog
