@@ -514,7 +514,7 @@ export default function BrandsPage() {
 											)}
 										</TableCell>
 										<TableCell>
-											{brand.deletedAt ? (
+											{brand.is_active ? (
 												<Badge
 													variant='secondary'
 													className='font-mono text-xs'
@@ -553,19 +553,19 @@ export default function BrandsPage() {
 														<Pencil className='h-3.5 w-3.5 mr-2' />
 														Edit Brand
 													</DropdownMenuItem>
-													{!brand.deletedAt && (
-														<DropdownMenuItem
-															onClick={() =>
-																setConfirmDelete(
-																	brand
-																)
-															}
-															className='font-mono text-xs text-destructive'
-														>
-															<Trash2 className='h-3.5 w-3.5 mr-2' />
-															Delete Brand
-														</DropdownMenuItem>
-													)}
+
+													<DropdownMenuItem
+														onClick={() =>
+															setConfirmDelete(
+																brand
+															)
+														}
+														className='font-mono text-xs text-destructive'
+													>
+														<Trash2 className='h-3.5 w-3.5 mr-2' />
+														Delete Brand
+													</DropdownMenuItem>
+
 												</DropdownMenuContent>
 											</DropdownMenu>
 										</TableCell>

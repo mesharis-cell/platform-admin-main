@@ -791,8 +791,8 @@ export default function CompaniesPage() {
 										<TableCell>
 											{company.deleted_at ? (
 												<Badge
-													variant="secondary"
-													className="font-mono text-xs"
+													variant="outline"
+													className="font-mono text-xs border-destructive/30 text-destructive"
 												>
 													ARCHIVED
 												</Badge>

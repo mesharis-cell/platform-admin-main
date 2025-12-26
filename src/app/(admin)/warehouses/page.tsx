@@ -1,33 +1,25 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import {
-	useWarehouses,
-	useCreateWarehouse,
-	useUpdateWarehouse,
-	useArchiveWarehouse,
-} from "@/hooks/use-warehouses";
-import {
-	Plus,
-	Search,
-	Archive,
-	Pencil,
-	Warehouse,
-	MapPin,
-	Globe,
-	MoreVertical,
-} from "lucide-react";
+import { AdminHeader } from "@/components/admin-header";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
 	Dialog,
 	DialogContent,
+	DialogDescription,
 	DialogHeader,
 	DialogTitle,
 	DialogTrigger,
-	DialogDescription,
 } from "@/components/ui/dialog";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
 	Table,
 	TableBody,
@@ -37,19 +29,27 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Badge } from "@/components/ui/badge";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { toast } from "sonner";
-import { AdminHeader } from "@/components/admin-header";
+	useArchiveUnarchiveWarehouse,
+	useCreateWarehouse,
+	useUpdateWarehouse,
+	useWarehouses
+} from "@/hooks/use-warehouses";
 import type {
-	Warehouse as WarehouseType,
-	WarehouseListResponse,
+	Warehouse as WarehouseType
 } from "@/types";
+import {
+	Archive,
+	Globe,
+	MapPin,
+	MoreVertical,
+	Pencil,
+	Plus,
+	Search,
+	Undo2,
+	Warehouse,
+} from "lucide-react";
+import { useMemo, useState } from "react";
+import { toast } from "sonner";
 
 export default function WarehousesPage() {
 	const [searchQuery, setSearchQuery] = useState("");
@@ -93,7 +93,7 @@ export default function WarehousesPage() {
 	// Mutations
 	const createMutation = useCreateWarehouse();
 	const updateMutation = useUpdateWarehouse();
-	const archiveMutation = useArchiveWarehouse();
+	const archiveUnarchiveMutation = useArchiveUnarchiveWarehouse();
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -130,11 +130,11 @@ export default function WarehousesPage() {
 		}
 	};
 
-	const handleArchive = async () => {
+	const handleArchiveUnarchive = async () => {
 		if (!confirmArchive) return;
 
 		try {
-			await archiveMutation.mutateAsync(confirmArchive.id);
+			await archiveUnarchiveMutation.mutateAsync(confirmArchive.id);
 			toast.success("Warehouse archived", {
 				description: `${confirmArchive.name} has been archived.`,
 			});
@@ -551,15 +551,15 @@ export default function WarehousesPage() {
 										<TableCell>
 											{!warehouse?.is_active ? (
 												<Badge
-													variant="secondary"
-													className="font-mono text-xs"
+													variant="outline"
+													className="font-mono text-xs border-destructive/30 text-destructive"
 												>
 													ARCHIVED
 												</Badge>
 											) : (
 												<Badge
 													variant="outline"
-													className="font-mono text-xs border-secondary/30 text-secondary"
+													className="font-mono text-xs border-primary/30 text-primary"
 												>
 													OPERATIONAL
 												</Badge>
@@ -586,17 +586,17 @@ export default function WarehousesPage() {
 														<Pencil className="h-3.5 w-3.5 mr-2" />
 														Edit Warehouse
 													</DropdownMenuItem>
-													{warehouse.is_active && (
-														<DropdownMenuItem
-															onClick={() =>
-																setConfirmArchive(warehouse)
-															}
-															className="font-mono text-xs text-destructive"
-														>
-															<Archive className="h-3.5 w-3.5 mr-2" />
-															Archive Warehouse
-														</DropdownMenuItem>
-													)}
+
+													<DropdownMenuItem
+														onClick={() =>
+															setConfirmArchive(warehouse)
+														}
+														className={`font-mono text-xs ${warehouse.is_active ? "text-destructive" : "text-primary"}`}
+													>
+														{warehouse.is_active ? <Archive className="h-3.5 w-3.5 mr-2" /> : <Undo2 className="h-3.5 w-3.5 mr-2" />}
+														{warehouse.is_active ? "Archive Warehouse" : "Unarchive Warehouse"}
+													</DropdownMenuItem>
+
 												</DropdownMenuContent>
 											</DropdownMenu>
 										</TableCell>
@@ -616,12 +616,12 @@ export default function WarehousesPage() {
 			<ConfirmDialog
 				open={!!confirmArchive}
 				onOpenChange={(open) => !open && setConfirmArchive(null)}
-				onConfirm={handleArchive}
-				title="Archive Warehouse"
-				description={`Are you sure you want to archive ${confirmArchive?.name}? This will soft-delete the warehouse.`}
-				confirmText="Archive"
+				onConfirm={handleArchiveUnarchive}
+				title={confirmArchive?.is_active ? "Archive Warehouse" : "Unarchive Warehouse"}
+				description={`Are you sure you want to ${confirmArchive?.is_active ? "archive" : "unarchive"} ${confirmArchive?.name}? This will soft-delete the warehouse.`}
+				confirmText={confirmArchive?.is_active ? "Archive" : "Unarchive"}
 				cancelText="Cancel"
-				variant="destructive"
+				variant={confirmArchive?.is_active ? "destructive" : "default"}
 			/>
 		</div>
 	);

@@ -46,7 +46,7 @@ async function updateWarehouse({ id, data }: { id: string; data: Partial<Warehou
 }
 
 // Archive warehouse
-async function archiveWarehouse(id: string): Promise<void> {
+async function archiveUnarchiveWarehouse(id: string): Promise<void> {
   try {
     const response = await apiClient.delete(`/operations/v1/warehouse/${id}`);
     return response.data;
@@ -85,11 +85,11 @@ export function useUpdateWarehouse() {
   });
 }
 
-export function useArchiveWarehouse() {
+export function useArchiveUnarchiveWarehouse() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: archiveWarehouse,
+    mutationFn: archiveUnarchiveWarehouse,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: warehouseKeys.lists() });
     },

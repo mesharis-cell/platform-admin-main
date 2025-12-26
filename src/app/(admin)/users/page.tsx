@@ -1169,14 +1169,14 @@ export default function UsersManagementPage() {
 											{user.is_active ? (
 												<Badge
 													variant="outline"
-													className="font-mono text-xs border-primary/20 bg-primary/10 text-primary"
+													className="font-mono text-xs border-primary/30 text-primary"
 												>
 													Active
 												</Badge>
 											) : (
 												<Badge
 													variant="outline"
-													className="font-mono text-xs border-muted-foreground/20 bg-muted"
+													className="font-mono text-xs border-destructive/30 text-destructive"
 												>
 													Inactive
 												</Badge>
