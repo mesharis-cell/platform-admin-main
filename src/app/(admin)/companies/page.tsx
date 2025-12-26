@@ -358,7 +358,7 @@ export default function CompaniesPage() {
 														domain: e.target.value,
 													})
 												}
-												placeholder="company.platform-domain.com or company-domain.com"
+												placeholder="richard, custom.com, sub.custom.com"
 												className="font-mono"
 												required
 											/>
