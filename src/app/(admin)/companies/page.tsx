@@ -358,7 +358,7 @@ export default function CompaniesPage() {
 														domain: e.target.value,
 													})
 												}
-												placeholder="e.g., pernodricard.com"
+												placeholder="company.platform-domain.com or company-domain.com"
 												className="font-mono"
 												required
 											/>
