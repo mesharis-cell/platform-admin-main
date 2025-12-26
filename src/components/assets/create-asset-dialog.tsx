@@ -961,9 +961,9 @@ export function CreateAssetDialog({
 											</div>
 
 											<div className='space-y-2'>
-												<Label className='font-mono text-xs'>
+												{/* <Label className='font-mono text-xs'>
 													Condition Notes *
-												</Label>
+												</Label> */}
 												<Textarea
 													placeholder='Describe the damage or issues...'
 													value={
@@ -981,8 +981,7 @@ export function CreateAssetDialog({
 													rows={3}
 												/>
 												<p className='text-xs font-mono text-muted-foreground'>
-													Explain what needs to be
-													repaired or refurbished
+													Explain what needs to be repaired or refurbished (Min 10 characters)
 												</p>
 											</div>
 										</div>

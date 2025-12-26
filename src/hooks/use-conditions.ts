@@ -166,7 +166,7 @@ export function useAddMaintenanceNotes() {
 	>({
 		mutationFn: async (data: AddMaintenanceNotesRequest) => {
 			const response = await apiClient.post(
-				`/operations/v1/asset/condition/add`,
+				`/operations/v1/asset/add-condition-history`,
 				data
 			);
 
