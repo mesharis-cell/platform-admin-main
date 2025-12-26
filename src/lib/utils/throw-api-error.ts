@@ -6,6 +6,5 @@ export const throwApiError = (error: Error | unknown) => {
     const axiosError = error as { response?: { data?: { message?: string } } };
     errorMessage = axiosError.response?.data?.message || error.message;
   }
-  console.error('Failed to add collection item:', error);
   throw new Error(errorMessage);
 };
