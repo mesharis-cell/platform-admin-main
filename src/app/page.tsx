@@ -45,7 +45,7 @@ export default function HomePage() {
 		setIsLoading(true);
 
 		try {
-			const res = await login(email, password, platform?.id);
+			const res = await login(email, password, platform?.platform_id);
 
 			if (res.data.role === 'ADMIN') {
 				toast.success("Access Granted", {
@@ -110,7 +110,7 @@ export default function HomePage() {
 							</div>
 							<div>
 								<h1 className="text-2xl font-bold tracking-tight font-mono uppercase">
-									{platform?.platforms?.config?.logistics_partner_name || "PMG Platform"}
+									{platform?.company_name || "PMG Platform"}
 								</h1>
 								<p className="text-xs text-muted-foreground font-mono tracking-wider">
 									Asset Fulfillment System

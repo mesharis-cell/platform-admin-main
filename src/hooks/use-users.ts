@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { User } from '@/types/auth';
+import { apiClient } from '@/lib/api/api-client';
 
 // Query keys
 export const userKeys = {
@@ -11,61 +12,22 @@ export const userKeys = {
 };
 
 // Fetch users list
-async function fetchUsers(params?: Record<string, string>): Promise<{ users: User[]; total: number; limit: number; offset: number }> {
+async function fetchUsers(params?: Record<string, string>): Promise<{ success: boolean; meta: { total: number; page: number; limit: number }; data: User[] }> {
   const searchParams = new URLSearchParams(params);
-  const response = await fetch(`/api/users?${searchParams}`);
-  if (!response.ok) {
-    throw new Error('Failed to fetch users');
-  }
-  return response.json();
+  const response = await apiClient.get(`/operations/v1/user?${searchParams}`);
+  return response.data;
 }
 
 // Create user
 async function createUser(data: Partial<User> & { password: string }): Promise<User> {
-  const response = await fetch('/api/users', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  });
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to create user');
-  }
-  return response.json();
-}
-
-// Deactivate user
-async function deactivateUser(userId: string): Promise<void> {
-  const response = await fetch(`/api/users/${userId}/deactivate`, {
-    method: 'POST',
-  });
-  if (!response.ok) {
-    throw new Error('Failed to deactivate user');
-  }
-}
-
-// Reactivate user
-async function reactivateUser(userId: string): Promise<void> {
-  const response = await fetch(`/api/users/${userId}/reactivate`, {
-    method: 'POST',
-  });
-  if (!response.ok) {
-    throw new Error('Failed to reactivate user');
-  }
+  const response = await apiClient.post('/operations/v1/user', data);
+  return response.data;
 }
 
 // Update user
 async function updateUser(userId: string, data: Partial<User>): Promise<User> {
-  const response = await fetch(`/api/users/${userId}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  });
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to update user');
-  }
-  return response.json();
+  const response = await apiClient.patch(`/operations/v1/user/${userId}`, data);
+  return response.data;
 }
 
 // Hooks
@@ -87,27 +49,6 @@ export function useCreateUser() {
   });
 }
 
-export function useDeactivateUser() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: deactivateUser,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: userKeys.lists() });
-    },
-  });
-}
-
-export function useReactivateUser() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: reactivateUser,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: userKeys.lists() });
-    },
-  });
-}
 
 export function useUpdateUser() {
   const queryClient = useQueryClient();

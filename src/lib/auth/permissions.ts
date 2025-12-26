@@ -8,7 +8,7 @@ export function hasPermission(
 	user: User | null,
 	requiredPermission: string,
 ): boolean {
-	if (!user || !user.isActive) return false;
+	if (!user || !user.is_active) return false;
 
 	// Check for exact permission match
 	if (user.permissions.includes(requiredPermission)) return true;
@@ -27,7 +27,7 @@ export function hasAllPermissions(
 	user: User | null,
 	requiredPermissions: string[],
 ): boolean {
-	if (!user || !user.isActive) return false;
+	if (!user || !user.is_active) return false;
 	return requiredPermissions.every((permission) =>
 		hasPermission(user, permission),
 	);
@@ -40,7 +40,7 @@ export function hasAnyPermission(
 	user: User | null,
 	requiredPermissions: string[],
 ): boolean {
-	if (!user || !user.isActive) return false;
+	if (!user || !user.is_active) return false;
 	return requiredPermissions.some((permission) =>
 		hasPermission(user, permission),
 	);
@@ -53,13 +53,14 @@ export function hasCompanyAccess(
 	user: User | null,
 	companyId: string,
 ): boolean {
-	if (!user || !user.isActive) return false;
+	if (!user || !user.is_active) return false;
 
 	// Check for wildcard access (all companies)
-	if (user.companies.includes("*")) return true;
+	// if (user.companies.includes("*")) return true;
 
 	// Check for specific company access
-	return user.companies.includes(companyId);
+	// return user.companies.includes(companyId);
+	return
 }
 
 /**
@@ -67,12 +68,14 @@ export function hasCompanyAccess(
  * Returns null if user has access to all companies (wildcard)
  */
 export function getUserCompanyScope(user: User | null): string[] | null {
-	if (!user || !user.isActive) return [];
+	if (!user || !user.is_active) return [];
 
 	// Wildcard access
-	if (user.companies.includes("*")) return null;
+	// if (user.companies.includes("*")) return null;
 
-	return user.companies;
+	// return user.companies;
+
+	return
 }
 
 /**
@@ -82,16 +85,18 @@ export function getUserCompanyScope(user: User | null): string[] | null {
 export function getCompanyScopeFilter(
 	user: User | null,
 ): { type: "all" | "specific" | "none"; companyIds?: string[] } {
-	if (!user || !user.isActive) {
+	if (!user || !user.is_active) {
 		return { type: "none" };
 	}
 
-	if (user.companies.includes("*")) {
-		return { type: "all" };
-	}
+	// if (user.companies.includes("*")) {
+	// 	return { type: "all" };
+	// }
 
-	return {
-		type: "specific",
-		companyIds: user.companies,
-	};
+	// return {
+	// 	type: "specific",
+	// 	companyIds: user.companies,
+	// };
+
+	return
 }
