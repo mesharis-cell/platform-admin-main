@@ -95,7 +95,7 @@ export default function CollectionDetailPage() {
 	const companyId = collection?.company_id
 
 	const { data: assetsData } = useAssets({
-		company: typeof companyId === 'string' ? companyId : undefined,
+		company_id: typeof companyId === 'string' ? companyId : undefined,
 		limit: '200',
 	})
 
@@ -212,7 +212,7 @@ export default function CollectionDetailPage() {
 			await addItemMutation.mutateAsync({
 				asset_id: addItemFormData.asset_id,
 				default_quantity: addItemFormData.default_quantity,
-				notes: addItemFormData.notes || null,
+				notes: addItemFormData.notes || '',
 			})
 
 			toast.success('Item added to collection')
@@ -273,7 +273,7 @@ export default function CollectionDetailPage() {
 						access to it.
 					</p>
 					<Button asChild>
-						<Link href='/admin/collections'>
+						<Link href='/collections'>
 							Back to Collections
 						</Link>
 					</Button>
@@ -285,12 +285,12 @@ export default function CollectionDetailPage() {
 	const assets = assetsData?.data || []
 	const totalVolume = collection?.assets?.reduce(
 		(sum, item) =>
-			sum + parseFloat(item.assetDetails.volume) * item.defaultQuantity,
+			sum + parseFloat(item?.asset?.volume_per_unit || '0') * item?.default_quantity,
 		0
 	)
 	const totalWeight = collection?.assets?.reduce(
 		(sum, item) =>
-			sum + parseFloat(item.assetDetails.weight) * item.defaultQuantity,
+			sum + parseFloat(item?.asset?.weight_per_unit || '0') * item?.default_quantity,
 		0
 	)
 
@@ -299,7 +299,7 @@ export default function CollectionDetailPage() {
 			{/* Header */}
 			<div className='mb-8'>
 				<Link
-					href='/admin/collections'
+					href='/collections'
 					className='inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors'
 				>
 					<ArrowLeft className='w-4 h-4' />
@@ -497,11 +497,7 @@ export default function CollectionDetailPage() {
 																	className='object-cover'
 																/>
 																<button
-																	onClick={() =>
-																		handleRemoveNewImage(
-																			index
-																		)
-																	}
+																	onClick={() => handleRemoveNewImage(index)}
 																	className='absolute top-2 right-2 p-1 bg-destructive rounded-full opacity-0 group-hover:opacity-100 transition-opacity'
 																>
 																	<X className='w-4 h-4 text-destructive-foreground' />
@@ -581,7 +577,7 @@ export default function CollectionDetailPage() {
 							Total Items
 						</div>
 						<div className='text-3xl font-bold'>
-							{collection.itemCount}
+							{collection?.assets?.length}
 						</div>
 					</CardContent>
 				</Card>
@@ -591,7 +587,7 @@ export default function CollectionDetailPage() {
 							Total Volume
 						</div>
 						<div className='text-3xl font-bold'>
-							{totalVolume.toFixed(2)} m³
+							{totalVolume.toFixed(3)} m³
 						</div>
 					</CardContent>
 				</Card>
@@ -743,15 +739,14 @@ export default function CollectionDetailPage() {
 								<CardContent className='p-6'>
 									<div className='flex gap-6'>
 										{/* Asset Image */}
-										<div className='w-24 h-24 rounded-lg overflow-hidden border border-border flex-shrink-0'>
-											{item.assetDetails.images.length >
+										<div className='w-24 h-24 rounded-lg overflow-hidden border border-border shrink-0'>
+											{item?.asset.images?.length >
 												0 ? (
 												<Image
 													src={
-														item.assetDetails
-															.images[0]
+														item?.images[0]
 													}
-													alt={item.assetDetails.name}
+													alt={item?.name}
 													width={96}
 													height={96}
 													className='object-cover w-full h-full'
@@ -768,32 +763,26 @@ export default function CollectionDetailPage() {
 											<div className='flex items-start justify-between mb-2'>
 												<div>
 													<h3 className='text-lg font-semibold mb-1'>
-														{item.assetDetails.name}
+														{item?.asset.name}
 													</h3>
 													<div className='flex items-center gap-2 text-sm text-muted-foreground'>
 														<span>
-															{
-																item
-																	.assetDetails
-																	.category
-															}
+															{item?.asset.category}
 														</span>
 														<span>•</span>
 														<span>
 															Qty:{' '}
 															{
-																item.defaultQuantity
+																item.default_quantity
 															}
 														</span>
 														<span>•</span>
 														<span>
 															{(
 																parseFloat(
-																	item
-																		.assetDetails
-																		.volume
+																	item?.asset?.volume_per_unit
 																) *
-																item.defaultQuantity
+																item.default_quantity
 															).toFixed(2)}{' '}
 															m³
 														</span>
@@ -801,11 +790,9 @@ export default function CollectionDetailPage() {
 														<span>
 															{(
 																parseFloat(
-																	item
-																		.assetDetails
-																		.weight
+																	item?.asset?.weight_per_unit
 																) *
-																item.defaultQuantity
+																item.default_quantity
 															).toFixed(2)}{' '}
 															kg
 														</span>
@@ -818,9 +805,7 @@ export default function CollectionDetailPage() {
 													onClick={() =>
 														setConfirmRemoveItem({
 															id: item.id,
-															name: item
-																.assetDetails
-																.name,
+															name: item?.name,
 														})
 													}
 													disabled={
@@ -836,19 +821,14 @@ export default function CollectionDetailPage() {
 												<Badge
 													variant='outline'
 													className={getConditionColor(
-														item.assetDetails
-															.condition
+														item?.asset?.condition
 													)}
 												>
-													{
-														item.assetDetails
-															.condition
-													}
+													{item?.asset?.condition}
 												</Badge>
 												<Badge variant='outline'>
-													{item.assetDetails
-														.availableQuantity >=
-														item.defaultQuantity ? (
+													{item?.asset?.available_quantity >=
+														item.default_quantity ? (
 														<>
 															<CheckCircle className='w-3 h-3 mr-1' />
 															Available
@@ -862,21 +842,19 @@ export default function CollectionDetailPage() {
 												</Badge>
 												<span className='text-sm text-muted-foreground'>
 													{
-														item.assetDetails
-															.availableQuantity
+														item?.asset?.available_quantity
 													}{' '}
 													/{' '}
 													{
-														item.assetDetails
-															.totalQuantity
+														item?.asset?.total_quantity
 													}{' '}
 													available
 												</span>
 											</div>
 
-											{item.notes && (
+											{item?.asset?.notes && (
 												<p className='text-sm text-muted-foreground mt-2 italic'>
-													Note: {item.notes}
+													Note: {item?.asset?.notes}
 												</p>
 											)}
 										</div>
