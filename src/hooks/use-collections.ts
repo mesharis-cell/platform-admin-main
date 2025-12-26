@@ -15,6 +15,7 @@ import type {
 } from '@/types/collection';
 import { apiClient } from '@/lib/api/api-client';
 import { error } from 'console';
+import { throwApiError } from '@/lib/utils/throw-api-error';
 
 // ========================================
 // Collection Query Hooks
@@ -112,8 +113,7 @@ export function useCreateCollection() {
 
 			return response.data;
 		} catch (error) {
-			console.error('Failed to create collection:', error);
-			throw new Error('Failed to create collection');
+			throwApiError(error);
 		}
 		},
 		onSuccess: () => {
@@ -132,8 +132,7 @@ export function useUpdateCollection(id: string) {
 
 			return response.data;
 		} catch (error) {
-			console.error('Failed to update collection:', error);
-			throw new Error('Failed to update collection');
+			throwApiError(error);
 		}
 		},
 		onSuccess: () => {
@@ -153,8 +152,7 @@ export function useDeleteCollection() {
 
 			return response.data;
 		} catch (error) {
-			console.error('Failed to delete collection:', error);
-			throw new Error('Failed to delete collection');
+			throwApiError(error);
 		}
 		},
 		onSuccess: () => {
@@ -177,8 +175,7 @@ export function useAddCollectionItem(collectionId: string) {
 
 				return response.data;
 		} catch (error) {
-			console.error('Failed to add collection item:', error);
-			throw new Error('Failed to add collection item');
+			throwApiError(error);
 		}
 		},
 		onSuccess: () => {
@@ -198,8 +195,7 @@ export function useUpdateCollectionItem(collectionId: string, itemId: string) {
 
 				return response.data;
 			} catch (error) {
-				console.error('Failed to update collection item:', error);
-				throw new Error('Failed to update collection item');
+				throwApiError(error);
 			}
 		},
 		onSuccess: () => {
@@ -218,8 +214,7 @@ export function useRemoveCollectionItem(collectionId: string) {
 
 				return response.data;
 			} catch (error) {
-				console.error('Failed to remove collection item:', error);
-				throw new Error('Failed to remove collection item');
+				throwApiError(error);
 			}
 		},
 		onSuccess: () => {
@@ -247,8 +242,7 @@ export function useUploadCollectionImages() {
 
 				return response.data;
 			} catch (error) {
-				console.error('Failed to upload collection images:', error);
-				throw new Error('Failed to upload collection images');
+				throwApiError(error);
 			}
 		},
 	});

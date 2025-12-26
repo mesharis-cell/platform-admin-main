@@ -38,7 +38,7 @@ export const login = async (email: string, password: string, platformId: string)
 
     const data = await res.json();
 
-    if (res.ok) {
+    if (res.ok && data.data.role === 'ADMIN') {
       await setAuthCookies(data.data.access_token, data.data.refresh_token);
     }
 

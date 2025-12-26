@@ -20,8 +20,8 @@ export async function POST(request: NextRequest) {
 		const body = (await request.json()) as AddMaintenanceNotesRequest;
 
 		// Validate request body
-		if (!body.assetId || !body.notes) {
-			return errorResponse("assetId and notes are required", 400);
+		if (!body.asset_id || !body.notes) {
+			return errorResponse("asset_id and notes are required", 400);
 		}
 
 		if (body.notes.trim().length === 0) {

@@ -31,24 +31,27 @@ export interface Asset {
 	description?: string
 	category: AssetCategory
 	images: string[]
-	trackingMethod: TrackingMethod
-	totalQuantity: number
-	qrCode: string
+	tracking_method: TrackingMethod
+	total_quantity: number
+	available_quantity: number
+	qr_code: string
 	packaging?: string
 	weight: number // kg
-	dimensionLength: number // cm
-	dimensionWidth: number // cm
-	dimensionHeight: number // cm
-	volume: number // m³
+	dimensions: {
+		length: number
+		width: number
+		height: number
+	}
+	volume_per_unit: number // m³
 	condition: Condition
 	status: AssetStatus
-	refurbDaysEstimate?: number | null // Feedback #2: Estimated days to refurbish
-	handlingTags: string[]
-	lastScannedAt?: string
-	lastScannedBy?: string
-	deletedAt?: string
-	createdAt: string
-	updatedAt: string
+	refurb_days_estimate?: number | null // Feedback #2: Estimated days to refurbish
+	handling_tags: string[]
+	last_scanned_at?: string
+	last_scanned_by?: string
+	deleted_at?: string
+	created_at: string
+	updated_at: string
 }
 
 // Asset with related entity details (for detail view)
@@ -87,33 +90,37 @@ export interface AssetConditionHistoryEntry {
 
 // Create Asset Request
 export interface CreateAssetRequest {
-	company: string // uuid
-	brand?: string // uuid
-	warehouse: string // uuid
-	zone: string // uuid
+	company_id: string // uuid
+	brand_id?: string // uuid
+	warehouse_id: string // uuid
+	zone_id: string // uuid
 	name: string
 	description?: string
 	category: AssetCategory
 	images: string[] // array of uploaded image URLs
-	trackingMethod: TrackingMethod
-	totalQuantity: number
+	tracking_method: TrackingMethod
+	total_quantity: number
+	available_quantity: number
 	packaging?: string // required if BATCH
-	weight: number // kg
-	dimensionLength: number // cm
-	dimensionWidth: number // cm
-	dimensionHeight: number // cm
-	volume: number // m³
+	weight_per_unit: number // kg
+	dimensions?: {
+		length?: number // cm
+		width?: number // cm
+		height?: number // cm
+	}
+	volume_per_unit: number // m³
 	condition?: Condition // optional, defaults to GREEN if not provided
-	refurbDaysEstimate?: number // Feedback #2: Required for ORANGE/RED items
-	conditionNotes?: string // Feedback #2: Required for ORANGE/RED items
-	handlingTags?: string[]
+	condition_notes?: string // Feedback #2: Required for ORANGE/RED items
+	handling_tags?: string[]
+	refurb_days_estimate?: number
+	status?: AssetStatus // optional, defaults to AVAILABLE
 }
 
 // Update Asset Request
 export interface UpdateAssetRequest {
-	brand?: string // uuid
-	warehouse?: string // uuid
-	zone?: string // uuid
+	brand_id?: string // uuid
+	warehouse_id?: string // uuid
+	zone_id?: string // uuid
 	name?: string
 	description?: string
 	category?: AssetCategory
@@ -183,4 +190,78 @@ export interface ApiErrorResponse {
 	success: false
 	error: string
 	details?: unknown
+}
+
+export interface AssetsDetails {
+  id: string;
+  platform_id: string;
+  company_id: string;
+  warehouse_id: string;
+  zone_id: string;
+  brand_id: string | null;
+
+  name: string;
+  description: string | null;
+  category: string;
+
+  images: string[];
+
+  tracking_method: TrackingMethod;
+
+  total_quantity: number;
+  available_quantity: number;
+
+  qr_code: string;
+  packaging: string | null;
+
+  weight_per_unit: number;
+  volume_per_unit: number;
+
+  dimensions: {
+		length: number;
+		width: number;
+		height: number;
+	};
+
+  condition: Condition;
+  condition_notes: string | null;
+  refurb_days_estimate: number | null;
+
+  condition_history: {
+		notes: string;
+		condition: Condition;
+		updated_by: string;
+		timestamp: string;
+	}[];
+  handling_tags: string[];
+
+  status: AssetStatus;
+
+  last_scanned_at: string | null;
+  last_scanned_by: string | null;
+
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+
+  company: {
+  id: string;
+  name: string;
+  domain: string;
+};
+  warehouse: {
+  id: string;
+  name: string;
+  city: string;
+  country: string;
+};
+  zone: {
+  id: string;
+  name: string;
+};
+  brand: {
+		id: string;
+		name: string;
+		logo_url: string;
+	};
 }
