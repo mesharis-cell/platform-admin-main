@@ -5,7 +5,7 @@ import {
 	useBrands,
 	useCreateBrand,
 	useUpdateBrand,
-	useDeleteBrand,
+	useDeleteRestoreBrand,
 } from '@/hooks/use-brands'
 import { useCompanies } from '@/hooks/use-companies'
 import {
@@ -17,6 +17,7 @@ import {
 	Building2,
 	Image as ImageIcon,
 	MoreVertical,
+	Undo2,
 } from 'lucide-react'
 import { AdminHeader } from '@/components/admin-header'
 import { Button } from '@/components/ui/button'
@@ -96,7 +97,7 @@ export default function BrandsPage() {
 	// Mutations
 	const createMutation = useCreateBrand()
 	const updateMutation = useUpdateBrand()
-	const deleteMutation = useDeleteBrand()
+	const deleteMutation = useDeleteRestoreBrand()
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault()
@@ -129,7 +130,7 @@ export default function BrandsPage() {
 		}
 	}
 
-	const handleDelete = async () => {
+	const handleDeleteRestore = async () => {
 		if (!confirmDelete) return
 
 		try {
@@ -516,17 +517,17 @@ export default function BrandsPage() {
 										<TableCell>
 											{brand.is_active ? (
 												<Badge
-													variant='secondary'
-													className='font-mono text-xs'
-												>
-													DELETED
-												</Badge>
-											) : (
-												<Badge
 													variant='outline'
 													className='font-mono text-xs border-primary/30 text-primary'
 												>
 													ACTIVE
+												</Badge>
+											) : (
+												<Badge
+													variant='outline'
+													className='font-mono text-xs border-destructive/30 text-destructive'
+												>
+													DELETED
 												</Badge>
 											)}
 										</TableCell>
@@ -560,10 +561,10 @@ export default function BrandsPage() {
 																brand
 															)
 														}
-														className='font-mono text-xs text-destructive'
+														className={`font-mono text-xs ${brand.is_active ? 'text-destructive' : 'text-primary'}`}
 													>
-														<Trash2 className='h-3.5 w-3.5 mr-2' />
-														Delete Brand
+														{brand.is_active ? <Trash2 className='h-3.5 w-3.5 mr-2' /> : <Undo2 className='h-3.5 w-3.5 mr-2' />}
+														{brand.is_active ? 'Delete Brand' : 'Restore Brand'}
 													</DropdownMenuItem>
 
 												</DropdownMenuContent>
@@ -585,12 +586,12 @@ export default function BrandsPage() {
 			<ConfirmDialog
 				open={!!confirmDelete}
 				onOpenChange={open => !open && setConfirmDelete(null)}
-				onConfirm={handleDelete}
-				title='Delete Brand'
-				description={`Are you sure you want to delete ${confirmDelete?.name}? This will make all associated assets unbranded (assets will not be deleted).`}
-				confirmText='Delete'
+				onConfirm={handleDeleteRestore}
+				title={confirmDelete?.is_active ? 'Delete Brand' : 'Restore Brand'}
+				description={`Are you sure you want to ${confirmDelete?.is_active ? 'delete' : 'restore'} ${confirmDelete?.name}? ${confirmDelete?.is_active ? 'This will make all associated assets unbranded (assets will not be deleted).' : ''}`}
+				confirmText={confirmDelete?.is_active ? 'Delete' : 'Restore'}
 				cancelText='Cancel'
-				variant='destructive'
+				variant={confirmDelete?.is_active ? 'destructive' : 'default'}
 			/>
 		</div>
 	)
