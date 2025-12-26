@@ -46,7 +46,7 @@ async function updateCompany({ id, data }: { id: string; data: Partial<Company> 
 }
 
 // Archive company
-async function archiveCompany(id: string): Promise<void> {
+async function archiveUnarchiveCompany(id: string): Promise<void> {
   try {
     const response = await apiClient.delete(`/operations/v1/company/${id}`);
     return response.data;
@@ -85,11 +85,25 @@ export function useUpdateCompany() {
   });
 }
 
+
 export function useArchiveCompany() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: archiveCompany,
+    mutationFn: archiveUnarchiveCompany,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: companyKeys.lists() });
+    },
+  });
+}
+
+
+
+export function useUnarchiveCompany() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: archiveUnarchiveCompany,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: companyKeys.lists() });
     },
