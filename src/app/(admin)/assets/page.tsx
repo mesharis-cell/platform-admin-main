@@ -316,7 +316,7 @@ export default function AssetsPage() {
 							>
 								<Card className='group overflow-hidden hover:border-primary/50 transition-all duration-300 hover:shadow-lg cursor-pointer'>
 									{/* Asset image */}
-									<div className='relative aspect-[4/3] bg-muted overflow-hidden'>
+									<div className='relative aspect-4/3 bg-muted overflow-hidden'>
 										{asset.images.length > 0 ? (
 											<Image
 												src={asset.images[0]}
