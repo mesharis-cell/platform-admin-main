@@ -34,7 +34,6 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useSession } from '@/lib/auth'
-import { hasPermission } from '@/lib/auth/permissions'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -130,11 +129,11 @@ const navigation: NavItem[] = [
 		href: '/brands',
 		icon: Tag,
 	},
-	// {
-	// 	name: 'Assets',
-	// 	href: '/assets',
-	// 	icon: Package,
-	// },
+	{
+		name: 'Assets',
+		href: '/assets',
+		icon: Package,
+	},
 	{
 		name: 'Collections',
 		href: '/collections',
@@ -378,7 +377,7 @@ export default function AdminLayout({
 					{/* Industrial Command Center Sidebar */}
 					<Sidebar
 						collapsible='icon'
-						className='border-r border-border bg-muted/30'
+						className='border-r border-border bg-muted/30 sticky top-0'
 					>
 						{/* Grid pattern overlay */}
 						<div

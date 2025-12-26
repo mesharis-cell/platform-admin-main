@@ -45,7 +45,7 @@ export function AddNotesDialog({
 
 		try {
 			await addNotes.mutateAsync({
-				assetId,
+				asset_id: assetId,
 				notes,
 			});
 

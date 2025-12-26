@@ -72,11 +72,14 @@ export function CreateAssetDialog({
 }: CreateAssetDialogProps) {
 	const [currentStep, setCurrentStep] = useState(0)
 	const [formData, setFormData] = useState<Partial<CreateAssetRequest>>({
-		trackingMethod: 'INDIVIDUAL',
-		totalQuantity: 1,
+		tracking_method: 'INDIVIDUAL',
+		total_quantity: 1,
+		available_quantity: 1,
 		images: [],
-		handlingTags: [],
+		handling_tags: [],
 		condition: 'GREEN',
+		status: 'AVAILABLE',
+		dimensions: {},
 	})
 	const [customCategory, setCustomCategory] = useState('')
 	const [customHandlingTag, setCustomHandlingTag] = useState('')
@@ -85,16 +88,16 @@ export function CreateAssetDialog({
 	const { data: companiesData } = useCompanies()
 	const { data: warehousesData } = useWarehouses()
 	const { data: zonesData } = useZones(
-		formData.warehouse ? { warehouse: formData.warehouse } : undefined
+		formData.warehouse_id ? { warehouse_id: formData.warehouse_id } : undefined
 	)
 	const { data: brandsData } = useBrands(
-		formData.company ? { company: formData.company } : undefined
+		formData.company_id ? { company_id: formData.company_id } : undefined
 	)
 
-	const companies = companiesData?.companies || []
-	const warehouses = warehousesData?.warehouses || []
-	const zones = zonesData?.zones || []
-	const brands = brandsData?.brands || []
+	const companies = companiesData?.data || []
+	const warehouses = warehousesData?.data || []
+	const zones = zonesData?.data || []
+	const brands = brandsData?.data || []
 
 	// Mutations
 	const createMutation = useCreateAsset()
@@ -102,7 +105,7 @@ export function CreateAssetDialog({
 
 	async function handleImageUpload(files: FileList | null) {
 		if (!files || files.length === 0) return
-		if (!formData.company) {
+		if (!formData.company_id) {
 			toast.error('Please select a company first')
 			return
 		}
@@ -114,7 +117,7 @@ export function CreateAssetDialog({
 				const file = files[i]
 				const uploadFormData = new FormData()
 				uploadFormData.append('file', file)
-				uploadFormData.append('companyId', formData.company!)
+				uploadFormData.append('companyId', formData.company_id!)
 
 				try {
 					const data =
@@ -148,11 +151,11 @@ export function CreateAssetDialog({
 
 	function toggleHandlingTag(tag: string) {
 		setFormData(prev => {
-			const current = prev.handlingTags || []
+			const current = prev.handling_tags || []
 			const updated = current.includes(tag)
 				? current.filter(t => t !== tag)
 				: [...current, tag]
-			return { ...prev, handlingTags: updated }
+			return { ...prev, handling_tags: updated }
 		})
 	}
 
@@ -160,8 +163,8 @@ export function CreateAssetDialog({
 		if (customHandlingTag.trim()) {
 			setFormData(prev => ({
 				...prev,
-				handlingTags: [
-					...(prev.handlingTags || []),
+				handling_tags: [
+					...(prev.handling_tags || []),
 					customHandlingTag.trim(),
 				],
 			}))
@@ -185,29 +188,32 @@ export function CreateAssetDialog({
 	}
 
 	function updateDimension(
-		field: 'dimensionLength' | 'dimensionWidth' | 'dimensionHeight',
+		field: 'length' | 'width' | 'height',
 		value: number
 	) {
-		const newData = { ...formData, [field]: value }
+		const newDimensions = {
+			...formData.dimensions,
+			[field]: value,
+		}
 		const calculatedVolume = calculateVolume(
-			field === 'dimensionLength' ? value : formData.dimensionLength,
-			field === 'dimensionWidth' ? value : formData.dimensionWidth,
-			field === 'dimensionHeight' ? value : formData.dimensionHeight
+			field === 'length' ? value : formData.dimensions?.length,
+			field === 'width' ? value : formData.dimensions?.width,
+			field === 'height' ? value : formData.dimensions?.height
 		)
 
-		if (calculatedVolume !== undefined) {
-			newData.volume = calculatedVolume
-		}
-
-		setFormData(newData)
+		setFormData({
+			...formData,
+			dimensions: newDimensions,
+			volume_per_unit: calculatedVolume ?? formData.volume_per_unit,
+		})
 	}
 
 	async function handleSubmit() {
 		// Validation
 		if (
-			!formData.company ||
-			!formData.warehouse ||
-			!formData.zone ||
+			!formData.company_id ||
+			!formData.warehouse_id ||
+			!formData.zone_id ||
 			!formData.name ||
 			!formData.category
 		) {
@@ -216,11 +222,11 @@ export function CreateAssetDialog({
 		}
 
 		if (
-			!formData.weight ||
-			!formData.dimensionLength ||
-			!formData.dimensionWidth ||
-			!formData.dimensionHeight ||
-			!formData.volume
+			!formData.weight_per_unit ||
+			!formData.dimensions?.length ||
+			!formData.dimensions?.width ||
+			!formData.dimensions?.height ||
+			!formData.volume_per_unit
 		) {
 			toast.error('Please fill all physical specifications')
 			return
@@ -229,8 +235,8 @@ export function CreateAssetDialog({
 		// Feedback #2: Validate refurb days and notes for damaged items
 		if (formData.condition === 'ORANGE' || formData.condition === 'RED') {
 			if (
-				!formData.refurbDaysEstimate ||
-				formData.refurbDaysEstimate < 1
+				!formData.refurb_days_estimate ||
+				formData.refurb_days_estimate < 1
 			) {
 				toast.error(
 					'Refurb days estimate is required for damaged items'
@@ -238,8 +244,8 @@ export function CreateAssetDialog({
 				return
 			}
 			if (
-				!formData.conditionNotes ||
-				formData.conditionNotes.trim().length < 10
+				!formData.condition_notes ||
+				formData.condition_notes.trim().length < 10
 			) {
 				toast.error(
 					'Condition notes are required for damaged items (minimum 10 characters)'
@@ -248,7 +254,18 @@ export function CreateAssetDialog({
 			}
 		}
 
-		if (formData.trackingMethod === 'BATCH' && !formData.packaging) {
+
+		// Validate quantities
+		if ((formData.total_quantity || 0) < 1) {
+			toast.error('Total quantity must be at least 1')
+			return
+		}
+		if ((formData.available_quantity || 0) > (formData.total_quantity || 1)) {
+			toast.error('Available quantity cannot exceed total quantity')
+			return
+		}
+
+		if (formData.tracking_method === 'BATCH' && !formData.packaging) {
 			toast.error('Packaging description is required for batch tracking')
 			return
 		}
@@ -270,11 +287,14 @@ export function CreateAssetDialog({
 
 	function resetForm() {
 		setFormData({
-			trackingMethod: 'INDIVIDUAL',
-			totalQuantity: 1,
+			tracking_method: 'INDIVIDUAL',
+			total_quantity: 1,
+			available_quantity: 1,
 			images: [],
-			handlingTags: [],
+			handling_tags: [],
 			condition: 'GREEN',
+			status: 'AVAILABLE',
+			dimensions: {},
 		})
 		setCustomCategory('')
 		setCustomHandlingTag('')
@@ -285,21 +305,21 @@ export function CreateAssetDialog({
 		switch (currentStep) {
 			case 0: // Basic Info
 				return (
-					formData.company &&
-					formData.warehouse &&
-					formData.zone &&
+					formData.company_id &&
+					formData.warehouse_id &&
+					formData.zone_id &&
 					formData.name &&
 					formData.category
 				)
 			case 1: // Photos
 				return true // Photos optional
-			case 2: // Specifications
+			case 2: { // Specifications
 				const hasBasicSpecs =
-					formData.weight &&
-					formData.dimensionLength &&
-					formData.dimensionWidth &&
-					formData.dimensionHeight &&
-					formData.volume
+					formData.weight_per_unit &&
+					formData.dimensions?.length &&
+					formData.dimensions?.width &&
+					formData.dimensions?.height &&
+					formData.volume_per_unit
 
 				// Feedback #2: Require refurb days and notes for damaged items
 				if (
@@ -308,20 +328,26 @@ export function CreateAssetDialog({
 				) {
 					return (
 						hasBasicSpecs &&
-						formData.refurbDaysEstimate &&
-						formData.refurbDaysEstimate > 0 &&
-						formData.conditionNotes &&
-						formData.conditionNotes.trim().length >= 10
+						formData.refurb_days_estimate &&
+						formData.refurb_days_estimate > 0 &&
+						formData.condition_notes &&
+						formData.condition_notes.trim().length >= 10
 					)
 				}
 
 				return hasBasicSpecs
-			case 3: // Tracking
-				return (
-					formData.trackingMethod &&
-					(formData.trackingMethod === 'INDIVIDUAL' ||
-						formData.packaging)
-				)
+			}
+			case 3: { // Tracking
+				const hasValidQuantities =
+					(formData.total_quantity || 0) >= 1 &&
+					(formData.available_quantity || 0) >= 0 &&
+					(formData.available_quantity || 0) <= (formData.total_quantity || 1)
+				const hasPackagingIfBatch =
+					formData.tracking_method === 'INDIVIDUAL' ||
+					(formData.tracking_method === 'BATCH' && formData.packaging && formData.packaging.trim().length > 0)
+
+				return hasValidQuantities && hasPackagingIfBatch
+			}
 			default:
 				return false
 		}
@@ -362,22 +388,20 @@ export function CreateAssetDialog({
 									<button
 										onClick={() => setCurrentStep(index)}
 										disabled={index > currentStep}
-										className={`flex items-center gap-2 ${
-											isActive
-												? 'text-primary'
-												: isCompleted
-													? 'text-foreground'
-													: 'text-muted-foreground'
-										} disabled:opacity-50 disabled:cursor-not-allowed transition-colors hover:text-primary`}
+										className={`flex items-center gap-2 ${isActive
+											? 'text-primary'
+											: isCompleted
+												? 'text-foreground'
+												: 'text-muted-foreground'
+											} disabled:opacity-50 disabled:cursor-not-allowed transition-colors hover:text-primary`}
 									>
 										<div
-											className={`w-8 h-8 rounded-lg flex items-center justify-center border ${
-												isActive
-													? 'bg-primary text-primary-foreground border-primary'
-													: isCompleted
-														? 'bg-primary/10 border-primary/20 text-primary'
-														: 'bg-muted border-border'
-											}`}
+											className={`w-8 h-8 rounded-lg flex items-center justify-center border ${isActive
+												? 'bg-primary text-primary-foreground border-primary'
+												: isCompleted
+													? 'bg-primary/10 border-primary/20 text-primary'
+													: 'bg-muted border-border'
+												}`}
 										>
 											{isCompleted ? (
 												<Check className='w-4 h-4' />
@@ -391,7 +415,7 @@ export function CreateAssetDialog({
 									</button>
 									{index < STEPS.length - 1 && (
 										<div
-											className={`flex-1 h-[1px] mx-2 ${isCompleted ? 'bg-primary' : 'bg-border'}`}
+											className={`flex-1 h-px mx-2 ${isCompleted ? 'bg-primary' : 'bg-border'}`}
 										/>
 									)}
 								</div>
@@ -409,11 +433,11 @@ export function CreateAssetDialog({
 											Company *
 										</Label>
 										<Select
-											value={formData.company}
+											value={formData.company_id}
 											onValueChange={value =>
 												setFormData({
 													...formData,
-													company: value,
+													company_id: value,
 												})
 											}
 										>
@@ -438,22 +462,22 @@ export function CreateAssetDialog({
 											Brand (Optional)
 										</Label>
 										<Select
-											value={formData.brand}
+											value={formData.brand_id}
 											onValueChange={value =>
 												setFormData({
 													...formData,
-													brand: value,
+													brand_id: value,
 												})
 											}
-											disabled={!formData.company}
+											disabled={!formData.company_id}
 										>
 											<SelectTrigger className='font-mono'>
 												<SelectValue
 													placeholder={
-														!formData.company
+														!formData.company_id
 															? 'Select company first'
 															: brands.length ===
-																  0
+																0
 																? 'No brands available'
 																: 'Select brand'
 													}
@@ -543,26 +567,26 @@ export function CreateAssetDialog({
 												!DEFAULT_CATEGORIES.includes(
 													formData.category || ''
 												))) && (
-											<Input
-												placeholder='Enter custom category'
-												value={
-													customCategory ||
-													formData.category ||
-													''
-												}
-												onChange={e => {
-													setCustomCategory(
-														e.target.value
-													)
-													setFormData({
-														...formData,
-														category: e.target
-															.value as any,
-													})
-												}}
-												className='font-mono'
-											/>
-										)}
+												<Input
+													placeholder='Enter custom category'
+													value={
+														customCategory ||
+														formData.category ||
+														''
+													}
+													onChange={e => {
+														setCustomCategory(
+															e.target.value
+														)
+														setFormData({
+															...formData,
+															category: e.target
+																.value as any,
+														})
+													}}
+													className='font-mono'
+												/>
+											)}
 									</div>
 								</div>
 
@@ -590,12 +614,12 @@ export function CreateAssetDialog({
 											Warehouse *
 										</Label>
 										<Select
-											value={formData.warehouse}
+											value={formData.warehouse_id}
 											onValueChange={value =>
 												setFormData({
 													...formData,
-													warehouse: value,
-													zone: undefined,
+													warehouse_id: value,
+													zone_id: undefined,
 												})
 											}
 										>
@@ -620,19 +644,19 @@ export function CreateAssetDialog({
 											Zone *
 										</Label>
 										<Select
-											value={formData.zone}
+											value={formData.zone_id}
 											onValueChange={value =>
 												setFormData({
 													...formData,
-													zone: value,
+													zone_id: value,
 												})
 											}
-											disabled={!formData.warehouse}
+											disabled={!formData.warehouse_id}
 										>
 											<SelectTrigger className='font-mono'>
 												<SelectValue
 													placeholder={
-														!formData.warehouse
+														!formData.warehouse_id
 															? 'Select warehouse first'
 															: zones.length === 0
 																? 'No zones available'
@@ -746,11 +770,11 @@ export function CreateAssetDialog({
 											step='0.01'
 											placeholder='0.00'
 											value={
-												formData.dimensionLength || ''
+												formData.dimensions?.length || ''
 											}
 											onChange={e =>
 												updateDimension(
-													'dimensionLength',
+													'length',
 													parseFloat(e.target.value)
 												)
 											}
@@ -766,11 +790,11 @@ export function CreateAssetDialog({
 											step='0.01'
 											placeholder='0.00'
 											value={
-												formData.dimensionWidth || ''
+												formData.dimensions?.width || ''
 											}
 											onChange={e =>
 												updateDimension(
-													'dimensionWidth',
+													'width',
 													parseFloat(e.target.value)
 												)
 											}
@@ -786,11 +810,11 @@ export function CreateAssetDialog({
 											step='0.01'
 											placeholder='0.00'
 											value={
-												formData.dimensionHeight || ''
+												formData.dimensions?.height || ''
 											}
 											onChange={e =>
 												updateDimension(
-													'dimensionHeight',
+													'height',
 													parseFloat(e.target.value)
 												)
 											}
@@ -808,11 +832,11 @@ export function CreateAssetDialog({
 											type='number'
 											step='0.01'
 											placeholder='0.00'
-											value={formData.weight || ''}
+											value={formData.weight_per_unit || ''}
 											onChange={e =>
 												setFormData({
 													...formData,
-													weight: parseFloat(
+													weight_per_unit: parseFloat(
 														e.target.value
 													),
 												})
@@ -830,13 +854,13 @@ export function CreateAssetDialog({
 											step='0.001'
 											placeholder='0.000'
 											value={
-												formData.volume?.toFixed(3) ||
+												formData.volume_per_unit?.toFixed(3) ||
 												''
 											}
 											onChange={e =>
 												setFormData({
 													...formData,
-													volume: parseFloat(
+													volume_per_unit: parseFloat(
 														e.target.value
 													),
 												})
@@ -863,26 +887,24 @@ export function CreateAssetDialog({
 														condition: cond,
 													}))
 												}
-												className={`flex-1 p-3 rounded-lg border-2 transition-all ${
-													formData.condition === cond
-														? cond === 'GREEN'
-															? 'border-emerald-500 bg-emerald-500/10'
-															: cond === 'ORANGE'
-																? 'border-amber-500 bg-amber-500/10'
-																: 'border-red-500 bg-red-500/10'
-														: 'border-border hover:border-muted-foreground'
-												}`}
+												className={`flex-1 p-3 rounded-lg border-2 transition-all ${formData.condition === cond
+													? cond === 'GREEN'
+														? 'border-emerald-500 bg-emerald-500/10'
+														: cond === 'ORANGE'
+															? 'border-amber-500 bg-amber-500/10'
+															: 'border-red-500 bg-red-500/10'
+													: 'border-border hover:border-muted-foreground'
+													}`}
 											>
 												<div className='flex items-center justify-center gap-2'>
 													<div
-														className={`w-3 h-3 rounded-full ${
-															cond === 'GREEN'
-																? 'bg-emerald-500'
-																: cond ===
-																	  'ORANGE'
-																	? 'bg-amber-500'
-																	: 'bg-red-500'
-														}`}
+														className={`w-3 h-3 rounded-full ${cond === 'GREEN'
+															? 'bg-emerald-500'
+															: cond ===
+																'ORANGE'
+																? 'bg-amber-500'
+																: 'bg-red-500'
+															}`}
 													/>
 													<span className='font-mono text-xs font-medium'>
 														{cond === 'GREEN'
@@ -900,71 +922,71 @@ export function CreateAssetDialog({
 								{/* Conditional fields for damaged items (Feedback #2) */}
 								{(formData.condition === 'ORANGE' ||
 									formData.condition === 'RED') && (
-									<div className='space-y-4 p-4 bg-muted/30 rounded-lg border border-border'>
-										<div className='flex items-center gap-2 text-sm font-semibold text-foreground'>
-											<AlertCircle className='w-4 h-4 text-amber-500' />
-											<span>
-												Damage Information Required
-											</span>
-										</div>
+										<div className='space-y-4 p-4 bg-muted/30 rounded-lg border border-border'>
+											<div className='flex items-center gap-2 text-sm font-semibold text-foreground'>
+												<AlertCircle className='w-4 h-4 text-amber-500' />
+												<span>
+													Damage Information Required
+												</span>
+											</div>
 
-										<div className='space-y-2'>
-											<Label className='font-mono text-xs'>
-												Estimated Refurb Days *
-											</Label>
-											<Input
-												type='number'
-												min='1'
-												max='90'
-												placeholder='e.g., 5'
-												value={
-													formData.refurbDaysEstimate ||
-													''
-												}
-												onChange={e =>
-													setFormData({
-														...formData,
-														refurbDaysEstimate:
-															parseInt(
-																e.target.value
-															) || undefined,
-													})
-												}
-												className='font-mono'
-											/>
-											<p className='text-xs font-mono text-muted-foreground'>
-												How many days will it take to
-												refurbish this item?
-											</p>
-										</div>
+											<div className='space-y-2'>
+												<Label className='font-mono text-xs'>
+													Estimated Refurb Days *
+												</Label>
+												<Input
+													type='number'
+													min='1'
+													max='90'
+													placeholder='e.g., 5'
+													value={
+														formData.refurb_days_estimate ||
+														''
+													}
+													onChange={e =>
+														setFormData({
+															...formData,
+															refurb_days_estimate:
+																parseInt(
+																	e.target.value
+																) || undefined,
+														})
+													}
+													className='font-mono'
+												/>
+												<p className='text-xs font-mono text-muted-foreground'>
+													How many days will it take to
+													refurbish this item?
+												</p>
+											</div>
 
-										<div className='space-y-2'>
-											<Label className='font-mono text-xs'>
-												Condition Notes *
-											</Label>
-											<Textarea
-												placeholder='Describe the damage or issues...'
-												value={
-													formData.conditionNotes ||
-													''
-												}
-												onChange={e =>
-													setFormData({
-														...formData,
-														conditionNotes:
-															e.target.value,
-													})
-												}
-												className='font-mono text-sm'
-												rows={3}
-											/>
-											<p className='text-xs font-mono text-muted-foreground'>
-												Explain what needs to be
-												repaired or refurbished
-											</p>
+											<div className='space-y-2'>
+												<Label className='font-mono text-xs'>
+													Condition Notes *
+												</Label>
+												<Textarea
+													placeholder='Describe the damage or issues...'
+													value={
+														formData.condition_notes ||
+														''
+													}
+													onChange={e =>
+														setFormData({
+															...formData,
+															condition_notes:
+																e.target.value,
+														})
+													}
+													className='font-mono text-sm'
+													rows={3}
+												/>
+												<p className='text-xs font-mono text-muted-foreground'>
+													Explain what needs to be
+													repaired or refurbished
+												</p>
+											</div>
 										</div>
-									</div>
-								)}
+									)}
 
 								<div className='space-y-2'>
 									<Label className='font-mono text-xs'>
@@ -975,7 +997,7 @@ export function CreateAssetDialog({
 											<Badge
 												key={tag}
 												variant={
-													formData.handlingTags?.includes(
+													formData.handling_tags?.includes(
 														tag
 													)
 														? 'default'
@@ -989,7 +1011,7 @@ export function CreateAssetDialog({
 												{tag}
 											</Badge>
 										))}
-										{formData.handlingTags
+										{formData.handling_tags
 											?.filter(
 												tag =>
 													!HANDLING_TAGS.includes(tag)
@@ -1041,16 +1063,17 @@ export function CreateAssetDialog({
 
 						{currentStep === 3 && (
 							<div className='space-y-4 py-4'>
+
 								<div className='space-y-2'>
 									<Label className='font-mono text-xs'>
 										Tracking Method *
 									</Label>
 									<Select
-										value={formData.trackingMethod}
+										value={formData.tracking_method}
 										onValueChange={value =>
 											setFormData({
 												...formData,
-												trackingMethod: value as
+												tracking_method: value as
 													| 'INDIVIDUAL'
 													| 'BATCH',
 											})
@@ -1071,41 +1094,73 @@ export function CreateAssetDialog({
 										</SelectContent>
 									</Select>
 									<p className='text-xs font-mono text-muted-foreground'>
-										{formData.trackingMethod ===
-										'INDIVIDUAL'
+										{formData.tracking_method ===
+											'INDIVIDUAL'
 											? 'Each unit will have a unique QR code and be tracked separately'
 											: 'All units will share one QR code and be tracked as a batch'}
 									</p>
 								</div>
 
-								<div className='space-y-2'>
-									<Label className='font-mono text-xs'>
-										Total Quantity *
-									</Label>
-									<Input
-										type='number'
-										min='1'
-										placeholder='0'
-										value={formData.totalQuantity || ''}
-										onChange={e =>
-											setFormData({
-												...formData,
-												totalQuantity: parseInt(
-													e.target.value
-												),
-											})
-										}
-										className='font-mono'
-									/>
-									<p className='text-xs font-mono text-muted-foreground'>
-										{formData.trackingMethod ===
-										'INDIVIDUAL'
-											? `System will create ${formData.totalQuantity || 0} separate asset records with unique IDs`
-											: `System will create 1 asset record with quantity of ${formData.totalQuantity || 0}`}
-									</p>
+								<div className='grid grid-cols-2 gap-4'>
+									<div className='space-y-2'>
+										<Label className='font-mono text-xs'>
+											Total Quantity *
+										</Label>
+										<Input
+											type='number'
+											min='1'
+											placeholder='1'
+											value={formData.total_quantity || ''}
+											onChange={e => {
+												const newTotal = parseInt(e.target.value) || 1
+												setFormData({
+													...formData,
+													total_quantity: newTotal,
+													// Ensure available doesn't exceed total
+													available_quantity: Math.min(
+														formData.available_quantity || 1,
+														newTotal
+													),
+												})
+											}}
+											className='font-mono'
+										/>
+									</div>
+									<div className='space-y-2'>
+										<Label className='font-mono text-xs'>
+											Available Quantity *
+										</Label>
+										<Input
+											type='number'
+											min='0'
+											max={formData.total_quantity || 1}
+											placeholder='1'
+											value={formData.available_quantity || ''}
+											onChange={e =>
+												setFormData({
+													...formData,
+													available_quantity:
+														parseInt(e.target.value) || 0,
+												})
+											}
+											className='font-mono'
+										/>
+										{(formData.available_quantity || 0) >
+											(formData.total_quantity || 1) && (
+												<p className='text-xs font-mono text-destructive'>
+													Cannot exceed total quantity
+												</p>
+											)}
+									</div>
 								</div>
+								<p className='text-xs font-mono text-muted-foreground'>
+									{formData.tracking_method ===
+										'INDIVIDUAL'
+										? `System will create ${formData.total_quantity || 0} separate asset records with unique IDs`
+										: `System will create 1 asset record with quantity of ${formData.total_quantity || 0}`}
+								</p>
 
-								{formData.trackingMethod === 'BATCH' && (
+								{formData.tracking_method === 'BATCH' && (
 									<div className='space-y-2'>
 										<Label className='font-mono text-xs'>
 											Packaging Description *
@@ -1119,10 +1174,51 @@ export function CreateAssetDialog({
 													packaging: e.target.value,
 												})
 											}
+											maxLength={100}
 											className='font-mono'
 										/>
+										<p className='text-xs font-mono text-muted-foreground'>
+											How the batch is packaged (max 100 characters)
+										</p>
 									</div>
 								)}
+
+								<div className='space-y-2'>
+									<Label className='font-mono text-xs'>
+										Initial Status
+									</Label>
+									<Select
+										value={formData.status || 'AVAILABLE'}
+										onValueChange={value =>
+											setFormData({
+												...formData,
+												status: value as
+													| 'AVAILABLE'
+													| 'BOOKED'
+													| 'OUT'
+													| 'IN_MAINTENANCE',
+											})
+										}
+									>
+										<SelectTrigger className='font-mono'>
+											<SelectValue />
+										</SelectTrigger>
+										<SelectContent>
+											<SelectItem value='AVAILABLE'>
+												Available
+											</SelectItem>
+											<SelectItem value='BOOKED'>
+												Booked
+											</SelectItem>
+											<SelectItem value='OUT'>
+												Out
+											</SelectItem>
+											<SelectItem value='IN_MAINTENANCE'>
+												In Maintenance
+											</SelectItem>
+										</SelectContent>
+									</Select>
+								</div>
 
 								<div className='p-4 bg-muted/50 rounded-lg border border-border space-y-2'>
 									<div className='flex items-center gap-2 text-sm font-mono'>
@@ -1132,9 +1228,9 @@ export function CreateAssetDialog({
 										</span>
 									</div>
 									<p className='text-xs font-mono text-muted-foreground'>
-										{formData.trackingMethod ===
-										'INDIVIDUAL'
-											? `${formData.totalQuantity || 0} unique QR codes will be generated (one per unit)`
+										{formData.tracking_method ===
+											'INDIVIDUAL'
+											? `${formData.total_quantity || 0} unique QR codes will be generated (one per unit)`
 											: 'One QR code will be generated for the entire batch'}
 									</p>
 								</div>

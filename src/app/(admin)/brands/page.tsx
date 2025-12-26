@@ -122,11 +122,10 @@ export default function BrandsPage() {
 			setIsCreateOpen(false)
 			setEditingBrand(null)
 			resetForm()
-		} catch (error) {
-			toast.error('Operation failed', {
-				description:
-					error instanceof Error ? error.message : 'Unknown error',
-			})
+		} catch (error: any) {
+			toast.error("Operation failed", {
+				description: error.message,
+			});
 		}
 	}
 
@@ -139,8 +138,10 @@ export default function BrandsPage() {
 				description: `${confirmDelete.name} has been deleted. Assets are now unbranded.`,
 			})
 			setConfirmDelete(null)
-		} catch (error) {
-			toast.error('Delete failed')
+		} catch (error: any) {
+			toast.error('Delete failed', {
+				description: error.message,
+			})
 			setConfirmDelete(null)
 		}
 	}

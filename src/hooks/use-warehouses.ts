@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { CreateWarehouseRequest, Warehouse, WarehouseListResponse } from '@/types';
 import { apiClient } from '@/lib/api/api-client';
+import { throwApiError } from '@/lib/utils/throw-api-error';
 
 // Query keys
 export const warehouseKeys = {
@@ -15,27 +16,43 @@ export const warehouseKeys = {
 
 // Fetch warehouses list
 async function fetchWarehouses(params?: Record<string, string>): Promise<WarehouseListResponse> {
-  const searchParams = new URLSearchParams(params);
-  const response = await apiClient.get(`/operations/v1/warehouse?${searchParams}`);
-  return response.data;
+  try {
+    const searchParams = new URLSearchParams(params);
+    const response = await apiClient.get(`/operations/v1/warehouse?${searchParams}`);
+    return response.data;
+  } catch (error) {
+    throwApiError(error);
+  }
 }
 
 // Create warehouse
 async function createWarehouse(data: Partial<CreateWarehouseRequest>): Promise<Warehouse> {
-  const response = await apiClient.post('/operations/v1/warehouse', data);
-  return response.data;
+  try {
+    const response = await apiClient.post('/operations/v1/warehouse', data);
+    return response.data;
+  } catch (error) {
+    throwApiError(error);
+  }
 }
 
 // Update warehouse
 async function updateWarehouse({ id, data }: { id: string; data: Partial<Warehouse> }): Promise<Warehouse> {
-  const response = await apiClient.patch(`/operations/v1/warehouse/${id}`, data);
-  return response.data;
+  try {
+    const response = await apiClient.patch(`/operations/v1/warehouse/${id}`, data);
+    return response.data;
+  } catch (error) {
+    throwApiError(error);
+  }
 }
 
 // Archive warehouse
 async function archiveWarehouse(id: string): Promise<void> {
-  const response = await apiClient.delete(`/operations/v1/warehouse/${id}`);
-  return response.data;
+  try {
+    const response = await apiClient.delete(`/operations/v1/warehouse/${id}`);
+    return response.data;
+  } catch (error) {
+    throwApiError(error);
+  }
 }
 
 // Hooks

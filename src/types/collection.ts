@@ -107,13 +107,13 @@ export interface CollectionDetailsResponse {
 // ========================================
 
 export interface AddCollectionItemRequest {
-	asset: string
-	defaultQuantity: number
+	asset_id: string
+	default_quantity: number
 	notes?: string | null
 }
 
 export interface UpdateCollectionItemRequest {
-	defaultQuantity?: number
+	default_quantity?: number
 	notes?: string | null
 }
 
@@ -122,11 +122,11 @@ export interface UpdateCollectionItemRequest {
 // ========================================
 
 export interface CollectionAvailabilityItem {
-	assetId: string
-	assetName: string
-	defaultQuantity: number
-	availableQuantity: number
-	isAvailable: boolean
+	asset_id: string
+	asset_name: string
+	default_quantity: number
+	available_quantity: number
+	is_available: boolean
 }
 
 export interface CollectionAvailabilityResponse {

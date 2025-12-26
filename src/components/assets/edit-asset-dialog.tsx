@@ -44,7 +44,7 @@ import {
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
-import type { AssetWithDetails } from '@/types/asset'
+import type { AssetsDetails, AssetWithDetails } from '@/types/asset'
 
 const STEPS = [
 	{ id: 'basic', label: 'Basic Info', icon: Package },
@@ -56,7 +56,7 @@ const HANDLING_TAGS = ['Fragile', 'HighValue', 'HeavyLift', 'AssemblyRequired']
 const DEFAULT_CATEGORIES = ['Furniture', 'Glassware', 'Installation', 'Decor']
 
 interface EditAssetDialogProps {
-	asset: AssetWithDetails
+	asset: AssetsDetails
 	open: boolean
 	onOpenChange: (open: boolean) => void
 	onSuccess: () => void
@@ -86,15 +86,13 @@ export function EditAssetDialog({
 		description: asset.description || '',
 		category: asset.category,
 		images: asset.images,
-		weight: asset.weight,
-		dimensionLength: asset.dimensionLength,
-		dimensionWidth: asset.dimensionWidth,
-		dimensionHeight: asset.dimensionHeight,
-		volume: asset.volume,
+		weight_per_unit: asset.weight_per_unit,
+		dimensions: asset.dimensions,
+		volume_per_unit: asset.volume_per_unit,
 		condition: asset.condition,
-		refurbDaysEstimate: asset.refurbDaysEstimate || undefined,
-		conditionNotes: asset.latestConditionNotes || '',
-		handlingTags: asset.handlingTags,
+		refurb_days_estimate: asset.refurb_days_estimate || undefined,
+		condition_notes: asset.condition_notes || '',
+		handling_tags: asset.handling_tags,
 		packaging: asset.packaging || '',
 	})
 
@@ -113,15 +111,13 @@ export function EditAssetDialog({
 				description: asset.description || '',
 				category: asset.category,
 				images: asset.images,
-				weight: asset.weight,
-				dimensionLength: asset.dimensionLength,
-				dimensionWidth: asset.dimensionWidth,
-				dimensionHeight: asset.dimensionHeight,
-				volume: asset.volume,
+				weight_per_unit: asset.weight_per_unit,
+				dimensions: asset.dimensions,
+				volume_per_unit: asset.volume_per_unit,
 				condition: asset.condition,
-				refurbDaysEstimate: asset.refurbDaysEstimate || undefined,
-				conditionNotes: asset.latestConditionNotes || '',
-				handlingTags: asset.handlingTags,
+				refurb_days_estimate: asset.refurb_days_estimate || undefined,
+				condition_notes: asset.condition_notes || '',
+				handling_tags: asset.handling_tags,
 				packaging: asset.packaging || '',
 			})
 			setCurrentStep(0)
@@ -144,10 +140,10 @@ export function EditAssetDialog({
 			: undefined
 	)
 
-	const companies = companiesData?.companies || []
-	const warehouses = warehousesData?.warehouses || []
-	const zones = zonesData?.zones || []
-	const brands = brandsData?.brands || []
+	const companies = companiesData?.data || []
+	const warehouses = warehousesData?.data || []
+	const zones = zonesData?.data || []
+	const brands = brandsData?.data || []
 
 	// Mutations
 	const updateMutation = useUpdateAsset()
@@ -197,11 +193,11 @@ export function EditAssetDialog({
 
 	function toggleHandlingTag(tag: string) {
 		setFormData(prev => {
-			const current = prev.handlingTags
+			const current = prev.handling_tags
 			const updated = current.includes(tag)
 				? current.filter(t => t !== tag)
 				: [...current, tag]
-			return { ...prev, handlingTags: updated }
+			return { ...prev, handling_tags: updated }
 		})
 	}
 
@@ -209,7 +205,7 @@ export function EditAssetDialog({
 		if (customHandlingTag.trim()) {
 			setFormData(prev => ({
 				...prev,
-				handlingTags: [...prev.handlingTags, customHandlingTag.trim()],
+				handling_tags: [...prev.handling_tags, customHandlingTag.trim()],
 			}))
 			setCustomHandlingTag('')
 		}
@@ -235,13 +231,13 @@ export function EditAssetDialog({
 	) {
 		const newData = { ...formData, [field]: value }
 		const calculatedVolume = calculateVolume(
-			field === 'dimensionLength' ? value : formData.dimensionLength,
-			field === 'dimensionWidth' ? value : formData.dimensionWidth,
-			field === 'dimensionHeight' ? value : formData.dimensionHeight
+			field === 'dimensionLength' ? value : Number(formData.dimensions.length),
+			field === 'dimensionWidth' ? value : Number(formData.dimensions.width),
+			field === 'dimensionHeight' ? value : Number(formData.dimensions.height)
 		)
 
 		if (calculatedVolume !== undefined) {
-			newData.volume = calculatedVolume
+			newData.volume_per_unit = calculatedVolume
 		}
 
 		setFormData(newData)
@@ -255,11 +251,11 @@ export function EditAssetDialog({
 		}
 
 		if (
-			!formData.weight ||
-			!formData.dimensionLength ||
-			!formData.dimensionWidth ||
-			!formData.dimensionHeight ||
-			!formData.volume
+			!formData.weight_per_unit ||
+			!formData.dimensions.length ||
+			!formData.dimensions.width ||
+			!formData.dimensions.height ||
+			!formData.volume_per_unit
 		) {
 			toast.error('Please fill all physical specifications')
 			return
@@ -271,8 +267,8 @@ export function EditAssetDialog({
 			(formData.condition === 'ORANGE' || formData.condition === 'RED')
 		) {
 			if (
-				!formData.refurbDaysEstimate ||
-				formData.refurbDaysEstimate < 1
+				!formData.refurb_days_estimate ||
+				formData.refurb_days_estimate < 1
 			) {
 				toast.error(
 					'Refurb days estimate is required when changing to damaged condition'
@@ -280,8 +276,8 @@ export function EditAssetDialog({
 				return
 			}
 			if (
-				!formData.conditionNotes ||
-				formData.conditionNotes.trim().length < 10
+				!formData.condition_notes ||
+				formData.condition_notes.trim().length < 10
 			) {
 				toast.error(
 					'Condition notes are required when changing to damaged condition (minimum 10 characters)'
@@ -302,19 +298,17 @@ export function EditAssetDialog({
 					description: formData.description || null,
 					category: formData.category,
 					images: formData.images,
-					weight: formData.weight,
-					dimensionLength: formData.dimensionLength,
-					dimensionWidth: formData.dimensionWidth,
-					dimensionHeight: formData.dimensionHeight,
-					volume: formData.volume,
-					handlingTags: formData.handlingTags,
+					weight_per_unit: Number(formData.weight_per_unit),
+					dimensions: formData.dimensions,
+					volume_per_unit: Number(formData.volume_per_unit),
+					handling_tags: formData.handling_tags,
 					packaging: formData.packaging || null,
 					condition: formData.condition,
-					refurbDaysEstimate:
+					refurb_days_estimate:
 						formData.condition === 'GREEN'
 							? null
-							: formData.refurbDaysEstimate,
-					conditionNotes: formData.conditionNotes || undefined,
+							: formData.refurb_days_estimate,
+					condition_notes: formData.condition_notes || undefined,
 				} as any,
 			})
 			toast.success('Asset updated successfully')
@@ -335,13 +329,13 @@ export function EditAssetDialog({
 				return formData.name && formData.category
 			case 1: // Photos
 				return true // Photos optional
-			case 2: // Specifications
+			case 2: {
 				const hasBasicSpecs =
-					formData.weight &&
-					formData.dimensionLength &&
-					formData.dimensionWidth &&
-					formData.dimensionHeight &&
-					formData.volume
+					formData.weight_per_unit &&
+					formData.dimensions.length &&
+					formData.dimensions.width &&
+					formData.dimensions.height &&
+					formData.volume_per_unit
 
 				// Feedback #2: Require refurb days and notes if condition changed to ORANGE/RED
 				if (
@@ -351,14 +345,15 @@ export function EditAssetDialog({
 				) {
 					return (
 						hasBasicSpecs &&
-						formData.refurbDaysEstimate &&
-						formData.refurbDaysEstimate > 0 &&
-						formData.conditionNotes &&
-						formData.conditionNotes.trim().length >= 10
+						formData.refurb_days_estimate &&
+						formData.refurb_days_estimate > 0 &&
+						formData.condition_notes &&
+						formData.condition_notes.trim().length >= 10
 					)
 				}
 
 				return hasBasicSpecs
+			}
 			default:
 				return false
 		}
@@ -392,22 +387,20 @@ export function EditAssetDialog({
 								<button
 									onClick={() => setCurrentStep(index)}
 									disabled={index > currentStep}
-									className={`flex items-center gap-2 ${
-										isActive
-											? 'text-primary'
-											: isCompleted
-												? 'text-foreground'
-												: 'text-muted-foreground'
-									} disabled:opacity-50 disabled:cursor-not-allowed transition-colors hover:text-primary`}
+									className={`flex items-center gap-2 ${isActive
+										? 'text-primary'
+										: isCompleted
+											? 'text-foreground'
+											: 'text-muted-foreground'
+										} disabled:opacity-50 disabled:cursor-not-allowed transition-colors hover:text-primary`}
 								>
 									<div
-										className={`w-8 h-8 rounded-lg flex items-center justify-center border ${
-											isActive
-												? 'bg-primary text-primary-foreground border-primary'
-												: isCompleted
-													? 'bg-primary/10 border-primary/20 text-primary'
-													: 'bg-muted border-border'
-										}`}
+										className={`w-8 h-8 rounded-lg flex items-center justify-center border ${isActive
+											? 'bg-primary text-primary-foreground border-primary'
+											: isCompleted
+												? 'bg-primary/10 border-primary/20 text-primary'
+												: 'bg-muted border-border'
+											}`}
 									>
 										{isCompleted ? (
 											<Check className='w-4 h-4' />
@@ -495,25 +488,25 @@ export function EditAssetDialog({
 											!DEFAULT_CATEGORIES.includes(
 												formData.category || ''
 											))) && (
-										<Input
-											placeholder='Enter custom category'
-											value={
-												customCategory ||
-												formData.category
-											}
-											onChange={e => {
-												setCustomCategory(
-													e.target.value
-												)
-												setFormData({
-													...formData,
-													category: e.target
-														.value as any,
-												})
-											}}
-											className='font-mono'
-										/>
-									)}
+											<Input
+												placeholder='Enter custom category'
+												value={
+													customCategory ||
+													formData.category
+												}
+												onChange={e => {
+													setCustomCategory(
+														e.target.value
+													)
+													setFormData({
+														...formData,
+														category: e.target
+															.value as any,
+													})
+												}}
+												className='font-mono'
+											/>
+										)}
 								</div>
 							</div>
 
@@ -732,7 +725,7 @@ export function EditAssetDialog({
 										type='number'
 										step='0.01'
 										placeholder='0.00'
-										value={formData.dimensionLength}
+										value={formData.dimensions.length}
 										onChange={e =>
 											updateDimension(
 												'dimensionLength',
@@ -750,7 +743,7 @@ export function EditAssetDialog({
 										type='number'
 										step='0.01'
 										placeholder='0.00'
-										value={formData.dimensionWidth}
+										value={formData.dimensions.width}
 										onChange={e =>
 											updateDimension(
 												'dimensionWidth',
@@ -768,7 +761,7 @@ export function EditAssetDialog({
 										type='number'
 										step='0.01'
 										placeholder='0.00'
-										value={formData.dimensionHeight}
+										value={formData.dimensions.height}
 										onChange={e =>
 											updateDimension(
 												'dimensionHeight',
@@ -789,11 +782,11 @@ export function EditAssetDialog({
 										type='number'
 										step='0.01'
 										placeholder='0.00'
-										value={formData.weight}
+										value={formData.weight_per_unit}
 										onChange={e =>
 											setFormData({
 												...formData,
-												weight: parseFloat(
+												weight_per_unit: parseFloat(
 													e.target.value
 												),
 											})
@@ -811,12 +804,12 @@ export function EditAssetDialog({
 										step='0.001'
 										placeholder='0.000'
 										value={
-											formData.volume?.toFixed(3) || ''
+											formData?.volume_per_unit || ''
 										}
 										onChange={e =>
 											setFormData({
 												...formData,
-												volume: parseFloat(
+												volume_per_unit: parseFloat(
 													e.target.value
 												),
 											})
@@ -841,25 +834,23 @@ export function EditAssetDialog({
 													condition: cond as any,
 												})
 											}
-											className={`flex-1 p-3 rounded-lg border-2 transition-all ${
-												formData.condition === cond
-													? cond === 'GREEN'
-														? 'border-emerald-500 bg-emerald-500/10'
-														: cond === 'ORANGE'
-															? 'border-amber-500 bg-amber-500/10'
-															: 'border-red-500 bg-red-500/10'
-													: 'border-border hover:border-muted-foreground'
-											}`}
+											className={`flex-1 p-3 rounded-lg border-2 transition-all ${formData.condition === cond
+												? cond === 'GREEN'
+													? 'border-emerald-500 bg-emerald-500/10'
+													: cond === 'ORANGE'
+														? 'border-amber-500 bg-amber-500/10'
+														: 'border-red-500 bg-red-500/10'
+												: 'border-border hover:border-muted-foreground'
+												}`}
 										>
 											<div className='flex items-center justify-center gap-2'>
 												<div
-													className={`w-3 h-3 rounded-full ${
-														cond === 'GREEN'
-															? 'bg-emerald-500'
-															: cond === 'ORANGE'
-																? 'bg-amber-500'
-																: 'bg-red-500'
-													}`}
+													className={`w-3 h-3 rounded-full ${cond === 'GREEN'
+														? 'bg-emerald-500'
+														: cond === 'ORANGE'
+															? 'bg-amber-500'
+															: 'bg-red-500'
+														}`}
 												/>
 												<span className='font-mono text-xs font-medium'>
 													{cond === 'GREEN'
@@ -877,84 +868,84 @@ export function EditAssetDialog({
 							{/* Conditional fields for damaged items (Feedback #2) */}
 							{(formData.condition === 'ORANGE' ||
 								formData.condition === 'RED') && (
-								<div className='space-y-4 p-4 bg-muted/30 rounded-lg border border-border'>
-									<div className='flex items-center gap-2 text-sm font-semibold text-foreground'>
-										<AlertCircle className='w-4 h-4 text-amber-500' />
-										<span>
-											Damage Information{' '}
-											{formData.condition !==
-											asset.condition
-												? 'Required'
-												: '(Optional - Update if needed)'}
-										</span>
-									</div>
+									<div className='space-y-4 p-4 bg-muted/30 rounded-lg border border-border'>
+										<div className='flex items-center gap-2 text-sm font-semibold text-foreground'>
+											<AlertCircle className='w-4 h-4 text-amber-500' />
+											<span>
+												Damage Information{' '}
+												{formData.condition !==
+													asset.condition
+													? 'Required'
+													: '(Optional - Update if needed)'}
+											</span>
+										</div>
 
-									<div className='space-y-2'>
-										<Label className='font-mono text-xs'>
-											Estimated Refurb Days{' '}
-											{formData.condition !==
-											asset.condition
-												? '*'
-												: ''}
-										</Label>
-										<Input
-											type='number'
-											min='1'
-											max='90'
-											placeholder='e.g., 5'
-											value={
-												formData.refurbDaysEstimate ||
-												''
-											}
-											onChange={e =>
-												setFormData({
-													...formData,
-													refurbDaysEstimate:
-														parseInt(
-															e.target.value
-														) || undefined,
-												})
-											}
-											className='font-mono'
-										/>
-										<p className='text-xs font-mono text-muted-foreground'>
-											How many days will it take to
-											refurbish this item?
-										</p>
-									</div>
+										<div className='space-y-2'>
+											<Label className='font-mono text-xs'>
+												Estimated Refurb Days{' '}
+												{formData.condition !==
+													asset.condition
+													? '*'
+													: ''}
+											</Label>
+											<Input
+												type='number'
+												min='1'
+												max='90'
+												placeholder='e.g., 5'
+												value={
+													formData.refurb_days_estimate ||
+													''
+												}
+												onChange={e =>
+													setFormData({
+														...formData,
+														refurb_days_estimate:
+															parseInt(
+																e.target.value
+															) || undefined,
+													})
+												}
+												className='font-mono'
+											/>
+											<p className='text-xs font-mono text-muted-foreground'>
+												How many days will it take to
+												refurbish this item?
+											</p>
+										</div>
 
-									<div className='space-y-2'>
-										<Label className='font-mono text-xs'>
-											Condition Notes{' '}
-											{formData.condition !==
-											asset.condition
-												? '*'
-												: ''}
-										</Label>
-										<Textarea
-											placeholder='Describe the damage or issues...'
-											value={
-												formData.conditionNotes || ''
-											}
-											onChange={e =>
-												setFormData({
-													...formData,
-													conditionNotes:
-														e.target.value,
-												})
-											}
-											className='font-mono text-sm'
-											rows={3}
-										/>
-										<p className='text-xs font-mono text-muted-foreground'>
-											{formData.condition !==
-											asset.condition
-												? 'Explain what needs to be repaired or refurbished'
-												: 'Add additional notes about the condition (optional)'}
-										</p>
+										<div className='space-y-2'>
+											<Label className='font-mono text-xs'>
+												Condition Notes{' '}
+												{formData.condition !==
+													asset.condition
+													? '*'
+													: ''}
+											</Label>
+											<Textarea
+												placeholder='Describe the damage or issues...'
+												value={
+													formData.condition_notes || ''
+												}
+												onChange={e =>
+													setFormData({
+														...formData,
+														condition_notes:
+															e.target.value,
+													})
+												}
+												className='font-mono text-sm'
+												rows={3}
+											/>
+											<p className='text-xs font-mono text-muted-foreground'>
+												{formData.condition !==
+													asset.condition
+													? 'Explain what needs to be repaired or refurbished'
+													: 'Add additional notes about the condition (optional)'}
+											</p>
+										</div>
 									</div>
-								</div>
-							)}
+								)}
 
 							<div className='space-y-2'>
 								<Label className='font-mono text-xs'>
@@ -965,7 +956,7 @@ export function EditAssetDialog({
 										<Badge
 											key={tag}
 											variant={
-												formData.handlingTags.includes(
+												formData.handling_tags.includes(
 													tag
 												)
 													? 'default'
@@ -979,11 +970,11 @@ export function EditAssetDialog({
 											{tag}
 										</Badge>
 									))}
-									{formData.handlingTags
+									{formData.handling_tags
 										.filter(
-											tag => !HANDLING_TAGS.includes(tag)
+											tag => !HANDLING_TAGS.includes(tag as string)
 										)
-										.map(tag => (
+										.map((tag: string, index) => (
 											<Badge
 												key={tag}
 												variant='default'

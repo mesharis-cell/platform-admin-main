@@ -26,7 +26,7 @@ import type { ConditionHistoryEntry } from "@/types/condition";
 import type { Condition } from "@/types/asset";
 
 interface ConditionHistoryTimelineProps {
-	history: ConditionHistoryEntry[];
+	history: { notes: string; condition: Condition; updated_by: string; timestamp: string }[];
 	assetName: string;
 }
 
@@ -108,23 +108,22 @@ export function ConditionHistoryTimeline({
 				<div className="absolute bottom-0 left-[18px] top-6 w-[2px] bg-border" />
 
 				{history.map((entry, index) => {
-					const isExpanded = expandedEntries.has(entry.id);
+					const isExpanded = expandedEntries.has(entry.timestamp);
 					const isFirst = index === 0;
 
 					return (
 						<div
-							key={entry.id}
+							key={entry.timestamp}
 							className="relative"
 						>
 							{/* Timeline Dot */}
 							<div
-								className={`absolute left-0 top-1 flex h-10 w-10 items-center justify-center rounded-full border-4 border-background ${
-									entry.condition === "RED"
+								className={`absolute left-0 top-1 flex h-10 w-10 items-center justify-center rounded-full border-4 border-background ${entry.condition === "RED"
 										? "bg-destructive"
 										: entry.condition === "ORANGE"
 											? "bg-orange-500"
 											: "bg-green-500"
-								} ${isFirst ? "ring-4 ring-primary/20" : ""}`}
+									} ${isFirst ? "ring-4 ring-primary/20" : ""}`}
 							>
 								{getConditionIcon(entry.condition)}
 							</div>
@@ -149,7 +148,7 @@ export function ConditionHistoryTimeline({
 											</div>
 											<div className="flex items-center gap-2 text-xs text-muted-foreground">
 												<User className="h-3 w-3" />
-												<span>{entry.updatedBy.name}</span>
+												<span>{entry.updated_by}</span>
 												<span>•</span>
 												<Clock className="h-3 w-3" />
 												<span>
@@ -161,11 +160,11 @@ export function ConditionHistoryTimeline({
 											</div>
 										</div>
 
-										{(entry.notes || entry.photos.length > 0) && (
+										{entry.notes && (
 											<Button
 												variant="ghost"
 												size="sm"
-												onClick={() => toggleEntry(entry.id)}
+												onClick={() => toggleEntry(entry.timestamp)}
 												className="font-mono text-xs"
 											>
 												{isExpanded ? (
@@ -195,41 +194,6 @@ export function ConditionHistoryTimeline({
 													<p className="whitespace-pre-wrap text-sm">
 														{entry.notes}
 													</p>
-												</div>
-											)}
-
-											{entry.photos.length > 0 && (
-												<div className="space-y-2">
-													<div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
-														<ImageIcon className="h-3 w-3" />
-														Damage Photos ({entry.photos.length})
-													</div>
-													<div className="grid gap-2 sm:grid-cols-3">
-														{entry.photos.map((photoUrl, photoIndex) => (
-															<Dialog key={photoIndex}>
-																<DialogTrigger asChild>
-																	<button className="group relative aspect-square overflow-hidden rounded-md border bg-muted transition-all hover:border-primary hover:ring-2 hover:ring-primary/20">
-																		<Image
-																			src={photoUrl}
-																			alt={`Damage photo ${photoIndex + 1}`}
-																			fill
-																			className="object-cover transition-transform group-hover:scale-110"
-																		/>
-																	</button>
-																</DialogTrigger>
-																<DialogContent className="max-w-3xl">
-																	<div className="relative aspect-video w-full overflow-hidden rounded-lg">
-																		<Image
-																			src={photoUrl}
-																			alt={`Damage photo ${photoIndex + 1}`}
-																			fill
-																			className="object-contain"
-																		/>
-																	</div>
-																</DialogContent>
-															</Dialog>
-														))}
-													</div>
 												</div>
 											)}
 										</div>

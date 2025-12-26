@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Company, CompanyListResponse, CreateCompanyRequest } from '@/types';
 import { apiClient } from '@/lib/api/api-client';
+import { throwApiError } from '@/lib/utils/throw-api-error';
 
 // Query keys
 export const companyKeys = {
@@ -16,28 +17,42 @@ export const companyKeys = {
 // Fetch companies list
 async function fetchCompanies(params?: Record<string, string>): Promise<CompanyListResponse> {
   const searchParams = new URLSearchParams(params);
-  const response = await apiClient.get(`/operations/v1/company?${searchParams}`);
-  console.log('company response.data..............', response.data);
-
-  return response.data;
+  try {
+    const response = await apiClient.get(`/operations/v1/company?${searchParams}`);
+    return response.data;
+  } catch (error) {
+    throwApiError(error);
+  }
 }
 
 // Create company
 async function createCompany(data: Partial<CreateCompanyRequest>): Promise<Company> {
-  const response = await apiClient.post('/operations/v1/company', data);
-  return response.data;
+  try {
+    const response = await apiClient.post('/operations/v1/company', data);
+    return response.data;
+  } catch (error) {
+    throwApiError(error);
+  }
 }
 
 // Update company
 async function updateCompany({ id, data }: { id: string; data: Partial<Company> }): Promise<Company> {
-  const response = await apiClient.patch(`/operations/v1/company/${id}`, data);
-  return response.data;
+  try {
+    const response = await apiClient.patch(`/operations/v1/company/${id}`, data);
+    return response.data;
+  } catch (error) {
+    throwApiError(error);
+  }
 }
 
 // Archive company
 async function archiveCompany(id: string): Promise<void> {
-  const response = await apiClient.delete(`/operations/v1/company/${id}`);
-  return response.data;
+  try {
+    const response = await apiClient.delete(`/operations/v1/company/${id}`);
+    return response.data;
+  } catch (error) {
+    throwApiError(error);
+  }
 }
 
 // Hooks

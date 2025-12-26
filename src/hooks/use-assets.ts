@@ -1,5 +1,9 @@
+"use client";
+
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { Asset, AssetWithDetails, CreateAssetRequest } from '@/types/asset';
+import type { Asset, AssetsDetails, AssetWithDetails, CreateAssetRequest } from '@/types/asset';
+import { apiClient } from '@/lib/api/api-client';
+import { throwApiError } from '@/lib/utils/throw-api-error';
 
 // Query keys
 export const assetKeys = {
@@ -11,86 +15,78 @@ export const assetKeys = {
 };
 
 // Fetch assets list
-async function fetchAssets(params?: Record<string, string>): Promise<{ assets: Asset[]; total: number; limit: number; offset: number }> {
-  const searchParams = new URLSearchParams(params);
-  const response = await fetch(`/api/assets?${searchParams}`);
-  if (!response.ok) {
-    throw new Error('Failed to fetch assets');
+async function fetchAssets(params?: Record<string, string>): Promise<{ data: Asset[]; meta: { total: number; limit: number; page: number } }> {
+  try {
+    const searchParams = new URLSearchParams(params);
+    const response = await apiClient.get(`/operations/v1/asset?${searchParams}`);
+    return response.data;
+  } catch (error) {
+    throwApiError(error);
   }
-  return response.json();
 }
 
 // Fetch single asset
-async function fetchAsset(id: string): Promise<{ asset: AssetWithDetails }> {
-  const response = await fetch(`/api/assets/${id}`);
-  if (!response.ok) {
-    throw new Error('Failed to fetch asset');
+async function fetchAsset(id: string): Promise<{ data: AssetsDetails }> {
+  try {
+    const response = await apiClient.get(`/operations/v1/asset/${id}`);
+    return response.data;
+  } catch (error) {
+    throwApiError(error);
   }
-  return response.json();
 }
 
 // Create asset
 async function createAsset(data: CreateAssetRequest): Promise<Asset> {
-  const response = await fetch('/api/assets', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  });
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to create asset');
+  try {
+    const response = await apiClient.post(`/operations/v1/asset`, data);
+    return response.data;
+  } catch (error) {
+    throwApiError(error);
   }
-  return response.json();
 }
 
 // Update asset
 async function updateAsset(id: string, data: Partial<CreateAssetRequest>): Promise<Asset> {
-  const response = await fetch(`/api/assets/${id}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  });
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to update asset');
+  try {
+    const response = await apiClient.patch(`/operations/v1/asset/${id}`, data);
+    return response.data;
+  } catch (error) {
+    throwApiError(error);
   }
-  return response.json();
 }
 
 // Delete asset
 async function deleteAsset(id: string): Promise<void> {
-  const response = await fetch(`/api/assets/${id}`, {
-    method: 'DELETE',
-  });
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to delete asset');
+  try {
+    const response = await apiClient.delete(`/operations/v1/asset/${id}`);
+    return response.data;
+  } catch (error) {
+    throwApiError(error);
   }
 }
 
 // Upload image
 async function uploadImage(formData: FormData): Promise<{ imageUrl: string }> {
-  const response = await fetch('/api/assets/upload-image', {
-    method: 'POST',
-    body: formData,
-  });
-  if (!response.ok) {
-    throw new Error('Failed to upload image');
+  try {
+    const response = await apiClient.post('/api/assets/upload-image', formData);
+
+    return response.data;
+  } catch (error) {
+    throwApiError(error);
   }
-  return response.json();
 }
 
 // Generate QR code
 async function generateQRCode(qrCode: string): Promise<{ qrCodeImage: string }> {
-  const response = await fetch('/api/assets/qr-code/generate', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ qrCode }),
-  });
-  if (!response.ok) {
-    throw new Error('Failed to generate QR code');
+  try {
+    const response = await apiClient.post('/api/assets/qr-code/generate', {
+      qrCode,
+    });
+
+    return response.data;
+  } catch (error) {
+    throwApiError(error);
   }
-  return response.json();
 }
 
 // Hooks
