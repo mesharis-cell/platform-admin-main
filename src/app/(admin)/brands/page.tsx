@@ -432,7 +432,7 @@ export default function BrandsPage() {
 					<div className='border border-border rounded-lg overflow-hidden bg-card'>
 						<Table>
 							<TableHeader>
-								<TableRow className='bg-muted/50'>
+								<TableRow className='bg-muted/50 border-border/50'>
 									<TableHead className='font-mono text-xs font-bold'>
 										BRAND
 									</TableHead>
@@ -455,7 +455,7 @@ export default function BrandsPage() {
 								{brands.map((brand, index) => (
 									<TableRow
 										key={brand.id}
-										className='group hover:bg-muted/30 transition-colors'
+										className='group hover:bg-muted/30 transition-colors border-border/50'
 										style={{
 											animationDelay: `${index * 50}ms`,
 										}}

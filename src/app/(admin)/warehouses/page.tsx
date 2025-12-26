@@ -471,7 +471,7 @@ export default function WarehousesPage() {
 					<div className="border border-border rounded-lg overflow-hidden bg-card">
 						<Table>
 							<TableHeader>
-								<TableRow className="bg-muted/50">
+								<TableRow className="bg-muted/50 border-border/50">
 									<TableHead className="font-mono text-xs font-bold">
 										FACILITY
 									</TableHead>
@@ -494,7 +494,7 @@ export default function WarehousesPage() {
 								{warehouses.map((warehouse, index) => (
 									<TableRow
 										key={warehouse.id}
-										className="group hover:bg-muted/30 transition-colors"
+										className="group hover:bg-muted/30 transition-colors border-border/50"
 										style={{
 											animationDelay: `${index * 50}ms`,
 										}}
