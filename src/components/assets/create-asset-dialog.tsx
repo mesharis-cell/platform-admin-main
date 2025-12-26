@@ -415,7 +415,7 @@ export function CreateAssetDialog({
 									</button>
 									{index < STEPS.length - 1 && (
 										<div
-											className={`flex-1 h-[1px] mx-2 ${isCompleted ? 'bg-primary' : 'bg-border'}`}
+											className={`flex-1 h-px mx-2 ${isCompleted ? 'bg-primary' : 'bg-border'}`}
 										/>
 									)}
 								</div>

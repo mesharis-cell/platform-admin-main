@@ -369,14 +369,14 @@ export default function AssetsPage() {
 												className='text-muted-foreground'
 												title='Total quantity in stock. Availability calculated per event dates.'
 											>
-												{asset.totalQuantity} units
+												{asset.total_quantity} units
 											</span>
 										</div>
 
 										{/* Tracking method */}
 										<div className='pt-2 border-t border-border flex items-center justify-between'>
 											<span className='text-xs text-muted-foreground font-mono'>
-												{asset.trackingMethod}
+												{asset.tracking_method}
 											</span>
 											<ChevronRight className='w-3 h-3 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all' />
 										</div>
@@ -396,7 +396,7 @@ export default function AssetsPage() {
 									<CardContent className='p-4'>
 										<div className='flex items-center gap-4'>
 											{/* Thumbnail */}
-											<div className='relative w-20 h-20 bg-muted rounded-lg overflow-hidden flex-shrink-0'>
+											<div className='relative w-20 h-20 bg-muted rounded-lg overflow-hidden shrink-0'>
 												{asset.images.length > 0 ? (
 													<Image
 														src={asset.images[0]}
@@ -421,7 +421,7 @@ export default function AssetsPage() {
 														<p className='text-xs text-muted-foreground font-mono mt-0.5'>
 															{asset.category} •{' '}
 															{
-																asset.trackingMethod
+																asset.tracking_method
 															}
 														</p>
 													</div>
@@ -447,22 +447,22 @@ export default function AssetsPage() {
 
 												<div className='mt-2 flex items-center gap-4 text-xs font-mono text-muted-foreground'>
 													<span>
-														{asset.totalQuantity}{' '}
+														{asset.total_quantity}{' '}
 														total
 													</span>
 													<span>•</span>
 													<span>
-														{asset.volume}m³
+														{asset.volume_per_unit}m³
 													</span>
 													<span>•</span>
 													<span className='flex items-center gap-1'>
 														<QrCode className='w-3 h-3' />
-														{asset.qrCode}
+														{asset.qr_code}
 													</span>
 												</div>
 											</div>
 
-											<ChevronRight className='w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all flex-shrink-0' />
+											<ChevronRight className='w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0' />
 										</div>
 									</CardContent>
 								</Card>
