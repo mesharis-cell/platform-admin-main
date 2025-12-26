@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Brand, BrandListResponse, CreateBrandRequest, UpdateBrandRequest } from '@/types';
 import { apiClient } from '@/lib/api/api-client';
+import { throwApiError } from '@/lib/utils/throw-api-error';
 
 // Query keys
 export const brandKeys = {
@@ -15,27 +16,43 @@ export const brandKeys = {
 
 // Fetch brands list
 async function fetchBrands(params?: Record<string, string>): Promise<BrandListResponse> {
-  const searchParams = new URLSearchParams(params);
-  const response = await apiClient.get(`/operations/v1/brand?${searchParams}`);
-  return response.data;
+  try {
+    const searchParams = new URLSearchParams(params);
+    const response = await apiClient.get(`/operations/v1/brand?${searchParams}`);
+    return response.data;
+  } catch (error) {
+    throwApiError(error);
+  }
 }
 
 // Create brand
 async function createBrand(data: CreateBrandRequest): Promise<Brand> {
-  const response = await apiClient.post('/operations/v1/brand', data);
-  return response.data;
+  try {
+    const response = await apiClient.post('/operations/v1/brand', data);
+    return response.data;
+  } catch (error) {
+    throwApiError(error);
+  }
 }
 
 // Update brand
 async function updateBrand({ id, data }: { id: string; data: UpdateBrandRequest }): Promise<Brand> {
-  const response = await apiClient.patch(`/operations/v1/brand/${id}`, data);
-  return response.data;
+  try {
+    const response = await apiClient.patch(`/operations/v1/brand/${id}`, data);
+    return response.data;
+  } catch (error) {
+    throwApiError(error);
+  }
 }
 
 // Delete brand
 async function deleteBrand(id: string): Promise<void> {
-  const response = await apiClient.delete(`/operations/v1/brand/${id}`);
-  return response.data;
+  try {
+    const response = await apiClient.delete(`/operations/v1/brand/${id}`);
+    return response.data;
+  } catch (error) {
+    throwApiError(error);
+  }
 }
 
 // Hooks

@@ -122,15 +122,9 @@ export default function BrandsPage() {
 			setIsCreateOpen(false)
 			setEditingBrand(null)
 			resetForm()
-		} catch (error) {
-			let errorMessage = "Unknown error";
-			if (error instanceof Error) {
-				// Check if it's an Axios error with a response
-				const axiosError = error as { response?: { data?: { message?: string } } };
-				errorMessage = axiosError.response?.data?.message || error.message;
-			}
+		} catch (error: any) {
 			toast.error("Operation failed", {
-				description: errorMessage,
+				description: error.message,
 			});
 		}
 	}
@@ -144,8 +138,10 @@ export default function BrandsPage() {
 				description: `${confirmDelete.name} has been deleted. Assets are now unbranded.`,
 			})
 			setConfirmDelete(null)
-		} catch (error) {
-			toast.error('Delete failed')
+		} catch (error: any) {
+			toast.error('Delete failed', {
+				description: error.message,
+			})
 			setConfirmDelete(null)
 		}
 	}
