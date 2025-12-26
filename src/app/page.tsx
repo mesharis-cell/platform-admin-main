@@ -14,8 +14,9 @@ import { jwtDecode, JwtPayload } from "jwt-decode";
 import LoadingState from "@/components/loading-state";
 import { usePlatform } from "@/contexts/platform-context";
 import { login } from "@/actions/login";
+import Cookies from 'js-cookie';
 
-interface CustomJwtPayload extends JwtPayload {
+export interface CustomJwtPayload extends JwtPayload {
 	role: string;
 }
 
@@ -25,7 +26,7 @@ export default function HomePage() {
 	const [password, setPassword] = useState("");
 	const [showPassword, setShowPassword] = useState(false);
 	const [isLoading, setIsLoading] = useState(false);
-	const { access_token, loading } = useToken();
+	const { access_token, loading, setAccessToken } = useToken();
 	const { platform } = usePlatform();
 
 	useEffect(() => {
@@ -36,6 +37,11 @@ export default function HomePage() {
 			if (role === 'ADMIN') {
 				// PMG Admin goes to analytics dashboard
 				router.push('/companies');
+			} else {
+				setAccessToken(null);
+				Cookies.remove('access_token');
+				Cookies.remove('refresh_token');
+				router.push('/');
 			}
 		}
 	}, [access_token, loading, router]);
