@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { useAdminOrders } from '@/hooks/use-orders';
+import { APIOrdersResponse } from '@/types/order';
 import {
   ScanLine,
   PackageCheck,
@@ -28,27 +29,31 @@ export default function AdminScanningDashboard() {
   const [searchQuery, setSearchQuery] = useState('');
 
   // Fetch orders in IN_PREPARATION (ready for outbound scan)
-  const { data: preparationOrders, isLoading: loadingPreparation } = useAdminOrders({
-    status: 'IN_PREPARATION',
+  const { data: preparationOrdersData, isLoading: loadingPreparation } = useAdminOrders({
+    order_status: 'IN_PREPARATION',
     page: 1,
     limit: 20,
   });
+
+  const preparationOrders = preparationOrdersData as APIOrdersResponse | undefined;
 
   // Fetch orders in AWAITING_RETURN (ready for inbound scan)
-  const { data: returnOrders, isLoading: loadingReturn } = useAdminOrders({
-    status: 'AWAITING_RETURN',
+  const { data: returnOrdersData, isLoading: loadingReturn } = useAdminOrders({
+    order_status: 'AWAITING_RETURN',
     page: 1,
     limit: 20,
   });
 
-  const filteredPreparationOrders = preparationOrders?.orders.filter((order) =>
-    order.orderId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    order.contactName.toLowerCase().includes(searchQuery.toLowerCase())
+  const returnOrders = returnOrdersData as APIOrdersResponse | undefined;
+
+  const filteredPreparationOrders = preparationOrders?.data?.filter((order) =>
+    order.order_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    order.contact_name.toLowerCase().includes(searchQuery.toLowerCase())
   ) || [];
 
-  const filteredReturnOrders = returnOrders?.orders.filter((order) =>
-    order.orderId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    order.contactName.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredReturnOrders = returnOrders?.data?.filter((order) =>
+    order.order_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    order.contact_name.toLowerCase().includes(searchQuery.toLowerCase())
   ) || [];
 
   return (
@@ -120,9 +125,9 @@ export default function AdminScanningDashboard() {
                         <div className="p-4 bg-muted/30 hover:bg-muted/50 rounded-lg border border-border hover:border-primary/50 transition-colors cursor-pointer">
                           <div className="flex items-center justify-between">
                             <div className="flex-1">
-                              <div className="font-mono text-sm font-bold">{order.orderId}</div>
+                              <div className="font-mono text-sm font-bold">{order.order_id}</div>
                               <div className="text-xs text-muted-foreground mt-1">
-                                {order.contactName} • {order.itemCount} items
+                                {order.contact_name} • {order.item_count} items
                               </div>
                             </div>
                             <Button size="sm" variant="outline" className="font-mono">
@@ -178,9 +183,9 @@ export default function AdminScanningDashboard() {
                         <div className="p-4 bg-muted/30 hover:bg-muted/50 rounded-lg border border-border hover:border-secondary/50 transition-colors cursor-pointer">
                           <div className="flex items-center justify-between">
                             <div className="flex-1">
-                              <div className="font-mono text-sm font-bold">{order.orderId}</div>
+                              <div className="font-mono text-sm font-bold">{order.order_id}</div>
                               <div className="text-xs text-muted-foreground mt-1">
-                                {order.contactName} • {order.itemCount} items
+                                {order.contact_name} • {order.item_count} items
                               </div>
                             </div>
                             <Button size="sm" variant="outline" className="font-mono">
