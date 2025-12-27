@@ -4,6 +4,7 @@
  */
 
 import { apiClient } from '@/lib/api/api-client'
+import { throwApiError } from '@/lib/utils/throw-api-error'
 import type {
 	CompleteOutboundScanResponse,
 	GetAssetScanHistoryResponse,
@@ -11,9 +12,74 @@ import type {
 	GetScanEventsResponse,
 	InventoryAvailabilityParams,
 	OutboundScanResponse,
-	UploadTruckPhotosResponse
+	UploadTruckPhotosResponse,
+	APIOutboundProgressResponse,
 } from '@/types/scanning'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+
+
+// ============================================================
+// Outbound Scanning Functions
+// ============================================================
+
+const getOutboundScanProgress = async (orderId: string): Promise<APIOutboundProgressResponse> => {
+	try {
+		const response = await apiClient.get<APIOutboundProgressResponse>(
+			`/operations/v1/scanning/outbound/${orderId}/progress`
+		)
+		return response.data
+	} catch (error) {
+		return throwApiError(error)
+	}
+}
+
+const scanOutboundItem = async (data: {
+	orderId: string
+	qrCode: string
+	quantity?: number
+}): Promise<OutboundScanResponse> => {
+	try {
+		const response = await apiClient.post(
+			`/operations/v1/scanning/outbound/${data.orderId}/scan`,
+			{
+				qr_code: data.qrCode,
+				quantity: data.quantity,
+			}
+		)
+		return response.data
+	} catch (error) {
+		return throwApiError(error)
+	}
+}
+
+const uploadTruckPhotos = async (data: {
+	orderId: string
+	photos: string[]
+}): Promise<UploadTruckPhotosResponse> => {
+	try {
+		const response = await apiClient.post(
+			`/operations/v1/scanning/outbound/${data.orderId}/truck-photos`,
+			data
+		)
+		return response.data
+	} catch (error) {
+		return throwApiError(error)
+	}
+}
+
+const completeOutboundScan = async (data: {
+	orderId: string
+}): Promise<CompleteOutboundScanResponse> => {
+	try {
+		const response = await apiClient.post(
+			`/operations/v1/scanning/outbound/${data.orderId}/complete`,
+			{}
+		)
+		return response.data
+	} catch (error) {
+		return throwApiError(error)
+	}
+}
 
 // ============================================================
 // Outbound Scanning Hooks (Stateless)
@@ -22,15 +88,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 export function useOutboundScanProgress(orderId: string | null) {
 	return useQuery({
 		queryKey: ['outboundScanProgress', orderId],
-		queryFn: async () => {
-			if (!orderId) return null
-
-			const response = await apiClient.get(
-				`/operations/v1/scanning/outbound/${orderId}/progress`
-			)
-
-			return response.data;
-		},
+		queryFn: () => getOutboundScanProgress(orderId!),
 		enabled: !!orderId,
 		refetchInterval: 3000, // Poll every 3 seconds for real-time updates
 	})
@@ -40,30 +98,7 @@ export function useScanOutboundItem() {
 	const queryClient = useQueryClient()
 
 	return useMutation({
-		mutationFn: async (data: {
-			orderId: string
-			qrCode: string
-			quantity?: number
-		}) => {
-			const response = await fetch(
-				`/operations/v1/scanning/outbound/${data.orderId}/scan`,
-				{
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({
-						qrCode: data.qrCode,
-						quantity: data.quantity,
-					}),
-				}
-			)
-
-			if (!response.ok) {
-				const error = await response.json()
-				throw new Error(error.error || 'Failed to scan outbound item')
-			}
-
-			return response.json() as Promise<OutboundScanResponse>
-		},
+		mutationFn: scanOutboundItem,
 		onSuccess: (_, variables) => {
 			// Invalidate progress query
 			queryClient.invalidateQueries({
@@ -75,23 +110,7 @@ export function useScanOutboundItem() {
 
 export function useUploadTruckPhotos() {
 	return useMutation({
-		mutationFn: async (data: { orderId: string; photos: string[] }) => {
-			const response = await fetch(
-				`/operations/v1/scanning/outbound/${data.orderId}/truck-photos`,
-				{
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify(data),
-				}
-			)
-
-			if (!response.ok) {
-				const error = await response.json()
-				throw new Error(error.error || 'Failed to upload truck photos')
-			}
-
-			return response.json() as Promise<UploadTruckPhotosResponse>
-		},
+		mutationFn: uploadTruckPhotos,
 	})
 }
 
@@ -99,24 +118,7 @@ export function useCompleteOutboundScan() {
 	const queryClient = useQueryClient()
 
 	return useMutation({
-		mutationFn: async (data: { orderId: string }) => {
-			const response = await fetch(
-				`/operations/v1/scanning/outbound/${data.orderId}/complete`,
-				{
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-				}
-			)
-
-			if (!response.ok) {
-				const error = await response.json()
-				throw new Error(
-					error.error || 'Failed to complete outbound scan'
-				)
-			}
-
-			return response.json() as Promise<CompleteOutboundScanResponse>
-		},
+		mutationFn: completeOutboundScan,
 		onSuccess: data => {
 			// Invalidate order details
 			queryClient.invalidateQueries({ queryKey: ['order', data.orderId] })
@@ -129,28 +131,71 @@ export function useCompleteOutboundScan() {
 }
 
 // ============================================================
+// Inbound Scanning Functions
+// ============================================================
+
+const getInboundScanProgress = async (orderId: string) => {
+	try {
+		const response = await apiClient.get(
+			`/operations/v1/scanning/inbound/${orderId}/progress`
+		)
+		return response.data
+	} catch (error) {
+		return throwApiError(error)
+	}
+}
+
+const scanInboundItem = async (data: {
+	orderId: string
+	qrCode: string
+	condition: 'GREEN' | 'ORANGE' | 'RED'
+	notes?: string
+	photos?: string[]
+	refurbDaysEstimate?: number
+	discrepancyReason?: 'BROKEN' | 'LOST' | 'OTHER'
+	quantity?: number
+}) => {
+	try {
+		const response = await apiClient.post(
+			`/operations/v1/scanning/inbound/${data.orderId}/scan`,
+			{
+				qr_code: data.qrCode,
+				condition: data.condition,
+				notes: data.notes,
+				photos: data.photos,
+				refurb_days_estimate: data.refurbDaysEstimate,
+				discrepancy_reason: data.discrepancyReason,
+				quantity: data.quantity,
+			}
+		)
+		return response.data
+	} catch (error) {
+		return throwApiError(error)
+	}
+}
+
+const completeInboundScan = async (data: { orderId: string }) => {
+	try {
+		const response = await apiClient.post(
+			`/operations/v1/scanning/inbound/${data.orderId}/complete`,
+			{}
+		)
+		return response.data
+	} catch (error) {
+		return throwApiError(error)
+	}
+}
+
+// ============================================================
 // Inbound Scanning Hooks (Stateless)
 // ============================================================
 
 export function useInboundScanProgress(orderId: string | null) {
 	return useQuery({
 		queryKey: ['inboundScanProgress', orderId],
-		queryFn: async () => {
-			if (!orderId) return null
-
-			const response = await fetch(
-				`/api/scanning/inbound/${orderId}/progress`
-			)
-
-			if (!response.ok) {
-				const error = await response.json()
-				throw new Error(error.error || 'Failed to get scan progress')
-			}
-
-			return response.json()
-		},
+		queryFn: () => getInboundScanProgress(orderId!),
 		enabled: !!orderId,
-		refetchInterval: 3000, // Poll every 3 seconds for real-time updates
+		refetchInterval: 3000,
 	})
 }
 
@@ -158,42 +203,8 @@ export function useScanInboundItem() {
 	const queryClient = useQueryClient()
 
 	return useMutation({
-		mutationFn: async (data: {
-			orderId: string
-			qrCode: string
-			condition: 'GREEN' | 'ORANGE' | 'RED'
-			notes?: string
-			photos?: string[]
-			refurbDaysEstimate?: number // Feedback #2
-			discrepancyReason?: 'BROKEN' | 'LOST' | 'OTHER'
-			quantity?: number
-		}) => {
-			const response = await fetch(
-				`/api/scanning/inbound/${data.orderId}/scan`,
-				{
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({
-						qrCode: data.qrCode,
-						condition: data.condition,
-						notes: data.notes,
-						photos: data.photos,
-						refurbDaysEstimate: data.refurbDaysEstimate, // Feedback #2
-						discrepancyReason: data.discrepancyReason,
-						quantity: data.quantity,
-					}),
-				}
-			)
-
-			if (!response.ok) {
-				const error = await response.json()
-				throw new Error(error.error || 'Failed to scan inbound item')
-			}
-
-			return response.json()
-		},
+		mutationFn: scanInboundItem,
 		onSuccess: (_, variables) => {
-			// Invalidate progress query
 			queryClient.invalidateQueries({
 				queryKey: ['inboundScanProgress', variables.orderId],
 			})
@@ -205,26 +216,8 @@ export function useCompleteInboundScan() {
 	const queryClient = useQueryClient()
 
 	return useMutation({
-		mutationFn: async (data: { orderId: string }) => {
-			const response = await fetch(
-				`/api/scanning/inbound/${data.orderId}/complete`,
-				{
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-				}
-			)
-
-			if (!response.ok) {
-				const error = await response.json()
-				throw new Error(
-					error.error || 'Failed to complete inbound scan'
-				)
-			}
-
-			return response.json()
-		},
+		mutationFn: completeInboundScan,
 		onSuccess: data => {
-			// Invalidate order details and asset data
 			queryClient.invalidateQueries({ queryKey: ['order', data.orderId] })
 			queryClient.invalidateQueries({ queryKey: ['adminOrders'] })
 			queryClient.invalidateQueries({ queryKey: ['assets'] })
@@ -236,24 +229,51 @@ export function useCompleteInboundScan() {
 }
 
 // ============================================================
+// History & Inventory Functions
+// ============================================================
+
+const getOrderScanEvents = async (orderId: string): Promise<GetScanEventsResponse> => {
+	try {
+		const response = await apiClient.get(
+			`/operations/v1/orders/${orderId}/scan-events`
+		)
+		return response.data
+	} catch (error) {
+		return throwApiError(error)
+	}
+}
+
+const getAssetScanHistory = async (assetId: string): Promise<GetAssetScanHistoryResponse> => {
+	try {
+		const response = await apiClient.get(
+			`/operations/v1/assets/${assetId}/scan-history`
+		)
+		return response.data
+	} catch (error) {
+		return throwApiError(error)
+	}
+}
+
+const getInventoryAvailability = async (params: InventoryAvailabilityParams): Promise<GetInventoryAvailabilityResponse> => {
+	try {
+		const response = await apiClient.get(
+			'/operations/v1/inventory/availability',
+			{ params }
+		)
+		return response.data
+	} catch (error) {
+		return throwApiError(error)
+	}
+}
+
+// ============================================================
 // Scan History Hooks
 // ============================================================
 
 export function useOrderScanEvents(orderId: string) {
 	return useQuery({
 		queryKey: ['orderScanEvents', orderId],
-		queryFn: async () => {
-			const response = await fetch(`/api/orders/${orderId}/scan-events`)
-
-			if (!response.ok) {
-				const error = await response.json()
-				throw new Error(
-					error.error || 'Failed to get order scan events'
-				)
-			}
-
-			return response.json() as Promise<GetScanEventsResponse>
-		},
+		queryFn: () => getOrderScanEvents(orderId),
 		enabled: !!orderId,
 	})
 }
@@ -261,18 +281,7 @@ export function useOrderScanEvents(orderId: string) {
 export function useAssetScanHistory(assetId: string) {
 	return useQuery({
 		queryKey: ['assetScanHistory', assetId],
-		queryFn: async () => {
-			const response = await fetch(`/api/assets/${assetId}/scan-history`)
-
-			if (!response.ok) {
-				const error = await response.json()
-				throw new Error(
-					error.error || 'Failed to get asset scan history'
-				)
-			}
-
-			return response.json() as Promise<GetAssetScanHistoryResponse>
-		},
+		queryFn: () => getAssetScanHistory(assetId),
 		enabled: !!assetId,
 	})
 }
@@ -284,27 +293,7 @@ export function useAssetScanHistory(assetId: string) {
 export function useInventoryAvailability(params: InventoryAvailabilityParams) {
 	return useQuery({
 		queryKey: ['inventoryAvailability', params],
-		queryFn: async () => {
-			const searchParams = new URLSearchParams()
-			if (params.company) searchParams.append('company', params.company)
-			if (params.warehouse)
-				searchParams.append('warehouse', params.warehouse)
-			if (params.zone) searchParams.append('zone', params.zone)
-			if (params.status) searchParams.append('status', params.status)
-
-			const response = await fetch(
-				`/api/inventory/availability?${searchParams.toString()}`
-			)
-
-			if (!response.ok) {
-				const error = await response.json()
-				throw new Error(
-					error.error || 'Failed to get inventory availability'
-				)
-			}
-
-			return response.json() as Promise<GetInventoryAvailabilityResponse>
-		},
-		refetchInterval: 10000, // Poll every 10 seconds for real-time availability
+		queryFn: () => getInventoryAvailability(params),
+		refetchInterval: 10000,
 	})
 }
