@@ -3,28 +3,17 @@
  * Phase 11: QR Code Scanning & Inventory Tracking
  */
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { apiClient } from '@/lib/api/api-client'
 import type {
-	StartOutboundScanRequest,
-	StartOutboundScanResponse,
-	OutboundScanRequest,
-	OutboundScanResponse,
-	UploadTruckPhotosRequest,
-	UploadTruckPhotosResponse,
-	CompleteOutboundScanRequest,
 	CompleteOutboundScanResponse,
-	StartInboundScanRequest,
-	StartInboundScanResponse,
-	InboundScanRequest,
-	InboundScanResponse,
-	CompleteInboundScanRequest,
-	CompleteInboundScanResponse,
-	GetSessionProgressResponse,
-	GetScanEventsResponse,
 	GetAssetScanHistoryResponse,
-	InventoryAvailabilityParams,
 	GetInventoryAvailabilityResponse,
+	GetScanEventsResponse,
+	InventoryAvailabilityParams,
+	OutboundScanResponse,
+	UploadTruckPhotosResponse
 } from '@/types/scanning'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 // ============================================================
 // Outbound Scanning Hooks (Stateless)
@@ -36,16 +25,11 @@ export function useOutboundScanProgress(orderId: string | null) {
 		queryFn: async () => {
 			if (!orderId) return null
 
-			const response = await fetch(
-				`/api/scanning/outbound/${orderId}/progress`
+			const response = await apiClient.get(
+				`/operations/v1/scanning/outbound/${orderId}/progress`
 			)
 
-			if (!response.ok) {
-				const error = await response.json()
-				throw new Error(error.error || 'Failed to get scan progress')
-			}
-
-			return response.json()
+			return response.data;
 		},
 		enabled: !!orderId,
 		refetchInterval: 3000, // Poll every 3 seconds for real-time updates
@@ -62,7 +46,7 @@ export function useScanOutboundItem() {
 			quantity?: number
 		}) => {
 			const response = await fetch(
-				`/api/scanning/outbound/${data.orderId}/scan`,
+				`/operations/v1/scanning/outbound/${data.orderId}/scan`,
 				{
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
@@ -93,7 +77,7 @@ export function useUploadTruckPhotos() {
 	return useMutation({
 		mutationFn: async (data: { orderId: string; photos: string[] }) => {
 			const response = await fetch(
-				'/api/scanning/outbound/truck-photos',
+				`/operations/v1/scanning/outbound/${data.orderId}/truck-photos`,
 				{
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
@@ -117,7 +101,7 @@ export function useCompleteOutboundScan() {
 	return useMutation({
 		mutationFn: async (data: { orderId: string }) => {
 			const response = await fetch(
-				`/api/scanning/outbound/${data.orderId}/complete`,
+				`/operations/v1/scanning/outbound/${data.orderId}/complete`,
 				{
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
