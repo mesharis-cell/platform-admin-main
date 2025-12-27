@@ -51,7 +51,7 @@ import {
 } from '@/components/ui/sidebar'
 import Providers from '@/providers'
 import { toast } from 'sonner'
-import Cookies from "js-cookie"
+import { useAuth } from '@/contexts/user-context'
 
 type NavItem = {
 	name: string
@@ -151,10 +151,10 @@ function AdminSidebarContent() {
 	const router = useRouter()
 	const { data: session, isPending } = useSession()
 	const { state } = useSidebar()
+	const { logout } = useAuth()
 
 	const handleSignOut = () => {
-		Cookies.remove('access_token')
-		Cookies.remove('refresh_token')
+		logout()
 		router.push('/');
 		toast.success('You have been signed out.')
 	}

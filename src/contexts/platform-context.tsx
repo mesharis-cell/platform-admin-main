@@ -18,12 +18,10 @@ export const PlatformProvider = ({ children }: { children: React.ReactNode }) =>
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const hostname = window.location.hostname;
-
     const fetchPlatform = async () => {
       try {
         setLoading(true);
-        const response = await apiClient.get(`/auth/context?hostname=${hostname}`);
+        const response = await apiClient.get(`/auth/context`);
         setPlatform(response.data.data);
       } catch (error) {
         console.error("Error fetching platform:", error);

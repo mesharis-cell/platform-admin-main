@@ -9,12 +9,11 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import axios from "axios";
 import { Eye, EyeOff, Lock, Mail, Package } from "lucide-react";
-import { useToken } from "@/lib/auth/use-token";
-import { jwtDecode, JwtPayload } from "jwt-decode";
+import { JwtPayload } from "jwt-decode";
 import LoadingState from "@/components/loading-state";
 import { usePlatform } from "@/contexts/platform-context";
 import { login } from "@/actions/login";
-import Cookies from 'js-cookie';
+import { useAuth } from "@/contexts/user-context";
 
 export interface CustomJwtPayload extends JwtPayload {
 	role: string;
@@ -26,25 +25,21 @@ export default function HomePage() {
 	const [password, setPassword] = useState("");
 	const [showPassword, setShowPassword] = useState(false);
 	const [isLoading, setIsLoading] = useState(false);
-	const { access_token, loading, setAccessToken } = useToken();
-	const { platform } = usePlatform();
+	const { isAuthenticated, user, setUser, setIsAuthenticated, isLoading: authLoading } = useAuth();
+	const { platform, isLoading: platformLoading } = usePlatform();
 
 	useEffect(() => {
-		if (access_token) {
-			// User is authenticated, redirect based on role
-			const role = jwtDecode<CustomJwtPayload>(access_token).role;
-
-			if (role === 'ADMIN') {
-				// PMG Admin goes to analytics dashboard
+		if (isAuthenticated) {
+			if (user?.role === 'ADMIN') {
+				// PMG Client goes to admin dashboard
 				router.push('/companies');
 			} else {
-				setAccessToken(null);
-				Cookies.remove('access_token');
-				Cookies.remove('refresh_token');
+				setUser(null);
+				setIsAuthenticated(false);
 				router.push('/');
 			}
 		}
-	}, [access_token, loading, router]);
+	}, [isAuthenticated, user, router]);
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -57,6 +52,11 @@ export default function HomePage() {
 				toast.success("Access Granted", {
 					description: "Welcome to the fulfillment platform.",
 				});
+
+				const { access_token, refresh_token, ...user } = res.data;
+				localStorage.setItem("user", JSON.stringify(user));
+				setUser(user);
+				setIsAuthenticated(true);
 
 				router.push('/companies')
 			} else {
@@ -76,8 +76,8 @@ export default function HomePage() {
 		}
 	};
 
-	// Show loading state while checking token OR if user is authenticated (to prevent form flash during redirect)
-	if (loading || access_token) {
+	// Show loading state while checking auth OR platform OR if user is authenticated (to prevent form flash during redirect)
+	if (platformLoading || authLoading || isAuthenticated) {
 		return <LoadingState />;
 	}
 
