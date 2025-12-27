@@ -23,6 +23,7 @@ import {
 	useUploadTruckPhotos,
 	useCompleteOutboundScan,
 } from '@/hooks/use-scanning'
+import { APIOutboundProgressResponse } from '@/types/scanning'
 import {
 	Camera,
 	CheckCircle2,
@@ -303,7 +304,8 @@ export default function OutboundScanningPage() {
 
 	const handleCameraScan = (qrCode: string) => {
 		// Check if this is a BATCH asset that needs quantity
-		const asset = progress.data?.assets.find(a => a.qrCode === qrCode)
+		const scanData = progress.data as unknown as APIOutboundProgressResponse
+		const asset = scanData?.data?.assets.find(a => a.qr_code === qrCode)
 
 		if (!asset) {
 			toast.error('Asset not found in order', {
@@ -313,18 +315,18 @@ export default function OutboundScanningPage() {
 		}
 
 		// Check if asset is already fully scanned
-		if (asset.scannedQuantity >= asset.requiredQuantity) {
+		if (asset.scanned_quantity >= asset.required_quantity) {
 			toast.success('Asset already scanned', {
-				description: `${asset.assetName} - ${asset.scannedQuantity}/${asset.requiredQuantity} complete`,
+				description: `${asset.asset_name} - ${asset.scanned_quantity}/${asset.required_quantity} complete`,
 			})
 			return
 		}
 
-		if (asset.trackingMethod === 'BATCH') {
+		if (asset.tracking_method === 'BATCH') {
 			// Show quantity prompt dialog
 			setPendingBatchScan({
 				qrCode: qrCode,
-				assetId: asset.assetId,
+				assetId: asset.asset_id,
 			})
 			setBatchQuantityInput('')
 		} else {
@@ -337,8 +339,9 @@ export default function OutboundScanningPage() {
 		if (!pendingBatchScan) return
 
 		// Get latest asset data
-		const asset = progress.data?.assets.find(
-			a => a.assetId === pendingBatchScan.assetId
+		const scanData = progress.data as unknown as APIOutboundProgressResponse
+		const asset = scanData?.data?.assets.find(
+			a => a.asset_id === pendingBatchScan.assetId
 		)
 
 		if (!asset) {
@@ -347,7 +350,7 @@ export default function OutboundScanningPage() {
 			return
 		}
 
-		const remainingQuantity = asset.requiredQuantity - asset.scannedQuantity
+		const remainingQuantity = asset.required_quantity - asset.scanned_quantity
 
 		const qty = parseInt(batchQuantityInput)
 		if (!qty || qty <= 0) {
@@ -386,21 +389,25 @@ export default function OutboundScanningPage() {
 		scanItem.mutate(
 			{ orderId, qrCode, quantity },
 			{
-				onSuccess: data => {
+				onSuccess: (data: any) => {
+					// Handle API response structure (checking for nested data object)
+					const asset = data.data?.asset || data.asset
+					const progress = data.data?.progress || data.progress
+
 					setLastScannedQR(qrCode)
 					setManualQRInput('')
 					setManualQuantityInput('')
 					setIsScanning(false)
 
-					toast.success(`Scanned: ${data.asset.assetName}`, {
-						description: `${data.progress.itemsScanned}/${data.progress.totalItems} items`,
+					toast.success(`Scanned: ${asset.asset_name}`, {
+						description: `${progress.items_scanned}/${progress.total_items} items`,
 					})
 
 					// Clear last scanned after 2 seconds
 					setTimeout(() => setLastScannedQR(null), 2000)
 
 					// Move to photos step if all items scanned
-					if (data.progress.percentComplete === 100) {
+					if (progress.percent_complete === 100) {
 						stopCamera()
 						setStep('photos')
 					}
@@ -424,8 +431,9 @@ export default function OutboundScanningPage() {
 		}
 
 		// Check if this asset requires quantity (BATCH tracking)
-		const asset = progress.data?.assets.find(
-			a => a.qrCode === manualQRInput.trim()
+		const scanData = progress.data as unknown as APIOutboundProgressResponse
+		const asset = scanData?.data?.assets.find(
+			a => a.qr_code === manualQRInput.trim()
 		)
 
 		if (!asset) {
@@ -436,16 +444,16 @@ export default function OutboundScanningPage() {
 		}
 
 		// Check if asset is already fully scanned
-		if (asset.scannedQuantity >= asset.requiredQuantity) {
+		if (asset.scanned_quantity >= asset.required_quantity) {
 			toast.success('Asset already scanned', {
-				description: `${asset.assetName} - ${asset.scannedQuantity}/${asset.requiredQuantity} complete`,
+				description: `${asset.asset_name} - ${asset.scanned_quantity}/${asset.required_quantity} complete`,
 			})
 			setManualQRInput('')
 			setManualQuantityInput('')
 			return
 		}
 
-		if (asset.trackingMethod === 'BATCH') {
+		if (asset.tracking_method === 'BATCH') {
 			// If quantity field has value, use it
 			if (manualQuantityInput) {
 				const qty = parseInt(manualQuantityInput)
@@ -455,7 +463,7 @@ export default function OutboundScanningPage() {
 				}
 
 				const remainingQuantity =
-					asset.requiredQuantity - asset.scannedQuantity
+					asset.required_quantity - asset.scanned_quantity
 				if (qty > remainingQuantity) {
 					toast.error('Quantity exceeds required amount', {
 						description: `Maximum: ${remainingQuantity}`,
@@ -468,7 +476,7 @@ export default function OutboundScanningPage() {
 				// No quantity entered - show dialog prompt
 				setPendingBatchScan({
 					qrCode: manualQRInput.trim(),
-					assetId: asset.assetId,
+					assetId: asset.asset_id,
 				})
 				setBatchQuantityInput('')
 				setManualQRInput('')
@@ -538,10 +546,11 @@ export default function OutboundScanningPage() {
 						completeScan.mutate(
 							{ orderId },
 							{
-								onSuccess: data => {
+								onSuccess: (data: any) => {
 									setStep('complete')
+									const newStatus = data.data?.new_status || data.new_status || data.data?.order_status || data.order_status || 'READY_FOR_DELIVERY'
 									toast.success('Scan complete', {
-										description: `Order ${data.newStatus}`,
+										description: `Order ${newStatus}`,
 									})
 									setTimeout(() => {
 										router.push(`/admin/orders/${orderId}`)
@@ -567,10 +576,11 @@ export default function OutboundScanningPage() {
 			completeScan.mutate(
 				{ orderId },
 				{
-					onSuccess: data => {
+					onSuccess: (data: any) => {
 						setStep('complete')
+						const newStatus = data.data?.new_status || data.new_status || data.data?.order_status || data.order_status || 'READY_FOR_DELIVERY'
 						toast.success('Scan complete', {
-							description: `Order ${data.newStatus}`,
+							description: `Order ${newStatus}`,
 						})
 						setTimeout(() => {
 							router.push(`/admin/orders/${orderId}`)
@@ -603,7 +613,10 @@ export default function OutboundScanningPage() {
 		)
 	}
 
-	const progressData = progress.data
+
+
+	const scanData = progress.data as unknown as APIOutboundProgressResponse
+	const progressData = scanData.data
 
 	return (
 		<div className='min-h-screen bg-black text-white relative overflow-hidden'>
@@ -629,7 +642,7 @@ export default function OutboundScanningPage() {
 							OUTBOUND SCAN
 						</div>
 						<div className='text-lg font-bold font-mono'>
-							ORDER #{progressData.orderIdDisplay}
+							ORDER #{progressData.order_id}
 						</div>
 					</div>
 					<Badge
@@ -645,16 +658,16 @@ export default function OutboundScanningPage() {
 					<div className='flex justify-between text-xs font-mono'>
 						<span>PROGRESS</span>
 						<span className='text-primary'>
-							{progressData.itemsScanned}/
-							{progressData.totalItems} UNITS
+							{progressData.items_scanned}/
+							{progressData.total_items} UNITS
 						</span>
 					</div>
 					<Progress
-						value={progressData.percentComplete}
+						value={progressData.percent_complete}
 						className='h-2'
 					/>
 					<div className='text-right text-xs text-primary font-bold font-mono'>
-						{progressData.percentComplete}%
+						{progressData.percent_complete}%
 					</div>
 				</div>
 			</div>
@@ -720,13 +733,14 @@ export default function OutboundScanningPage() {
 					{/* Batch Quantity Prompt Dialog */}
 					{pendingBatchScan &&
 						(() => {
-							const asset = progress.data?.assets.find(
-								a => a.assetId === pendingBatchScan.assetId
+							const scanData = progress.data as unknown as APIOutboundProgressResponse
+							const asset = scanData?.data?.assets.find(
+								a => a.asset_id === pendingBatchScan.assetId
 							)
 							if (!asset) return null
 
 							const remainingQuantity =
-								asset.requiredQuantity - asset.scannedQuantity
+								asset.required_quantity - asset.scanned_quantity
 
 							return (
 								<div className='fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4'>
@@ -737,7 +751,7 @@ export default function OutboundScanningPage() {
 												BATCH QUANTITY
 											</h3>
 											<p className='text-sm text-muted-foreground'>
-												{asset.assetName}
+												{asset.asset_name}
 											</p>
 											<p className='text-xs text-muted-foreground font-mono'>
 												QR: {pendingBatchScan.qrCode}
@@ -852,31 +866,30 @@ export default function OutboundScanningPage() {
 						</div>
 						{progressData.assets.map(asset => (
 							<div
-								key={asset.assetId}
-								className={`p-3 rounded-lg border ${
-									asset.scannedQuantity ===
-									asset.requiredQuantity
-										? 'bg-primary/10 border-primary/30'
-										: 'bg-muted/20 border-border'
-								}`}
+								key={asset.asset_id}
+								className={`p-3 rounded-lg border ${asset.scanned_quantity ===
+									asset.required_quantity
+									? 'bg-primary/10 border-primary/30'
+									: 'bg-muted/20 border-border'
+									}`}
 							>
 								<div className='flex items-center justify-between'>
 									<div className='flex-1'>
 										<div className='font-mono text-sm font-bold'>
-											{asset.assetName}
+											{asset.asset_name}
 										</div>
 										<div className='text-xs text-muted-foreground'>
-											QR: {asset.qrCode} •{' '}
-											{asset.trackingMethod}
+											QR: {asset.qr_code} •{' '}
+											{asset.tracking_method}
 										</div>
 									</div>
 									<div className='text-right'>
 										<div className='text-sm font-mono font-bold'>
-											{asset.scannedQuantity}/
-											{asset.requiredQuantity}
+											{asset.scanned_quantity}/
+											{asset.required_quantity}
 										</div>
-										{asset.scannedQuantity ===
-										asset.requiredQuantity ? (
+										{asset.scanned_quantity ===
+											asset.required_quantity ? (
 											<CheckCircle2 className='w-5 h-5 text-primary ml-auto' />
 										) : (
 											<Package className='w-5 h-5 text-muted-foreground ml-auto' />
@@ -888,7 +901,7 @@ export default function OutboundScanningPage() {
 					</div>
 
 					{/* Continue to photos button */}
-					{progressData.percentComplete === 100 && (
+					{progressData.percent_complete === 100 && (
 						<Button
 							onClick={() => {
 								stopCamera()
@@ -1031,7 +1044,7 @@ export default function OutboundScanningPage() {
 									}
 								>
 									{uploadPhotos.isPending ||
-									completeScan.isPending
+										completeScan.isPending
 										? 'PROCESSING...'
 										: 'COMPLETE SCAN'}
 								</Button>
@@ -1073,7 +1086,7 @@ export default function OutboundScanningPage() {
 									Items Scanned:
 								</span>
 								<span className='font-bold text-primary'>
-									{progressData.totalItems}
+									{progressData.total_items}
 								</span>
 							</div>
 							<div className='flex justify-between'>

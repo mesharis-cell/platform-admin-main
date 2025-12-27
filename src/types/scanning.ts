@@ -327,3 +327,32 @@ export interface ScanningError {
 		issue?: string
 	}
 }
+
+// ============================================================
+// API V2 Response Types (Snake Case)
+// ============================================================
+
+export interface APIOutboundAsset {
+	asset_id: string
+	asset_name: string
+	qr_code: string
+	tracking_method: 'INDIVIDUAL' | 'BATCH'
+	required_quantity: number
+	scanned_quantity: number
+	is_complete: boolean
+}
+
+export interface APIOutboundProgressData {
+	order_id: string
+	order_status: string
+	total_items: number
+	items_scanned: number
+	percent_complete: number
+	assets: APIOutboundAsset[]
+}
+
+export interface APIOutboundProgressResponse {
+	data: APIOutboundProgressData
+	message: string
+	success: boolean
+}
