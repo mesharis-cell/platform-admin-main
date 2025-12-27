@@ -356,3 +356,28 @@ export interface APIOutboundProgressResponse {
 	message: string
 	success: boolean
 }
+
+export interface APIInboundAsset {
+	asset_id: string
+	asset_name: string
+	qr_code: string
+	tracking_method: 'INDIVIDUAL' | 'BATCH'
+	required_quantity: number // This is often "total expected to return"
+	scanned_quantity: number
+	is_complete: boolean
+}
+
+export interface APIInboundProgressData {
+	order_id: string
+	order_status: string
+	total_items: number
+	items_scanned: number
+	percent_complete: number
+	assets: APIInboundAsset[]
+}
+
+export interface APIInboundProgressResponse {
+	data: APIInboundProgressData
+	message: string
+	success: boolean
+}

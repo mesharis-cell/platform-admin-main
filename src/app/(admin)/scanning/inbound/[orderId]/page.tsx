@@ -30,6 +30,7 @@ import {
 	useScanInboundItem,
 	useCompleteInboundScan,
 } from '@/hooks/use-scanning'
+import { APIInboundProgressResponse } from '@/types/scanning'
 import {
 	Camera,
 	CheckCircle2,
@@ -240,7 +241,8 @@ export default function InboundScanningPage() {
 		if (!progress.data) return
 
 		// Find asset in progress data
-		const asset = progress.data.assets.find(a => a.qrCode === qrCode)
+		const scanData = progress.data as unknown as APIInboundProgressResponse
+		const asset = scanData?.data?.assets.find(a => a.qr_code === qrCode)
 
 		if (!asset) {
 			toast.error('Asset not found in order', {
@@ -250,9 +252,9 @@ export default function InboundScanningPage() {
 		}
 
 		// Check if asset is already fully scanned
-		if (asset.scannedQuantity >= asset.requiredQuantity) {
+		if (asset.scanned_quantity >= asset.required_quantity) {
 			toast.success('Asset already scanned', {
-				description: `${asset.assetName} - ${asset.scannedQuantity}/${asset.requiredQuantity} complete`,
+				description: `${asset.asset_name} - ${asset.scanned_quantity}/${asset.required_quantity} complete`,
 			})
 			return
 		}
@@ -270,17 +272,17 @@ export default function InboundScanningPage() {
 		// Open inspection dialog
 		setCurrentInspection({
 			qrCode,
-			assetId: asset.assetId,
-			assetName: asset.assetName,
-			trackingMethod: asset.trackingMethod,
-			requiredQuantity: asset.requiredQuantity,
-			scannedQuantity: asset.scannedQuantity,
+			assetId: asset.asset_id,
+			assetName: asset.asset_name,
+			trackingMethod: asset.tracking_method,
+			requiredQuantity: asset.required_quantity,
+			scannedQuantity: asset.scanned_quantity,
 			condition: null,
 			notes: '',
 			photos: [],
 			refurbDaysEstimate: null, // Feedback #2
 			discrepancyReason: null,
-			quantity: asset.trackingMethod === 'BATCH' ? null : 1,
+			quantity: asset.tracking_method === 'BATCH' ? null : 1,
 		})
 		setInspectionDialogOpen(true)
 	}
@@ -492,7 +494,11 @@ export default function InboundScanningPage() {
 				quantity: currentInspection.quantity || undefined,
 			},
 			{
-				onSuccess: async data => {
+				onSuccess: async (data: any) => {
+					// Handle API response structure
+					const asset = data.data?.asset || data.asset
+					const progress = data.data?.progress || data.progress
+
 					const scannedAssetName = currentInspection.assetName // Use from state before clearing
 					setLastScannedQR(currentInspection.qrCode)
 					setInspectionDialogOpen(false)
@@ -516,13 +522,13 @@ export default function InboundScanningPage() {
 					}
 
 					toast.success(`Scanned: ${scannedAssetName}`, {
-						description: `Condition: ${data.asset?.condition || 'Updated'} | Status: ${data.asset?.status || 'Updated'}`,
+						description: `Condition: ${asset?.condition || 'Updated'} | Status: ${asset?.status || 'Updated'}`,
 					})
 
 					setTimeout(() => setLastScannedQR(null), 2000)
 
 					// Complete scan if 100%
-					if (data.progress.percentComplete === 100) {
+					if (progress.percent_complete === 100) {
 						handleCompleteScan()
 					}
 				},
@@ -540,10 +546,11 @@ export default function InboundScanningPage() {
 		completeScan.mutate(
 			{ orderId },
 			{
-				onSuccess: data => {
+				onSuccess: (data: any) => {
 					setStep('complete')
+					const newStatus = data.data?.new_status || data.new_status || data.data?.order_status || data.order_status || 'CLOSED'
 					toast.success('Return scan complete', {
-						description: `Order ${data.newStatus}`,
+						description: `Order ${newStatus}`,
 					})
 					setTimeout(() => {
 						router.push(`/admin/orders/${orderId}`)
@@ -575,7 +582,10 @@ export default function InboundScanningPage() {
 		)
 	}
 
-	const progressData = progress.data
+
+
+	const scanData = progress.data as unknown as APIInboundProgressResponse
+	const progressData = scanData.data
 
 	return (
 		<div className='min-h-screen bg-black text-white relative overflow-hidden'>
@@ -601,7 +611,7 @@ export default function InboundScanningPage() {
 							INBOUND SCAN + INSPECTION
 						</div>
 						<div className='text-lg font-bold font-mono'>
-							ORDER #{progressData.orderId.slice(0, 8)}
+							ORDER #{progressData.order_id}
 						</div>
 					</div>
 					<Badge
@@ -617,16 +627,16 @@ export default function InboundScanningPage() {
 					<div className='flex justify-between text-xs font-mono'>
 						<span>PROGRESS</span>
 						<span className='text-primary'>
-							{progressData.itemsScanned}/
-							{progressData.totalItems} UNITS
+							{progressData.items_scanned}/
+							{progressData.total_items} UNITS
 						</span>
 					</div>
 					<Progress
-						value={progressData.percentComplete}
+						value={progressData.percent_complete}
 						className='h-2'
 					/>
 					<div className='text-right text-xs text-primary font-bold font-mono'>
-						{progressData.percentComplete}%
+						{progressData.percent_complete}%
 					</div>
 				</div>
 			</div>
@@ -726,31 +736,30 @@ export default function InboundScanningPage() {
 						</div>
 						{progressData.assets.map(asset => (
 							<div
-								key={asset.assetId}
-								className={`p-3 rounded-lg border ${
-									asset.scannedQuantity ===
-									asset.requiredQuantity
-										? 'bg-primary/10 border-primary/30'
-										: 'bg-muted/20 border-border'
-								}`}
+								key={asset.asset_id}
+								className={`p-3 rounded-lg border ${asset.scanned_quantity ===
+									asset.required_quantity
+									? 'bg-primary/10 border-primary/30'
+									: 'bg-muted/20 border-border'
+									}`}
 							>
 								<div className='flex items-center justify-between'>
 									<div className='flex-1'>
 										<div className='font-mono text-sm font-bold'>
-											{asset.assetName}
+											{asset.asset_name}
 										</div>
 										<div className='text-xs text-muted-foreground'>
-											QR: {asset.qrCode} •{' '}
-											{asset.trackingMethod}
+											QR: {asset.qr_code} •{' '}
+											{asset.tracking_method}
 										</div>
 									</div>
 									<div className='text-right'>
 										<div className='text-sm font-mono font-bold'>
-											{asset.scannedQuantity}/
-											{asset.requiredQuantity}
+											{asset.scanned_quantity}/
+											{asset.required_quantity}
 										</div>
-										{asset.scannedQuantity ===
-										asset.requiredQuantity ? (
+										{asset.scanned_quantity ===
+											asset.required_quantity ? (
 											<CheckCircle2 className='w-5 h-5 text-primary ml-auto' />
 										) : (
 											<Package className='w-5 h-5 text-muted-foreground ml-auto' />
@@ -762,7 +771,7 @@ export default function InboundScanningPage() {
 					</div>
 
 					{/* Complete scan button */}
-					{progressData.percentComplete === 100 && (
+					{progressData.percent_complete === 100 && (
 						<Button
 							onClick={handleCompleteScan}
 							className='w-full h-14 text-lg font-mono font-bold bg-primary hover:bg-primary/90'
@@ -801,34 +810,34 @@ export default function InboundScanningPage() {
 								{/* Quantity input for BATCH assets */}
 								{currentInspection.trackingMethod ===
 									'BATCH' && (
-									<div className='space-y-2'>
-										<label className='text-xs font-mono font-bold'>
-											QUANTITY RETURNING *
-										</label>
-										<input
-											type='number'
-											placeholder='Enter quantity...'
-											value={
-												currentInspection.quantity || ''
-											}
-											onChange={e =>
-												setCurrentInspection({
-													...currentInspection,
-													quantity:
-														parseInt(
-															e.target.value
-														) || null,
-												})
-											}
-											className='w-full bg-muted text-foreground px-4 py-3 rounded-lg font-mono text-lg text-center focus:outline-none focus:ring-2 focus:ring-primary'
-										/>
-										<p className='text-xs text-muted-foreground font-mono text-center'>
-											Remaining to scan:{' '}
-											{currentInspection.requiredQuantity -
-												currentInspection.scannedQuantity}
-										</p>
-									</div>
-								)}
+										<div className='space-y-2'>
+											<label className='text-xs font-mono font-bold'>
+												QUANTITY RETURNING *
+											</label>
+											<input
+												type='number'
+												placeholder='Enter quantity...'
+												value={
+													currentInspection.quantity || ''
+												}
+												onChange={e =>
+													setCurrentInspection({
+														...currentInspection,
+														quantity:
+															parseInt(
+																e.target.value
+															) || null,
+													})
+												}
+												className='w-full bg-muted text-foreground px-4 py-3 rounded-lg font-mono text-lg text-center focus:outline-none focus:ring-2 focus:ring-primary'
+											/>
+											<p className='text-xs text-muted-foreground font-mono text-center'>
+												Remaining to scan:{' '}
+												{currentInspection.requiredQuantity -
+													currentInspection.scannedQuantity}
+											</p>
+										</div>
+									)}
 
 								{/* Condition selector */}
 								<div className='space-y-2'>
@@ -839,16 +848,15 @@ export default function InboundScanningPage() {
 										<Button
 											variant={
 												currentInspection.condition ===
-												'GREEN'
+													'GREEN'
 													? 'default'
 													: 'outline'
 											}
-											className={`h-auto py-4 flex flex-col items-center gap-2 ${
-												currentInspection.condition ===
+											className={`h-auto py-4 flex flex-col items-center gap-2 ${currentInspection.condition ===
 												'GREEN'
-													? 'bg-green-600 hover:bg-green-700 border-green-500'
-													: 'border-green-500/30'
-											}`}
+												? 'bg-green-600 hover:bg-green-700 border-green-500'
+												: 'border-green-500/30'
+												}`}
 											onClick={() =>
 												setCurrentInspection({
 													...currentInspection,
@@ -865,16 +873,15 @@ export default function InboundScanningPage() {
 										<Button
 											variant={
 												currentInspection.condition ===
-												'ORANGE'
+													'ORANGE'
 													? 'default'
 													: 'outline'
 											}
-											className={`h-auto py-4 flex flex-col items-center gap-2 ${
-												currentInspection.condition ===
+											className={`h-auto py-4 flex flex-col items-center gap-2 ${currentInspection.condition ===
 												'ORANGE'
-													? 'bg-amber-600 hover:bg-amber-700 border-amber-500'
-													: 'border-amber-500/30'
-											}`}
+												? 'bg-amber-600 hover:bg-amber-700 border-amber-500'
+												: 'border-amber-500/30'
+												}`}
 											onClick={() =>
 												setCurrentInspection({
 													...currentInspection,
@@ -891,16 +898,15 @@ export default function InboundScanningPage() {
 										<Button
 											variant={
 												currentInspection.condition ===
-												'RED'
+													'RED'
 													? 'default'
 													: 'outline'
 											}
-											className={`h-auto py-4 flex flex-col items-center gap-2 ${
-												currentInspection.condition ===
+											className={`h-auto py-4 flex flex-col items-center gap-2 ${currentInspection.condition ===
 												'RED'
-													? 'bg-red-600 hover:bg-red-700 border-red-500'
-													: 'border-red-500/30'
-											}`}
+												? 'bg-red-600 hover:bg-red-700 border-red-500'
+												: 'border-red-500/30'
+												}`}
 											onClick={() =>
 												setCurrentInspection({
 													...currentInspection,
@@ -919,177 +925,177 @@ export default function InboundScanningPage() {
 								{/* Refurb Days Estimate - Feedback #2 */}
 								{(currentInspection.condition === 'ORANGE' ||
 									currentInspection.condition === 'RED') && (
-									<div className='space-y-2'>
-										<label className='text-xs font-mono font-bold'>
-											ESTIMATED REFURB DAYS * (Required
-											for ORANGE/RED)
-										</label>
-										<input
-											type='number'
-											min='1'
-											max='90'
-											placeholder='e.g., 5'
-											value={
-												currentInspection.refurbDaysEstimate ||
-												''
-											}
-											onChange={e =>
-												setCurrentInspection({
-													...currentInspection,
-													refurbDaysEstimate:
-														parseInt(
-															e.target.value
-														) || null,
-												})
-											}
-											className='w-full bg-muted text-foreground px-4 py-3 rounded-lg font-mono text-lg text-center focus:outline-none focus:ring-2 focus:ring-primary'
-										/>
-										<p className='text-xs text-muted-foreground font-mono text-center'>
-											How many days to refurbish this
-											item?
-										</p>
-									</div>
-								)}
+										<div className='space-y-2'>
+											<label className='text-xs font-mono font-bold'>
+												ESTIMATED REFURB DAYS * (Required
+												for ORANGE/RED)
+											</label>
+											<input
+												type='number'
+												min='1'
+												max='90'
+												placeholder='e.g., 5'
+												value={
+													currentInspection.refurbDaysEstimate ||
+													''
+												}
+												onChange={e =>
+													setCurrentInspection({
+														...currentInspection,
+														refurbDaysEstimate:
+															parseInt(
+																e.target.value
+															) || null,
+													})
+												}
+												className='w-full bg-muted text-foreground px-4 py-3 rounded-lg font-mono text-lg text-center focus:outline-none focus:ring-2 focus:ring-primary'
+											/>
+											<p className='text-xs text-muted-foreground font-mono text-center'>
+												How many days to refurbish this
+												item?
+											</p>
+										</div>
+									)}
 
 								{/* Notes */}
 								{(currentInspection.condition === 'ORANGE' ||
 									currentInspection.condition === 'RED') && (
-									<div className='space-y-2'>
-										<label className='text-xs font-mono font-bold'>
-											INSPECTION NOTES * (Required for
-											ORANGE/RED)
-										</label>
-										<Textarea
-											value={currentInspection.notes}
-											onChange={e =>
-												setCurrentInspection({
-													...currentInspection,
-													notes: e.target.value,
-												})
-											}
-											placeholder='Describe damage, wear, or issues...'
-											className='font-mono text-sm min-h-[100px]'
-										/>
-									</div>
-								)}
+										<div className='space-y-2'>
+											<label className='text-xs font-mono font-bold'>
+												INSPECTION NOTES * (Required for
+												ORANGE/RED)
+											</label>
+											<Textarea
+												value={currentInspection.notes}
+												onChange={e =>
+													setCurrentInspection({
+														...currentInspection,
+														notes: e.target.value,
+													})
+												}
+												placeholder='Describe damage, wear, or issues...'
+												className='font-mono text-sm min-h-[100px]'
+											/>
+										</div>
+									)}
 
 								{/* Damage photos - Feedback #2: Show for both ORANGE and RED */}
 								{(currentInspection.condition === 'ORANGE' ||
 									currentInspection.condition === 'RED') && (
-									<div className='space-y-2'>
-										<label className='text-xs font-mono font-bold'>
-											DAMAGE PHOTOS{' '}
-											{currentInspection.condition ===
-											'RED'
-												? '(Recommended)'
-												: '(Optional)'}
-										</label>
 										<div className='space-y-2'>
-											{/* Camera view for damage photos */}
-											<div className='relative aspect-video bg-black rounded-lg overflow-hidden border border-border'>
-												<video
-													ref={videoRef}
-													autoPlay
-													playsInline
-													muted
-													className='w-full h-full object-cover'
-												/>
+											<label className='text-xs font-mono font-bold'>
+												DAMAGE PHOTOS{' '}
+												{currentInspection.condition ===
+													'RED'
+													? '(Recommended)'
+													: '(Optional)'}
+											</label>
+											<div className='space-y-2'>
+												{/* Camera view for damage photos */}
+												<div className='relative aspect-video bg-black rounded-lg overflow-hidden border border-border'>
+													<video
+														ref={videoRef}
+														autoPlay
+														playsInline
+														muted
+														className='w-full h-full object-cover'
+													/>
 
-												{damagePhotoCameraActive ? (
-													<div className='absolute bottom-2 left-0 right-0 flex justify-center gap-2'>
-														<Button
-															onClick={
-																captureDamagePhoto
-															}
-															size='sm'
-															className='rounded-full bg-primary hover:bg-primary/90'
-														>
-															<Camera className='w-4 h-4 mr-1' />
-															CAPTURE
-														</Button>
-														<Button
-															onClick={
-																stopDamagePhotoCamera
-															}
-															size='sm'
-															variant='outline'
-															className='rounded-full'
-														>
-															<XCircle className='w-4 h-4 mr-1' />
-															STOP
-														</Button>
-													</div>
-												) : (
-													<div className='absolute inset-0 flex items-center justify-center bg-black/90'>
-														<Button
-															onClick={
-																startDamagePhotoCamera
-															}
-															variant='outline'
-															className='border-dashed border-2'
-														>
-															<Camera className='w-5 h-5 mr-2' />
-															START CAMERA
-														</Button>
-													</div>
-												)}
-											</div>
-
-											{/* Captured photos grid */}
-											{currentInspection.photos.length >
-												0 && (
-												<div>
-													<p className='text-xs font-mono text-muted-foreground mb-2'>
-														CAPTURED PHOTOS (
-														{
-															currentInspection
-																.photos.length
-														}
-														)
-													</p>
-													<div className='grid grid-cols-3 gap-2'>
-														{currentInspection.photos.map(
-															(photo, idx) => (
-																<div
-																	key={idx}
-																	className='aspect-square bg-muted rounded-lg overflow-hidden border border-border relative group'
-																>
-																	<img
-																		src={
-																			photo
-																		}
-																		alt={`Damage photo ${idx + 1}`}
-																		className='w-full h-full object-cover'
-																	/>
-																	<button
-																		onClick={() => {
-																			setCurrentInspection(
-																				{
-																					...currentInspection,
-																					photos: currentInspection.photos.filter(
-																						(
-																							_,
-																							i
-																						) =>
-																							i !==
-																							idx
-																					),
-																				}
-																			)
-																		}}
-																		className='absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity'
-																	>
-																		<XCircle className='w-3 h-3' />
-																	</button>
-																</div>
-															)
-														)}
-													</div>
+													{damagePhotoCameraActive ? (
+														<div className='absolute bottom-2 left-0 right-0 flex justify-center gap-2'>
+															<Button
+																onClick={
+																	captureDamagePhoto
+																}
+																size='sm'
+																className='rounded-full bg-primary hover:bg-primary/90'
+															>
+																<Camera className='w-4 h-4 mr-1' />
+																CAPTURE
+															</Button>
+															<Button
+																onClick={
+																	stopDamagePhotoCamera
+																}
+																size='sm'
+																variant='outline'
+																className='rounded-full'
+															>
+																<XCircle className='w-4 h-4 mr-1' />
+																STOP
+															</Button>
+														</div>
+													) : (
+														<div className='absolute inset-0 flex items-center justify-center bg-black/90'>
+															<Button
+																onClick={
+																	startDamagePhotoCamera
+																}
+																variant='outline'
+																className='border-dashed border-2'
+															>
+																<Camera className='w-5 h-5 mr-2' />
+																START CAMERA
+															</Button>
+														</div>
+													)}
 												</div>
-											)}
+
+												{/* Captured photos grid */}
+												{currentInspection.photos.length >
+													0 && (
+														<div>
+															<p className='text-xs font-mono text-muted-foreground mb-2'>
+																CAPTURED PHOTOS (
+																{
+																	currentInspection
+																		.photos.length
+																}
+																)
+															</p>
+															<div className='grid grid-cols-3 gap-2'>
+																{currentInspection.photos.map(
+																	(photo, idx) => (
+																		<div
+																			key={idx}
+																			className='aspect-square bg-muted rounded-lg overflow-hidden border border-border relative group'
+																		>
+																			<img
+																				src={
+																					photo
+																				}
+																				alt={`Damage photo ${idx + 1}`}
+																				className='w-full h-full object-cover'
+																			/>
+																			<button
+																				onClick={() => {
+																					setCurrentInspection(
+																						{
+																							...currentInspection,
+																							photos: currentInspection.photos.filter(
+																								(
+																									_,
+																									i
+																								) =>
+																									i !==
+																									idx
+																							),
+																						}
+																					)
+																				}}
+																				className='absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity'
+																			>
+																				<XCircle className='w-3 h-3' />
+																			</button>
+																		</div>
+																	)
+																)}
+															</div>
+														</div>
+													)}
+											</div>
 										</div>
-									</div>
-								)}
+									)}
 
 								{/* Discrepancy reason */}
 								{currentInspection.condition && (
@@ -1101,7 +1107,7 @@ export default function InboundScanningPage() {
 											<Button
 												variant={
 													currentInspection.discrepancyReason ===
-													'BROKEN'
+														'BROKEN'
 														? 'default'
 														: 'outline'
 												}
@@ -1111,7 +1117,7 @@ export default function InboundScanningPage() {
 														...currentInspection,
 														discrepancyReason:
 															currentInspection.discrepancyReason ===
-															'BROKEN'
+																'BROKEN'
 																? null
 																: 'BROKEN',
 													})
@@ -1122,7 +1128,7 @@ export default function InboundScanningPage() {
 											<Button
 												variant={
 													currentInspection.discrepancyReason ===
-													'LOST'
+														'LOST'
 														? 'default'
 														: 'outline'
 												}
@@ -1132,7 +1138,7 @@ export default function InboundScanningPage() {
 														...currentInspection,
 														discrepancyReason:
 															currentInspection.discrepancyReason ===
-															'LOST'
+																'LOST'
 																? null
 																: 'LOST',
 													})
@@ -1143,7 +1149,7 @@ export default function InboundScanningPage() {
 											<Button
 												variant={
 													currentInspection.discrepancyReason ===
-													'OTHER'
+														'OTHER'
 														? 'default'
 														: 'outline'
 												}
@@ -1153,7 +1159,7 @@ export default function InboundScanningPage() {
 														...currentInspection,
 														discrepancyReason:
 															currentInspection.discrepancyReason ===
-															'OTHER'
+																'OTHER'
 																? null
 																: 'OTHER',
 													})
@@ -1178,7 +1184,7 @@ export default function InboundScanningPage() {
 										((currentInspection.condition ===
 											'ORANGE' ||
 											currentInspection.condition ===
-												'RED') &&
+											'RED') &&
 											!currentInspection.notes.trim()) ||
 										scanItem.isPending
 									}
@@ -1197,7 +1203,7 @@ export default function InboundScanningPage() {
 										if (
 											qrScannerRef.current &&
 											qrScannerRef.current.getState() ===
-												2
+											2
 										) {
 											try {
 												await qrScannerRef.current.resume()
@@ -1245,7 +1251,7 @@ export default function InboundScanningPage() {
 									Items Inspected:
 								</span>
 								<span className='font-bold text-primary'>
-									{progressData.totalItems}
+									{progressData.total_items}
 								</span>
 							</div>
 						</div>
