@@ -4,14 +4,15 @@
  * Client-side hooks for order creation, cart management, and order submission workflows.
  */
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { apiClient } from '@/lib/api/api-client'
 import type {
-	SubmitOrderRequest,
-	SubmitOrderResponse,
-	OrderWithDetails,
 	MyOrdersListParams,
 	MyOrdersListResponse,
+	OrderWithDetails,
+	SubmitOrderRequest,
+	SubmitOrderResponse,
 } from '@/types/order'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 // ============================================================
 // Order Submission
@@ -140,7 +141,7 @@ export function useAdminOrders(
 		limit?: number
 		company?: string
 		brand?: string
-		status?: string
+		order_status?: string
 		dateFrom?: string
 		dateTo?: string
 		search?: string
@@ -153,7 +154,7 @@ export function useAdminOrders(
 	if (params.limit) queryParams.append('limit', params.limit.toString())
 	if (params.company) queryParams.append('company', params.company)
 	if (params.brand) queryParams.append('brand', params.brand)
-	if (params.status) queryParams.append('status', params.status)
+	if (params.order_status) queryParams.append('order_status', params.order_status)
 	if (params.dateFrom) queryParams.append('dateFrom', params.dateFrom)
 	if (params.dateTo) queryParams.append('dateTo', params.dateTo)
 	if (params.search) queryParams.append('search', params.search)
@@ -163,14 +164,9 @@ export function useAdminOrders(
 	return useQuery({
 		queryKey: ['orders', 'admin-list', params],
 		queryFn: async () => {
-			const response = await fetch(`/api/orders?${queryParams}`)
+			const response = await apiClient.get(`/client/v1/order?${queryParams}`)
 
-			if (!response.ok) {
-				const error = await response.json()
-				throw new Error(error.error || 'Failed to fetch orders')
-			}
-
-			return response.json()
+			return response.data
 		},
 	})
 }

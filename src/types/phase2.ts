@@ -9,38 +9,38 @@
 
 // eslint-disable-next-line import/export
 export interface Company {
-    id: string;
-    platform_id: string;
-    name: string;
-    domain: string;
-		platform_margin_percent: number;
-		contact_email: string;
-		contact_phone: string;
-    settings: {
-        branding: {
-            title: string,
-            primary_color: string,
-            secondary_color: string,
-						logo_url: string
-        }
-    },
-    is_active: boolean,
-    created_at: Date,
-    updated_at: Date,
-    deleted_at: Date | null,
-    domains: [
-        {
-            id: string,
-            platform_id: string,
-            company_id: string,
-            hostname: string,
-            type: string,
-            is_verified: boolean,
-            is_active: boolean,
-            created_at: Date,
-            updated_at: Date
-        }
-    ]
+	id: string;
+	platform_id: string;
+	name: string;
+	domain: string;
+	platform_margin_percent: number;
+	contact_email: string;
+	contact_phone: string;
+	settings: {
+		branding: {
+			title: string,
+			primary_color: string,
+			secondary_color: string,
+			logo_url: string
+		}
+	},
+	is_active: boolean,
+	created_at: Date,
+	updated_at: Date,
+	deleted_at: Date | null,
+	domains: [
+		{
+			id: string,
+			platform_id: string,
+			company_id: string,
+			hostname: string,
+			type: string,
+			is_verified: boolean,
+			is_active: boolean,
+			created_at: Date,
+			updated_at: Date
+		}
+	]
 }
 
 export interface CreateCompanyRequest {
@@ -204,7 +204,7 @@ export interface Brand {
 	name: string;
 	description?: string | null;
 	logoUrl?: string | null;
-	deletedAt?: Date | null;
+	is_active?: boolean;
 	createdAt: Date;
 	updatedAt: Date;
 	// Populated from joins

@@ -6,8 +6,9 @@ import {
 	useCreateCompany,
 	useUpdateCompany,
 	useArchiveCompany,
+	useUnarchiveCompany,
 } from "@/hooks/use-companies";
-import { Plus, Search, Archive, Pencil, Percent, Building2, Mail, Phone, MoreVertical, Upload, X, ImageIcon } from "lucide-react";
+import { Plus, Search, Archive, Pencil, Percent, Building2, Mail, Phone, MoreVertical, Upload, X, ImageIcon, Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -44,6 +45,7 @@ export default function CompaniesPage() {
 	const [isCreateOpen, setIsCreateOpen] = useState(false);
 	const [editingCompany, setEditingCompany] = useState<Company | null>(null);
 	const [confirmArchive, setConfirmArchive] = useState<Company | null>(null);
+	const [confirmUnarchive, setConfirmUnarchive] = useState<Company | null>(null);
 
 	// Create/Edit form state
 	const [formData, setFormData] = useState({
@@ -86,6 +88,7 @@ export default function CompaniesPage() {
 	const createMutation = useCreateCompany();
 	const updateMutation = useUpdateCompany();
 	const archiveMutation = useArchiveCompany();
+	const unarchiveMutation = useUnarchiveCompany();
 
 	// Handle logo selection
 	const handleLogoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -210,6 +213,22 @@ export default function CompaniesPage() {
 		} catch (error) {
 			toast.error("Archive failed");
 			setConfirmArchive(null);
+		}
+	};
+
+	// Handle unarchive
+	const handleUnarchive = async () => {
+		if (!confirmUnarchive) return;
+
+		try {
+			await unarchiveMutation.mutateAsync(confirmUnarchive.id);
+			toast.success("Company restored", {
+				description: `${confirmUnarchive.name} has been restored.`,
+			});
+			setConfirmUnarchive(null);
+		} catch (error) {
+			toast.error("Restore failed");
+			setConfirmUnarchive(null);
 		}
 	};
 
@@ -358,7 +377,7 @@ export default function CompaniesPage() {
 														domain: e.target.value,
 													})
 												}
-												placeholder="e.g., pernodricard.com"
+												placeholder="richard, custom.com, sub.custom.com"
 												className="font-mono"
 												required
 											/>
@@ -678,7 +697,7 @@ export default function CompaniesPage() {
 					<div className="border border-border rounded-lg overflow-hidden bg-card">
 						<Table>
 							<TableHeader>
-								<TableRow className="bg-muted/50">
+								<TableRow className="bg-muted/50 border-border/50">
 									<TableHead className="font-mono text-xs font-bold">
 										COMPANY
 									</TableHead>
@@ -701,7 +720,7 @@ export default function CompaniesPage() {
 								{companies.map((company, index) => (
 									<TableRow
 										key={company.id}
-										className="group hover:bg-muted/30 transition-colors"
+										className="group hover:bg-muted/30 transition-colors border-border/50"
 										style={{
 											animationDelay: `${index * 50}ms`,
 										}}
@@ -772,8 +791,8 @@ export default function CompaniesPage() {
 										<TableCell>
 											{company.deleted_at ? (
 												<Badge
-													variant="secondary"
-													className="font-mono text-xs"
+													variant="outline"
+													className="font-mono text-xs border-destructive/30 text-destructive"
 												>
 													ARCHIVED
 												</Badge>
@@ -787,27 +806,38 @@ export default function CompaniesPage() {
 											)}
 										</TableCell>
 										<TableCell>
-											{!company.deleted_at && (
-												<DropdownMenu>
-													<DropdownMenuTrigger asChild>
-														<Button
-															variant="ghost"
-															size="sm"
-															className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-														>
-															<MoreVertical className="h-4 w-4" />
-														</Button>
-													</DropdownMenuTrigger>
-													<DropdownMenuContent align="end">
+
+											<DropdownMenu>
+												<DropdownMenuTrigger asChild>
+													<Button
+														variant="ghost"
+														size="sm"
+														className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+													>
+														<MoreVertical className="h-4 w-4" />
+													</Button>
+												</DropdownMenuTrigger>
+												<DropdownMenuContent align="end">
+													<DropdownMenuItem
+														onClick={() =>
+															openEditDialog(company)
+														}
+														className="font-mono text-xs"
+													>
+														<Pencil className="h-3.5 w-3.5 mr-2" />
+														Edit Company
+													</DropdownMenuItem>
+													{company.deleted_at ? (
 														<DropdownMenuItem
 															onClick={() =>
-																openEditDialog(company)
+																setConfirmUnarchive(company)
 															}
-															className="font-mono text-xs"
+															className="font-mono text-xs text-primary"
 														>
-															<Pencil className="h-3.5 w-3.5 mr-2" />
-															Edit Company
+															<Undo2 className="h-3.5 w-3.5 mr-2" />
+															Unarchive Company
 														</DropdownMenuItem>
+													) : (
 														<DropdownMenuItem
 															onClick={() =>
 																setConfirmArchive(company)
@@ -817,9 +847,10 @@ export default function CompaniesPage() {
 															<Archive className="h-3.5 w-3.5 mr-2" />
 															Archive Company
 														</DropdownMenuItem>
-													</DropdownMenuContent>
-												</DropdownMenu>
-											)}
+													)}
+												</DropdownMenuContent>
+											</DropdownMenu>
+
 										</TableCell>
 									</TableRow>
 								))}
@@ -844,6 +875,17 @@ export default function CompaniesPage() {
 				confirmText="Archive"
 				cancelText="Cancel"
 				variant="destructive"
+			/>
+
+			{/* Confirm Unarchive Dialog */}
+			<ConfirmDialog
+				open={!!confirmUnarchive}
+				onOpenChange={(open) => !open && setConfirmUnarchive(null)}
+				onConfirm={handleUnarchive}
+				title="Unarchive Company"
+				description={`Are you sure you want to restore ${confirmUnarchive?.name}?`}
+				confirmText="Unarchive"
+				cancelText="Cancel"
 			/>
 		</div>
 	);

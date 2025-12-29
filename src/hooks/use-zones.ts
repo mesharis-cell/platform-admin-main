@@ -46,7 +46,7 @@ async function updateZone({ id, data }: { id: string; data: Partial<Zone> }): Pr
 }
 
 // Delete zone
-async function deleteZone(id: string): Promise<void> {
+async function deleteRestoreZone(id: string): Promise<void> {
   try {
     const response = await apiClient.delete(`/operations/v1/zone/${id}`);
     return response.data;
@@ -85,11 +85,11 @@ export function useUpdateZone() {
   });
 }
 
-export function useDeleteZone() {
+export function useDeleteRestoreZone() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: deleteZone,
+    mutationFn: deleteRestoreZone,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: zoneKeys.lists() });
     },

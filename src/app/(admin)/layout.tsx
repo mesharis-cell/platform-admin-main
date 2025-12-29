@@ -84,11 +84,11 @@ const navigation: NavItem[] = [
 	// 	icon: AlertCircle,
 	// 	badge: 'PMG',
 	// },
-	// {
-	// 	name: 'Scanning',
-	// 	href: '/scanning',
-	// 	icon: ScanLine,
-	// },
+	{
+		name: 'Scanning',
+		href: '/scanning',
+		icon: ScanLine,
+	},
 	// {
 	// 	name: 'Conditions',
 	// 	href: '/conditions',

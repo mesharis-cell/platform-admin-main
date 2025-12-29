@@ -1096,7 +1096,7 @@ export default function UsersManagementPage() {
 				< div className="bg-card border border-border rounded-xl overflow-hidden" >
 					<Table>
 						<TableHeader>
-							<TableRow>
+							<TableRow className="border-border/50">
 								<TableHead className="font-mono uppercase text-xs">
 									User
 								</TableHead>
@@ -1139,7 +1139,7 @@ export default function UsersManagementPage() {
 								</TableRow>
 							) : (
 								users.map((user) => (
-									<TableRow key={user.id}>
+									<TableRow key={user.id} className="border-border/50">
 										<TableCell>
 											<div>
 												<p className="font-mono font-semibold">{user.name}</p>
@@ -1149,7 +1149,7 @@ export default function UsersManagementPage() {
 											</div>
 										</TableCell>
 										<TableCell>
-											<Badge variant="outline" className="font-mono text-xs">
+											<Badge variant="outline" className="font-mono text-xs border-border/50 text-muted-foreground bg-muted/10">
 												{user.permission_template || "Custom"}
 											</Badge>
 										</TableCell>
@@ -1169,14 +1169,14 @@ export default function UsersManagementPage() {
 											{user.is_active ? (
 												<Badge
 													variant="outline"
-													className="font-mono text-xs border-primary/20 bg-primary/10 text-primary"
+													className="font-mono text-xs border-primary/30 text-primary"
 												>
 													Active
 												</Badge>
 											) : (
 												<Badge
 													variant="outline"
-													className="font-mono text-xs border-muted-foreground/20 bg-muted"
+													className="font-mono text-xs border-destructive/30 text-destructive"
 												>
 													Inactive
 												</Badge>

@@ -1,37 +1,32 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
-import {
-	useZones,
-	useCreateZone,
-	useUpdateZone,
-	useDeleteZone,
-} from "@/hooks/use-zones";
-import { useWarehouses } from "@/hooks/use-warehouses";
-import { useCompanies } from "@/hooks/use-companies";
-import {
-	Plus,
-	Trash2,
-	Pencil,
-	Box,
-	Warehouse,
-	Building2,
-	MoreVertical,
-	Filter,
-	Grid3x3,
-} from "lucide-react";
 import { AdminHeader } from "@/components/admin-header";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
 	Dialog,
 	DialogContent,
+	DialogDescription,
 	DialogHeader,
 	DialogTitle,
 	DialogTrigger,
-	DialogDescription,
 } from "@/components/ui/dialog";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
 import {
 	Table,
 	TableBody,
@@ -40,30 +35,31 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
+import { useCompanies } from "@/hooks/use-companies";
+import { useWarehouses } from "@/hooks/use-warehouses";
 import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { toast } from "sonner";
+	useCreateZone,
+	useDeleteRestoreZone,
+	useUpdateZone,
+	useZones
+} from "@/hooks/use-zones";
 import type {
-	Zone,
-	ZoneListResponse,
-	Warehouse as WarehouseType,
-	WarehouseListResponse,
-	Company,
-	CompanyListResponse,
+	Zone
 } from "@/types";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import {
+	Box,
+	Building2,
+	Filter,
+	Grid3x3,
+	MoreVertical,
+	Pencil,
+	Plus,
+	Trash2,
+	Undo2,
+	Warehouse,
+} from "lucide-react";
+import { useMemo, useState } from "react";
+import { toast } from "sonner";
 
 export default function ZonesPage() {
 	const [warehouseFilter, setWarehouseFilter] = useState("all");
@@ -107,7 +103,7 @@ export default function ZonesPage() {
 	// Mutations
 	const createMutation = useCreateZone();
 	const updateMutation = useUpdateZone();
-	const deleteMutation = useDeleteZone();
+	const deleteMutation = useDeleteRestoreZone();
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -149,7 +145,7 @@ export default function ZonesPage() {
 		}
 	};
 
-	const handleDelete = async () => {
+	const handleDeleteRestore = async () => {
 		if (!confirmDelete) return;
 
 		try {
@@ -402,7 +398,7 @@ export default function ZonesPage() {
 				}
 			/>
 
-			{/* Control Panel with Relationship Filters */}
+			{/* Control Panel */}
 			<div className="border-b border-border bg-card px-8 py-4">
 				<div className="flex items-center gap-4">
 					<div className="flex items-center gap-2 text-sm font-mono text-muted-foreground">
@@ -450,11 +446,13 @@ export default function ZonesPage() {
 						variant={includeDeleted ? "default" : "outline"}
 						size="sm"
 						onClick={() => setIncludeDeleted(!includeDeleted)}
-						className="gap-2 font-mono text-xs ml-auto"
+						className="gap-2 font-mono text-xs"
 					>
 						<Trash2 className="h-3.5 w-3.5" />
 						{includeDeleted ? "HIDE DELETED" : "SHOW DELETED"}
 					</Button>
+
+
 				</div>
 			</div>
 
@@ -485,7 +483,7 @@ export default function ZonesPage() {
 					<div className="border border-border rounded-lg overflow-hidden bg-card">
 						<Table>
 							<TableHeader>
-								<TableRow className="bg-muted/50">
+								<TableRow className="bg-muted/50 border-border/50">
 									<TableHead className="font-mono text-xs font-bold">
 										ZONE
 									</TableHead>
@@ -511,7 +509,7 @@ export default function ZonesPage() {
 								{zones.map((zone, index) => (
 									<TableRow
 										key={zone.id}
-										className="group hover:bg-muted/30 transition-colors"
+										className="group hover:bg-muted/30 transition-colors border-border/50"
 										style={{
 											animationDelay: `${index * 50}ms`,
 										}}
@@ -556,17 +554,17 @@ export default function ZonesPage() {
 										<TableCell>
 											{zone.is_active ? (
 												<Badge
-													variant="secondary"
-													className="font-mono text-xs"
-												>
-													DELETED
-												</Badge>
-											) : (
-												<Badge
 													variant="outline"
 													className="font-mono text-xs border-primary/30 text-primary"
 												>
 													ACTIVE
+												</Badge>
+											) : (
+												<Badge
+													variant="outline"
+													className="font-mono text-xs border-destructive/30 text-destructive"
+												>
+													DELETED
 												</Badge>
 											)}
 										</TableCell>
@@ -589,15 +587,15 @@ export default function ZonesPage() {
 														<Pencil className="h-3.5 w-3.5 mr-2" />
 														Edit Zone
 													</DropdownMenuItem>
-													{!zone.is_active && (
-														<DropdownMenuItem
-															onClick={() => setConfirmDelete(zone)}
-															className="font-mono text-xs text-destructive"
-														>
-															<Trash2 className="h-3.5 w-3.5 mr-2" />
-															Delete Zone
-														</DropdownMenuItem>
-													)}
+
+													<DropdownMenuItem
+														onClick={() => setConfirmDelete(zone)}
+														className={`font-mono text-xs ${zone.is_active ? "text-destructive" : "text-primary"}`}
+													>
+														{zone.is_active ? <Trash2 className="h-3.5 w-3.5 mr-2" /> : <Undo2 className="h-3.5 w-3.5 mr-2" />}
+														{zone.is_active ? "Delete Zone" : "Unarchive Zone"}
+													</DropdownMenuItem>
+
 												</DropdownMenuContent>
 											</DropdownMenu>
 										</TableCell>
@@ -617,12 +615,12 @@ export default function ZonesPage() {
 			<ConfirmDialog
 				open={!!confirmDelete}
 				onOpenChange={(open) => !open && setConfirmDelete(null)}
-				onConfirm={handleDelete}
-				title="Delete Zone"
-				description={`Are you sure you want to delete ${confirmDelete?.name}? This will soft-delete the zone. Assets must be relocated first.`}
-				confirmText="Delete"
+				onConfirm={handleDeleteRestore}
+				title={confirmDelete?.is_active ? "Delete Zone" : "Unarchive Zone"}
+				description={`Are you sure you want to ${confirmDelete?.is_active ? "delete" : "unarchive"} ${confirmDelete?.name}? This will soft-delete the zone. Assets must be relocated first.`}
+				confirmText={confirmDelete?.is_active ? "Delete" : "Restore"}
 				cancelText="Cancel"
-				variant="destructive"
+				variant={confirmDelete?.is_active ? "destructive" : "default"}
 			/>
 		</div>
 	);

@@ -495,3 +495,50 @@ export interface FailedNotificationsResponse {
 }
 
 // Validation types are exported from types/phase2.ts to avoid duplicates
+
+// ============================================================
+// API Response Types (New Structure)
+// ============================================================
+
+export interface APIOrder {
+	id: string
+	order_id: string
+	company: {
+		id: string
+		name: string
+	}
+	brand: string | null
+	user_id: string
+	job_number: string | null
+	contact_name: string
+	contact_email: string
+	contact_phone: string
+	event_start_date: string
+	event_end_date: string
+	venue_name: string
+	venue_location: {
+		city: string
+		address: string
+		country: string
+		access_notes: string | null
+	}
+	calculated_totals: {
+		volume: string
+		weight: string
+	}
+	order_status: OrderStatus
+	financial_status: FinancialStatus
+	tier_id: string | null
+	created_at: string
+	updated_at: string
+	item_count: number
+	item_preview: string[]
+}
+
+export interface APIOrdersResponse {
+	data: APIOrder[]
+	message: string
+	meta: any
+	success: boolean
+}
+

@@ -45,8 +45,8 @@ async function updateBrand({ id, data }: { id: string; data: UpdateBrandRequest 
   }
 }
 
-// Delete brand
-async function deleteBrand(id: string): Promise<void> {
+// Delete/Restore brand
+async function deleteRestoreBrand(id: string): Promise<void> {
   try {
     const response = await apiClient.delete(`/operations/v1/brand/${id}`);
     return response.data;
@@ -85,11 +85,11 @@ export function useUpdateBrand() {
   });
 }
 
-export function useDeleteBrand() {
+export function useDeleteRestoreBrand() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: deleteBrand,
+    mutationFn: deleteRestoreBrand,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: brandKeys.lists() });
     },
