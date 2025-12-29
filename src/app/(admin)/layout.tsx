@@ -139,11 +139,11 @@ const navigation: NavItem[] = [
 		href: '/collections',
 		icon: Layers,
 	},
-	// {
-	// 	name: 'Pricing Tiers',
-	// 	href: '/pricing-tiers',
-	// 	icon: DollarSign,
-	// },
+	{
+		name: 'Pricing Tiers',
+		href: '/pricing-tiers',
+		icon: DollarSign,
+	},
 ]
 
 function AdminSidebarContent() {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -40,13 +40,13 @@ import {
 	usePricingTiers,
 	useCreatePricingTier,
 	useUpdatePricingTier,
-	useTogglePricingTier,
 	useDeletePricingTier,
 } from "@/hooks/use-pricing-tiers";
 import type {
 	CreatePricingTierRequest,
 	UpdatePricingTierRequest,
 	PricingTier,
+	PricingTierListParams,
 } from "@/types/pricing";
 
 export default function PricingTiersPage() {
@@ -58,14 +58,31 @@ export default function PricingTiersPage() {
 	const [selectedTier, setSelectedTier] = useState<PricingTier | null>(null);
 	const [confirmDelete, setConfirmDelete] = useState<PricingTier | null>(null);
 
+	const queryParams = useMemo<PricingTierListParams>(() => {
+		const params: PricingTierListParams = {
+			limit: 10,
+			page: 1,
+			sort_by: "country",
+			sort_order: "asc",
+			city: "",
+			country: "",
+			include_inactive: undefined,
+		};
+
+		if (searchQuery) params.search_term = searchQuery;
+
+		if (countryFilter !== "all") params.country = countryFilter;
+
+		if (activeFilter !== "all")
+			params.include_inactive = activeFilter === "inactive" ? false : true;
+
+		return params;
+	}, [countryFilter, activeFilter]);
+
 	// React Query hooks
-	const { data: tiersResponse, isLoading } = usePricingTiers({
-		sortBy: "country",
-		sortOrder: "asc",
-	});
+	const { data: tiersResponse, isLoading } = usePricingTiers(queryParams);
 	const createTier = useCreatePricingTier();
 	const updateTier = useUpdatePricingTier();
-	const toggleTier = useTogglePricingTier();
 	const deleteTier = useDeletePricingTier();
 
 	const tiers = tiersResponse?.data || [];
@@ -82,8 +99,8 @@ export default function PricingTiersPage() {
 
 		const matchesActive =
 			activeFilter === "all" ||
-			(activeFilter === "active" && tier.isActive) ||
-			(activeFilter === "inactive" && !tier.isActive);
+			(activeFilter === "active" && tier.is_active) ||
+			(activeFilter === "inactive" && !tier.is_active);
 
 		return matchesSearch && matchesCountry && matchesActive;
 	});
@@ -95,17 +112,17 @@ export default function PricingTiersPage() {
 	const [createFormData, setCreateFormData] = useState<CreatePricingTierRequest>({
 		country: "",
 		city: "",
-		volumeMin: 0,
-		volumeMax: 0,
-		basePrice: 0,
-		isActive: true,
+		volume_min: 0,
+		volume_max: 0,
+		base_price: 0,
+		is_active: true,
 	});
 
 	const [editFormData, setEditFormData] = useState<UpdatePricingTierRequest>({
-		volumeMin: 0,
-		volumeMax: 0,
-		basePrice: 0,
-		isActive: true,
+		volume_min: 0,
+		volume_max: 0,
+		base_price: 0,
+		is_active: true,
 	});
 
 	const handleCreate = async (e: React.FormEvent) => {
@@ -119,10 +136,10 @@ export default function PricingTiersPage() {
 			setCreateFormData({
 				country: "",
 				city: "",
-				volumeMin: 0,
-				volumeMax: 0,
-				basePrice: 0,
-				isActive: true,
+				volume_min: 0,
+				volume_max: 0,
+				base_price: 0,
+				is_active: true,
 			});
 		} catch (error) {
 			toast.error(
@@ -153,7 +170,7 @@ export default function PricingTiersPage() {
 
 	const handleToggle = async (id: string, isActive: boolean) => {
 		try {
-			await toggleTier.mutateAsync({ id, isActive: !isActive });
+			await updateTier.mutateAsync({ id, data: { is_active: !isActive } });
 			toast.success(
 				isActive
 					? "Pricing tier deactivated"
@@ -185,10 +202,10 @@ export default function PricingTiersPage() {
 		setSelectedTier(tier);
 		// Populate edit form with editable fields only (country and city are read-only)
 		setEditFormData({
-			volumeMin: tier.volumeMin,
-			volumeMax: tier.volumeMax,
-			basePrice: tier.basePrice,
-			isActive: tier.isActive,
+			volume_min: tier.volume_min,
+			volume_max: tier.volume_max,
+			base_price: tier.base_price,
+			is_active: tier.is_active,
 		});
 		setEditDialogOpen(true);
 	};
@@ -296,11 +313,11 @@ export default function PricingTiersPage() {
 											id="volumeMin"
 											type="number"
 											step="0.001"
-											value={createFormData.volumeMin}
+											value={createFormData.volume_min}
 											onChange={(e) =>
 												setCreateFormData({
 													...createFormData,
-													volumeMin: parseFloat(e.target.value),
+													volume_min: parseFloat(e.target.value),
 												})
 											}
 											className="font-mono tabular-nums"
@@ -318,11 +335,11 @@ export default function PricingTiersPage() {
 											id="volumeMax"
 											type="number"
 											step="0.001"
-											value={createFormData.volumeMax}
+											value={createFormData.volume_max}
 											onChange={(e) =>
 												setCreateFormData({
 													...createFormData,
-													volumeMax: parseFloat(e.target.value),
+													volume_max: parseFloat(e.target.value),
 												})
 											}
 											className="font-mono tabular-nums"
@@ -342,11 +359,11 @@ export default function PricingTiersPage() {
 										id="basePrice"
 										type="number"
 										step="0.01"
-										value={createFormData.basePrice}
+										value={createFormData.base_price}
 										onChange={(e) =>
 											setCreateFormData({
 												...createFormData,
-												basePrice: parseFloat(e.target.value),
+												base_price: parseFloat(e.target.value),
 											})
 										}
 										className="font-mono tabular-nums text-lg"
@@ -511,7 +528,7 @@ export default function PricingTiersPage() {
 												<div className="flex items-center gap-2 font-mono text-sm tabular-nums">
 													<Package className="h-4 w-4 text-muted-foreground" />
 													<span>
-														{tier.volumeMin.toFixed(3)} - {tier.volumeMax.toFixed(3)}
+														{tier.volume_min.toFixed(3)} - {tier.volume_max.toFixed(3)}
 													</span>
 													<span className="text-muted-foreground">m³</span>
 												</div>
@@ -520,7 +537,7 @@ export default function PricingTiersPage() {
 												<div className="flex items-center gap-2">
 													<DollarSign className="h-4 w-4 text-primary" />
 													<span className="font-mono font-bold text-lg tabular-nums">
-														{tier.basePrice.toLocaleString("en-US", {
+														{tier.base_price.toLocaleString("en-US", {
 															minimumFractionDigits: 2,
 															maximumFractionDigits: 2,
 														})}
@@ -532,10 +549,10 @@ export default function PricingTiersPage() {
 											</td>
 											<td className="px-6 py-4 text-center">
 												<Badge
-													variant={tier.isActive ? "default" : "secondary"}
+													variant={tier.is_active ? "default" : "secondary"}
 													className="font-mono text-xs tracking-wider"
 												>
-													{tier.isActive ? "ACTIVE" : "INACTIVE"}
+													{tier.is_active ? "ACTIVE" : "INACTIVE"}
 												</Badge>
 											</td>
 											<td className="px-6 py-4">
@@ -543,10 +560,10 @@ export default function PricingTiersPage() {
 													<Button
 														variant="ghost"
 														size="sm"
-														onClick={() => handleToggle(tier.id, tier.isActive)}
+														onClick={() => handleToggle(tier.id, tier.is_active)}
 														className="gap-1 font-mono text-xs"
 													>
-														{tier.isActive ? (
+														{tier.is_active ? (
 															<>
 																<PowerOff className="h-3 w-3" />
 																DISABLE
@@ -632,11 +649,11 @@ export default function PricingTiersPage() {
 									id="edit-volumeMin"
 									type="number"
 									step="0.001"
-									value={editFormData.volumeMin}
+									value={editFormData.volume_min}
 									onChange={(e) =>
 										setEditFormData({
 											...editFormData,
-											volumeMin: parseFloat(e.target.value),
+											volume_min: parseFloat(e.target.value),
 										})
 									}
 									className="font-mono tabular-nums"
@@ -654,11 +671,11 @@ export default function PricingTiersPage() {
 									id="edit-volumeMax"
 									type="number"
 									step="0.001"
-									value={editFormData.volumeMax}
+									value={editFormData.volume_max}
 									onChange={(e) =>
 										setEditFormData({
 											...editFormData,
-											volumeMax: parseFloat(e.target.value),
+											volume_max: parseFloat(e.target.value),
 										})
 									}
 									className="font-mono tabular-nums"
@@ -678,11 +695,11 @@ export default function PricingTiersPage() {
 								id="edit-basePrice"
 								type="number"
 								step="0.01"
-								value={editFormData.basePrice}
+								value={editFormData.base_price}
 								onChange={(e) =>
 									setEditFormData({
 										...editFormData,
-										basePrice: parseFloat(e.target.value),
+										base_price: parseFloat(e.target.value),
 									})
 								}
 								className="font-mono tabular-nums text-lg"
@@ -710,6 +727,18 @@ export default function PricingTiersPage() {
 					</form>
 				</DialogContent>
 			</Dialog>
+
+			{/* Confirm Delete Dialog */}
+			<ConfirmDialog
+				open={!!confirmDelete}
+				onOpenChange={(open) => !open && setConfirmDelete(null)}
+				onConfirm={handleDelete}
+				title="Delete Pricing Tier"
+				description={`Are you sure you want to delete ${confirmDelete?.city}, ${confirmDelete?.country}? This will delete the pricing tier.`}
+				confirmText="Delete"
+				cancelText="Cancel"
+				variant="destructive"
+			/>
 
 			{/* Add keyframe animation */}
 			<style jsx global>{`
