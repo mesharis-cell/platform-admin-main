@@ -111,7 +111,7 @@ export default function ZonesPage() {
 		try {
 			const payload = {
 				...formData,
-				capacity: Number(formData.capacity),
+				capacity: formData.capacity ? Number(formData.capacity) : undefined,
 			};
 
 			if (editingZone) {
@@ -330,7 +330,6 @@ export default function ZonesPage() {
 									<Input
 										id="capacity"
 										type="number"
-										required
 										min={1}
 										value={formData.capacity}
 										onChange={(e) =>
