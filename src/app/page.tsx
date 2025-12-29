@@ -9,11 +9,11 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import axios from "axios";
 import { Eye, EyeOff, Lock, Mail, Package } from "lucide-react";
-import { JwtPayload } from "jwt-decode";
-import LoadingState from "@/components/loading-state";
 import { usePlatform } from "@/contexts/platform-context";
 import { login } from "@/actions/login";
+import type { JwtPayload } from "jwt-decode";
 import { useAuth } from "@/contexts/user-context";
+import { LoadingState } from "@/components/loading-state";
 
 export interface CustomJwtPayload extends JwtPayload {
 	role: string;
@@ -25,22 +25,23 @@ export default function HomePage() {
 	const [password, setPassword] = useState("");
 	const [showPassword, setShowPassword] = useState(false);
 	const [isLoading, setIsLoading] = useState(false);
-	const { isAuthenticated, user, setUser, setIsAuthenticated } = useAuth();
+	const { isAuthenticated, user, setUser, setIsAuthenticated, logout } = useAuth();
 	const { platform } = usePlatform();
-	const [loading, startTransition] = useTransition();
+	const [loading, startTransition] = useTransition()
 
 	useEffect(() => {
 		setIsLoading(true);
 		if (isAuthenticated) {
 			if (user?.role === 'ADMIN') {
-				// PMG Client goes to admin dashboard
+				// PMG Client goes to dashboard
 				router.push('/companies');
 			} else {
 				setUser(null);
 				setIsAuthenticated(false);
+				logout();
 			}
 		}
-		setIsLoading(false)
+		setIsLoading(false);
 	}, [isAuthenticated, user, router]);
 
 	const handleSubmit = async (e: React.FormEvent) => {
@@ -66,7 +67,6 @@ export default function HomePage() {
 						description: "You do not have access to this platform.",
 					});
 				}
-
 			} catch (error: unknown) {
 				toast.error("Authentication Failed", {
 					description: axios.isAxiosError(error) && error.response?.data?.message
@@ -74,10 +74,10 @@ export default function HomePage() {
 						: "Unable to process authentication request.",
 				});
 			}
-		});
+		})
 	};
 
-	// Show loading state while checking auth OR platform OR if user is authenticated (to prevent form flash during redirect)
+	// Show loading state while checking token OR if user is authenticated (to prevent form flash during redirect)
 	if (isLoading) {
 		return <LoadingState />;
 	}

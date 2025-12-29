@@ -67,11 +67,11 @@ const navigation: NavItem[] = [
 	// 	href: '/analytics',
 	// 	icon: BarChart3,
 	// },
-	// {
-	// 	name: 'Orders',
-	// 	href: '/orders',
-	// 	icon: ShoppingCart,
-	// },
+	{
+		name: 'Orders',
+		href: '/orders',
+		icon: ShoppingCart,
+	},
 	// {
 	// 	name: 'Pricing Review',
 	// 	href: '/orders/pricing-review',

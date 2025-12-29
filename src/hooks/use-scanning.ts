@@ -1,3 +1,5 @@
+"use client"
+
 /**
  * React Query hooks for scanning operations
  * Phase 11: QR Code Scanning & Inventory Tracking
@@ -235,7 +237,7 @@ export function useCompleteInboundScan() {
 const getOrderScanEvents = async (orderId: string): Promise<GetScanEventsResponse> => {
 	try {
 		const response = await apiClient.get(
-			`/operations/v1/orders/${orderId}/scan-events`
+			`/client/v1/order/${orderId}/scan-events`
 		)
 		return response.data
 	} catch (error) {

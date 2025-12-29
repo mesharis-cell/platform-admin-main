@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { PlatformDomain } from "../types/platform-domain";
 import { apiClient, setPlatformId } from "@/lib/api/api-client";
-import LoadingState from "@/components/loading-state";
+import { LoadingState } from "@/components/loading-state";
 
 interface PlatformContextType {
   platform: PlatformDomain | null;

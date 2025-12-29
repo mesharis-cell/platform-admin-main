@@ -342,7 +342,7 @@ export default function AdminOrderDetailPage({
 			<div className='p-8 text-center'>
 				<Package className='h-12 w-12 mx-auto mb-4 text-muted-foreground' />
 				<p className='font-mono text-sm'>Order not found</p>
-				<Link href='/admin/orders'>
+				<Link href='/orders'>
 					<Button variant='outline' className='mt-4'>
 						Back
 					</Button>
@@ -362,7 +362,7 @@ export default function AdminOrderDetailPage({
 				<div className='container mx-auto px-6 py-4'>
 					<div className='flex items-center justify-between'>
 						<div className='flex items-center gap-4'>
-							<Link href='/admin/orders'>
+							<Link href='/orders'>
 								<Button
 									variant='ghost'
 									size='sm'
@@ -375,10 +375,10 @@ export default function AdminOrderDetailPage({
 							<Separator orientation='vertical' className='h-6' />
 							<div>
 								<h1 className='text-lg font-bold font-mono'>
-									{order.orderId}
+									{order?.data?.order_id}
 								</h1>
 								<p className='text-xs text-muted-foreground font-mono'>
-									{order.company.name}
+									{order?.data?.company?.name}
 								</p>
 							</div>
 						</div>
@@ -579,7 +579,7 @@ export default function AdminOrderDetailPage({
 													new Date(
 														order.quoteSentAt
 													).getTime()) /
-													(1000 * 60 * 60 * 24)
+												(1000 * 60 * 60 * 24)
 											)}{' '}
 											days ago
 											{Math.floor(
@@ -587,7 +587,7 @@ export default function AdminOrderDetailPage({
 													new Date(
 														order.quoteSentAt
 													).getTime()) /
-													(1000 * 60 * 60 * 24)
+												(1000 * 60 * 60 * 24)
 											) >= 2 &&
 												' - Consider following up with client'}
 										</p>
@@ -753,9 +753,9 @@ export default function AdminOrderDetailPage({
 										</div>
 										{/* Amount with Breakdown - PMG Admin sees breakdown */}
 										{canSeePMGMargin &&
-										(order.a2BasePrice ||
-											order.a2AdjustedPrice) &&
-										order.finalTotalPrice ? (
+											(order.a2BasePrice ||
+												order.a2AdjustedPrice) &&
+											order.finalTotalPrice ? (
 											<div className='space-y-2'>
 												<Label className='font-mono text-xs text-muted-foreground'>
 													AMOUNT BREAKDOWN
@@ -768,7 +768,7 @@ export default function AdminOrderDetailPage({
 														<span>
 															{parseFloat(
 																order.a2AdjustedPrice ||
-																	order.a2BasePrice
+																order.a2BasePrice
 															).toFixed(2)}{' '}
 															AED
 														</span>
@@ -786,10 +786,10 @@ export default function AdminOrderDetailPage({
 																+
 																{order.pmgMarginAmount
 																	? parseFloat(
-																			order.pmgMarginAmount
-																		).toFixed(
-																			2
-																		)
+																		order.pmgMarginAmount
+																	).toFixed(
+																		2
+																	)
 																	: '0.00'}{' '}
 																AED
 															</span>
@@ -838,24 +838,23 @@ export default function AdminOrderDetailPage({
 												PAYMENT STATUS
 											</Label>
 											<Badge
-												className={`font-mono text-xs ${
-													order.financialStatus ===
+												className={`font-mono text-xs ${order.financialStatus ===
 													'PAID'
-														? 'bg-green-500/10 text-green-700 border-green-500/30'
-														: order.financialStatus ===
-															  'INVOICED'
-															? 'bg-amber-500/10 text-amber-700 border-amber-500/30'
-															: 'bg-slate-500/10 text-slate-600 border-slate-500/20'
-												}`}
+													? 'bg-green-500/10 text-green-700 border-green-500/30'
+													: order.financialStatus ===
+														'INVOICED'
+														? 'bg-amber-500/10 text-amber-700 border-amber-500/30'
+														: 'bg-slate-500/10 text-slate-600 border-slate-500/20'
+													}`}
 											>
 												{order.financialStatus ===
-												'PAID'
+													'PAID'
 													? 'PAID'
 													: order.financialStatus ===
-														  'INVOICED'
+														'INVOICED'
 														? 'PENDING'
 														: order.financialStatus ||
-															'N/A'}
+														'N/A'}
 											</Badge>
 										</div>
 										{order.invoicePaidAt && (
@@ -1132,229 +1131,229 @@ export default function AdminOrderDetailPage({
 							'AWAITING_RETURN',
 							'CLOSED',
 						].includes(order.status) && (
-							<Card className='border-2'>
-								<CardHeader>
-									<div className='flex items-center justify-between'>
-										<CardTitle className='font-mono text-sm flex items-center gap-2'>
-											<Truck className='h-4 w-4 text-secondary' />
-											DELIVERY SCHEDULE
-										</CardTitle>
-										<Dialog
-											open={timeWindowsOpen}
-											onOpenChange={setTimeWindowsOpen}
-										>
-											<DialogTrigger asChild>
-												<Button
-													size='sm'
-													variant='outline'
-													className='font-mono text-xs'
-												>
-													<Edit className='h-3 w-3 mr-2' />
-													EDIT
-												</Button>
-											</DialogTrigger>
-											<DialogContent className='sm:max-w-lg'>
-												<DialogHeader>
-													<DialogTitle className='font-mono'>
-														UPDATE DELIVERY SCHEDULE
-													</DialogTitle>
-													<DialogDescription className='font-mono text-xs'>
-														Set time windows for
-														delivery and pickup
-														coordination
-													</DialogDescription>
-												</DialogHeader>
-
-												<div className='space-y-6 py-4'>
-													<div className='space-y-3'>
-														<Label className='font-mono text-sm font-bold'>
-															DELIVERY WINDOW
-														</Label>
-														<div className='grid grid-cols-2 gap-4'>
-															<div className='space-y-2'>
-																<Label className='font-mono text-xs text-muted-foreground'>
-																	START
-																</Label>
-																<DateTimePicker
-																	value={
-																		timeWindows.deliveryWindowStart
-																	}
-																	onChange={date =>
-																		setTimeWindows(
-																			prev => ({
-																				...prev,
-																				deliveryWindowStart:
-																					date,
-																			})
-																		)
-																	}
-																	placeholder='Select delivery start'
-																/>
-															</div>
-															<div className='space-y-2'>
-																<Label className='font-mono text-xs text-muted-foreground'>
-																	END
-																</Label>
-																<DateTimePicker
-																	value={
-																		timeWindows.deliveryWindowEnd
-																	}
-																	onChange={date =>
-																		setTimeWindows(
-																			prev => ({
-																				...prev,
-																				deliveryWindowEnd:
-																					date,
-																			})
-																		)
-																	}
-																	placeholder='Select delivery end'
-																/>
-															</div>
-														</div>
-													</div>
-
-													<Separator />
-
-													<div className='space-y-3'>
-														<Label className='font-mono text-sm font-bold'>
-															PICKUP WINDOW
-														</Label>
-														<div className='grid grid-cols-2 gap-4'>
-															<div className='space-y-2'>
-																<Label className='font-mono text-xs text-muted-foreground'>
-																	START
-																</Label>
-																<DateTimePicker
-																	value={
-																		timeWindows.pickupWindowStart
-																	}
-																	onChange={date =>
-																		setTimeWindows(
-																			prev => ({
-																				...prev,
-																				pickupWindowStart:
-																					date,
-																			})
-																		)
-																	}
-																	placeholder='Select pickup start'
-																/>
-															</div>
-															<div className='space-y-2'>
-																<Label className='font-mono text-xs text-muted-foreground'>
-																	END
-																</Label>
-																<DateTimePicker
-																	value={
-																		timeWindows.pickupWindowEnd
-																	}
-																	onChange={date =>
-																		setTimeWindows(
-																			prev => ({
-																				...prev,
-																				pickupWindowEnd:
-																					date,
-																			})
-																		)
-																	}
-																	placeholder='Select pickup end'
-																/>
-															</div>
-														</div>
-													</div>
-												</div>
-
-												<DialogFooter>
+								<Card className='border-2'>
+									<CardHeader>
+										<div className='flex items-center justify-between'>
+											<CardTitle className='font-mono text-sm flex items-center gap-2'>
+												<Truck className='h-4 w-4 text-secondary' />
+												DELIVERY SCHEDULE
+											</CardTitle>
+											<Dialog
+												open={timeWindowsOpen}
+												onOpenChange={setTimeWindowsOpen}
+											>
+												<DialogTrigger asChild>
 													<Button
+														size='sm'
 														variant='outline'
-														onClick={() =>
-															setTimeWindowsOpen(
-																false
-															)
-														}
 														className='font-mono text-xs'
 													>
-														CANCEL
+														<Edit className='h-3 w-3 mr-2' />
+														EDIT
 													</Button>
-													<Button
-														onClick={
-															handleTimeWindowsSave
-														}
-														className='font-mono text-xs'
-													>
-														SAVE SCHEDULE
-													</Button>
-												</DialogFooter>
-											</DialogContent>
-										</Dialog>
-									</div>
-								</CardHeader>
-								<CardContent className='space-y-3'>
-									{order.deliveryWindowStart ? (
-										<>
-											<div className='p-3 bg-green-500/5 border border-green-500/20 rounded'>
-												<Label className='font-mono text-[10px] text-muted-foreground'>
-													DELIVERY
-												</Label>
-												<p className='font-mono text-xs mt-1'>
-													{new Date(
-														order.deliveryWindowStart
-													).toLocaleString('en-US', {
-														month: 'short',
-														day: 'numeric',
-														hour: '2-digit',
-														minute: '2-digit',
-													})}
-													{' → '}
-													{new Date(
-														order.deliveryWindowEnd
-													).toLocaleTimeString(
-														'en-US',
-														{
-															hour: '2-digit',
-															minute: '2-digit',
-														}
-													)}
-												</p>
-											</div>
-											<div className='p-3 bg-orange-500/5 border border-orange-500/20 rounded'>
-												<Label className='font-mono text-[10px] text-muted-foreground'>
-													PICKUP
-												</Label>
-												<p className='font-mono text-xs mt-1'>
-													{new Date(
-														order.pickupWindowStart
-													).toLocaleString('en-US', {
-														month: 'short',
-														day: 'numeric',
-														hour: '2-digit',
-														minute: '2-digit',
-													})}
-													{' → '}
-													{new Date(
-														order.pickupWindowEnd
-													).toLocaleTimeString(
-														'en-US',
-														{
-															hour: '2-digit',
-															minute: '2-digit',
-														}
-													)}
-												</p>
-											</div>
-										</>
-									) : (
-										<div className='p-8 text-center bg-muted/20 rounded border-2 border-dashed'>
-											<Clock className='h-8 w-8 mx-auto mb-2 text-muted-foreground/50' />
-											<p className='font-mono text-xs text-muted-foreground'>
-												NO SCHEDULE SET
-											</p>
+												</DialogTrigger>
+												<DialogContent className='sm:max-w-lg'>
+													<DialogHeader>
+														<DialogTitle className='font-mono'>
+															UPDATE DELIVERY SCHEDULE
+														</DialogTitle>
+														<DialogDescription className='font-mono text-xs'>
+															Set time windows for
+															delivery and pickup
+															coordination
+														</DialogDescription>
+													</DialogHeader>
+
+													<div className='space-y-6 py-4'>
+														<div className='space-y-3'>
+															<Label className='font-mono text-sm font-bold'>
+																DELIVERY WINDOW
+															</Label>
+															<div className='grid grid-cols-2 gap-4'>
+																<div className='space-y-2'>
+																	<Label className='font-mono text-xs text-muted-foreground'>
+																		START
+																	</Label>
+																	<DateTimePicker
+																		value={
+																			timeWindows.deliveryWindowStart
+																		}
+																		onChange={date =>
+																			setTimeWindows(
+																				prev => ({
+																					...prev,
+																					deliveryWindowStart:
+																						date,
+																				})
+																			)
+																		}
+																		placeholder='Select delivery start'
+																	/>
+																</div>
+																<div className='space-y-2'>
+																	<Label className='font-mono text-xs text-muted-foreground'>
+																		END
+																	</Label>
+																	<DateTimePicker
+																		value={
+																			timeWindows.deliveryWindowEnd
+																		}
+																		onChange={date =>
+																			setTimeWindows(
+																				prev => ({
+																					...prev,
+																					deliveryWindowEnd:
+																						date,
+																				})
+																			)
+																		}
+																		placeholder='Select delivery end'
+																	/>
+																</div>
+															</div>
+														</div>
+
+														<Separator />
+
+														<div className='space-y-3'>
+															<Label className='font-mono text-sm font-bold'>
+																PICKUP WINDOW
+															</Label>
+															<div className='grid grid-cols-2 gap-4'>
+																<div className='space-y-2'>
+																	<Label className='font-mono text-xs text-muted-foreground'>
+																		START
+																	</Label>
+																	<DateTimePicker
+																		value={
+																			timeWindows.pickupWindowStart
+																		}
+																		onChange={date =>
+																			setTimeWindows(
+																				prev => ({
+																					...prev,
+																					pickupWindowStart:
+																						date,
+																				})
+																			)
+																		}
+																		placeholder='Select pickup start'
+																	/>
+																</div>
+																<div className='space-y-2'>
+																	<Label className='font-mono text-xs text-muted-foreground'>
+																		END
+																	</Label>
+																	<DateTimePicker
+																		value={
+																			timeWindows.pickupWindowEnd
+																		}
+																		onChange={date =>
+																			setTimeWindows(
+																				prev => ({
+																					...prev,
+																					pickupWindowEnd:
+																						date,
+																				})
+																			)
+																		}
+																		placeholder='Select pickup end'
+																	/>
+																</div>
+															</div>
+														</div>
+													</div>
+
+													<DialogFooter>
+														<Button
+															variant='outline'
+															onClick={() =>
+																setTimeWindowsOpen(
+																	false
+																)
+															}
+															className='font-mono text-xs'
+														>
+															CANCEL
+														</Button>
+														<Button
+															onClick={
+																handleTimeWindowsSave
+															}
+															className='font-mono text-xs'
+														>
+															SAVE SCHEDULE
+														</Button>
+													</DialogFooter>
+												</DialogContent>
+											</Dialog>
 										</div>
-									)}
-								</CardContent>
-							</Card>
-						)}
+									</CardHeader>
+									<CardContent className='space-y-3'>
+										{order.deliveryWindowStart ? (
+											<>
+												<div className='p-3 bg-green-500/5 border border-green-500/20 rounded'>
+													<Label className='font-mono text-[10px] text-muted-foreground'>
+														DELIVERY
+													</Label>
+													<p className='font-mono text-xs mt-1'>
+														{new Date(
+															order.deliveryWindowStart
+														).toLocaleString('en-US', {
+															month: 'short',
+															day: 'numeric',
+															hour: '2-digit',
+															minute: '2-digit',
+														})}
+														{' → '}
+														{new Date(
+															order.deliveryWindowEnd
+														).toLocaleTimeString(
+															'en-US',
+															{
+																hour: '2-digit',
+																minute: '2-digit',
+															}
+														)}
+													</p>
+												</div>
+												<div className='p-3 bg-orange-500/5 border border-orange-500/20 rounded'>
+													<Label className='font-mono text-[10px] text-muted-foreground'>
+														PICKUP
+													</Label>
+													<p className='font-mono text-xs mt-1'>
+														{new Date(
+															order.pickupWindowStart
+														).toLocaleString('en-US', {
+															month: 'short',
+															day: 'numeric',
+															hour: '2-digit',
+															minute: '2-digit',
+														})}
+														{' → '}
+														{new Date(
+															order.pickupWindowEnd
+														).toLocaleTimeString(
+															'en-US',
+															{
+																hour: '2-digit',
+																minute: '2-digit',
+															}
+														)}
+													</p>
+												</div>
+											</>
+										) : (
+											<div className='p-8 text-center bg-muted/20 rounded border-2 border-dashed'>
+												<Clock className='h-8 w-8 mx-auto mb-2 text-muted-foreground/50' />
+												<p className='font-mono text-xs text-muted-foreground'>
+													NO SCHEDULE SET
+												</p>
+											</div>
+										)}
+									</CardContent>
+								</Card>
+							)}
 
 						{/* Event & Venue */}
 						<Card className='border-2'>
@@ -1372,7 +1371,7 @@ export default function AdminOrderDetailPage({
 										</Label>
 										<p className='font-mono text-sm mt-1'>
 											{new Date(
-												order.eventStartDate
+												order?.data?.event_start_date
 											).toLocaleDateString()}
 										</p>
 									</div>
@@ -1382,7 +1381,7 @@ export default function AdminOrderDetailPage({
 										</Label>
 										<p className='font-mono text-sm mt-1'>
 											{new Date(
-												order.eventEndDate
+												order?.data?.event_end_date
 											).toLocaleDateString()}
 										</p>
 									</div>
@@ -1393,13 +1392,13 @@ export default function AdminOrderDetailPage({
 										<MapPin className='h-3 w-3' /> VENUE
 									</Label>
 									<p className='font-mono text-sm font-bold mt-1'>
-										{order.venueName}
+										{order?.data?.venue_name}
 									</p>
 									<p className='font-mono text-xs text-muted-foreground mt-0.5'>
-										{order.venueCity}, {order.venueCountry}
+										{order?.data?.venue_city}, {order?.data?.venue_country}
 									</p>
 								</div>
-								{order.specialInstructions && (
+								{order?.data?.special_instructions && (
 									<>
 										<Separator />
 										<div>
@@ -1407,7 +1406,7 @@ export default function AdminOrderDetailPage({
 												SPECIAL INSTRUCTIONS
 											</Label>
 											<p className='font-mono text-sm mt-2 p-3 bg-amber-500/5 border border-amber-500/20 rounded'>
-												{order.specialInstructions}
+												{order?.data?.special_instructions}
 											</p>
 										</div>
 									</>
@@ -1425,15 +1424,15 @@ export default function AdminOrderDetailPage({
 							</CardHeader>
 							<CardContent className='space-y-2'>
 								<p className='font-mono text-sm font-bold'>
-									{order.contactName}
+									{order?.data?.contact_name}
 								</p>
 								<p className='font-mono text-xs text-muted-foreground flex items-center gap-2'>
 									<Mail className='h-3 w-3' />{' '}
-									{order.contactEmail}
+									{order?.data?.contact_email}
 								</p>
 								<p className='font-mono text-xs text-muted-foreground flex items-center gap-2'>
 									<Phone className='h-3 w-3' />{' '}
-									{order.contactPhone}
+									{order?.data?.contact_phone}
 								</p>
 							</CardContent>
 						</Card>
@@ -1443,26 +1442,26 @@ export default function AdminOrderDetailPage({
 							<CardHeader>
 								<CardTitle className='font-mono text-sm flex items-center gap-2'>
 									<Boxes className='h-4 w-4 text-primary' />
-									ITEMS ({order.items?.length || 0})
+									ITEMS ({order?.data?.items?.length || 0})
 								</CardTitle>
 							</CardHeader>
 							<CardContent className='space-y-2'>
-								{order.items?.map((item: any) => (
+								{order?.data?.items?.map((item: any) => (
 									<div
 										key={item.id}
 										className='p-3 bg-muted/30 rounded border'
 									>
 										<p className='font-mono text-sm font-medium'>
-											{item.assetName}
+											{item.asset?.name}
 										</p>
 										<p className='font-mono text-xs text-muted-foreground mt-1'>
-											QTY: {item.quantity} | VOL:{' '}
-											{item.totalVolume}m³ | WT:{' '}
-											{item.totalWeight}kg
+											QTY: {item?.order_item?.quantity} | VOL:{' '}
+											{item?.order_item?.total_volume}m³ | WT:{' '}
+											{item?.order_item?.total_weight}kg
 										</p>
-										{item.handlingTags?.length > 0 && (
+										{item?.order_item?.handling_tags?.length > 0 && (
 											<div className='flex gap-1 mt-2'>
-												{item.handlingTags.map(
+												{item?.order_item?.handling_tags.map(
 													(tag: string) => (
 														<Badge
 															key={tag}
@@ -1489,19 +1488,20 @@ export default function AdminOrderDetailPage({
 							'IN_USE',
 							'AWAITING_RETURN',
 							'CLOSED',
-						].includes(order.status) && (
-							<Card className='border-2'>
-								<CardHeader>
-									<CardTitle className='font-mono text-sm flex items-center gap-2'>
-										<ScanLine className='h-4 w-4 text-primary' />
-										SCANNING ACTIVITY
-									</CardTitle>
-								</CardHeader>
-								<CardContent>
-									<ScanActivityTimeline orderId={order.id} />
-								</CardContent>
-							</Card>
-						)}
+							'PRICING_REVIEW',
+						].includes(order?.data?.order_status) && (
+								<Card className='border-2'>
+									<CardHeader>
+										<CardTitle className='font-mono text-sm flex items-center gap-2'>
+											<ScanLine className='h-4 w-4 text-primary' />
+											SCANNING ACTIVITY
+										</CardTitle>
+									</CardHeader>
+									<CardContent>
+										<ScanActivityTimeline orderId={order?.data?.order_id} />
+									</CardContent>
+								</Card>
+							)}
 					</div>
 
 					{/* Status History Timeline */}
@@ -1515,12 +1515,12 @@ export default function AdminOrderDetailPage({
 							</CardHeader>
 							<CardContent>
 								<div className='space-y-1 relative'>
-									{order.statusHistory?.map(
+									{order?.data?.status_history?.map(
 										(entry: any, index: number) => {
 											const statusConfig = STATUS_CONFIG[
-												entry.status as keyof typeof STATUS_CONFIG
+												entry.order_status as keyof typeof STATUS_CONFIG
 											] || {
-												label: entry.status,
+												label: entry.order_status,
 												color: 'bg-slate-500/10 text-slate-600 border-slate-500/20',
 												nextStates: [],
 											}
@@ -1532,17 +1532,16 @@ export default function AdminOrderDetailPage({
 													className='relative pl-6 pb-4 last:pb-0'
 												>
 													{index <
-														order.statusHistory
+														order?.data?.status_history
 															?.length -
-															1 && (
-														<div className='absolute left-[7px] top-5 bottom-0 w-px bg-border' />
-													)}
+														1 && (
+															<div className='absolute left-[7px] top-5 bottom-0 w-px bg-border' />
+														)}
 													<div
-														className={`absolute left-0 top-0.5 h-4 w-4 rounded-full border-2 ${
-															isLatest
-																? 'bg-primary border-primary'
-																: 'bg-muted border-border'
-														}`}
+														className={`absolute left-0 top-0.5 h-4 w-4 rounded-full border-2 ${isLatest
+															? 'bg-primary border-primary'
+															: 'bg-muted border-border'
+															}`}
 													/>
 													<div>
 														<Badge
@@ -1564,7 +1563,7 @@ export default function AdminOrderDetailPage({
 															)}
 														</p>
 														<p className='font-mono text-[10px] mt-0.5'>
-															{entry.updatedByUser
+															{entry.updated_by_user
 																?.name ||
 																'System'}
 														</p>

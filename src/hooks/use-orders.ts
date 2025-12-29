@@ -5,6 +5,7 @@
  */
 
 import { apiClient } from '@/lib/api/api-client'
+import { throwApiError } from '@/lib/utils/throw-api-error'
 import type {
 	MyOrdersListParams,
 	MyOrdersListResponse,
@@ -178,14 +179,12 @@ export function useAdminOrderDetails(orderId: string | null) {
 	return useQuery({
 		queryKey: ['orders', 'admin-detail', orderId],
 		queryFn: async () => {
-			const response = await fetch(`/api/orders/${orderId}`)
-
-			if (!response.ok) {
-				const error = await response.json()
-				throw new Error(error.error || 'Failed to fetch order details')
+			try {
+				const response = await apiClient.get(`/client/v1/order/${orderId}`)
+				return response.data
+			} catch (error) {
+				throwApiError(error)
 			}
-
-			return response.json()
 		},
 		enabled: !!orderId,
 	})
