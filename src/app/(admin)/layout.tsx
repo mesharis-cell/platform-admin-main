@@ -236,7 +236,7 @@ function AdminSidebarContent() {
 											isCollapsed ? item.name : undefined
 										}
 										className={cn(
-											'group flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-mono transition-all relative overflow-hidden',
+											'group/nav-item flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-mono transition-all relative overflow-hidden',
 											isActive
 												? 'bg-primary text-primary-foreground font-semibold shadow-sm'
 												: 'text-foreground/70 hover:text-foreground hover:bg-muted'
@@ -273,7 +273,7 @@ function AdminSidebarContent() {
 
 											{/* Hover glow effect */}
 											{!isActive && (
-												<div className='absolute inset-0 bg-primary/0 group-hover:bg-primary/5 transition-colors' />
+												<div className='absolute inset-0 bg-primary/0 group-hover/nav-item:bg-primary/5 transition-colors' />
 											)}
 										</Link>
 									</SidebarMenuButton>
