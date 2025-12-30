@@ -1,3 +1,5 @@
+"use client"
+
 /**
  * Phase 6: Order Management React Query Hooks
  *
@@ -191,6 +193,24 @@ export function useAdminOrderDetails(orderId: string | null) {
 }
 
 /**
+ * Get order status history (PMG Admin only)
+ */
+export function useAdminOrderStatusHistory(orderId: string | null) {
+	return useQuery({
+		queryKey: ['orders', 'admin-status-history', orderId],
+		queryFn: async () => {
+			try {
+				const response = await apiClient.get(`/client/v1/order/${orderId}/status-history`)
+				return response.data
+			} catch (error) {
+				throwApiError(error)
+			}
+		},
+		enabled: !!orderId,
+	})
+}
+
+/**
  * Update job number (PMG Admin only)
  */
 export function useUpdateJobNumber() {
@@ -199,23 +219,19 @@ export function useUpdateJobNumber() {
 	return useMutation({
 		mutationFn: async ({
 			orderId,
-			jobNumber,
+			job_number,
 		}: {
 			orderId: string
-			jobNumber: string | null
+			job_number: string | null
 		}) => {
-			const response = await fetch(`/api/orders/${orderId}/job-number`, {
-				method: 'PATCH',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ jobNumber }),
-			})
-
-			if (!response.ok) {
-				const error = await response.json()
-				throw new Error(error.error || 'Failed to update job number')
+			try {
+				const response = await apiClient.patch(`/client/v1/order/${orderId}/job-number`, {
+					job_number,
+				})
+				return response.data
+			} catch (error) {
+				throwApiError(error)
 			}
-
-			return response.json()
 		},
 		onSuccess: (_, variables) => {
 			// Invalidate order details and list
