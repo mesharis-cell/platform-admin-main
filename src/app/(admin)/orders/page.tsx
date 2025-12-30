@@ -51,7 +51,7 @@ export default function AdminOrdersPage() {
 	const [status, setStatus] = useState<string>('');
 	const [search, setSearch] = useState<string>('');
 	const [searchInput, setSearchInput] = useState<string>('');
-	const [sortBy, setSortBy] = useState<string>('createdAt');
+	const [sortBy, setSortBy] = useState<string>('created_at');
 	const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
 	// Data fetching
@@ -238,10 +238,12 @@ export default function AdminOrdersPage() {
 										<SelectValue />
 									</SelectTrigger>
 									<SelectContent>
-										<SelectItem value="createdAt">Date Created</SelectItem>
-										<SelectItem value="eventStartDate">Event Date</SelectItem>
-										<SelectItem value="orderId">Order ID</SelectItem>
-										<SelectItem value="status">Status</SelectItem>
+										<SelectItem value="created_at">Date Created</SelectItem>
+										<SelectItem value="updated_at">Date Updated</SelectItem>
+										<SelectItem value="event_start_date">Event Date</SelectItem>
+										<SelectItem value="order_id">Order ID</SelectItem>
+										<SelectItem value="order_status">Status</SelectItem>
+										<SelectItem value="financial_status">Financial Status</SelectItem>
 									</SelectContent>
 								</Select>
 								<Select value={sortOrder} onValueChange={(val) => setSortOrder(val as 'asc' | 'desc')}>

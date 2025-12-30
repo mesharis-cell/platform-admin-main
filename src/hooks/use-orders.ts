@@ -153,14 +153,14 @@ export function useAdminOrders(
 	const queryParams = new URLSearchParams()
 	if (params.page) queryParams.append('page', params.page.toString())
 	if (params.limit) queryParams.append('limit', params.limit.toString())
-	if (params.company) queryParams.append('company', params.company)
-	if (params.brand) queryParams.append('brand', params.brand)
+	if (params.company) queryParams.append('company_id', params.company)
+	if (params.brand) queryParams.append('brand_id', params.brand)
 	if (params.order_status) queryParams.append('order_status', params.order_status)
-	if (params.dateFrom) queryParams.append('dateFrom', params.dateFrom)
-	if (params.dateTo) queryParams.append('dateTo', params.dateTo)
-	if (params.search) queryParams.append('search', params.search)
-	if (params.sortBy) queryParams.append('sortBy', params.sortBy)
-	if (params.sortOrder) queryParams.append('sortOrder', params.sortOrder)
+	if (params.dateFrom) queryParams.append('date_from', params.dateFrom)
+	if (params.dateTo) queryParams.append('date_to', params.dateTo)
+	if (params.search) queryParams.append('search_term', params.search)
+	if (params.sortBy) queryParams.append('sort_by', params.sortBy)
+	if (params.sortOrder) queryParams.append('sort_order', params.sortOrder)
 
 	return useQuery({
 		queryKey: ['orders', 'admin-list', params],

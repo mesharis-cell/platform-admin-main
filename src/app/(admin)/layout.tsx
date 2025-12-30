@@ -89,11 +89,11 @@ const navigation: NavItem[] = [
 		href: '/scanning',
 		icon: ScanLine,
 	},
-	// {
-	// 	name: 'Conditions',
-	// 	href: '/conditions',
-	// 	icon: AlertCircle,
-	// },
+	{
+		name: 'Conditions',
+		href: '/conditions',
+		icon: AlertCircle,
+	},
 	// {
 	// 	name: 'Invoices',
 	// 	href: '/invoices',
