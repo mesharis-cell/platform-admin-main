@@ -99,11 +99,11 @@ const navigation: NavItem[] = [
 	// 	href: '/invoices',
 	// 	icon: Receipt,
 	// },
-	// {
-	// 	name: 'Notifications',
-	// 	href: '/notifications',
-	// 	icon: Mail,
-	// },
+	{
+		name: 'Notifications',
+		href: '/notifications',
+		icon: Mail,
+	},
 	{
 		name: 'Users',
 		href: '/users',

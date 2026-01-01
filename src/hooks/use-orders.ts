@@ -379,9 +379,9 @@ export function useA2ApproveStandard() {
 }
 
 /**
- * A2 adjust pricing
+ * Adjust pricing
  */
-export function useA2AdjustPricing() {
+export function useAdjustPricing() {
 	const queryClient = useQueryClient()
 
 	return useMutation({
@@ -394,21 +394,19 @@ export function useA2AdjustPricing() {
 			adjustedPrice: number
 			adjustmentReason: string
 		}) => {
-			const response = await fetch(
-				`/api/admin/orders/${orderId}/pricing/adjust`,
-				{
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ adjustedPrice, adjustmentReason }),
-				}
-			)
+			try {
+				const response = await apiClient.patch(
+					`/client/v1/order/${orderId}/adjust-pricing`,
+					{
+						adjusted_price: adjustedPrice,
+						adjustment_reason: adjustmentReason,
+					}
+				)
 
-			if (!response.ok) {
-				const error = await response.json()
-				throw new Error(error.error || 'Failed to adjust pricing')
+			return response.data
+			} catch (error) {
+				throwApiError(error)
 			}
-
-			return response.json()
 		},
 		onSuccess: () => {
 			queryClient.invalidateQueries({
