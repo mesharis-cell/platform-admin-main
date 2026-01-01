@@ -366,7 +366,7 @@ export default function AdminOrdersPage() {
 														</TableCell>
 														<TableCell>
 															<div className="flex items-start gap-2">
-																<User className="h-4 w-4 text-slate-400 mt-0.5 flex-shrink-0" />
+																<User className="h-4 w-4 text-slate-400 mt-0.5 shrink-0" />
 																<div>
 																	<p className="text-sm font-medium text-slate-900">
 																		{order.contact_name}
@@ -385,7 +385,7 @@ export default function AdminOrdersPage() {
 														</TableCell>
 														<TableCell>
 															<div className="flex items-start gap-2">
-																<MapPin className="h-4 w-4 text-slate-400 mt-0.5 flex-shrink-0" />
+																<MapPin className="h-4 w-4 text-slate-400 mt-0.5 shrink-0" />
 																<div>
 																	<p className="text-sm font-medium text-slate-900">
 																		{order.venue_name}

@@ -51,7 +51,7 @@ import {
 } from '@/components/ui/sidebar'
 import Providers from '@/providers'
 import { toast } from 'sonner'
-import { useAuth } from '@/contexts/user-context'
+import { useToken } from '@/lib/auth/use-token'
 
 type NavItem = {
 	name: string
@@ -72,18 +72,18 @@ const navigation: NavItem[] = [
 		href: '/orders',
 		icon: ShoppingCart,
 	},
-	// {
-	// 	name: 'Pricing Review',
-	// 	href: '/orders/pricing-review',
-	// 	icon: DollarSign,
-	// 	badge: 'A2',
-	// },
-	// {
-	// 	name: 'Pending Approval',
-	// 	href: '/orders/pending-approval',
-	// 	icon: AlertCircle,
-	// 	badge: 'PMG',
-	// },
+	{
+		name: 'Pricing Review',
+		href: '/orders/pricing-review',
+		icon: DollarSign,
+		badge: 'A2',
+	},
+	{
+		name: 'Pending Approval',
+		href: '/orders/pending-approval',
+		icon: AlertCircle,
+		badge: 'PMG',
+	},
 	{
 		name: 'Scanning',
 		href: '/scanning',
@@ -151,7 +151,7 @@ function AdminSidebarContent() {
 	const router = useRouter()
 	const { data: session, isPending } = useSession()
 	const { state } = useSidebar()
-	const { logout } = useAuth()
+	const { logout } = useToken()
 
 	const handleSignOut = () => {
 		logout()

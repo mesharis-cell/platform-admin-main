@@ -8,7 +8,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { ChevronLeft, Calendar, MapPin, Package, DollarSign } from 'lucide-react';
-import { usePricingReviewOrders, useA2ApproveStandard, useA2AdjustPricing } from '@/hooks/use-orders';
+import { usePricingReviewOrders, useA2ApproveStandard, useA2AdjustPricing, useAdminOrders } from '@/hooks/use-orders';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -21,9 +21,11 @@ import { toast } from 'sonner';
 import { AdminHeader } from '@/components/admin-header';
 
 export default function PricingReviewPage() {
-	const { data, isLoading, error } = usePricingReviewOrders();
+	const { data, isLoading, error } = useAdminOrders({ order_status: 'PRICING_REVIEW' });
 	const approveStandard = useA2ApproveStandard();
 	const adjustPricing = useA2AdjustPricing();
+
+	console.log(data);
 
 	const [selectedOrder, setSelectedOrder] = useState<any>(null);
 	const [adjustDialogOpen, setAdjustDialogOpen] = useState(false);
@@ -108,7 +110,7 @@ export default function PricingReviewPage() {
 				icon={DollarSign}
 				title="PRICING REVIEW QUEUE"
 				description="A2 Review · Standard Pricing · Adjustments"
-				stats={data ? { label: 'PENDING REVIEW', value: data.orders.length } : undefined}
+				stats={data ? { label: 'PENDING REVIEW', value: data?.data?.length } : undefined}
 				actions={
 					<Link href="/admin/orders">
 						<Button variant="outline" className="gap-2 font-mono">
@@ -132,7 +134,7 @@ export default function PricingReviewPage() {
 							</Card>
 						))}
 					</div>
-				) : !data || data.orders.length === 0 ? (
+				) : !data || data?.data?.length === 0 ? (
 					<Card>
 						<CardContent className="p-12 text-center">
 							<Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -144,15 +146,15 @@ export default function PricingReviewPage() {
 					</Card>
 				) : (
 					<div className="space-y-4">
-						{data.orders.map((order: any) => (
+						{data?.data?.map((order: any) => (
 							<Card key={order.id} className="hover:border-primary/50 transition-colors">
 								<CardHeader className="pb-3">
 									<div className="flex items-center justify-between">
 										<div>
-											<CardTitle className="text-lg font-mono">{order.orderId}</CardTitle>
-											<p className="text-sm text-muted-foreground mt-1">{order.companyName}</p>
+											<CardTitle className="text-lg font-mono">{order?.order_id}</CardTitle>
+											<p className="text-sm text-muted-foreground mt-1">{order?.company?.name}</p>
 										</div>
-										<Badge>{order.status}</Badge>
+										<Badge>{order?.order_status}</Badge>
 									</div>
 								</CardHeader>
 								<CardContent className="space-y-4">
@@ -163,21 +165,25 @@ export default function PricingReviewPage() {
 												<Calendar className="h-4 w-4" />
 												<span>Event Date</span>
 											</div>
-											<p className="font-medium">{new Date(order.eventStartDate).toLocaleDateString()}</p>
+											<p className="font-medium">{new Date(order.event_start_date).toLocaleDateString()}</p>
 										</div>
 										<div>
 											<div className="flex items-center gap-2 text-muted-foreground mb-1">
 												<MapPin className="h-4 w-4" />
 												<span>Venue</span>
 											</div>
-											<p className="font-medium">{order.venueCity}</p>
+											<p className="font-medium">
+												{order?.venue_location?.country},
+												{order?.venue_location?.city},
+												{order?.venue_location?.state}
+											</p>
 										</div>
 										<div>
 											<div className="flex items-center gap-2 text-muted-foreground mb-1">
 												<Package className="h-4 w-4" />
 												<span>Volume</span>
 											</div>
-											<p className="font-medium">{order.calculatedVolume} m³</p>
+											<p className="font-medium">{order?.calculated_volume} m³</p>
 										</div>
 										<div>
 											<div className="flex items-center gap-2 text-muted-foreground mb-1">

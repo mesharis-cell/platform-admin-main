@@ -151,7 +151,9 @@ export default function AdminOrderDetailPage({
 	const { data: statusHistory, isLoading: statusHistoryLoading } = useAdminOrderStatusHistory(order?.data?.id ? order?.data?.id : '')
 
 	const { data: session } = useSession()
-	const updateJobNumber = useUpdateJobNumber()
+	const updateJobNumber = useUpdateJobNumber();
+
+	console.log(order?.data)
 
 	// Check permissions - PMG Admin can see full pricing breakdown
 	const canSeePMGMargin = session?.user
@@ -687,7 +689,7 @@ export default function AdminOrderDetailPage({
 							</Card>
 						)}
 						{/* Payment Status Card - PMG Admin Only (Feedback #1: Financial status separate) */}
-						{canConfirmPayment &&
+						{
 							(order.invoiceNumber ||
 								[
 									'CONFIRMED',
@@ -698,7 +700,7 @@ export default function AdminOrderDetailPage({
 									'IN_USE',
 									'AWAITING_RETURN',
 									'CLOSED',
-								].includes(order.status)) && (
+								].includes(order?.data?.order_status)) && (
 								<Card className='border-2 border-indigo-500/20 bg-indigo-500/5'>
 									<CardHeader>
 										<CardTitle className='font-mono text-sm flex items-center gap-2'>
@@ -720,7 +722,7 @@ export default function AdminOrderDetailPage({
 											</p>
 										</div>
 										{/* Amount with Breakdown - PMG Admin sees breakdown */}
-										{canSeePMGMargin &&
+										{order?.data?.company?.platform_margin_percent &&
 											(order.a2BasePrice ||
 												order.a2AdjustedPrice) &&
 											order.finalTotalPrice ? (
@@ -768,7 +770,7 @@ export default function AdminOrderDetailPage({
 														<span>Total</span>
 														<span className='text-primary'>
 															{parseFloat(
-																order.finalTotalPrice
+																order?.data?.final_total_price
 															).toFixed(2)}{' '}
 															AED
 														</span>
@@ -843,9 +845,7 @@ export default function AdminOrderDetailPage({
 															METHOD
 														</Label>
 														<p className='font-mono text-xs'>
-															{
-																order.paymentMethod
-															}
+															{order.paymentMethod}
 														</p>
 													</div>
 												)}
