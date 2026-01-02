@@ -17,6 +17,7 @@ import {
 	User,
 } from 'lucide-react'
 import {
+	useAdminOrders,
 	usePendingApprovalOrders,
 	usePMGApprovePricing,
 } from '@/hooks/use-orders'
@@ -38,29 +39,30 @@ import { toast } from 'sonner'
 import { AdminHeader } from '@/components/admin-header'
 
 export default function PendingApprovalPage() {
-	const { data, isLoading, error } = usePendingApprovalOrders()
+	const { data, isLoading, error } = useAdminOrders({ order_status: 'PENDING_APPROVAL' });
 	const approvePricing = usePMGApprovePricing()
 	const [selectedOrder, setSelectedOrder] = useState<any>(null)
-	const [a2BasePrice, setA2BasePrice] = useState<string>('')
+	const [basePrice, setBasePrice] = useState<string>('')
 	const [pmgMarginPercent, setPmgMarginPercent] = useState<string>('')
 	const [pmgReviewNotes, setPmgReviewNotes] = useState<string>('')
 
+	console.log(data?.data)
+
 	const handleOpenApprove = (order: any) => {
 		setSelectedOrder(order)
-		setA2BasePrice(order.a2AdjustedPrice || '')
+		setBasePrice(order.logistics_pricing?.base_price || '')
 		// Default PMG margin from company settings or 20%
-		setPmgMarginPercent(order.company?.pmgMarginPercent || '20')
+		setPmgMarginPercent(order.logistics_pricing?.pmg_margin_percent || '20')
 		setPmgReviewNotes('')
 	}
-	console.log(data)
 	const handleApprove = async () => {
 		if (!selectedOrder) return
 
-		const basePriceNum = parseFloat(a2BasePrice)
+		const basePriceNum = parseFloat(basePrice)
 		const marginNum = parseFloat(pmgMarginPercent)
 
 		if (isNaN(basePriceNum) || basePriceNum <= 0) {
-			toast.error('Please enter a valid A2 base price')
+			toast.error('Please enter a valid base price')
 			return
 		}
 
@@ -78,7 +80,7 @@ export default function PendingApprovalPage() {
 			})
 			toast.success('Pricing approved. Quote sent to client.')
 			setSelectedOrder(null)
-			setA2BasePrice('')
+			setBasePrice('')
 			setPmgMarginPercent('')
 			setPmgReviewNotes('')
 		} catch (error: any) {
@@ -87,14 +89,14 @@ export default function PendingApprovalPage() {
 	}
 
 	const calculateFinalPrice = () => {
-		const base = parseFloat(a2BasePrice)
+		const base = parseFloat(basePrice)
 		const margin = parseFloat(pmgMarginPercent)
 		if (isNaN(base) || isNaN(margin)) return 0
 		return base * (1 + margin / 100)
 	}
 
 	const calculateMarginAmount = () => {
-		const base = parseFloat(a2BasePrice)
+		const base = parseFloat(basePrice)
 		const margin = parseFloat(pmgMarginPercent)
 		if (isNaN(base) || isNaN(margin)) return 0
 		return base * (margin / 100)
@@ -137,9 +139,9 @@ export default function PendingApprovalPage() {
 				stats={
 					data
 						? {
-								label: 'AWAITING APPROVAL',
-								value: data.orders.length,
-							}
+							label: 'AWAITING APPROVAL',
+							value: data?.data?.length,
+						}
 						: undefined
 				}
 				actions={
@@ -165,7 +167,7 @@ export default function PendingApprovalPage() {
 							</Card>
 						))}
 					</div>
-				) : !data || data.orders.length === 0 ? (
+				) : !data || data?.data.length === 0 ? (
 					<Card>
 						<CardContent className='p-12 text-center'>
 							<Package className='h-12 w-12 text-muted-foreground mx-auto mb-4' />
@@ -180,7 +182,7 @@ export default function PendingApprovalPage() {
 					</Card>
 				) : (
 					<div className='space-y-4'>
-						{data.orders.map((order: any) => (
+						{data?.data?.map((order: any) => (
 							<Card
 								key={order.id}
 								className='hover:border-primary/50 transition-colors'
@@ -189,14 +191,14 @@ export default function PendingApprovalPage() {
 									<div className='flex items-center justify-between'>
 										<div>
 											<CardTitle className='text-lg font-mono'>
-												{order.orderId}
+												{order.order_id}
 											</CardTitle>
 											<p className='text-sm text-muted-foreground mt-1'>
-												{order.companyName}
+												{order?.company?.name}
 											</p>
 										</div>
 										<Badge variant='destructive'>
-											{order.status}
+											{order.order_status}
 										</Badge>
 									</div>
 								</CardHeader>
@@ -209,9 +211,7 @@ export default function PendingApprovalPage() {
 												<span>Event Date</span>
 											</div>
 											<p className='font-medium'>
-												{new Date(
-													order.eventStartDate
-												).toLocaleDateString()}
+												{new Date(order?.event_start_date).toLocaleDateString()}
 											</p>
 										</div>
 										<div>
@@ -220,7 +220,9 @@ export default function PendingApprovalPage() {
 												<span>Venue</span>
 											</div>
 											<p className='font-medium'>
-												{order.venueCity}
+												{order?.venue_location?.country},
+												{order?.venue_location?.city},
+												{order?.venue_location?.state}
 											</p>
 										</div>
 										<div>
@@ -229,7 +231,7 @@ export default function PendingApprovalPage() {
 												<span>Volume</span>
 											</div>
 											<p className='font-medium'>
-												{order.calculatedVolume} m³
+												{order?.calculated_totals?.volume} m³
 											</p>
 										</div>
 										<div>
@@ -238,7 +240,7 @@ export default function PendingApprovalPage() {
 												<span>Adjusted By</span>
 											</div>
 											<p className='font-medium'>
-												{order.a2AdjustedBy?.name ||
+												{order?.logistics_pricing?.adjusted_by ||
 													'Unknown'}
 											</p>
 										</div>
@@ -250,12 +252,12 @@ export default function PendingApprovalPage() {
 											<AlertCircle className='h-5 w-5 text-amber-500 mt-0.5' />
 											<div>
 												<h4 className='font-semibold text-sm'>
-													A2 Pricing Adjustment
+													Pricing Adjustment
 												</h4>
 												<p className='text-sm text-muted-foreground mt-1'>
 													Adjusted on{' '}
 													{new Date(
-														order.a2AdjustedAt
+														order?.logistics_pricing?.adjusted_at
 													).toLocaleString()}
 												</p>
 											</div>
@@ -265,18 +267,16 @@ export default function PendingApprovalPage() {
 												Adjustment Reason:
 											</p>
 											<p className='text-sm'>
-												{order.a2AdjustmentReason}
+												{order?.logistics_pricing?.adjustment_reason}
 											</p>
 										</div>
 										<div className='space-y-2 text-sm font-mono'>
 											<div className='flex justify-between'>
-												<span>
-													A2 Adjusted Base Price
-												</span>
+												<span>Adjusted Base Price</span>
 												<span className='font-semibold'>
-													{parseFloat(
-														order.a2AdjustedPrice
-													).toFixed(2)}{' '}
+													${(Number(order?.logistics_pricing?.adjusted_price
+														? order?.logistics_pricing?.adjusted_price
+														: order?.logistics_pricing?.base_price) + Number(order?.platform_pricing?.margin_amount || 0)).toFixed(2)}{' '}
 													AED
 												</span>
 											</div>
@@ -286,16 +286,14 @@ export default function PendingApprovalPage() {
 									{/* Actions */}
 									<div className='flex gap-3 pt-2'>
 										<Button
-											onClick={() =>
-												handleOpenApprove(order)
-											}
+											onClick={() => handleOpenApprove(order)}
 											disabled={approvePricing.isPending}
 										>
 											Review & Approve Pricing
 										</Button>
 										<Button variant='ghost' asChild>
 											<Link
-												href={`/admin/orders/${order.id}`}
+												href={`/orders/${order.order_id}`}
 											>
 												View Full Details
 											</Link>
@@ -321,20 +319,20 @@ export default function PendingApprovalPage() {
 						<p className='text-sm text-muted-foreground'>
 							Review and adjust the final pricing for order{' '}
 							<span className='font-mono font-semibold'>
-								{selectedOrder?.orderId}
+								{selectedOrder?.order_id}
 							</span>
 							. You can modify the A2 base price and PMG margin
 							before approving.
 						</p>
 
 						{/* A2 Adjustment Context */}
-						{selectedOrder?.a2AdjustmentReason && (
-							<div className='border border-amber-500/50 rounded-md p-3 bg-amber-500/5'>
+						{selectedOrder?.logistics_pricing?.adjustment_reason && (
+							<div className='border border-primary-500/50 rounded-md p-3 bg-primary-500/5'>
 								<p className='text-xs text-muted-foreground mb-1'>
-									A2 Adjustment Reason:
+									Adjustment Reason:
 								</p>
 								<p className='text-sm'>
-									{selectedOrder.a2AdjustmentReason}
+									{selectedOrder.logistics_pricing?.adjustment_reason}
 								</p>
 							</div>
 						)}
@@ -342,20 +340,20 @@ export default function PendingApprovalPage() {
 						{/* Pricing Form */}
 						<div className='grid grid-cols-2 gap-4'>
 							<div>
-								<Label htmlFor='a2BasePrice'>
-									A2 Base Price{' '}
+								<Label htmlFor='basePrice'>
+									Base Price{' '}
 									<span className='text-destructive'>*</span>
 								</Label>
 								<Input
-									id='a2BasePrice'
+									id='basePrice'
 									type='number'
 									step='0.01'
 									min='0'
-									value={a2BasePrice}
+									value={basePrice}
 									onChange={e =>
-										setA2BasePrice(e.target.value)
+										setBasePrice(e.target.value)
 									}
-									placeholder='Enter A2 base price...'
+									placeholder='Enter base price...'
 								/>
 								<p className='text-xs text-muted-foreground mt-1'>
 									Can be modified after offline discussion
@@ -389,11 +387,9 @@ export default function PendingApprovalPage() {
 							</h4>
 							<div className='space-y-2 text-sm font-mono'>
 								<div className='flex justify-between'>
-									<span>A2 Base Price</span>
+									<span>Base Price</span>
 									<span>
-										{parseFloat(a2BasePrice || '0').toFixed(
-											2
-										)}
+										{parseFloat(basePrice || '0').toFixed(2)}
 									</span>
 								</div>
 								<div className='flex justify-between text-muted-foreground'>

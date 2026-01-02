@@ -349,23 +349,15 @@ export function useA2ApproveStandard() {
 			orderId: string
 			notes?: string
 		}) => {
-			const response = await fetch(
-				`/api/admin/orders/${orderId}/pricing/approve-standard`,
-				{
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ notes }),
-				}
-			)
-
-			if (!response.ok) {
-				const error = await response.json()
-				throw new Error(
-					error.error || 'Failed to approve standard pricing'
+			try {
+				const response = await apiClient.patch(
+					`/client/v1/order/${orderId}/approve-standard-pricing`,
+					{notes}
 				)
+				return response.data
+			} catch (error) {
+				throwApiError(error)
 			}
-
-			return response.json()
 		},
 		onSuccess: () => {
 			queryClient.invalidateQueries({

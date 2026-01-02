@@ -110,7 +110,7 @@ export default function PricingReviewPage() {
 				description="A2 Review · Standard Pricing · Adjustments"
 				stats={data ? { label: 'PENDING REVIEW', value: data?.data?.length } : undefined}
 				actions={
-					<Link href="/admin/orders">
+					<Link href="/orders">
 						<Button variant="outline" className="gap-2 font-mono">
 							<ChevronLeft className="h-4 w-4" />
 							BACK TO ORDERS
@@ -200,11 +200,18 @@ export default function PricingReviewPage() {
 									{/* Pricing Details - A2 Staff Only Sees Base Price */}
 									{order.logistics_pricing?.base_price ? (
 										<div className="border border-border rounded-md p-4 bg-muted/50">
-											<h4 className="font-semibold text-sm mb-3">Base Price</h4>
+											<h4 className="font-semibold text-sm mb-3">Calculated Price</h4>
 											<div className="flex items-baseline justify-between">
-												<span className="text-sm text-muted-foreground font-mono">Calculated Price</span>
+												<span className="text-sm text-muted-foreground font-mono">Base Price</span>
 												<span className="text-2xl font-bold font-mono text-primary">
-													{(Number(order.logistics_pricing.base_price) + Number(order.platform_pricing.margin_amount)).toFixed(2)} AED
+													{Number(order.logistics_pricing.base_price)} AED
+												</span>
+											</div>
+											<div className="flex items-baseline justify-between">
+												<span className="text-sm text-muted-foreground font-mono">Margin Amount</span>
+												<span className="text-2xl font-bold font-mono text-primary">
+													<span className="text-sm mr-2">({order.platform_pricing.margin_percent}%)</span>
+													{Number(order.platform_pricing.margin_amount)} AED
 												</span>
 											</div>
 											{order?.pricing_tier && (
@@ -246,7 +253,7 @@ export default function PricingReviewPage() {
 											{order.logistics_pricing?.base_price ? 'Adjust Price' : 'Set Custom Price'}
 										</Button>
 										<Button variant="ghost" asChild>
-											<Link href={`/admin/orders/${order.id}`}>View Full Details</Link>
+											<Link href={`/orders/${order.order_id}`}>View Full Details</Link>
 										</Button>
 									</div>
 								</CardContent>
@@ -311,16 +318,20 @@ export default function PricingReviewPage() {
 					</DialogHeader>
 					<div className="space-y-4">
 						<p className="text-sm text-muted-foreground">
-							Adjust the pricing for order <span className="font-mono font-semibold">{selectedOrder?.orderId}</span>.
+							Adjust the pricing for order <span className="font-mono font-semibold">{selectedOrder?.order_id}</span>.
 							This will send the adjusted pricing to PMG for final approval.
 						</p>
 						{selectedOrder?.logistics_pricing?.base_price && (
 							<div className="border border-border rounded-md p-3 bg-muted/50">
 								<p className="text-xs text-muted-foreground mb-2">Standard Base Price (for reference)</p>
-								<div className="text-sm font-mono">
+								<div className="text-sm font-mono space-y-2">
 									<div className="flex justify-between">
 										<span>Base Price</span>
-										<span className="font-bold">{(Number(selectedOrder?.logistics_pricing?.base_price) + Number(selectedOrder?.platform_pricing?.margin_amount)).toFixed(2)} AED</span>
+										<span className="font-bold">{Number(selectedOrder?.logistics_pricing?.base_price).toFixed(2)} AED</span>
+									</div>
+									<div className="flex justify-between">
+										<span>Margin Amount</span>
+										<span className="font-bold">{Number(selectedOrder?.platform_pricing?.margin_amount).toFixed(2)} AED</span>
 									</div>
 								</div>
 							</div>

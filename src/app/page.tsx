@@ -36,6 +36,9 @@ export default function HomePage() {
 			if (role === 'ADMIN') {
 				// PMG Admin goes to analytics dashboard
 				router.push('/orders');
+			} else {
+				// User is not an admin, sign out and invalidate token
+				logout();
 			}
 		}
 	}, [access_token, loading, router]);
