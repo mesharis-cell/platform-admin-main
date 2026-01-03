@@ -46,13 +46,11 @@ export default function PendingApprovalPage() {
 	const [pmgMarginPercent, setPmgMarginPercent] = useState<string>('')
 	const [pmgReviewNotes, setPmgReviewNotes] = useState<string>('')
 
-	console.log(data?.data)
-
 	const handleOpenApprove = (order: any) => {
 		setSelectedOrder(order)
-		setBasePrice(order.logistics_pricing?.base_price || '')
+		setBasePrice(order.logistics_pricing?.adjusted_price || order.logistics_pricing?.base_price || '')
 		// Default PMG margin from company settings or 20%
-		setPmgMarginPercent(order.logistics_pricing?.pmg_margin_percent || '20')
+		setPmgMarginPercent(order.platform_pricing?.margin_percent || '20')
 		setPmgReviewNotes('')
 	}
 	const handleApprove = async () => {
@@ -274,10 +272,14 @@ export default function PendingApprovalPage() {
 											<div className='flex justify-between'>
 												<span>Adjusted Base Price</span>
 												<span className='font-semibold'>
-													${(Number(order?.logistics_pricing?.adjusted_price
-														? order?.logistics_pricing?.adjusted_price
-														: order?.logistics_pricing?.base_price) + Number(order?.platform_pricing?.margin_amount || 0)).toFixed(2)}{' '}
-													AED
+													{Number(order?.logistics_pricing?.adjusted_price).toFixed(2)} AED
+												</span>
+											</div>
+											<div className='flex justify-between'>
+												<span>Margin Amount</span>
+												<span className='font-semibold'>
+													<span className="text-sm mr-2">({order?.platform_pricing?.margin_percent}%)</span>
+													{Number(order?.platform_pricing?.margin_amount).toFixed(2)} AED
 												</span>
 											</div>
 										</div>
@@ -350,9 +352,7 @@ export default function PendingApprovalPage() {
 									step='0.01'
 									min='0'
 									value={basePrice}
-									onChange={e =>
-										setBasePrice(e.target.value)
-									}
+									onChange={e => setBasePrice(e.target.value)}
 									placeholder='Enter base price...'
 								/>
 								<p className='text-xs text-muted-foreground mt-1'>
@@ -372,9 +372,7 @@ export default function PendingApprovalPage() {
 									min='0'
 									max='100'
 									value={pmgMarginPercent}
-									onChange={e =>
-										setPmgMarginPercent(e.target.value)
-									}
+									onChange={e => setPmgMarginPercent(e.target.value)}
 									placeholder='Enter margin %...'
 								/>
 							</div>

@@ -429,25 +429,20 @@ export function usePMGApprovePricing() {
 			pmgMarginPercent: number
 			pmgReviewNotes?: string
 		}) => {
-			const response = await fetch(
-				`/api/admin/orders/${orderId}/pricing/pmg-approve`,
-				{
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({
-						a2BasePrice,
-						pmgMarginPercent,
-						pmgReviewNotes,
-					}),
-				}
-			)
+			try {
+				const response = await apiClient.patch(
+					`/client/v1/order/${orderId}/approve-platform-pricing`,
+					{
+						logistics_base_price: a2BasePrice,
+						platform_margin_percent: pmgMarginPercent,
+						notes: pmgReviewNotes,
+					}
+				)
 
-			if (!response.ok) {
-				const error = await response.json()
-				throw new Error(error.error || 'Failed to approve pricing')
+			return response.data
+			} catch (error) {
+				throwApiError(error)
 			}
-
-			return response.json()
 		},
 		onSuccess: () => {
 			queryClient.invalidateQueries({

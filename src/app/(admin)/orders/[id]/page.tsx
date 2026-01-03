@@ -150,18 +150,7 @@ export default function AdminOrderDetailPage({
 	const { data: order, isLoading } = useAdminOrderDetails(resolvedParams.id)
 	const { data: statusHistory, isLoading: statusHistoryLoading } = useAdminOrderStatusHistory(order?.data?.id ? order?.data?.id : '')
 
-	const { data: session } = useSession()
 	const updateJobNumber = useUpdateJobNumber();
-
-	console.log(order?.data)
-
-	// Check permissions - PMG Admin can see full pricing breakdown
-	const canSeePMGMargin = session?.user
-		? hasPermission(session.user as any, 'pricing:pmg_approve')
-		: false
-	const canConfirmPayment = session?.user
-		? hasPermission(session.user as any, 'invoices:confirm_payment')
-		: false
 
 	const [isEditingJobNumber, setIsEditingJobNumber] = useState(false)
 	const [jobNumber, setJobNumber] = useState('')
@@ -864,9 +853,8 @@ export default function AdminOrderDetailPage({
 											</>
 										)}
 										{/* Payment Confirmation Section - PMG Admin Only */}
-										{order.financialStatus === 'INVOICED' &&
-											!order.invoicePaidAt &&
-											canConfirmPayment && (
+										{order.financial_status === 'INVOICED' &&
+											!order.invoice_paid_at && (
 												<>
 													<Separator />
 													<div className='p-4 bg-amber-500/10 border border-amber-500/20 rounded-md space-y-3'>
@@ -1008,9 +996,7 @@ export default function AdminOrderDetailPage({
 																			*
 																		</Label>
 																		<DateTimePicker
-																			value={
-																				paymentDetails.paymentDate
-																			}
+																			value={paymentDetails.paymentDate}
 																			onChange={date =>
 																				setPaymentDetails(
 																					prev => ({
@@ -1066,9 +1052,7 @@ export default function AdminOrderDetailPage({
 																		CANCEL
 																	</Button>
 																	<Button
-																		onClick={
-																			handleConfirmPayment
-																		}
+																		onClick={handleConfirmPayment}
 																		disabled={
 																			!paymentDetails.paymentMethod ||
 																			!paymentDetails.paymentReference

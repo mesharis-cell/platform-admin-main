@@ -84,6 +84,10 @@ export function CreateAssetDialog({
 	const [customCategory, setCustomCategory] = useState('')
 	const [customHandlingTag, setCustomHandlingTag] = useState('')
 
+	// Image upload state - store files locally until form submit
+	const [selectedImages, setSelectedImages] = useState<File[]>([])
+	const [previewUrls, setPreviewUrls] = useState<string[]>([])
+
 	// Fetch reference data using TanStack Query
 	const { data: companiesData } = useCompanies()
 	const { data: warehousesData } = useWarehouses()
@@ -103,50 +107,32 @@ export function CreateAssetDialog({
 	const createMutation = useCreateAsset()
 	const uploadMutation = useUploadImage()
 
-	async function handleImageUpload(files: FileList | null) {
-		if (!files || files.length === 0) return
-		if (!formData.company_id) {
-			toast.error('Please select a company first')
-			return
-		}
+	// Handle image selection - store files locally, create previews
+	function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
+		const files = Array.from(e.target.files || [])
+		if (files.length === 0) return
 
-		const uploadedUrls: string[] = []
+		// Add new files to existing selection
+		setSelectedImages(prev => [...prev, ...files])
 
-		try {
-			for (let i = 0; i < files.length; i++) {
-				const file = files[i]
-				const uploadFormData = new FormData()
-				uploadFormData.append('file', file)
-				uploadFormData.append('companyId', formData.company_id!)
-
-				try {
-					const data =
-						await uploadMutation.mutateAsync(uploadFormData)
-					uploadedUrls.push(data.imageUrl)
-				} catch (error) {
-					toast.error(`Failed to upload ${file.name}`)
-				}
-			}
-
-			setFormData(prev => ({
-				...prev,
-				images: [...(prev.images || []), ...uploadedUrls],
-			}))
-
-			if (uploadedUrls.length > 0) {
-				toast.success(`Uploaded ${uploadedUrls.length} image(s)`)
-			}
-		} catch (error) {
-			console.error('Upload error:', error)
-			toast.error('Failed to upload images')
-		}
+		// Create preview URLs for new files
+		const newUrls = files.map(file => URL.createObjectURL(file))
+		setPreviewUrls(prev => [...prev, ...newUrls])
 	}
 
+	// Remove image at index
 	function removeImage(index: number) {
-		setFormData(prev => ({
-			...prev,
-			images: prev.images?.filter((_, i) => i !== index),
-		}))
+		const newImages = [...selectedImages]
+		const newPreviews = [...previewUrls]
+
+		// Revoke object URL to prevent memory leak
+		URL.revokeObjectURL(newPreviews[index])
+
+		newImages.splice(index, 1)
+		newPreviews.splice(index, 1)
+
+		setSelectedImages(newImages)
+		setPreviewUrls(newPreviews)
 	}
 
 	function toggleHandlingTag(tag: string) {
@@ -271,7 +257,23 @@ export function CreateAssetDialog({
 		}
 
 		try {
-			await createMutation.mutateAsync(formData as CreateAssetRequest)
+			// Upload images first if any are selected
+			let imageUrls: string[] = []
+			if (selectedImages.length > 0) {
+				const uploadFormData = new FormData()
+				uploadFormData.append('companyId', formData.company_id!)
+				selectedImages.forEach(file => uploadFormData.append('files', file))
+
+				const uploadResult = await uploadMutation.mutateAsync(uploadFormData)
+				imageUrls = uploadResult.data?.imageUrls
+			}
+
+			// Create asset with uploaded image URLs
+			await createMutation.mutateAsync({
+				...formData,
+				images: imageUrls,
+			} as CreateAssetRequest)
+
 			toast.success('Asset created successfully')
 			onSuccess()
 			resetForm()
@@ -299,6 +301,11 @@ export function CreateAssetDialog({
 		setCustomCategory('')
 		setCustomHandlingTag('')
 		setCurrentStep(0)
+
+		// Revoke all preview URLs and clear file state
+		previewUrls.forEach(url => URL.revokeObjectURL(url))
+		setSelectedImages([])
+		setPreviewUrls([])
 	}
 
 	function canProceedToNext() {
@@ -698,11 +705,7 @@ export function CreateAssetDialog({
 											type='file'
 											accept='image/*'
 											multiple
-											onChange={e =>
-												handleImageUpload(
-													e.target.files
-												)
-											}
+											onChange={handleImageSelect}
 											className='hidden'
 											id='image-upload'
 										/>
@@ -710,13 +713,9 @@ export function CreateAssetDialog({
 											htmlFor='image-upload'
 											className='flex flex-col items-center justify-center cursor-pointer'
 										>
-											{uploadMutation.isPending ? (
-												<Loader2 className='w-8 h-8 text-primary animate-spin mb-2' />
-											) : (
-												<Upload className='w-8 h-8 text-muted-foreground mb-2' />
-											)}
+											<Upload className='w-8 h-8 text-muted-foreground mb-2' />
 											<span className='text-sm font-mono text-muted-foreground'>
-												Click to upload images
+												Click to select images
 											</span>
 											<span className='text-xs font-mono text-muted-foreground mt-1'>
 												JPG, PNG, WEBP up to 5MB
@@ -726,35 +725,34 @@ export function CreateAssetDialog({
 								</div>
 
 								{/* Image preview grid */}
-								{formData.images &&
-									formData.images.length > 0 && (
-										<div className='grid grid-cols-3 gap-4'>
-											{formData.images.map(
-												(url, index) => (
-													<div
-														key={index}
-														className='relative group aspect-square rounded-lg overflow-hidden border border-border'
+								{previewUrls.length > 0 && (
+									<div className='grid grid-cols-3 gap-4'>
+										{previewUrls.map(
+											(url, index) => (
+												<div
+													key={index}
+													className='relative group aspect-square rounded-lg overflow-hidden border border-border'
+												>
+													<img
+														src={url}
+														alt={`Preview ${index + 1}`}
+														className='w-full h-full object-cover'
+													/>
+													<button
+														onClick={() =>
+															removeImage(
+																index
+															)
+														}
+														className='absolute top-2 right-2 p-1.5 bg-destructive text-destructive-foreground rounded-md opacity-0 group-hover:opacity-100 transition-opacity'
 													>
-														<img
-															src={url}
-															alt={`Preview ${index + 1}`}
-															className='w-full h-full object-cover'
-														/>
-														<button
-															onClick={() =>
-																removeImage(
-																	index
-																)
-															}
-															className='absolute top-2 right-2 p-1.5 bg-destructive text-destructive-foreground rounded-md opacity-0 group-hover:opacity-100 transition-opacity'
-														>
-															<X className='w-3 h-3' />
-														</button>
-													</div>
-												)
-											)}
-										</div>
-									)}
+														<X className='w-3 h-3' />
+													</button>
+												</div>
+											)
+										)}
+									</div>
+								)}
 							</div>
 						)}
 
