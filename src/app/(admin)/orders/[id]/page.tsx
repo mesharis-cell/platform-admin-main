@@ -679,7 +679,7 @@ export default function AdminOrderDetailPage({
 						)}
 						{/* Payment Status Card - PMG Admin Only (Feedback #1: Financial status separate) */}
 						{
-							(order.invoiceNumber ||
+							(order.invoice?.invoice_id ||
 								[
 									'CONFIRMED',
 									'IN_PREPARATION',
@@ -703,7 +703,7 @@ export default function AdminOrderDetailPage({
 												INVOICE NUMBER
 											</Label>
 											<p className='font-mono text-sm font-bold'>
-												{order.invoiceNumber || (
+												{order?.data?.invoice?.invoice_id || (
 													<span className='text-muted-foreground'>
 														Pending...
 													</span>
@@ -712,9 +712,8 @@ export default function AdminOrderDetailPage({
 										</div>
 										{/* Amount with Breakdown - PMG Admin sees breakdown */}
 										{order?.data?.company?.platform_margin_percent &&
-											(order.a2BasePrice ||
-												order.a2AdjustedPrice) &&
-											order.finalTotalPrice ? (
+											(order?.data?.final_pricing?.total_price) &&
+											order?.data?.final_pricing?.total_price ? (
 											<div className='space-y-2'>
 												<Label className='font-mono text-xs text-muted-foreground'>
 													AMOUNT BREAKDOWN
@@ -722,30 +721,30 @@ export default function AdminOrderDetailPage({
 												<div className='p-3 bg-muted/20 rounded border space-y-2 text-sm font-mono'>
 													<div className='flex justify-between'>
 														<span className='text-muted-foreground'>
-															A2 Base
+															Base Price
 														</span>
 														<span>
 															{parseFloat(
-																order.a2AdjustedPrice ||
-																order.a2BasePrice
+																order?.data?.logistics_pricing?.adjusted_price ||
+																order?.data?.logistics_pricing?.base_price
 															).toFixed(2)}{' '}
 															AED
 														</span>
 													</div>
-													{order.pmgMarginPercent && (
+													{order?.data?.platform_pricing?.margin_percent && (
 														<div className='flex justify-between text-muted-foreground'>
 															<span>
 																PMG Margin (
 																{parseFloat(
-																	order.pmgMarginPercent
+																	order?.data?.platform_pricing?.margin_percent
 																).toFixed(0)}
 																%)
 															</span>
 															<span>
 																+
-																{order.pmgMarginAmount
+																{order?.data?.platform_pricing?.margin_amount
 																	? parseFloat(
-																		order.pmgMarginAmount
+																		order?.data?.platform_pricing?.margin_amount
 																	).toFixed(
 																		2
 																	)
@@ -759,7 +758,7 @@ export default function AdminOrderDetailPage({
 														<span>Total</span>
 														<span className='text-primary'>
 															{parseFloat(
-																order?.data?.final_total_price
+																order?.data?.final_pricing?.total_price
 															).toFixed(2)}{' '}
 															AED
 														</span>
@@ -781,8 +780,8 @@ export default function AdminOrderDetailPage({
 													AMOUNT
 												</Label>
 												<p className='font-mono text-lg font-bold text-primary'>
-													{order.finalTotalPrice ? (
-														`${parseFloat(order.finalTotalPrice).toFixed(2)} AED`
+													{order?.data?.final_pricing?.total_price ? (
+														`${parseFloat(order?.data?.final_pricing?.total_price).toFixed(2)} AED`
 													) : (
 														<span className='text-sm text-muted-foreground'>
 															Pending Invoice
@@ -797,26 +796,26 @@ export default function AdminOrderDetailPage({
 												PAYMENT STATUS
 											</Label>
 											<Badge
-												className={`font-mono text-xs ${order.financialStatus ===
+												className={`font-mono text-xs ${order?.data?.financial_status ===
 													'PAID'
 													? 'bg-green-500/10 text-green-700 border-green-500/30'
-													: order.financialStatus ===
+													: order?.data?.financial_status ===
 														'INVOICED'
 														? 'bg-amber-500/10 text-amber-700 border-amber-500/30'
 														: 'bg-slate-500/10 text-slate-600 border-slate-500/20'
 													}`}
 											>
-												{order.financialStatus ===
+												{order?.data?.financial_status ===
 													'PAID'
 													? 'PAID'
-													: order.financialStatus ===
+													: order?.data?.financial_status ===
 														'INVOICED'
 														? 'PENDING'
-														: order.financialStatus ||
+														: order?.data?.financial_status ||
 														'N/A'}
 											</Badge>
 										</div>
-										{order.invoicePaidAt && (
+										{order?.data?.invoice?.invoice_paid_at && (
 											<>
 												<div className='flex justify-between items-center'>
 													<Label className='font-mono text-xs text-muted-foreground'>
@@ -824,28 +823,28 @@ export default function AdminOrderDetailPage({
 													</Label>
 													<p className='font-mono text-xs'>
 														{new Date(
-															order.invoicePaidAt
+															order?.data?.invoice?.invoice_paid_at
 														).toLocaleDateString()}
 													</p>
 												</div>
-												{order.paymentMethod && (
+												{order?.data?.payment_method && (
 													<div className='flex justify-between items-center'>
 														<Label className='font-mono text-xs text-muted-foreground'>
 															METHOD
 														</Label>
 														<p className='font-mono text-xs'>
-															{order.paymentMethod}
+															{order?.data?.payment_method}
 														</p>
 													</div>
 												)}
-												{order.paymentReference && (
+												{order?.data?.payment_reference && (
 													<div className='flex justify-between items-center'>
 														<Label className='font-mono text-xs text-muted-foreground'>
 															REFERENCE
 														</Label>
 														<p className='font-mono text-xs'>
 															{
-																order.paymentReference
+																order?.data?.payment_reference
 															}
 														</p>
 													</div>
@@ -853,8 +852,8 @@ export default function AdminOrderDetailPage({
 											</>
 										)}
 										{/* Payment Confirmation Section - PMG Admin Only */}
-										{order.financial_status === 'INVOICED' &&
-											!order.invoice_paid_at && (
+										{order?.data?.financial_status === 'INVOICED' &&
+											!order?.data?.invoice?.invoice_paid_at && (
 												<>
 													<Separator />
 													<div className='p-4 bg-amber-500/10 border border-amber-500/20 rounded-md space-y-3'>
@@ -910,7 +909,7 @@ export default function AdminOrderDetailPage({
 																		for
 																		invoice{' '}
 																		{
-																			order.invoiceNumber
+																			order?.data?.invoice?.invoice_id
 																		}
 																	</DialogDescription>
 																</DialogHeader>

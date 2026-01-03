@@ -128,7 +128,7 @@ export function useUpdateCollection(id: string) {
 	return useMutation({
 		mutationFn: async (data: UpdateCollectionRequest) => {
 			try {
-			const response = await apiClient.put(`/operations/v1/collection/${id}`, data);
+			const response = await apiClient.patch(`/operations/v1/collection/${id}`, data);
 
 			return response.data;
 		} catch (error) {
