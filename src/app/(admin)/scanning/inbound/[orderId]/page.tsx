@@ -553,7 +553,7 @@ export default function InboundScanningPage() {
 						description: `Order ${newStatus}`,
 					})
 					setTimeout(() => {
-						router.push(`/admin/orders/${orderId}`)
+						router.push(`/orders/${orderId}`)
 					}, 2000)
 				},
 				onError: error => {
@@ -1098,7 +1098,7 @@ export default function InboundScanningPage() {
 									)}
 
 								{/* Discrepancy reason */}
-								{currentInspection.condition && (
+								{currentInspection?.condition && (
 									<div className='space-y-2'>
 										<label className='text-xs font-mono font-bold'>
 											DISCREPANCY REASON (Optional)

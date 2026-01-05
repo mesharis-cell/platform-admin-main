@@ -417,7 +417,7 @@ export default function AdminOrdersPage() {
 															</Badge>
 														</TableCell>
 														<TableCell className="text-right">
-															<Link href={`/orders/${order.order_id}`}>
+															<Link href={`/orders/${order.id}`}>
 																<Button
 																	variant="ghost"
 																	size="sm"

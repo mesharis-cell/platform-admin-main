@@ -38,30 +38,28 @@ export interface ScanEvent {
 
 export interface ScanEventWithDetails {
 	id: string
-	order: string // orderId (uuid)
-	asset: string // assetId (uuid)
-	scanType: ScanType
+	scan_type: ScanType
 	quantity: number
 	condition: 'GREEN' | 'ORANGE' | 'RED'
 	notes: string | null
 	photos: string[] // Array of photo URLs
-	discrepancyReason: DiscrepancyReason | null
-	scannedBy: string // userId
-	scannedAt: Date
+	discrepancy_reason: DiscrepancyReason | null
+	scanned_by: string // userId
+	scanned_at: Date
 	// Extended details
-	assetDetails: {
-		assetId: string
-		assetName: string
-		qrCode: string
-		trackingMethod: 'INDIVIDUAL' | 'BATCH'
+	asset: {
+		id: string
+		name: string
+		qr_code: string
+		tracking_method: 'INDIVIDUAL' | 'BATCH'
 	}
-	scannedByUser: {
+	scanned_by_user: {
 		userId: string
 		name: string
 	}
-	orderDetails: {
-		orderId: string
-		orderIdDisplay: string // Human-readable (ORD-20241109-001)
+	order: {
+		id: string
+		order_id: string // Human-readable (ORD-20241109-001)
 	}
 }
 
@@ -72,9 +70,9 @@ export interface ScanEventWithDetails {
 export interface ScanningSession {
 	sessionId: string
 	orderId: string
-	scanType: ScanType
-	startedAt: Date
-	startedBy: string // userId
+	scan_type: ScanType
+	started_at: Date
+	started_by: string // userId
 	itemsScanned: ScannedItemProgress[]
 	expiresAt: Date
 }
