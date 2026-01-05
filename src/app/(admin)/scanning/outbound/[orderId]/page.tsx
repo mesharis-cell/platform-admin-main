@@ -553,7 +553,7 @@ export default function OutboundScanningPage() {
 										description: `Order ${newStatus}`,
 									})
 									setTimeout(() => {
-										router.push(`/admin/orders/${orderId}`)
+										router.push(`/orders/${orderId}`)
 									}, 2000)
 								},
 								onError: error => {
@@ -583,7 +583,7 @@ export default function OutboundScanningPage() {
 							description: `Order ${newStatus}`,
 						})
 						setTimeout(() => {
-							router.push(`/admin/orders/${orderId}`)
+							router.push(`/orders/${orderId}`)
 						}, 2000)
 					},
 					onError: error => {

@@ -29,8 +29,6 @@ interface ScanActivityTimelineProps {
 export function ScanActivityTimeline({ orderId }: ScanActivityTimelineProps) {
   const { data: scanData, isLoading } = useOrderScanEvents(orderId);
 
-  console.log(scanData?.data);
-
   if (isLoading) {
     return (
       <Card className="p-6">
@@ -121,12 +119,12 @@ export function ScanActivityTimeline({ orderId }: ScanActivityTimelineProps) {
                       <Badge
                         variant="outline"
                         className={
-                          event.scanType === 'OUTBOUND'
+                          event.scan_type === 'OUTBOUND'
                             ? 'border-primary/30 text-primary'
                             : 'border-secondary/30 text-secondary'
                         }
                       >
-                        {event.scanType}
+                        {event.scan_type}
                       </Badge>
                       <Badge variant="outline" className={getConditionBadge(event.condition)}>
                         {getConditionIcon(event.condition)}
@@ -134,18 +132,18 @@ export function ScanActivityTimeline({ orderId }: ScanActivityTimelineProps) {
                       </Badge>
                     </div>
                     <div className="font-mono text-sm font-bold">
-                      {event.assetDetails.assetName}
+                      {event?.asset?.name}
                     </div>
                     <div className="text-xs text-muted-foreground font-mono">
-                      QR: {event.assetDetails.qrCode} • Qty: {event.quantity} •{' '}
-                      {event.assetDetails.trackingMethod}
+                      QR: {event?.asset?.qr_code} • Qty: {event.quantity} •{' '}
+                      {event?.asset?.tracking_method}
                     </div>
                   </div>
                   <div className="text-right text-xs">
                     <div className="text-muted-foreground font-mono">
-                      {format(new Date(event.scannedAt), 'MMM d, HH:mm')}
+                      {format(new Date(event?.scanned_at), 'MMM d, HH:mm')}
                     </div>
-                    <div className="text-muted-foreground">by {event.scannedByUser.name}</div>
+                    <div className="text-muted-foreground">by {event?.scanned_by_user?.name}</div>
                   </div>
                 </div>
 
@@ -157,11 +155,11 @@ export function ScanActivityTimeline({ orderId }: ScanActivityTimelineProps) {
                 )}
 
                 {/* Discrepancy */}
-                {event.discrepancyReason && (
+                {event.discrepancy_reason && (
                   <div className="flex items-center gap-2 text-sm text-amber-600">
                     <AlertTriangle className="w-4 h-4" />
                     <span className="font-mono font-bold">
-                      Discrepancy: {event.discrepancyReason}
+                      Discrepancy: {event.discrepancy_reason}
                     </span>
                   </div>
                 )}

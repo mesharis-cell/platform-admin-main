@@ -147,6 +147,7 @@ export default function AdminOrderDetailPage({
 	params: Promise<{ id: string }>
 }) {
 	const resolvedParams = use(params)
+	const [progressLoading, setProgressLoading] = useState(false)
 	const { data: order, isLoading } = useAdminOrderDetails(resolvedParams.id)
 	const { data: statusHistory, isLoading: statusHistoryLoading } = useAdminOrderStatusHistory(order?.data?.id ? order?.data?.id : '')
 
@@ -207,6 +208,7 @@ export default function AdminOrderDetailPage({
 	const handleStatusProgression = async () => {
 		if (!order?.data || !selectedNextStatus) return
 		try {
+			setProgressLoading(true)
 			await apiClient.patch(`/client/v1/order/${order.data.id}/status`, {
 				new_status: selectedNextStatus,
 				notes: statusNotes || undefined,
@@ -221,6 +223,8 @@ export default function AdminOrderDetailPage({
 			window.location.reload()
 		} catch (error: any) {
 			toast.error(error.response.data.message)
+		} finally {
+			setProgressLoading(false)
 		}
 	}
 
@@ -439,16 +443,21 @@ export default function AdminOrderDetailPage({
 											<Button
 												variant='outline'
 												onClick={() => setStatusDialogOpen(false)}
+												disabled={progressLoading}
 												className='font-mono text-xs'
 											>
 												CANCEL
 											</Button>
 											<Button
 												onClick={handleStatusProgression}
-												disabled={!selectedNextStatus}
+												disabled={!selectedNextStatus || progressLoading}
 												className='font-mono text-xs'
 											>
-												UPDATE STATUS
+												{progressLoading ? (
+													"Processing..."
+												) : (
+													"UPDATE STATUS"
+												)}
 											</Button>
 										</DialogFooter>
 									</DialogContent>

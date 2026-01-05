@@ -167,9 +167,12 @@ export function useAdminOrders(
 	return useQuery({
 		queryKey: ['orders', 'admin-list', params],
 		queryFn: async () => {
-			const response = await apiClient.get(`/client/v1/order?${queryParams}`)
-
-			return response.data
+			try {
+				const response = await apiClient.get(`/client/v1/order?${queryParams}`)
+				return response.data
+			} catch (error) {
+				throwApiError(error)
+			}
 		},
 	})
 }

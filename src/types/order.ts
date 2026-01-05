@@ -317,9 +317,9 @@ export interface SendInvoiceEmailResponse {
 
 // Confirm payment request
 export interface ConfirmPaymentRequest {
-	paymentMethod: string
-	paymentReference: string
-	paymentDate: string // ISO date string
+	payment_method: string
+	payment_reference: string
+	payment_date: string // ISO date string
 	notes?: string
 }
 
@@ -342,35 +342,44 @@ export interface InvoiceListParams {
 	dateTo?: string // ISO date
 	page?: number
 	limit?: number
-	sortBy?: 'invoiceGeneratedAt' | 'invoicePaidAt' | 'finalTotalPrice'
+	sortBy?: 'created_at' | 'updated_at' | 'invoice_id'
 	sortOrder?: 'asc' | 'desc'
 }
 
 // Invoice list item
 export interface InvoiceListItem {
-	invoiceNumber: string
-	orderId: string
-	orderIdReadable: string
+	id: string
+	invoice_id: string
+	invoice_pdf_url: string
+	invoice_paid_at: string | null
+	payment_method: string | null
+	payment_reference: string | null
+	order: {
+		id: string
+		order_id: string
+		contact_name: string
+		event_start_date: string
+		venue_name: string
+		final_pricing: {
+			total_price: number
+			quote_sent_at: string
+		}
+	}
 	company: {
 		id: string
 		name: string
 	}
-	contactName: string
-	invoiceGeneratedAt: string
-	invoicePaidAt: string | null
-	paymentMethod: string | null
-	finalTotalPrice: string
-	isPaid: boolean
+	created_at: string
+	updated_at: string
 }
 
 // Invoice list response
 export interface InvoiceListResponse {
-	invoices: InvoiceListItem[]
-	pagination: {
+	data: InvoiceListItem[]
+	meta: {
 		total: number
 		page: number
 		limit: number
-		totalPages: number
 	}
 }
 

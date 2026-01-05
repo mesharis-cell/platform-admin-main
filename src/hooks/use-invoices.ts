@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * Phase 9: Invoice Management React Query Hooks
  *
@@ -16,6 +18,8 @@ import {
 	InvoiceListParams,
 	InvoiceListResponse,
 } from '@/types/order';
+import { throwApiError } from '@/lib/utils/throw-api-error';
+import { apiClient } from '@/lib/api/api-client';
 
 // ============================================================
 // Query Keys
@@ -60,24 +64,25 @@ export function useInvoices(params: InvoiceListParams = {}) {
 
 	if (params.company) queryParams.set('company', params.company);
 	if (params.isPaid !== undefined)
-		queryParams.set('isPaid', params.isPaid.toString());
-	if (params.dateFrom) queryParams.set('dateFrom', params.dateFrom);
-	if (params.dateTo) queryParams.set('dateTo', params.dateTo);
+		queryParams.set('paid_status', params.isPaid.toString());
+	if (params.dateFrom) queryParams.set('date_from', params.dateFrom);
+	if (params.dateTo) queryParams.set('date_to', params.dateTo);
 	if (params.page) queryParams.set('page', params.page.toString());
 	if (params.limit) queryParams.set('limit', params.limit.toString());
-	if (params.sortBy) queryParams.set('sortBy', params.sortBy);
-	if (params.sortOrder) queryParams.set('sortOrder', params.sortOrder);
+	if (params.sortBy) queryParams.set('sort_by', params.sortBy);
+	if (params.sortOrder) queryParams.set('sort_order', params.sortOrder);
 
 	return useQuery({
 		queryKey: invoiceKeys.list(params),
-		queryFn: async () => {
-			const response = await fetch(`/api/invoices?${queryParams.toString()}`);
-			if (!response.ok) {
-				const error = await response.json();
-				throw new Error(error.error || 'Failed to fetch invoices');
+		queryFn: async (): Promise<InvoiceListResponse> => {
+			try {
+				const response = await apiClient.get(`/client/v1/invoice?${queryParams.toString()}`);
+
+				const data = await response.data;
+				return data as InvoiceListResponse;
+			} catch (error) {
+				throwApiError(error);
 			}
-			const data = await response.json();
-			return data as InvoiceListResponse;
 		},
 	});
 }
@@ -145,28 +150,13 @@ export function useSendInvoiceEmail() {
  */
 export function useDownloadInvoice() {
 	return useMutation({
-		mutationFn: async (invoiceNumber: string) => {
-			const response = await fetch(`/api/invoices/download/${invoiceNumber}`);
-
-			if (!response.ok) {
-				const error = await response.json();
-				throw new Error(error.error || 'Failed to download Cost Estimate');
+		mutationFn: async ({ invoiceNumber, platformId }: { invoiceNumber: string; platformId: string }) => {
+			try {
+				const response = await apiClient.get(`/client/v1/invoice/download/${invoiceNumber}?pid=${platformId}`);
+				return response.data;
+			} catch (error) {
+				throwApiError(error);
 			}
-
-			// Get PDF blob
-			const blob = await response.blob();
-
-			// Create download link
-			const url = window.URL.createObjectURL(blob);
-			const a = document.createElement('a');
-			a.href = url;
-			a.download = `${invoiceNumber}.pdf`;
-			document.body.appendChild(a);
-			a.click();
-			window.URL.revokeObjectURL(url);
-			document.body.removeChild(a);
-
-			return { success: true };
 		},
 	});
 }
@@ -185,18 +175,12 @@ export function useConfirmPayment() {
 			orderId: string;
 			data: ConfirmPaymentRequest;
 		}) => {
-			const response = await fetch(`/api/invoices/${orderId}/confirm-payment`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(data),
-			});
-
-			if (!response.ok) {
-				const error = await response.json();
-				throw new Error(error.error || 'Failed to confirm payment');
+			try {
+			const response = await apiClient.patch(`/client/v1/invoice/${orderId}/confirm-payment`, data);
+			return response.data;
+			} catch (error) {
+				throwApiError(error);
 			}
-
-			return (await response.json()) as ConfirmPaymentResponse;
 		},
 		onSuccess: (data, variables) => {
 			// Invalidate invoice queries
