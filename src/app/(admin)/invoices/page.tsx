@@ -34,19 +34,21 @@ import { useCompanies } from '@/hooks/use-companies';
 import { toast } from 'sonner';
 import { InvoiceListParams } from '@/types/order';
 import { AdminHeader } from '@/components/admin-header';
+import { usePlatform } from '@/contexts/platform-context';
 
 export default function InvoicesPage() {
 	// Filters
 	const [filters, setFilters] = useState<InvoiceListParams>({
 		page: 1,
 		limit: 20,
-		sortBy: 'invoiceGeneratedAt',
+		sortBy: 'created_at',
 		sortOrder: 'desc',
 	});
 
 	const [searchTerm, setSearchTerm] = useState('');
 	const [selectedCompany, setSelectedCompany] = useState<string>('');
 	const [paymentStatus, setPaymentStatus] = useState<string>('all');
+	const { platform } = usePlatform();
 
 	// Modals
 	const [confirmPaymentDialogOpen, setConfirmPaymentDialogOpen] = useState(false);
@@ -81,7 +83,7 @@ export default function InvoicesPage() {
 		setFilters({
 			page: 1,
 			limit: 20,
-			sortBy: 'invoiceGeneratedAt',
+			sortBy: 'created_at',
 			sortOrder: 'desc',
 		});
 	};
@@ -105,11 +107,11 @@ export default function InvoicesPage() {
 
 		try {
 			await confirmPayment.mutateAsync({
-				orderId: selectedInvoice.orderId,
+				orderId: selectedInvoice.order.id,
 				data: {
-					paymentMethod,
-					paymentReference,
-					paymentDate,
+					payment_method: paymentMethod,
+					payment_reference: paymentReference,
+					payment_date: paymentDate,
 					notes: paymentNotes || undefined,
 				},
 			});
@@ -124,22 +126,22 @@ export default function InvoicesPage() {
 
 	const handleDownloadInvoice = async (invoiceNumber: string) => {
 		try {
-			await downloadInvoice.mutateAsync(invoiceNumber);
-			toast.success('Invoice downloaded');
+			const res = await downloadInvoice.mutateAsync({ invoiceNumber, platformId: platform.platform_id });
+			window.open(res.data.download_url, '_blank');
 		} catch (error: any) {
 			toast.error(error.message || 'Failed to download Cost Estimate');
 		}
 	};
 
 	// Calculate stats
-	const stats = invoicesData
+	const stats = invoicesData?.data
 		? {
-			totalInvoices: invoicesData.pagination.total,
-			paidInvoices: invoicesData.invoices.filter((inv) => inv.isPaid).length,
-			unpaidInvoices: invoicesData.invoices.filter((inv) => !inv.isPaid).length,
-			totalRevenue: invoicesData.invoices
-				.filter((inv) => inv.isPaid)
-				.reduce((sum, inv) => sum + parseFloat(inv.finalTotalPrice), 0),
+			totalInvoices: invoicesData?.meta?.total,
+			paidInvoices: invoicesData.data.filter((inv) => inv.invoice_paid_at).length,
+			unpaidInvoices: invoicesData.data.filter((inv) => !inv.invoice_paid_at).length,
+			totalRevenue: invoicesData.data
+				.filter((inv) => inv.invoice_paid_at)
+				.reduce((sum, inv) => sum + parseFloat(inv.order.final_pricing.total_price.toString()), 0),
 		}
 		: null;
 
@@ -234,7 +236,7 @@ export default function InvoicesPage() {
 									</SelectTrigger>
 									<SelectContent>
 										<SelectItem value="all">All Companies</SelectItem>
-										{companies?.companies.map((company) => (
+										{companies?.data.map((company) => (
 											<SelectItem key={company.id} value={company.id}>
 												{company.name}
 											</SelectItem>
@@ -282,12 +284,12 @@ export default function InvoicesPage() {
 								<Skeleton key={i} className="h-32 w-full" />
 							))}
 						</div>
-					) : invoicesData && invoicesData.invoices.length > 0 ? (
+					) : invoicesData && invoicesData.data.length > 0 ? (
 						<div className="space-y-4">
 							<AnimatePresence mode="popLayout">
-								{invoicesData.invoices.map((invoice, index) => (
+								{invoicesData.data.map((invoice, index) => (
 									<motion.div
-										key={invoice.invoiceNumber}
+										key={invoice.id}
 										initial={{ opacity: 0, x: -20 }}
 										animate={{ opacity: 1, x: 0 }}
 										exit={{ opacity: 0, x: 20 }}
@@ -304,13 +306,13 @@ export default function InvoicesPage() {
 														</div>
 														<div>
 															<div className="font-mono font-bold text-lg">
-																{invoice.invoiceNumber}
+																{invoice.invoice_id}
 															</div>
 															<div className="text-sm text-muted-foreground font-mono">
-																Order: {invoice.orderIdReadable}
+																Order: {invoice?.order?.order_id}
 															</div>
 														</div>
-														{invoice.isPaid ? (
+														{invoice.invoice_paid_at ? (
 															<Badge className="bg-green-500/10 text-green-600 border-green-500/30 font-mono">
 																<CheckCircle2 className="w-3 h-3 mr-1" />
 																PAID
@@ -333,7 +335,7 @@ export default function InvoicesPage() {
 														</div>
 														<div>
 															<div className="text-xs text-muted-foreground font-mono">CONTACT</div>
-															<div className="text-sm font-mono mt-1">{invoice.contactName}</div>
+															<div className="text-sm font-mono mt-1">{invoice?.order?.contact_name}</div>
 														</div>
 														<div>
 															<div className="text-xs text-muted-foreground font-mono">
@@ -341,24 +343,24 @@ export default function InvoicesPage() {
 															</div>
 															<div className="text-sm font-mono flex items-center gap-1.5 mt-1">
 																<Calendar className="w-3.5 h-3.5 text-secondary" />
-																{new Date(invoice.invoiceGeneratedAt).toLocaleDateString()}
+																{new Date(invoice.created_at).toLocaleDateString()}
 															</div>
 														</div>
 													</div>
 
-													{invoice.isPaid && (
+													{invoice.invoice_paid_at && (
 														<div className="pl-13 pt-2 border-t border-border">
 															<div className="flex items-center gap-6 text-sm font-mono">
 																<div>
 																	<span className="text-muted-foreground">Paid on:</span>{' '}
 																	<span className="text-green-600 font-bold">
-																		{new Date(invoice.invoicePaidAt!).toLocaleDateString()}
+																		{new Date(invoice.invoice_paid_at!).toLocaleDateString()}
 																	</span>
 																</div>
-																{invoice.paymentMethod && (
+																{invoice.payment_method && (
 																	<div>
 																		<span className="text-muted-foreground">Method:</span>{' '}
-																		<span>{invoice.paymentMethod}</span>
+																		<span>{invoice.payment_method}</span>
 																	</div>
 																)}
 															</div>
@@ -371,14 +373,14 @@ export default function InvoicesPage() {
 													<div className="text-right">
 														<div className="text-xs text-muted-foreground font-mono">AMOUNT</div>
 														<div className="text-3xl font-bold font-mono text-primary">
-															{parseFloat(invoice.finalTotalPrice).toFixed(2)}
+															{parseFloat(invoice.order.final_pricing.total_price.toString()).toFixed(2)}
 														</div>
 														<div className="text-xs text-muted-foreground font-mono">AED</div>
 													</div>
 
 													<div className="flex gap-2">
 														<Button
-															onClick={() => handleDownloadInvoice(invoice.invoiceNumber)}
+															onClick={() => handleDownloadInvoice(invoice.invoice_id)}
 															variant="outline"
 															size="sm"
 															className="font-mono"
@@ -386,7 +388,7 @@ export default function InvoicesPage() {
 															<Download className="w-4 h-4" />
 														</Button>
 
-														{!invoice.isPaid && (
+														{!invoice.invoice_paid_at && (
 															<Button
 																onClick={() => handleOpenConfirmPayment(invoice)}
 																size="sm"
@@ -405,7 +407,7 @@ export default function InvoicesPage() {
 							</AnimatePresence>
 
 							{/* Pagination */}
-							{invoicesData.pagination.totalPages > 1 && (
+							{Math.ceil(invoicesData?.meta?.total / invoicesData?.meta?.limit) > 1 && (
 								<div className="flex items-center justify-center gap-2 mt-8">
 									<Button
 										onClick={() =>
@@ -419,16 +421,16 @@ export default function InvoicesPage() {
 										PREV
 									</Button>
 									<div className="px-4 py-2 font-mono text-sm">
-										Page {invoicesData.pagination.page} of {invoicesData.pagination.totalPages}
+										Page {filters.page} of {Math.ceil(invoicesData?.meta?.total / invoicesData?.meta?.limit)}
 									</div>
 									<Button
 										onClick={() =>
 											setFilters((prev) => ({
 												...prev,
-												page: Math.min(invoicesData.pagination.totalPages, prev.page! + 1),
+												page: Math.min(Math.ceil(invoicesData?.meta?.total / invoicesData?.meta?.limit), prev.page! + 1),
 											}))
 										}
-										disabled={filters.page === invoicesData.pagination.totalPages}
+										disabled={filters.page === Math.ceil(invoicesData?.meta?.total / invoicesData?.meta?.limit)}
 										variant="outline"
 										size="sm"
 										className="font-mono"
