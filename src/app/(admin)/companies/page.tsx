@@ -38,6 +38,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import type { Company } from "@/types";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useUploadImage } from "@/hooks/use-assets";
 
 export default function CompaniesPage() {
 	const [searchQuery, setSearchQuery] = useState("");
@@ -89,6 +90,7 @@ export default function CompaniesPage() {
 	const updateMutation = useUpdateCompany();
 	const archiveMutation = useArchiveCompany();
 	const unarchiveMutation = useUnarchiveCompany();
+	const uploadMutation = useUploadImage()
 
 	// Handle logo selection
 	const handleLogoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -144,19 +146,10 @@ export default function CompaniesPage() {
 			let logoUrl = formData.settings.branding.logo_url;
 			if (selectedLogo) {
 				const uploadFormData = new FormData();
-				uploadFormData.append('file', selectedLogo);
+				uploadFormData.append('files', selectedLogo);
 
-				const response = await fetch('/api/companies/upload-logo', {
-					method: 'POST',
-					body: uploadFormData,
-				});
-
-				if (!response.ok) {
-					throw new Error('Failed to upload logo');
-				}
-
-				const data = await response.json();
-				logoUrl = data.logoUrl;
+				const uploadResult = await uploadMutation.mutateAsync(uploadFormData);
+				logoUrl = uploadResult.data?.imageUrls?.[0]
 			}
 
 			const payload = {
@@ -593,6 +586,7 @@ export default function CompaniesPage() {
 															accept="image/png,image/jpg,image/jpeg,image/webp,image/svg+xml"
 															onChange={handleLogoSelect}
 															className="hidden"
+															multiple={false}
 														/>
 														<label htmlFor="logo-upload" className="cursor-pointer flex flex-col items-center">
 															<Upload className="h-8 w-8 text-muted-foreground mb-2" />

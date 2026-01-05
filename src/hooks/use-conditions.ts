@@ -21,6 +21,7 @@ import type {
 } from "@/types/condition";
 import { apiClient } from "@/lib/api/api-client";
 import { assetKeys } from "./use-assets";
+import { throwApiError } from "@/lib/utils/throw-api-error";
 
 // ===== Update Condition =====
 
@@ -138,18 +139,14 @@ export function useItemsNeedingAttention(
 	return useQuery<ItemsNeedingAttentionResponse, Error>({
 		queryKey: ["items-needing-attention", params],
 		queryFn: async () => {
-			const response = await fetch(
-				`/api/conditions/needing-attention?${queryParams}`
-			);
-
-			if (!response.ok) {
-				const error = await response.json();
-				throw new Error(
-					error.error || "Failed to fetch items needing attention"
+			try {
+				const response = await apiClient.get(
+					`/api/conditions/needing-attention?${queryParams}`
 				);
+				return response.data;
+			} catch (error) {
+				throwApiError(error)
 			}
-
-			return response.json();
 		},
 	});
 }

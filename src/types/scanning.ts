@@ -237,8 +237,9 @@ export interface GetSessionProgressResponse {
 // Scan History
 
 export interface GetScanEventsResponse {
-	orderId: string
-	scanEvents: ScanEventWithDetails[]
+	// orderId: string
+	// scanEvents: ScanEventWithDetails[]
+	data: ScanEventWithDetails[]
 }
 
 export interface GetAssetScanHistoryResponse {

@@ -23,10 +23,30 @@ export type AssetCategory = 'Furniture' | 'Glassware' | 'Installation' | 'Decor'
 // Feedback #4 & #5: Removed quantity fields, availability calculated from asset_bookings
 export interface Asset {
 	id: string
-	company: string
-	brand?: string
-	warehouse: string
-	zone: string
+	company: {
+		id: string
+		name: string
+	}
+	brand?: {
+		id: string
+		name: string
+	}
+	warehouse: {
+		id: string
+		name: string
+		city: string
+		country: string
+	}
+	zone: {
+		id: string
+		name: string
+	}
+	condition_history: {
+		notes: string;
+		condition: Condition;
+		updated_by: string;
+		timestamp: string;
+	}[];
 	name: string
 	description?: string
 	category: AssetCategory

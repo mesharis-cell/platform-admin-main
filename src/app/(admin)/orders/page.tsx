@@ -51,7 +51,7 @@ export default function AdminOrdersPage() {
 	const [status, setStatus] = useState<string>('');
 	const [search, setSearch] = useState<string>('');
 	const [searchInput, setSearchInput] = useState<string>('');
-	const [sortBy, setSortBy] = useState<string>('createdAt');
+	const [sortBy, setSortBy] = useState<string>('created_at');
 	const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
 	// Data fetching
@@ -60,7 +60,7 @@ export default function AdminOrdersPage() {
 		limit,
 		company: company || undefined,
 		brand: brand || undefined,
-		status: status || undefined,
+		order_status: status || undefined,
 		search: search || undefined,
 		sortBy,
 		sortOrder,
@@ -111,13 +111,13 @@ export default function AdminOrdersPage() {
 		(company ? 1 : 0) + (brand ? 1 : 0) + (status ? 1 : 0) + (search ? 1 : 0);
 
 	return (
-		<div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100">
+		<div className="min-h-screen bg-linear-gradient-to-br from-slate-50 via-gray-50 to-slate-100">
 			{/* Header */}
 			<AdminHeader
 				icon={ShoppingCart}
 				title="ORDERS DASHBOARD"
 				description="Manage · Track · Fulfill"
-				stats={data ? { label: 'TOTAL ORDERS', value: data.pagination.totalCount } : undefined}
+				stats={data ? { label: 'TOTAL ORDERS', value: data?.meta.total } : undefined}
 				actions={
 					<Button
 						onClick={handleExport}
@@ -179,7 +179,7 @@ export default function AdminOrdersPage() {
 									</SelectTrigger>
 									<SelectContent>
 										<SelectItem value="all">All Companies</SelectItem>
-										{companiesData?.companies.map((c) => (
+										{companiesData?.data?.map((c) => (
 											<SelectItem key={c.id} value={c.id}>
 												{c.name}
 											</SelectItem>
@@ -199,7 +199,7 @@ export default function AdminOrdersPage() {
 									</SelectTrigger>
 									<SelectContent>
 										<SelectItem value="all">All Brands</SelectItem>
-										{brandsData?.brands.map((b) => (
+										{brandsData?.data?.map((b) => (
 											<SelectItem key={b.id} value={b.id}>
 												{b.name}
 											</SelectItem>
@@ -238,10 +238,12 @@ export default function AdminOrdersPage() {
 										<SelectValue />
 									</SelectTrigger>
 									<SelectContent>
-										<SelectItem value="createdAt">Date Created</SelectItem>
-										<SelectItem value="eventStartDate">Event Date</SelectItem>
-										<SelectItem value="orderId">Order ID</SelectItem>
-										<SelectItem value="status">Status</SelectItem>
+										<SelectItem value="created_at">Date Created</SelectItem>
+										<SelectItem value="updated_at">Date Updated</SelectItem>
+										<SelectItem value="event_start_date">Event Date</SelectItem>
+										<SelectItem value="order_id">Order ID</SelectItem>
+										<SelectItem value="order_status">Status</SelectItem>
+										<SelectItem value="financial_status">Financial Status</SelectItem>
 									</SelectContent>
 								</Select>
 								<Select value={sortOrder} onValueChange={(val) => setSortOrder(val as 'asc' | 'desc')}>
@@ -260,7 +262,7 @@ export default function AdminOrdersPage() {
 					{/* Orders Table */}
 					<div className="lg:col-span-3 space-y-4">
 						{/* Summary Stats */}
-						{data && (
+						{data?.data && (
 							<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 								<Card className="border-slate-200 shadow-sm">
 									<CardContent className="pt-6">
@@ -270,7 +272,7 @@ export default function AdminOrdersPage() {
 													Total Orders
 												</p>
 												<p className="text-2xl font-bold text-slate-900 mt-1">
-													{data.pagination.totalCount}
+													{data?.meta.total}
 												</p>
 											</div>
 											<Package className="h-8 w-8 text-slate-400" />
@@ -285,7 +287,7 @@ export default function AdminOrdersPage() {
 													Current Page
 												</p>
 												<p className="text-2xl font-bold text-slate-900 mt-1">
-													{page} of {data.pagination.totalPages}
+													{page} of {Math.ceil(data?.meta.total / data?.meta.limit)}
 												</p>
 											</div>
 											<Calendar className="h-8 w-8 text-slate-400" />
@@ -300,7 +302,7 @@ export default function AdminOrdersPage() {
 													Showing
 												</p>
 												<p className="text-2xl font-bold text-slate-900 mt-1">
-													{data.orders.length} orders
+													{data?.data?.length} orders
 												</p>
 											</div>
 											<MapPin className="h-8 w-8 text-slate-400" />
@@ -323,7 +325,7 @@ export default function AdminOrdersPage() {
 									<div className="p-8 text-center text-red-600">
 										<p>Failed to load orders. Please try again.</p>
 									</div>
-								) : !data || data.orders.length === 0 ? (
+								) : !isLoading && data?.data?.length === 0 ? (
 									<div className="p-12 text-center">
 										<Package className="h-12 w-12 mx-auto text-slate-400 mb-4" />
 										<p className="text-slate-600 font-medium">No orders found</p>
@@ -347,15 +349,15 @@ export default function AdminOrdersPage() {
 												</TableRow>
 											</TableHeader>
 											<TableBody>
-												{data.orders.map((order) => (
+												{!isLoading && data?.data && data?.data?.map((order) => (
 													<TableRow key={order.id} className="group hover:bg-slate-50/50">
 														<TableCell className="font-mono text-xs font-medium">
-															{order.orderId}
+															{order?.order_id}
 														</TableCell>
 														<TableCell>
 															<div>
 																<p className="font-medium text-slate-900 text-sm">
-																	{order.company.name}
+																	{order?.company?.name}
 																</p>
 																{order.brand && (
 																	<p className="text-xs text-slate-500">{order.brand.name}</p>
@@ -364,12 +366,12 @@ export default function AdminOrdersPage() {
 														</TableCell>
 														<TableCell>
 															<div className="flex items-start gap-2">
-																<User className="h-4 w-4 text-slate-400 mt-0.5 flex-shrink-0" />
+																<User className="h-4 w-4 text-slate-400 mt-0.5 shrink-0" />
 																<div>
 																	<p className="text-sm font-medium text-slate-900">
-																		{order.contactName}
+																		{order.contact_name}
 																	</p>
-																	<p className="text-xs text-slate-500">{order.contactEmail}</p>
+																	<p className="text-xs text-slate-500">{order.contact_email}</p>
 																</div>
 															</div>
 														</TableCell>
@@ -377,19 +379,19 @@ export default function AdminOrdersPage() {
 															<div className="flex items-center gap-2">
 																<Calendar className="h-4 w-4 text-slate-400" />
 																<span className="text-sm">
-																	{new Date(order.eventStartDate).toLocaleDateString()}
+																	{new Date(order.event_start_date).toLocaleDateString()}
 																</span>
 															</div>
 														</TableCell>
 														<TableCell>
 															<div className="flex items-start gap-2">
-																<MapPin className="h-4 w-4 text-slate-400 mt-0.5 flex-shrink-0" />
+																<MapPin className="h-4 w-4 text-slate-400 mt-0.5 shrink-0" />
 																<div>
 																	<p className="text-sm font-medium text-slate-900">
-																		{order.venueName}
+																		{order.venue_name}
 																	</p>
 																	<p className="text-xs text-slate-500">
-																		{order.venueCity}, {order.venueCountry}
+																		{order.venue_city}, {order.venue_country}
 																	</p>
 																</div>
 															</div>
@@ -397,11 +399,11 @@ export default function AdminOrdersPage() {
 														<TableCell>
 															<div className="space-y-1">
 																<p className="text-sm font-semibold text-slate-900">
-																	{order.itemCount} items
+																	{order.item_count} items
 																</p>
-																{order.itemPreview.length > 0 && (
+																{order.item_preview.length > 0 && (
 																	<p className="text-xs text-slate-500 line-clamp-1">
-																		{order.itemPreview.join(', ')}
+																		{order.item_preview.join(', ')}
 																	</p>
 																)}
 															</div>
@@ -409,13 +411,13 @@ export default function AdminOrdersPage() {
 														<TableCell>
 															<Badge
 																variant="outline"
-																className={`${ORDER_STATUS_CONFIG[order.status as keyof typeof ORDER_STATUS_CONFIG]?.color || 'bg-gray-100 text-gray-700 border-gray-300'} font-medium border whitespace-nowrap`}
+																className={`${ORDER_STATUS_CONFIG[order.order_status as keyof typeof ORDER_STATUS_CONFIG]?.color || 'bg-gray-100 text-gray-700 border-gray-300'} font-medium border whitespace-nowrap`}
 															>
-																{ORDER_STATUS_CONFIG[order.status as keyof typeof ORDER_STATUS_CONFIG]?.label || order.status}
+																{ORDER_STATUS_CONFIG[order.order_status as keyof typeof ORDER_STATUS_CONFIG]?.label || order.order_status}
 															</Badge>
 														</TableCell>
 														<TableCell className="text-right">
-															<Link href={`/admin/orders/${order.id}`}>
+															<Link href={`/orders/${order.order_id}`}>
 																<Button
 																	variant="ghost"
 																	size="sm"
@@ -431,12 +433,12 @@ export default function AdminOrdersPage() {
 										</Table>
 
 										{/* Pagination */}
-										{data.pagination.totalPages > 1 && (
+										{(data?.meta.total / data?.meta.limit) > 1 && (
 											<div className="flex items-center justify-between px-6 py-4 border-t border-slate-200 bg-slate-50/30">
 												<p className="text-sm text-slate-600">
 													Showing {(page - 1) * limit + 1} to{' '}
-													{Math.min(page * limit, data.pagination.totalCount)} of{' '}
-													{data.pagination.totalCount} orders
+													{Math.min(page * limit, data?.meta.total)} of{' '}
+													{data?.meta.total} orders
 												</p>
 												<div className="flex gap-2">
 													<Button

@@ -29,6 +29,8 @@ interface ScanActivityTimelineProps {
 export function ScanActivityTimeline({ orderId }: ScanActivityTimelineProps) {
   const { data: scanData, isLoading } = useOrderScanEvents(orderId);
 
+  console.log(scanData?.data);
+
   if (isLoading) {
     return (
       <Card className="p-6">
@@ -37,7 +39,7 @@ export function ScanActivityTimeline({ orderId }: ScanActivityTimelineProps) {
     );
   }
 
-  if (!scanData || scanData.scanEvents.length === 0) {
+  if (!scanData?.data) {
     return (
       <Card className="p-6 text-center">
         <div className="text-sm text-muted-foreground font-mono">No scanning activity yet</div>
@@ -78,7 +80,7 @@ export function ScanActivityTimeline({ orderId }: ScanActivityTimelineProps) {
             </div>
             <div>
               <div className="text-2xl font-bold font-mono">
-                {scanData.scanEvents.filter((e) => e.scanType === 'OUTBOUND').length}
+                {scanData.data.filter((e) => e.scan_type === 'OUTBOUND').length}
               </div>
               <div className="text-xs text-muted-foreground font-mono">Outbound Scans</div>
             </div>
@@ -92,7 +94,7 @@ export function ScanActivityTimeline({ orderId }: ScanActivityTimelineProps) {
             </div>
             <div>
               <div className="text-2xl font-bold font-mono">
-                {scanData.scanEvents.filter((e) => e.scanType === 'INBOUND').length}
+                {scanData.data.filter((e) => e.scan_type === 'INBOUND').length}
               </div>
               <div className="text-xs text-muted-foreground font-mono">Inbound Scans</div>
             </div>
@@ -106,7 +108,7 @@ export function ScanActivityTimeline({ orderId }: ScanActivityTimelineProps) {
           SCAN TIMELINE
         </h3>
         <div className="space-y-4">
-          {scanData.scanEvents.map((event, idx) => (
+          {scanData.data.map((event, idx) => (
             <div key={event.id} className="relative pl-8 pb-4 border-l-2 border-border last:border-l-0 last:pb-0">
               {/* Timeline dot */}
               <div className="absolute left-0 top-1 -translate-x-1/2 w-4 h-4 rounded-full bg-primary border-4 border-background" />

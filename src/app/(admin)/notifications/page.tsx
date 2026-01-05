@@ -30,11 +30,16 @@ export default function FailedNotificationsPage() {
 	const { data, isLoading } = useQuery({
 		queryKey: ['failed-notifications', filter],
 		queryFn: async () => {
-			const params = new URLSearchParams();
-			if (filter !== 'all') params.append('status', filter);
-			const response = await fetch(`/api/notifications/failed?${params}`);
-			if (!response.ok) throw new Error('Failed to fetch notifications');
-			return response.json();
+			try {
+				const params = new URLSearchParams();
+				if (filter !== 'all') params.append('status', filter);
+				const response = await fetch(`/api/notifications/failed?${params}`);
+				if (!response.ok) throw new Error('Failed to fetch notifications');
+				return response.json();
+			} catch (error) {
+				console.error('Failed to fetch notifications:', error);
+				return [];
+			}
 		},
 	});
 
@@ -165,11 +170,10 @@ export default function FailedNotificationsPage() {
 											<div className="flex-1 space-y-2">
 												<div className="flex items-center gap-2">
 													<Badge
-														className={`font-mono text-[10px] border ${
-															notification.status === 'FAILED'
+														className={`font-mono text-[10px] border ${notification.status === 'FAILED'
 																? 'bg-red-500/10 text-red-700 border-red-500/20'
 																: 'bg-yellow-500/10 text-yellow-700 border-yellow-500/20'
-														}`}
+															}`}
 													>
 														{notification.status}
 													</Badge>

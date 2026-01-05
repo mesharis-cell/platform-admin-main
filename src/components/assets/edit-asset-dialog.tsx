@@ -99,6 +99,10 @@ export function EditAssetDialog({
 	const [customCategory, setCustomCategory] = useState('')
 	const [customHandlingTag, setCustomHandlingTag] = useState('')
 
+	// Image upload state - store new files locally until form submit
+	const [selectedImages, setSelectedImages] = useState<File[]>([])
+	const [previewUrls, setPreviewUrls] = useState<string[]>([])
+
 	// Reset form data when asset changes or dialog opens
 	useEffect(() => {
 		if (open && asset) {
@@ -123,6 +127,11 @@ export function EditAssetDialog({
 			setCurrentStep(0)
 			setCustomCategory('')
 			setCustomHandlingTag('')
+
+			// Reset local file state
+			previewUrls.forEach(url => URL.revokeObjectURL(url))
+			setSelectedImages([])
+			setPreviewUrls([])
 		}
 	}, [open, asset])
 
@@ -149,46 +158,40 @@ export function EditAssetDialog({
 	const updateMutation = useUpdateAsset()
 	const uploadMutation = useUploadImage()
 
-	async function handleImageUpload(files: FileList | null) {
-		if (!files || files.length === 0) return
+	// Handle image selection - store files locally, create previews
+	function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
+		const files = Array.from(e.target.files || [])
+		if (files.length === 0) return
 
-		const uploadedUrls: string[] = []
+		// Add new files to existing selection
+		setSelectedImages(prev => [...prev, ...files])
 
-		try {
-			for (let i = 0; i < files.length; i++) {
-				const file = files[i]
-				const uploadFormData = new FormData()
-				uploadFormData.append('file', file)
-				uploadFormData.append('companyId', formData.company)
-
-				try {
-					const data =
-						await uploadMutation.mutateAsync(uploadFormData)
-					uploadedUrls.push(data.imageUrl)
-				} catch (error) {
-					toast.error(`Failed to upload ${file.name}`)
-				}
-			}
-
-			setFormData(prev => ({
-				...prev,
-				images: [...prev.images, ...uploadedUrls],
-			}))
-
-			if (uploadedUrls.length > 0) {
-				toast.success(`Uploaded ${uploadedUrls.length} image(s)`)
-			}
-		} catch (error) {
-			console.error('Upload error:', error)
-			toast.error('Failed to upload images')
-		}
+		// Create preview URLs for new files
+		const newUrls = files.map(file => URL.createObjectURL(file))
+		setPreviewUrls(prev => [...prev, ...newUrls])
 	}
 
-	function removeImage(index: number) {
+	// Remove existing image (from formData.images)
+	function removeExistingImage(index: number) {
 		setFormData(prev => ({
 			...prev,
 			images: prev.images.filter((_, i) => i !== index),
 		}))
+	}
+
+	// Remove new image (from local state)
+	function removeNewImage(index: number) {
+		const newImages = [...selectedImages]
+		const newPreviews = [...previewUrls]
+
+		// Revoke object URL to prevent memory leak
+		URL.revokeObjectURL(newPreviews[index])
+
+		newImages.splice(index, 1)
+		newPreviews.splice(index, 1)
+
+		setSelectedImages(newImages)
+		setPreviewUrls(newPreviews)
 	}
 
 	function toggleHandlingTag(tag: string) {
@@ -287,7 +290,21 @@ export function EditAssetDialog({
 		}
 
 		try {
-			// Update basic asset info
+			// Upload new images first if any are selected
+			let newImageUrls: string[] = []
+			if (selectedImages.length > 0) {
+				const uploadFormData = new FormData()
+				uploadFormData.append('companyId', formData.company)
+				selectedImages.forEach(file => uploadFormData.append('files', file))
+
+				const uploadResult = await uploadMutation.mutateAsync(uploadFormData)
+				newImageUrls = uploadResult.data?.imageUrls || []
+			}
+
+			// Combine existing images with newly uploaded ones
+			const allImages = [...formData.images, ...newImageUrls]
+
+			// Update asset with all images
 			await updateMutation.mutateAsync({
 				id: asset.id,
 				data: {
@@ -297,7 +314,7 @@ export function EditAssetDialog({
 					name: formData.name,
 					description: formData.description || null,
 					category: formData.category,
-					images: formData.images,
+					images: allImages,
 					weight_per_unit: Number(formData.weight_per_unit),
 					dimensions: formData.dimensions,
 					volume_per_unit: Number(formData.volume_per_unit),
@@ -311,6 +328,12 @@ export function EditAssetDialog({
 					condition_notes: formData.condition_notes || undefined,
 				} as any,
 			})
+
+			// Clear local file state on success
+			previewUrls.forEach(url => URL.revokeObjectURL(url))
+			setSelectedImages([])
+			setPreviewUrls([])
+
 			toast.success('Asset updated successfully')
 			onSuccess()
 		} catch (error) {
@@ -414,7 +437,7 @@ export function EditAssetDialog({
 								</button>
 								{index < STEPS.length - 1 && (
 									<div
-										className={`flex-1 h-[1px] mx-2 ${isCompleted ? 'bg-primary' : 'bg-border'}`}
+										className={`flex-1 h-px mx-2 ${isCompleted ? 'bg-primary' : 'bg-border'}`}
 									/>
 								)}
 							</div>
@@ -661,9 +684,7 @@ export function EditAssetDialog({
 										type='file'
 										accept='image/*'
 										multiple
-										onChange={e =>
-											handleImageUpload(e.target.files)
-										}
+										onChange={handleImageSelect}
 										className='hidden'
 										id='image-upload-edit'
 									/>
@@ -671,13 +692,9 @@ export function EditAssetDialog({
 										htmlFor='image-upload-edit'
 										className='flex flex-col items-center justify-center cursor-pointer'
 									>
-										{uploadMutation.isPending ? (
-											<Loader2 className='w-8 h-8 text-primary animate-spin mb-2' />
-										) : (
-											<Upload className='w-8 h-8 text-muted-foreground mb-2' />
-										)}
+										<Upload className='w-8 h-8 text-muted-foreground mb-2' />
 										<span className='text-sm font-mono text-muted-foreground'>
-											Click to upload images
+											Click to select images
 										</span>
 										<span className='text-xs font-mono text-muted-foreground mt-1'>
 											JPG, PNG, WEBP up to 5MB
@@ -686,29 +703,61 @@ export function EditAssetDialog({
 								</div>
 							</div>
 
-							{/* Image preview grid */}
+							{/* Existing images preview */}
 							{formData.images && formData.images.length > 0 && (
-								<div className='grid grid-cols-3 gap-4'>
-									{formData.images.map((url, index) => (
-										<div
-											key={index}
-											className='relative group aspect-square rounded-lg overflow-hidden border border-border'
-										>
-											<img
-												src={url}
-												alt={`Preview ${index + 1}`}
-												className='w-full h-full object-cover'
-											/>
-											<button
-												onClick={() =>
-													removeImage(index)
-												}
-												className='absolute top-2 right-2 p-1.5 bg-destructive text-destructive-foreground rounded-md opacity-0 group-hover:opacity-100 transition-opacity'
+								<div className='space-y-2'>
+									<Label className='font-mono text-xs text-muted-foreground'>
+										Existing Images ({formData.images.length})
+									</Label>
+									<div className='grid grid-cols-3 gap-4'>
+										{formData.images.map((url, index) => (
+											<div
+												key={`existing-${index}`}
+												className='relative group aspect-square rounded-lg overflow-hidden border border-border'
 											>
-												<X className='w-3 h-3' />
-											</button>
-										</div>
-									))}
+												<img
+													src={url}
+													alt={`Existing ${index + 1}`}
+													className='w-full h-full object-cover'
+												/>
+												<button
+													onClick={() => removeExistingImage(index)}
+													className='absolute top-2 right-2 p-1.5 bg-destructive text-destructive-foreground rounded-md opacity-0 group-hover:opacity-100 transition-opacity'
+												>
+													<X className='w-3 h-3' />
+												</button>
+											</div>
+										))}
+									</div>
+								</div>
+							)}
+
+							{/* New images preview */}
+							{previewUrls.length > 0 && (
+								<div className='space-y-2'>
+									<Label className='font-mono text-xs text-muted-foreground'>
+										New Images ({previewUrls.length})
+									</Label>
+									<div className='grid grid-cols-3 gap-4'>
+										{previewUrls.map((url, index) => (
+											<div
+												key={`new-${index}`}
+												className='relative group aspect-square rounded-lg overflow-hidden border-2 border-primary/50'
+											>
+												<img
+													src={url}
+													alt={`New ${index + 1}`}
+													className='w-full h-full object-cover'
+												/>
+												<button
+													onClick={() => removeNewImage(index)}
+													className='absolute top-2 right-2 p-1.5 bg-destructive text-destructive-foreground rounded-md opacity-0 group-hover:opacity-100 transition-opacity'
+												>
+													<X className='w-3 h-3' />
+												</button>
+											</div>
+										))}
+									</div>
 								</div>
 							)}
 						</div>

@@ -8,7 +8,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { ChevronLeft, Calendar, MapPin, Package, DollarSign } from 'lucide-react';
-import { usePricingReviewOrders, useA2ApproveStandard, useA2AdjustPricing } from '@/hooks/use-orders';
+import { usePricingReviewOrders, useA2ApproveStandard, useAdjustPricing, useAdminOrders } from '@/hooks/use-orders';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -21,9 +21,9 @@ import { toast } from 'sonner';
 import { AdminHeader } from '@/components/admin-header';
 
 export default function PricingReviewPage() {
-	const { data, isLoading, error } = usePricingReviewOrders();
+	const { data, isLoading, error } = useAdminOrders({ order_status: 'PRICING_REVIEW' });
 	const approveStandard = useA2ApproveStandard();
-	const adjustPricing = useA2AdjustPricing();
+	const adjustPricing = useAdjustPricing();
 
 	const [selectedOrder, setSelectedOrder] = useState<any>(null);
 	const [adjustDialogOpen, setAdjustDialogOpen] = useState(false);
@@ -108,9 +108,9 @@ export default function PricingReviewPage() {
 				icon={DollarSign}
 				title="PRICING REVIEW QUEUE"
 				description="A2 Review · Standard Pricing · Adjustments"
-				stats={data ? { label: 'PENDING REVIEW', value: data.orders.length } : undefined}
+				stats={data ? { label: 'PENDING REVIEW', value: data?.data?.length } : undefined}
 				actions={
-					<Link href="/admin/orders">
+					<Link href="/orders">
 						<Button variant="outline" className="gap-2 font-mono">
 							<ChevronLeft className="h-4 w-4" />
 							BACK TO ORDERS
@@ -132,7 +132,7 @@ export default function PricingReviewPage() {
 							</Card>
 						))}
 					</div>
-				) : !data || data.orders.length === 0 ? (
+				) : !data || data?.data?.length === 0 ? (
 					<Card>
 						<CardContent className="p-12 text-center">
 							<Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -144,15 +144,15 @@ export default function PricingReviewPage() {
 					</Card>
 				) : (
 					<div className="space-y-4">
-						{data.orders.map((order: any) => (
+						{data?.data?.map((order: any) => (
 							<Card key={order.id} className="hover:border-primary/50 transition-colors">
 								<CardHeader className="pb-3">
 									<div className="flex items-center justify-between">
 										<div>
-											<CardTitle className="text-lg font-mono">{order.orderId}</CardTitle>
-											<p className="text-sm text-muted-foreground mt-1">{order.companyName}</p>
+											<CardTitle className="text-lg font-mono">{order?.order_id}</CardTitle>
+											<p className="text-sm text-muted-foreground mt-1">{order?.company?.name}</p>
 										</div>
-										<Badge>{order.status}</Badge>
+										<Badge>{order?.order_status}</Badge>
 									</div>
 								</CardHeader>
 								<CardContent className="space-y-4">
@@ -163,30 +163,34 @@ export default function PricingReviewPage() {
 												<Calendar className="h-4 w-4" />
 												<span>Event Date</span>
 											</div>
-											<p className="font-medium">{new Date(order.eventStartDate).toLocaleDateString()}</p>
+											<p className="font-medium">{new Date(order.event_start_date).toLocaleDateString()}</p>
 										</div>
 										<div>
 											<div className="flex items-center gap-2 text-muted-foreground mb-1">
 												<MapPin className="h-4 w-4" />
 												<span>Venue</span>
 											</div>
-											<p className="font-medium">{order.venueCity}</p>
+											<p className="font-medium">
+												{order?.venue_location?.country},
+												{order?.venue_location?.city},
+												{order?.venue_location?.state}
+											</p>
 										</div>
 										<div>
 											<div className="flex items-center gap-2 text-muted-foreground mb-1">
 												<Package className="h-4 w-4" />
 												<span>Volume</span>
 											</div>
-											<p className="font-medium">{order.calculatedVolume} m³</p>
+											<p className="font-medium">{order?.calculated_totals.volume} m³</p>
 										</div>
 										<div>
 											<div className="flex items-center gap-2 text-muted-foreground mb-1">
 												<DollarSign className="h-4 w-4" />
-												<span>A2 Base Price</span>
+												<span>Base Price</span>
 											</div>
 											<p className="font-medium font-mono">
-												{order.standardPricing?.a2BasePrice
-													? `${order.standardPricing.a2BasePrice.toFixed(2)} AED`
+												{order.logistics_pricing?.base_price
+													? `${(Number(order.logistics_pricing.base_price) + Number(order.platform_pricing.margin_amount)).toFixed(2)} AED`
 													: <span className="text-amber-600 text-xs">No Tier Matched</span>
 												}
 											</p>
@@ -194,18 +198,25 @@ export default function PricingReviewPage() {
 									</div>
 
 									{/* Pricing Details - A2 Staff Only Sees Base Price */}
-									{order.standardPricing?.a2BasePrice ? (
+									{order.logistics_pricing?.base_price ? (
 										<div className="border border-border rounded-md p-4 bg-muted/50">
-											<h4 className="font-semibold text-sm mb-3">A2 Base Price</h4>
+											<h4 className="font-semibold text-sm mb-3">Calculated Price</h4>
 											<div className="flex items-baseline justify-between">
-												<span className="text-sm text-muted-foreground font-mono">Calculated Price</span>
+												<span className="text-sm text-muted-foreground font-mono">Base Price</span>
 												<span className="text-2xl font-bold font-mono text-primary">
-													{order.standardPricing.a2BasePrice.toFixed(2)} AED
+													{Number(order.logistics_pricing.base_price)} AED
 												</span>
 											</div>
-											{order.standardPricing.tierInfo && (
+											<div className="flex items-baseline justify-between">
+												<span className="text-sm text-muted-foreground font-mono">Margin Amount</span>
+												<span className="text-2xl font-bold font-mono text-primary">
+													<span className="text-sm mr-2">({order.platform_pricing.margin_percent}%)</span>
+													{Number(order.platform_pricing.margin_amount)} AED
+												</span>
+											</div>
+											{order?.pricing_tier && (
 												<p className="text-xs text-muted-foreground mt-3 font-mono">
-													Based on tier: {order.standardPricing.tierInfo.city}, {order.standardPricing.tierInfo.country} ({order.standardPricing.tierInfo.volumeRange})
+													Based on tier: {order.pricing_tier.city}, {order.pricing_tier.country} ({order.calculated_totals.volume} m³)
 												</p>
 											)}
 										</div>
@@ -213,7 +224,7 @@ export default function PricingReviewPage() {
 										<div className="border border-amber-500/30 rounded-md p-4 bg-amber-500/5">
 											<h4 className="font-semibold text-sm mb-2 text-amber-700 dark:text-amber-400">No Standard Pricing Available</h4>
 											<p className="text-xs text-muted-foreground">
-												No pricing tier found for {order.venueCity}, {order.venueCountry} with volume {order.calculatedVolume} m³.
+												No pricing tier found for {order.venue_location.city}, {order.venue_location.country} with volume {order.calculated_volume} m³.
 												You must manually adjust pricing for this order.
 											</p>
 										</div>
@@ -221,7 +232,7 @@ export default function PricingReviewPage() {
 
 									{/* Actions */}
 									<div className="flex gap-3 pt-2">
-										{order.standardPricing?.a2BasePrice && (
+										{order.logistics_pricing?.base_price && (
 											<Button
 												onClick={() => {
 													setSelectedOrder(order);
@@ -230,7 +241,7 @@ export default function PricingReviewPage() {
 												disabled={approveStandard.isPending || adjustPricing.isPending}
 												className="font-mono"
 											>
-												Approve A2 Base Price
+												Approve Base Price
 											</Button>
 										)}
 										<Button
@@ -239,10 +250,10 @@ export default function PricingReviewPage() {
 											disabled={approveStandard.isPending || adjustPricing.isPending}
 											className="font-mono"
 										>
-											{order.standardPricing?.a2BasePrice ? 'Adjust Price' : 'Set Custom Price'}
+											{order.logistics_pricing?.base_price ? 'Adjust Price' : 'Set Custom Price'}
 										</Button>
 										<Button variant="ghost" asChild>
-											<Link href={`/admin/orders/${order.id}`}>View Full Details</Link>
+											<Link href={`/orders/${order.order_id}`}>View Full Details</Link>
 										</Button>
 									</div>
 								</CardContent>
@@ -307,23 +318,27 @@ export default function PricingReviewPage() {
 					</DialogHeader>
 					<div className="space-y-4">
 						<p className="text-sm text-muted-foreground">
-							Adjust the pricing for order <span className="font-mono font-semibold">{selectedOrder?.orderId}</span>.
+							Adjust the pricing for order <span className="font-mono font-semibold">{selectedOrder?.order_id}</span>.
 							This will send the adjusted pricing to PMG for final approval.
 						</p>
-						{selectedOrder?.standardPricing && (
+						{selectedOrder?.logistics_pricing?.base_price && (
 							<div className="border border-border rounded-md p-3 bg-muted/50">
-								<p className="text-xs text-muted-foreground mb-2">Standard A2 Base Price (for reference)</p>
-								<div className="text-sm font-mono">
+								<p className="text-xs text-muted-foreground mb-2">Standard Base Price (for reference)</p>
+								<div className="text-sm font-mono space-y-2">
 									<div className="flex justify-between">
-										<span>A2 Base Price</span>
-										<span className="font-bold">{selectedOrder.standardPricing.a2BasePrice.toFixed(2)} AED</span>
+										<span>Base Price</span>
+										<span className="font-bold">{Number(selectedOrder?.logistics_pricing?.base_price).toFixed(2)} AED</span>
+									</div>
+									<div className="flex justify-between">
+										<span>Margin Amount</span>
+										<span className="font-bold">{Number(selectedOrder?.platform_pricing?.margin_amount).toFixed(2)} AED</span>
 									</div>
 								</div>
 							</div>
 						)}
 						<div>
 							<Label htmlFor="adjustedPrice">
-								Adjusted A2 Base Price <span className="text-destructive">*</span>
+								Adjusted Base Price <span className="text-destructive">*</span>
 							</Label>
 							<Input
 								id="adjustedPrice"

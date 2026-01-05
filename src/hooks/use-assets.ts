@@ -15,9 +15,19 @@ export const assetKeys = {
 };
 
 // Fetch assets list
-async function fetchAssets(params?: Record<string, string>): Promise<{ data: Asset[]; meta: { total: number; limit: number; page: number } }> {
+async function fetchAssets(params?: Record<string, string>): Promise<{ 
+  data: Asset[]; 
+  meta: { total: number; limit: number; page: number; summary: { red_count: number; orange_count: number, green_count: number } } 
+  }> {
   try {
+    for (const [key, value] of Object.entries(params)) {
+      if (value === undefined) {
+        delete params[key];
+      }
+    }
+    console.log(params)
     const searchParams = new URLSearchParams(params);
+    console.log(searchParams)
     const response = await apiClient.get(`/operations/v1/asset?${searchParams}`);
     return response.data;
   } catch (error) {
@@ -66,9 +76,13 @@ async function deleteAsset(id: string): Promise<void> {
 }
 
 // Upload image
-async function uploadImage(formData: FormData): Promise<{ imageUrl: string }> {
+async function uploadImage(formData: FormData): Promise<{ data: { imageUrls: string[], presignedUrl: string } }> {
   try {
-    const response = await apiClient.post('/api/assets/upload-image', formData);
+    const response = await apiClient.post('/operations/v1/upload/images', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
 
     return response.data;
   } catch (error) {

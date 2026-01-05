@@ -11,10 +11,9 @@ import axios from "axios";
 import { Eye, EyeOff, Lock, Mail, Package } from "lucide-react";
 import { useToken } from "@/lib/auth/use-token";
 import { jwtDecode, JwtPayload } from "jwt-decode";
-import LoadingState from "@/components/loading-state";
+import { LoadingState } from "@/components/loading-state";
 import { usePlatform } from "@/contexts/platform-context";
 import { login } from "@/actions/login";
-import Cookies from 'js-cookie';
 
 export interface CustomJwtPayload extends JwtPayload {
 	role: string;
@@ -26,7 +25,7 @@ export default function HomePage() {
 	const [password, setPassword] = useState("");
 	const [showPassword, setShowPassword] = useState(false);
 	const [isLoading, setIsLoading] = useState(false);
-	const { access_token, loading, setAccessToken } = useToken();
+	const { access_token, loading, logout } = useToken();
 	const { platform } = usePlatform();
 
 	useEffect(() => {
@@ -36,12 +35,10 @@ export default function HomePage() {
 
 			if (role === 'ADMIN') {
 				// PMG Admin goes to analytics dashboard
-				router.push('/companies');
+				router.push('/orders');
 			} else {
-				setAccessToken(null);
-				Cookies.remove('access_token');
-				Cookies.remove('refresh_token');
-				router.push('/');
+				// User is not an admin, sign out and invalidate token
+				logout();
 			}
 		}
 	}, [access_token, loading, router]);
@@ -58,9 +55,14 @@ export default function HomePage() {
 					description: "Welcome to the fulfillment platform.",
 				});
 
-				router.push('/companies')
+				const { access_token, refresh_token, ...user } = res.data;
+				localStorage.setItem("user", JSON.stringify(user));
+
+				router.push('/orders')
 			} else {
-				toast.error("Access Denied", {
+				// User is not an admin, sign out and invalidate token
+				logout();
+				toast.success("Access Denied", {
 					description: "You do not have access to this platform.",
 				});
 			}

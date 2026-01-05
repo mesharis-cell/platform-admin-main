@@ -1,3 +1,5 @@
+"use client"
+
 /**
  * Phase 6: Order Management React Query Hooks
  *
@@ -5,6 +7,7 @@
  */
 
 import { apiClient } from '@/lib/api/api-client'
+import { throwApiError } from '@/lib/utils/throw-api-error'
 import type {
 	MyOrdersListParams,
 	MyOrdersListResponse,
@@ -152,14 +155,14 @@ export function useAdminOrders(
 	const queryParams = new URLSearchParams()
 	if (params.page) queryParams.append('page', params.page.toString())
 	if (params.limit) queryParams.append('limit', params.limit.toString())
-	if (params.company) queryParams.append('company', params.company)
-	if (params.brand) queryParams.append('brand', params.brand)
+	if (params.company) queryParams.append('company_id', params.company)
+	if (params.brand) queryParams.append('brand_id', params.brand)
 	if (params.order_status) queryParams.append('order_status', params.order_status)
-	if (params.dateFrom) queryParams.append('dateFrom', params.dateFrom)
-	if (params.dateTo) queryParams.append('dateTo', params.dateTo)
-	if (params.search) queryParams.append('search', params.search)
-	if (params.sortBy) queryParams.append('sortBy', params.sortBy)
-	if (params.sortOrder) queryParams.append('sortOrder', params.sortOrder)
+	if (params.dateFrom) queryParams.append('date_from', params.dateFrom)
+	if (params.dateTo) queryParams.append('date_to', params.dateTo)
+	if (params.search) queryParams.append('search_term', params.search)
+	if (params.sortBy) queryParams.append('sort_by', params.sortBy)
+	if (params.sortOrder) queryParams.append('sort_order', params.sortOrder)
 
 	return useQuery({
 		queryKey: ['orders', 'admin-list', params],
@@ -178,14 +181,30 @@ export function useAdminOrderDetails(orderId: string | null) {
 	return useQuery({
 		queryKey: ['orders', 'admin-detail', orderId],
 		queryFn: async () => {
-			const response = await fetch(`/api/orders/${orderId}`)
-
-			if (!response.ok) {
-				const error = await response.json()
-				throw new Error(error.error || 'Failed to fetch order details')
+			try {
+				const response = await apiClient.get(`/client/v1/order/${orderId}`)
+				return response.data
+			} catch (error) {
+				throwApiError(error)
 			}
+		},
+		enabled: !!orderId,
+	})
+}
 
-			return response.json()
+/**
+ * Get order status history (PMG Admin only)
+ */
+export function useAdminOrderStatusHistory(orderId: string | null) {
+	return useQuery({
+		queryKey: ['orders', 'admin-status-history', orderId],
+		queryFn: async () => {
+			try {
+				const response = await apiClient.get(`/client/v1/order/${orderId}/status-history`)
+				return response.data
+			} catch (error) {
+				throwApiError(error)
+			}
 		},
 		enabled: !!orderId,
 	})
@@ -200,23 +219,19 @@ export function useUpdateJobNumber() {
 	return useMutation({
 		mutationFn: async ({
 			orderId,
-			jobNumber,
+			job_number,
 		}: {
 			orderId: string
-			jobNumber: string | null
+			job_number: string | null
 		}) => {
-			const response = await fetch(`/api/orders/${orderId}/job-number`, {
-				method: 'PATCH',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ jobNumber }),
-			})
-
-			if (!response.ok) {
-				const error = await response.json()
-				throw new Error(error.error || 'Failed to update job number')
+			try {
+				const response = await apiClient.patch(`/client/v1/order/${orderId}/job-number`, {
+					job_number,
+				})
+				return response.data
+			} catch (error) {
+				throwApiError(error)
 			}
-
-			return response.json()
 		},
 		onSuccess: (_, variables) => {
 			// Invalidate order details and list
@@ -334,23 +349,15 @@ export function useA2ApproveStandard() {
 			orderId: string
 			notes?: string
 		}) => {
-			const response = await fetch(
-				`/api/admin/orders/${orderId}/pricing/approve-standard`,
-				{
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ notes }),
-				}
-			)
-
-			if (!response.ok) {
-				const error = await response.json()
-				throw new Error(
-					error.error || 'Failed to approve standard pricing'
+			try {
+				const response = await apiClient.patch(
+					`/client/v1/order/${orderId}/approve-standard-pricing`,
+					{notes}
 				)
+				return response.data
+			} catch (error) {
+				throwApiError(error)
 			}
-
-			return response.json()
 		},
 		onSuccess: () => {
 			queryClient.invalidateQueries({
@@ -364,9 +371,9 @@ export function useA2ApproveStandard() {
 }
 
 /**
- * A2 adjust pricing
+ * Adjust pricing
  */
-export function useA2AdjustPricing() {
+export function useAdjustPricing() {
 	const queryClient = useQueryClient()
 
 	return useMutation({
@@ -379,21 +386,19 @@ export function useA2AdjustPricing() {
 			adjustedPrice: number
 			adjustmentReason: string
 		}) => {
-			const response = await fetch(
-				`/api/admin/orders/${orderId}/pricing/adjust`,
-				{
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ adjustedPrice, adjustmentReason }),
-				}
-			)
+			try {
+				const response = await apiClient.patch(
+					`/client/v1/order/${orderId}/adjust-pricing`,
+					{
+						adjusted_price: adjustedPrice,
+						adjustment_reason: adjustmentReason,
+					}
+				)
 
-			if (!response.ok) {
-				const error = await response.json()
-				throw new Error(error.error || 'Failed to adjust pricing')
+			return response.data
+			} catch (error) {
+				throwApiError(error)
 			}
-
-			return response.json()
 		},
 		onSuccess: () => {
 			queryClient.invalidateQueries({
@@ -424,25 +429,20 @@ export function usePMGApprovePricing() {
 			pmgMarginPercent: number
 			pmgReviewNotes?: string
 		}) => {
-			const response = await fetch(
-				`/api/admin/orders/${orderId}/pricing/pmg-approve`,
-				{
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({
-						a2BasePrice,
-						pmgMarginPercent,
-						pmgReviewNotes,
-					}),
-				}
-			)
+			try {
+				const response = await apiClient.patch(
+					`/client/v1/order/${orderId}/approve-platform-pricing`,
+					{
+						logistics_base_price: a2BasePrice,
+						platform_margin_percent: pmgMarginPercent,
+						notes: pmgReviewNotes,
+					}
+				)
 
-			if (!response.ok) {
-				const error = await response.json()
-				throw new Error(error.error || 'Failed to approve pricing')
+			return response.data
+			} catch (error) {
+				throwApiError(error)
 			}
-
-			return response.json()
 		},
 		onSuccess: () => {
 			queryClient.invalidateQueries({

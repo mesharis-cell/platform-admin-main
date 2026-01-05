@@ -11,7 +11,7 @@ import {
 	useUpdateCollectionItem,
 	useUploadCollectionImages,
 } from '@/hooks/use-collections'
-import { useAssets } from '@/hooks/use-assets'
+import { useAssets, useUploadImage } from '@/hooks/use-assets'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -89,7 +89,9 @@ export default function CollectionDetailPage() {
 	const addItemMutation = useAddCollectionItem(collectionId)
 	const removeItemMutation = useRemoveCollectionItem(collectionId)
 	const updateItemMutation = useUpdateCollectionItem
-	const uploadMutation = useUploadCollectionImages()
+	const uploadMutation = useUploadImage()
+
+	console.log(collectionData)
 
 	// Fetch assets for adding to collection
 	const companyId = collection?.company_id
@@ -161,13 +163,16 @@ export default function CollectionDetailPage() {
 			// Upload new images if any
 			let newImageUrls: string[] = []
 			if (selectedImages.length > 0) {
-				newImageUrls = await uploadMutation.mutateAsync(selectedImages)
+				const formData = new FormData()
+				selectedImages.forEach(file => formData.append('files', file))
+				const uploadResult = await uploadMutation.mutateAsync(formData)
+				newImageUrls = uploadResult.data?.imageUrls || []
 			}
 
 			await updateMutation.mutateAsync({
 				name: editFormData.name,
-				description: editFormData.description || null,
-				category: editFormData.category || null,
+				description: editFormData.description || undefined,
+				category: editFormData.category || undefined,
 				images: [...editFormData.images, ...newImageUrls],
 			})
 
@@ -190,7 +195,7 @@ export default function CollectionDetailPage() {
 		try {
 			await deleteMutation.mutateAsync(collectionId)
 			toast.success('Collection deleted successfully')
-			router.push('/admin/collections')
+			router.push('/collections')
 			setConfirmDeleteCollection(false)
 		} catch (error) {
 			toast.error(
@@ -324,16 +329,16 @@ export default function CollectionDetailPage() {
 						)}
 
 						<div className='flex flex-wrap gap-2 mt-4'>
-							{collection.companyName && (
+							{collection.company?.name && (
 								<Badge variant='outline' className='gap-1.5'>
 									<Building2 className='w-3 h-3' />
-									{collection.companyName}
+									{collection.company?.name}
 								</Badge>
 							)}
-							{collection.brandName && (
+							{collection.brand?.name && (
 								<Badge variant='outline' className='gap-1.5'>
 									<Tag className='w-3 h-3' />
-									{collection.brandName}
+									{collection.brand?.name}
 								</Badge>
 							)}
 							{collection.category && (
@@ -342,8 +347,8 @@ export default function CollectionDetailPage() {
 								</Badge>
 							)}
 							<Badge variant='secondary'>
-								{collection.itemCount}{' '}
-								{collection.itemCount === 1 ? 'item' : 'items'}
+								{collectionData?.data?.assets?.length}{' '}
+								{collectionData?.data?.assets?.length === 1 ? 'item' : 'items'}
 							</Badge>
 						</div>
 					</div>
@@ -740,13 +745,13 @@ export default function CollectionDetailPage() {
 									<div className='flex gap-6'>
 										{/* Asset Image */}
 										<div className='w-24 h-24 rounded-lg overflow-hidden border border-border shrink-0'>
-											{item?.asset.images?.length >
+											{item?.asset?.images?.length >
 												0 ? (
 												<Image
 													src={
-														item?.images[0]
+														item?.asset?.images?.[0]
 													}
-													alt={item?.name}
+													alt={item?.asset?.name}
 													width={96}
 													height={96}
 													className='object-cover w-full h-full'

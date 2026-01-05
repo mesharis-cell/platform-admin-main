@@ -9,7 +9,7 @@ import {
 } from '@/hooks/use-collections'
 import { useCompanies } from '@/hooks/use-companies'
 import { useBrands } from '@/hooks/use-brands'
-import { useAssets } from '@/hooks/use-assets'
+import { useAssets, useUploadImage } from '@/hooks/use-assets'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -102,7 +102,7 @@ export default function CollectionsPage() {
 
 	const createMutation = useCreateCollection()
 	const deleteMutation = useDeleteCollection()
-	const uploadMutation = useUploadCollectionImages()
+	const uploadMutation = useUploadImage()
 
 	const [selectedImages, setSelectedImages] = useState<File[]>([])
 	const [previewUrls, setPreviewUrls] = useState<string[]>([])
@@ -140,7 +140,10 @@ export default function CollectionsPage() {
 			// Upload images first
 			let imageUrls: string[] = []
 			if (selectedImages.length > 0) {
-				imageUrls = await uploadMutation.mutateAsync(selectedImages)
+				const formData = new FormData()
+				selectedImages.forEach(file => formData.append('files', file))
+				const uploadResult = await uploadMutation.mutateAsync(formData)
+				imageUrls = uploadResult.data?.imageUrls || []
 			}
 
 			// Create collection
@@ -565,24 +568,22 @@ export default function CollectionsPage() {
 										)}
 
 										{/* Overlay with item count */}
-										<div className='absolute bottom-0 left-0 right-0 bg-linear-gradient-to-t from-black/60 to-transparent p-4'>
-											<Badge
-												variant='secondary'
-												className='bg-background/40 backdrop-blur-sm'
-											>
-												{collection.itemCount}{' '}
-												{collection.itemCount === 1
-													? 'item'
-													: 'items'}
-											</Badge>
-										</div>
+										<Badge
+											variant='default'
+											className='backdrop-blur-sm'
+										>
+											{collectionsData?.meta?.total}{' '}
+											{collectionsData?.meta?.total === 1
+												? 'item'
+												: 'items'}
+										</Badge>
 									</div>
 								</Link>
 
 								<CardContent className='p-6 space-y-4'>
 									<div>
 										<Link
-											href={`/admin/collections/${collection.id}`}
+											href={`/collections/${collection.id}`}
 										>
 											<h3 className='text-lg font-semibold mb-1 group-hover:text-primary transition-colors'>
 												{collection.name}
@@ -596,22 +597,22 @@ export default function CollectionsPage() {
 									</div>
 
 									<div className='flex flex-wrap gap-2'>
-										{collection.companyName && (
+										{collection.company?.name && (
 											<Badge
 												variant='outline'
 												className='gap-1.5'
 											>
 												<Building2 className='w-3 h-3' />
-												{collection.companyName}
+												{collection.company?.name}
 											</Badge>
 										)}
-										{collection.brandName && (
+										{collection.brand?.name && (
 											<Badge
 												variant='outline'
 												className='gap-1.5'
 											>
 												<Tag className='w-3 h-3' />
-												{collection.brandName}
+												{collection.brand?.name}
 											</Badge>
 										)}
 										{collection.category && (
@@ -632,7 +633,7 @@ export default function CollectionsPage() {
 											asChild
 										>
 											<Link
-												href={`/admin/collections/${collection.id}`}
+												href={`/collections/${collection.id}`}
 											>
 												View Details
 											</Link>
@@ -660,10 +661,10 @@ export default function CollectionsPage() {
 				)}
 
 				{/* Results count */}
-				{!isLoading && collections.length > 0 && (
+				{!isLoading && collectionsData?.data?.length > 0 && (
 					<div className='mt-8 text-center text-sm text-muted-foreground'>
-						Showing {collections.length} collection
-						{collections.length !== 1 ? 's' : ''}
+						Showing {collectionsData?.data?.length} collection
+						{collectionsData?.data?.length !== 1 ? 's' : ''}
 					</div>
 				)}
 			</div>

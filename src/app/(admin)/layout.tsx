@@ -51,7 +51,7 @@ import {
 } from '@/components/ui/sidebar'
 import Providers from '@/providers'
 import { toast } from 'sonner'
-import Cookies from "js-cookie"
+import { useToken } from '@/lib/auth/use-token'
 
 type NavItem = {
 	name: string
@@ -67,43 +67,43 @@ const navigation: NavItem[] = [
 	// 	href: '/analytics',
 	// 	icon: BarChart3,
 	// },
-	// {
-	// 	name: 'Orders',
-	// 	href: '/orders',
-	// 	icon: ShoppingCart,
-	// },
-	// {
-	// 	name: 'Pricing Review',
-	// 	href: '/orders/pricing-review',
-	// 	icon: DollarSign,
-	// 	badge: 'A2',
-	// },
-	// {
-	// 	name: 'Pending Approval',
-	// 	href: '/orders/pending-approval',
-	// 	icon: AlertCircle,
-	// 	badge: 'PMG',
-	// },
+	{
+		name: 'Orders',
+		href: '/orders',
+		icon: ShoppingCart,
+	},
+	{
+		name: 'Pricing Review',
+		href: '/orders/pricing-review',
+		icon: DollarSign,
+		badge: 'A2',
+	},
+	{
+		name: 'Pending Approval',
+		href: '/orders/pending-approval',
+		icon: AlertCircle,
+		badge: 'PMG',
+	},
 	{
 		name: 'Scanning',
 		href: '/scanning',
 		icon: ScanLine,
 	},
-	// {
-	// 	name: 'Conditions',
-	// 	href: '/conditions',
-	// 	icon: AlertCircle,
-	// },
+	{
+		name: 'Conditions',
+		href: '/conditions',
+		icon: AlertCircle,
+	},
 	// {
 	// 	name: 'Invoices',
 	// 	href: '/invoices',
 	// 	icon: Receipt,
 	// },
-	// {
-	// 	name: 'Notifications',
-	// 	href: '/notifications',
-	// 	icon: Mail,
-	// },
+	{
+		name: 'Notifications',
+		href: '/notifications',
+		icon: Mail,
+	},
 	{
 		name: 'Users',
 		href: '/users',
@@ -139,11 +139,11 @@ const navigation: NavItem[] = [
 		href: '/collections',
 		icon: Layers,
 	},
-	// {
-	// 	name: 'Pricing Tiers',
-	// 	href: '/pricing-tiers',
-	// 	icon: DollarSign,
-	// },
+	{
+		name: 'Pricing Tiers',
+		href: '/pricing-tiers',
+		icon: DollarSign,
+	},
 ]
 
 function AdminSidebarContent() {
@@ -151,10 +151,10 @@ function AdminSidebarContent() {
 	const router = useRouter()
 	const { data: session, isPending } = useSession()
 	const { state } = useSidebar()
+	const { logout } = useToken()
 
 	const handleSignOut = () => {
-		Cookies.remove('access_token')
-		Cookies.remove('refresh_token')
+		logout()
 		router.push('/');
 		toast.success('You have been signed out.')
 	}
@@ -236,7 +236,7 @@ function AdminSidebarContent() {
 											isCollapsed ? item.name : undefined
 										}
 										className={cn(
-											'group flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-mono transition-all relative overflow-hidden',
+											'group/nav-item flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-mono transition-all relative overflow-hidden',
 											isActive
 												? 'bg-primary text-primary-foreground font-semibold shadow-sm'
 												: 'text-foreground/70 hover:text-foreground hover:bg-muted'
@@ -273,7 +273,7 @@ function AdminSidebarContent() {
 
 											{/* Hover glow effect */}
 											{!isActive && (
-												<div className='absolute inset-0 bg-primary/0 group-hover:bg-primary/5 transition-colors' />
+												<div className='absolute inset-0 bg-primary/0 group-hover/nav-item:bg-primary/5 transition-colors' />
 											)}
 										</Link>
 									</SidebarMenuButton>

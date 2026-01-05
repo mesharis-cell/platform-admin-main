@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { Calendar as CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -27,6 +27,26 @@ export function DateTimePicker({ value, onChange, placeholder = 'Pick date & tim
 	const [isOpen, setIsOpen] = useState(false);
 	const [selectedDate, setSelectedDate] = useState<Date | undefined>(value);
 	const [time, setTime] = useState<string>(value ? format(value, 'HH:mm') : '09:00');
+
+	// Sync internal state with external value prop
+	useEffect(() => {
+		setSelectedDate(value);
+		if (value) {
+			setTime(format(value, 'HH:mm'));
+		}
+	}, [value]);
+
+	// Also sync when popover opens to ensure we have the latest value
+	useEffect(() => {
+		if (isOpen) {
+			setSelectedDate(value);
+			if (value) {
+				setTime(format(value, 'HH:mm'));
+			} else {
+				setTime('09:00');
+			}
+		}
+	}, [isOpen, value]);
 
 	const handleDateSelect = (date: Date | undefined) => {
 		if (!date) {
@@ -74,16 +94,24 @@ export function DateTimePicker({ value, onChange, placeholder = 'Pick date & tim
 			<PopoverTrigger asChild>
 				<Button
 					variant="outline"
-					className={cn('w-full justify-start text-left font-mono text-sm h-10', !value && 'text-muted-foreground', className)}
+					className={cn('w-full min-w-0 justify-start text-left font-mono text-sm h-10', !value && 'text-muted-foreground', className)}
 					disabled={disabled}
 				>
-					<CalendarIcon className="mr-2 h-4 w-4 flex-shrink-0" />
+					<CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
 					<span className="truncate">{displayText}</span>
 				</Button>
 			</PopoverTrigger>
-			<PopoverContent className="w-auto p-0" align="start">
+			<PopoverContent
+				className="w-[280px] p-0 z-100 max-h-[min(400px,80vh)] overflow-y-auto"
+				align="start"
+				side="bottom"
+				sideOffset={4}
+				alignOffset={0}
+				collisionPadding={20}
+				avoidCollisions={true}
+			>
 				<div className="p-4 space-y-4">
-					<Calendar mode="single" selected={selectedDate} onSelect={handleDateSelect} initialFocus />
+					<Calendar className='w-full' mode="single" selected={selectedDate} onSelect={handleDateSelect} initialFocus />
 					<div className="space-y-2 border-t pt-4">
 						<Label className="text-xs font-mono text-muted-foreground uppercase">Time</Label>
 						<Input type="time" value={time} onChange={(e) => handleTimeChange(e.target.value)} className="font-mono" />
