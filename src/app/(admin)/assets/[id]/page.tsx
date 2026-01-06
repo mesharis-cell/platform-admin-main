@@ -41,13 +41,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from 'sonner'
-import type { AssetWithDetails } from '@/types/asset'
 import { ConditionHistoryTimeline } from '@/components/conditions/condition-history-timeline'
 import { MaintenanceCompletionDialog } from '@/components/conditions/maintenance-completion-dialog'
 import { AddNotesDialog } from '@/components/conditions/add-notes-dialog'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { EditAssetDialog } from '@/components/assets/edit-asset-dialog'
-import { generateQRCode } from '@/lib/services/qu-code'
+import { generateQRCode } from '@/lib/services/qr-code'
 
 export default function AssetDetailPage({
 	params,
