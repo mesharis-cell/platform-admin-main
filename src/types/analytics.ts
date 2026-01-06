@@ -33,14 +33,16 @@ export interface TimeRange {
  * Revenue summary response
  */
 export interface RevenueSummary {
-  totalRevenue: number
-  orderCount: number
-  averageOrderValue: number
-  timeRange: TimeRange
-  filters: {
+  data: {
+    totalRevenue: number
+    orderCount: number
+    averageOrderValue: number
+    timeRange: TimeRange
+    filters: {
     companyId: string | null
     companyName: string
   }
+}
 }
 
 /**
@@ -100,16 +102,18 @@ export interface TimePeriodMetrics {
  * Time series response
  */
 export interface TimeSeries {
-  timeSeries: TimePeriodMetrics[]
-  filters: {
-    companyId: string | null
-    companyName: string
-    groupBy: TimeGrouping
-  }
-  totals: {
-    totalRevenue: number
-    totalMarginAmount: number
-    totalOrderCount: number
+  data: {
+    timeSeries: TimePeriodMetrics[]
+    filters: {
+      companyId: string | null
+      companyName: string
+      groupBy: TimeGrouping
+    }
+    totals: {
+      totalRevenue: number
+      totalMarginAmount: number
+      totalOrderCount: number
+    }
   }
 }
 

@@ -141,7 +141,7 @@ export default function AnalyticsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Companies</SelectItem>
-                  {companies?.companies.map((company) => (
+                  {companies?.data.map((company) => (
                     <SelectItem key={company.id} value={company.id}>
                       {company.name}
                     </SelectItem>
@@ -175,11 +175,11 @@ export default function AnalyticsPage() {
               ) : (
                 <div className="space-y-1">
                   <div className="text-3xl font-bold tracking-tight font-mono">
-                    {formatCurrency(revenue?.totalRevenue || 0)}
+                    {formatCurrency(revenue?.data?.totalRevenue || 0)}
                   </div>
                   <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono">
                     <Activity className="h-3 w-3" />
-                    <span>{revenue?.orderCount || 0} paid orders</span>
+                    <span>{revenue?.data?.orderCount || 0} paid orders</span>
                   </div>
                 </div>
               )}
@@ -205,11 +205,11 @@ export default function AnalyticsPage() {
               ) : (
                 <div className="space-y-1">
                   <div className="text-3xl font-bold tracking-tight font-mono">
-                    {formatCurrency(margin?.totalMarginAmount || 0)}
+                    {formatCurrency(margin?.data?.totalMarginAmount || 0)}
                   </div>
                   <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono">
                     <Badge variant="secondary" className="h-5 px-2 text-[10px] font-mono">
-                      {formatPercent(margin?.averageMarginPercent || 0)} avg
+                      {formatPercent(margin?.data?.averageMarginPercent || 0)} avg
                     </Badge>
                   </div>
                 </div>
@@ -236,7 +236,7 @@ export default function AnalyticsPage() {
               ) : (
                 <div className="space-y-1">
                   <div className="text-3xl font-bold tracking-tight font-mono">
-                    {formatCurrency(revenue?.averageOrderValue || 0)}
+                    {formatCurrency(revenue?.data?.averageOrderValue || 0)}
                   </div>
                   <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono">
                     <span>per completed order</span>
@@ -265,7 +265,7 @@ export default function AnalyticsPage() {
               ) : (
                 <div className="space-y-1">
                   <div className="text-3xl font-bold tracking-tight font-mono">
-                    {revenue?.orderCount || 0}
+                    {revenue?.data?.orderCount || 0}
                   </div>
                   <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono">
                     <span>paid & fulfilled</span>
@@ -301,9 +301,9 @@ export default function AnalyticsPage() {
           <CardContent>
             {timeSeriesLoading ? (
               <Skeleton className="h-[300px] w-full" />
-            ) : timeSeries && timeSeries.timeSeries.length > 0 ? (
+            ) : timeSeries && timeSeries?.data?.timeSeries.length > 0 ? (
               <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={timeSeries.timeSeries}>
+                <LineChart data={timeSeries.data.timeSeries}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
                   <XAxis
                     dataKey="period"
