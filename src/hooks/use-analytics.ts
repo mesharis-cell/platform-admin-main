@@ -53,6 +53,7 @@ export function useMarginSummary(params: MarginQueryParams = {}) {
   return useQuery({
     queryKey: ['analytics', 'margins', params],
     queryFn: async () => {
+      try {
       const searchParams = new URLSearchParams()
 
       if (params.companyId) searchParams.set('companyId', params.companyId)
@@ -60,14 +61,12 @@ export function useMarginSummary(params: MarginQueryParams = {}) {
       if (params.endDate) searchParams.set('endDate', params.endDate)
       if (params.timePeriod) searchParams.set('timePeriod', params.timePeriod)
 
-      const response = await fetch(`/api/analytics/margins?${searchParams.toString()}`)
+      const response = await apiClient.get<MarginSummary>(`/operations/v1/analytics/margin-summary?${searchParams.toString()}`)
 
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to fetch margin summary')
+      return response.data
+      } catch (error) {
+        throwApiError(error)
       }
-
-      return response.json() as Promise<MarginSummary>
     },
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
   })
@@ -80,6 +79,7 @@ export function useCompanyBreakdown(params: CompanyBreakdownQueryParams = {}) {
   return useQuery({
     queryKey: ['analytics', 'company-breakdown', params],
     queryFn: async () => {
+      try {
       const searchParams = new URLSearchParams()
 
       if (params.startDate) searchParams.set('startDate', params.startDate)
@@ -88,16 +88,12 @@ export function useCompanyBreakdown(params: CompanyBreakdownQueryParams = {}) {
       if (params.sortBy) searchParams.set('sortBy', params.sortBy)
       if (params.sortOrder) searchParams.set('sortOrder', params.sortOrder)
 
-      const response = await fetch(
-        `/api/analytics/company-breakdown?${searchParams.toString()}`
-      )
+      const response = await apiClient.get<CompanyBreakdown>(`/operations/v1/analytics/company-breakdown?${searchParams.toString()}`)
 
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to fetch company breakdown')
+      return response.data
+      } catch (error) {
+        throwApiError(error)
       }
-
-      return response.json() as Promise<CompanyBreakdown>
     },
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
   })

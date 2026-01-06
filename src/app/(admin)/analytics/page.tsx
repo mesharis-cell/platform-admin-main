@@ -16,7 +16,6 @@ import { useCompanies } from '@/hooks/use-companies'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
   Table,
@@ -29,21 +28,16 @@ import {
 import {
   DollarSign,
   TrendingUp,
-  TrendingDown,
   Building2,
   Calendar,
-  Filter,
   BarChart3,
   Activity,
   ArrowUpRight,
-  ArrowDownRight,
 } from 'lucide-react'
 import { AdminHeader } from '@/components/admin-header'
 import {
   LineChart,
   Line,
-  BarChart,
-  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -106,7 +100,7 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-muted/30 via-background to-muted/20">
+    <div className="min-h-screen bg-linear-to-br from-muted/30 via-background to-muted/20">
       {/* Header */}
       <AdminHeader
         icon={BarChart3}
@@ -157,8 +151,8 @@ export default function AnalyticsPage() {
         {/* Key Metrics Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {/* Total Revenue */}
-          <Card className="border-border/50 bg-gradient-to-br from-card to-card/50 backdrop-blur overflow-hidden group hover:shadow-lg transition-all duration-300">
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+          <Card className="border-border/50 bg-linear-to-br from-card to-card/50 backdrop-blur overflow-hidden group hover:shadow-lg transition-all duration-300">
+            <div className="absolute inset-0 bg-linear-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
             <CardHeader className="pb-3 relative">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider font-mono">
@@ -187,8 +181,8 @@ export default function AnalyticsPage() {
           </Card>
 
           {/* Total Margin */}
-          <Card className="border-border/50 bg-gradient-to-br from-card to-card/50 backdrop-blur overflow-hidden group hover:shadow-lg transition-all duration-300">
-            <div className="absolute inset-0 bg-gradient-to-br from-secondary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+          <Card className="border-border/50 bg-linear-to-br from-card to-card/50 backdrop-blur overflow-hidden group hover:shadow-lg transition-all duration-300">
+            <div className="absolute inset-0 bg-linear-to-br from-secondary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
             <CardHeader className="pb-3 relative">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider font-mono">
@@ -218,8 +212,8 @@ export default function AnalyticsPage() {
           </Card>
 
           {/* Average Order Value */}
-          <Card className="border-border/50 bg-gradient-to-br from-card to-card/50 backdrop-blur overflow-hidden group hover:shadow-lg transition-all duration-300">
-            <div className="absolute inset-0 bg-gradient-to-br from-chart-1/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+          <Card className="border-border/50 bg-linear-to-br from-card to-card/50 backdrop-blur overflow-hidden group hover:shadow-lg transition-all duration-300">
+            <div className="absolute inset-0 bg-linear-to-br from-chart-1/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
             <CardHeader className="pb-3 relative">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider font-mono">
@@ -247,8 +241,8 @@ export default function AnalyticsPage() {
           </Card>
 
           {/* Total Orders */}
-          <Card className="border-border/50 bg-gradient-to-br from-card to-card/50 backdrop-blur overflow-hidden group hover:shadow-lg transition-all duration-300">
-            <div className="absolute inset-0 bg-gradient-to-br from-chart-2/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+          <Card className="border-border/50 bg-linear-to-br from-card to-card/50 backdrop-blur overflow-hidden group hover:shadow-lg transition-all duration-300">
+            <div className="absolute inset-0 bg-linear-to-br from-chart-2/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
             <CardHeader className="pb-3 relative">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider font-mono">
@@ -277,7 +271,7 @@ export default function AnalyticsPage() {
         </div>
 
         {/* Time Series Chart */}
-        <Card className="border-border/50 bg-gradient-to-br from-card to-card/50 backdrop-blur">
+        <Card className="border-border/50 bg-linear-to-br from-card to-card/50 backdrop-blur">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
@@ -366,7 +360,7 @@ export default function AnalyticsPage() {
         </Card>
 
         {/* Company Breakdown Table */}
-        <Card className="border-border/50 bg-gradient-to-br from-card to-card/50 backdrop-blur">
+        <Card className="border-border/50 bg-linear-to-br from-card to-card/50 backdrop-blur">
           <CardHeader>
             <CardTitle className="text-lg font-bold font-mono">Company Performance</CardTitle>
             <CardDescription className="font-mono text-xs mt-1">
@@ -380,7 +374,7 @@ export default function AnalyticsPage() {
                 <Skeleton className="h-10 w-full" />
                 <Skeleton className="h-10 w-full" />
               </div>
-            ) : breakdown && breakdown.companies.length > 0 ? (
+            ) : breakdown && breakdown.data?.companies.length > 0 ? (
               <div className="rounded-lg border border-border/50 overflow-hidden">
                 <Table>
                   <TableHeader>
@@ -394,7 +388,7 @@ export default function AnalyticsPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {breakdown.companies.map((company) => (
+                    {breakdown.data?.companies.map((company) => (
                       <TableRow
                         key={company.companyId}
                         className="hover:bg-muted/20 transition-colors"
@@ -429,7 +423,7 @@ export default function AnalyticsPage() {
             )}
 
             {/* Totals Summary */}
-            {breakdown && breakdown.companies.length > 0 && (
+            {breakdown && breakdown.data?.companies.length > 0 && (
               <div className="mt-6 pt-6 border-t border-border/50">
                 <div className="grid grid-cols-3 gap-6">
                   <div className="space-y-1">
@@ -437,7 +431,7 @@ export default function AnalyticsPage() {
                       Total Revenue
                     </div>
                     <div className="text-2xl font-bold font-mono text-primary">
-                      {formatCurrency(breakdown.totals.totalRevenue)}
+                      {formatCurrency(breakdown.data?.totals.totalRevenue)}
                     </div>
                   </div>
                   <div className="space-y-1">
@@ -445,7 +439,7 @@ export default function AnalyticsPage() {
                       Total Margin
                     </div>
                     <div className="text-2xl font-bold font-mono text-secondary">
-                      {formatCurrency(breakdown.totals.totalMarginAmount)}
+                      {formatCurrency(breakdown.data?.totals.totalMarginAmount)}
                     </div>
                   </div>
                   <div className="space-y-1">
@@ -453,7 +447,7 @@ export default function AnalyticsPage() {
                       Total Orders
                     </div>
                     <div className="text-2xl font-bold font-mono">
-                      {breakdown.totals.totalOrderCount}
+                      {breakdown.data?.totals.totalOrderCount}
                     </div>
                   </div>
                 </div>

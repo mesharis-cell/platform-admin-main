@@ -49,14 +49,16 @@ export interface RevenueSummary {
  * Margin summary response
  */
 export interface MarginSummary {
-  totalMarginAmount: number
-  averageMarginPercent: number
-  orderCount: number
-  timeRange: TimeRange
-  filters: {
+  data: {
+    totalMarginAmount: number
+    averageMarginPercent: number
+    orderCount: number
+    timeRange: TimeRange
+    filters: {
     companyId: string | null
     companyName: string
   }
+}
 }
 
 /**
@@ -76,6 +78,7 @@ export interface CompanyMetrics {
  * Company breakdown response
  */
 export interface CompanyBreakdown {
+  data: {
   companies: CompanyMetrics[]
   timeRange: TimeRange
   totals: {
@@ -83,6 +86,7 @@ export interface CompanyBreakdown {
     totalMarginAmount: number
     totalOrderCount: number
   }
+}
 }
 
 /**
