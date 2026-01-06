@@ -62,11 +62,11 @@ type NavItem = {
 }
 
 const navigation: NavItem[] = [
-	// {
-	// 	name: 'Analytics',
-	// 	href: '/analytics',
-	// 	icon: BarChart3,
-	// },
+	{
+		name: 'Analytics',
+		href: '/analytics',
+		icon: BarChart3,
+	},
 	{
 		name: 'Orders',
 		href: '/orders',

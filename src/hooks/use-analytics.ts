@@ -1,3 +1,5 @@
+'use client'
+
 /**
  * Phase 14: Analytics React Query Hooks
  */
@@ -13,6 +15,8 @@ import type {
   CompanyBreakdownQueryParams,
   TimeSeriesQueryParams,
 } from '@/types/analytics'
+import { throwApiError } from '@/lib/utils/throw-api-error'
+import { apiClient } from '@/lib/api/api-client'
 
 /**
  * Fetch revenue summary
@@ -21,21 +25,22 @@ export function useRevenueSummary(params: RevenueQueryParams = {}) {
   return useQuery({
     queryKey: ['analytics', 'revenue', params],
     queryFn: async () => {
+      try {
       const searchParams = new URLSearchParams()
 
-      if (params.companyId) searchParams.set('companyId', params.companyId)
-      if (params.startDate) searchParams.set('startDate', params.startDate)
-      if (params.endDate) searchParams.set('endDate', params.endDate)
-      if (params.timePeriod) searchParams.set('timePeriod', params.timePeriod)
+      if (params.companyId) searchParams.set('company_id', params.companyId)
+      if (params.startDate) searchParams.set('start_date', params.startDate)
+      if (params.endDate) searchParams.set('end_date', params.endDate)
+      if (params.timePeriod) searchParams.set('time_period', params.timePeriod)
 
-      const response = await fetch(`/api/analytics/revenue?${searchParams.toString()}`)
+      const response = await apiClient.get<RevenueSummary>(`/operations/v1/analytics/revenue-summary?${searchParams.toString()}`)
 
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to fetch revenue summary')
+      console.log("response.data", response.data)
+
+      return response.data
+      } catch (error) {
+        throwApiError(error)
       }
-
-      return response.json() as Promise<RevenueSummary>
     },
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
   })
@@ -48,6 +53,7 @@ export function useMarginSummary(params: MarginQueryParams = {}) {
   return useQuery({
     queryKey: ['analytics', 'margins', params],
     queryFn: async () => {
+      try {
       const searchParams = new URLSearchParams()
 
       if (params.companyId) searchParams.set('companyId', params.companyId)
@@ -55,14 +61,12 @@ export function useMarginSummary(params: MarginQueryParams = {}) {
       if (params.endDate) searchParams.set('endDate', params.endDate)
       if (params.timePeriod) searchParams.set('timePeriod', params.timePeriod)
 
-      const response = await fetch(`/api/analytics/margins?${searchParams.toString()}`)
+      const response = await apiClient.get<MarginSummary>(`/operations/v1/analytics/margin-summary?${searchParams.toString()}`)
 
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to fetch margin summary')
+      return response.data
+      } catch (error) {
+        throwApiError(error)
       }
-
-      return response.json() as Promise<MarginSummary>
     },
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
   })
@@ -75,6 +79,7 @@ export function useCompanyBreakdown(params: CompanyBreakdownQueryParams = {}) {
   return useQuery({
     queryKey: ['analytics', 'company-breakdown', params],
     queryFn: async () => {
+      try {
       const searchParams = new URLSearchParams()
 
       if (params.startDate) searchParams.set('startDate', params.startDate)
@@ -83,16 +88,12 @@ export function useCompanyBreakdown(params: CompanyBreakdownQueryParams = {}) {
       if (params.sortBy) searchParams.set('sortBy', params.sortBy)
       if (params.sortOrder) searchParams.set('sortOrder', params.sortOrder)
 
-      const response = await fetch(
-        `/api/analytics/company-breakdown?${searchParams.toString()}`
-      )
+      const response = await apiClient.get<CompanyBreakdown>(`/operations/v1/analytics/company-breakdown?${searchParams.toString()}`)
 
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to fetch company breakdown')
+      return response.data
+      } catch (error) {
+        throwApiError(error)
       }
-
-      return response.json() as Promise<CompanyBreakdown>
     },
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
   })
@@ -105,6 +106,7 @@ export function useTimeSeries(params: TimeSeriesQueryParams) {
   return useQuery({
     queryKey: ['analytics', 'time-series', params],
     queryFn: async () => {
+      try {
       const searchParams = new URLSearchParams()
 
       searchParams.set('groupBy', params.groupBy) // Required parameter
@@ -113,14 +115,12 @@ export function useTimeSeries(params: TimeSeriesQueryParams) {
       if (params.startDate) searchParams.set('startDate', params.startDate)
       if (params.endDate) searchParams.set('endDate', params.endDate)
 
-      const response = await fetch(`/api/analytics/time-series?${searchParams.toString()}`)
+      const response = await apiClient.get<TimeSeries>(`/operations/v1/analytics/time-series?${searchParams.toString()}`)
 
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to fetch time series')
-      }
-
-      return response.json() as Promise<TimeSeries>
+      return response.data
+    } catch (error) {
+      throwApiError(error)
+    }
     },
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
     enabled: !!params.groupBy, // Only run query if groupBy is provided

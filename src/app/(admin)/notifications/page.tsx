@@ -16,12 +16,13 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AlertCircle, RefreshCw, Mail, ExternalLink, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { AlertCircle, RefreshCw, Mail, ExternalLink, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { AdminHeader } from '@/components/admin-header';
+import { apiClient } from '@/lib/api/api-client';
+import { throwApiError } from '@/lib/utils/throw-api-error';
 
 export default function FailedNotificationsPage() {
 	const [filter, setFilter] = useState<'all' | 'FAILED' | 'RETRYING'>('all');
@@ -33,9 +34,8 @@ export default function FailedNotificationsPage() {
 			try {
 				const params = new URLSearchParams();
 				if (filter !== 'all') params.append('status', filter);
-				const response = await fetch(`/api/notifications/failed?${params}`);
-				if (!response.ok) throw new Error('Failed to fetch notifications');
-				return response.json();
+				const response = await apiClient.get(`/operations/v1/notification-logs/failed?${params}`);
+				return response.data;
 			} catch (error) {
 				console.error('Failed to fetch notifications:', error);
 				return [];
@@ -45,15 +45,14 @@ export default function FailedNotificationsPage() {
 
 	const retryMutation = useMutation({
 		mutationFn: async (notificationId: string) => {
-			const response = await fetch(`/api/notifications/${notificationId}/retry`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-			});
-			if (!response.ok) {
-				const error = await response.json();
-				throw new Error(error.error || 'Retry failed');
+			try {
+				const response = await apiClient.post(`/operations/v1/notification-logs/${notificationId}/retry`);
+				return response.data;
+
+			} catch (error) {
+				console.error('Failed to retry notification:', error);
+				throwApiError(error);
 			}
-			return response.json();
 		},
 		onSuccess: () => {
 			toast.success('Notification resent successfully');
@@ -74,7 +73,7 @@ export default function FailedNotificationsPage() {
 				icon={Mail}
 				title="NOTIFICATION CENTER"
 				description="Monitor · Retry · Audit"
-				stats={data ? { label: 'TOTAL FAILED', value: data.total || 0 } : undefined}
+				stats={data ? { label: 'TOTAL FAILED', value: data?.data?.total || 0 } : undefined}
 				actions={
 					<select
 						value={filter}
@@ -100,7 +99,7 @@ export default function FailedNotificationsPage() {
 									</div>
 									<div>
 										<p className="font-mono text-xs text-muted-foreground">TOTAL FAILED</p>
-										<p className="font-mono text-2xl font-bold">{data.total || 0}</p>
+										<p className="font-mono text-2xl font-bold">{data?.data?.total || 0}</p>
 									</div>
 								</div>
 							</CardContent>
@@ -115,7 +114,7 @@ export default function FailedNotificationsPage() {
 									<div>
 										<p className="font-mono text-xs text-muted-foreground">RETRYING</p>
 										<p className="font-mono text-2xl font-bold">
-											{data.notifications?.filter((n: any) => n.status === 'RETRYING').length || 0}
+											{data?.data?.notifications?.filter((n: any) => n.status === 'RETRYING').length || 0}
 										</p>
 									</div>
 								</div>
@@ -131,7 +130,7 @@ export default function FailedNotificationsPage() {
 									<div>
 										<p className="font-mono text-xs text-muted-foreground">SUCCESS RATE</p>
 										<p className="font-mono text-2xl font-bold">
-											{data.total > 0 ? Math.round((1 - data.total / 100) * 100) : 100}%
+											{data?.data?.total > 0 ? Math.round((1 - data?.data?.total / 100) * 100) : 100}%
 										</p>
 									</div>
 								</div>
@@ -155,7 +154,7 @@ export default function FailedNotificationsPage() {
 								<Skeleton className="h-20 w-full" />
 								<Skeleton className="h-20 w-full" />
 							</div>
-						) : !data?.notifications?.length ? (
+						) : !data?.data?.notifications?.length ? (
 							<div className="p-12 text-center">
 								<CheckCircle2 className="h-12 w-12 mx-auto mb-4 text-green-600" />
 								<p className="font-mono text-sm text-muted-foreground">
@@ -164,15 +163,15 @@ export default function FailedNotificationsPage() {
 							</div>
 						) : (
 							<div className="space-y-3">
-								{data.notifications.map((notification: any) => (
+								{data?.data?.notifications.map((notification: any) => (
 									<div key={notification.id} className="p-4 border-2 rounded bg-card hover:bg-muted/20 transition-colors">
 										<div className="flex items-start justify-between gap-4">
 											<div className="flex-1 space-y-2">
 												<div className="flex items-center gap-2">
 													<Badge
 														className={`font-mono text-[10px] border ${notification.status === 'FAILED'
-																? 'bg-red-500/10 text-red-700 border-red-500/20'
-																: 'bg-yellow-500/10 text-yellow-700 border-yellow-500/20'
+															? 'bg-red-500/10 text-red-700 border-red-500/20'
+															: 'bg-yellow-500/10 text-yellow-700 border-yellow-500/20'
 															}`}
 													>
 														{notification.status}
@@ -186,7 +185,7 @@ export default function FailedNotificationsPage() {
 												</div>
 
 												<div className="flex items-center gap-3">
-													<Link href={`/admin/orders/${notification.order.id}`}>
+													<Link href={`/orders/${notification.order.id}`}>
 														<Button variant="link" size="sm" className="h-auto p-0 font-mono text-xs">
 															{notification.order.orderId}
 															<ExternalLink className="h-3 w-3 ml-1" />

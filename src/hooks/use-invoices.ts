@@ -189,6 +189,7 @@ export function useConfirmPayment() {
 
 			// Invalidate order queries (status changed to PAID)
 			queryClient.invalidateQueries({ queryKey: ['orders'] });
+			queryClient.invalidateQueries({ queryKey: ['analytics'] });
 		},
 	});
 }

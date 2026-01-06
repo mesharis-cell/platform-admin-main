@@ -33,28 +33,32 @@ export interface TimeRange {
  * Revenue summary response
  */
 export interface RevenueSummary {
-  totalRevenue: number
-  orderCount: number
-  averageOrderValue: number
-  timeRange: TimeRange
-  filters: {
+  data: {
+    totalRevenue: number
+    orderCount: number
+    averageOrderValue: number
+    timeRange: TimeRange
+    filters: {
     companyId: string | null
     companyName: string
   }
+}
 }
 
 /**
  * Margin summary response
  */
 export interface MarginSummary {
-  totalMarginAmount: number
-  averageMarginPercent: number
-  orderCount: number
-  timeRange: TimeRange
-  filters: {
+  data: {
+    totalMarginAmount: number
+    averageMarginPercent: number
+    orderCount: number
+    timeRange: TimeRange
+    filters: {
     companyId: string | null
     companyName: string
   }
+}
 }
 
 /**
@@ -74,6 +78,7 @@ export interface CompanyMetrics {
  * Company breakdown response
  */
 export interface CompanyBreakdown {
+  data: {
   companies: CompanyMetrics[]
   timeRange: TimeRange
   totals: {
@@ -81,6 +86,7 @@ export interface CompanyBreakdown {
     totalMarginAmount: number
     totalOrderCount: number
   }
+}
 }
 
 /**
@@ -100,16 +106,18 @@ export interface TimePeriodMetrics {
  * Time series response
  */
 export interface TimeSeries {
-  timeSeries: TimePeriodMetrics[]
-  filters: {
-    companyId: string | null
-    companyName: string
-    groupBy: TimeGrouping
-  }
-  totals: {
-    totalRevenue: number
-    totalMarginAmount: number
-    totalOrderCount: number
+  data: {
+    timeSeries: TimePeriodMetrics[]
+    filters: {
+      companyId: string | null
+      companyName: string
+      groupBy: TimeGrouping
+    }
+    totals: {
+      totalRevenue: number
+      totalMarginAmount: number
+      totalOrderCount: number
+    }
   }
 }
 
