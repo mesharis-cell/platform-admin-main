@@ -150,16 +150,18 @@ export function useSendInvoiceEmail() {
  * Download invoice PDF
  */
 export function useDownloadInvoice() {
-	return useMutation({
-		mutationFn: async ({ invoiceNumber, platformId }: { invoiceNumber: string; platformId: string }) => {
-			try {
-				const response = await apiClient.get(`/client/v1/invoice/download/${invoiceNumber}?pid=${platformId}`);
-				return response.data;
-			} catch (error) {
-				throwApiError(error);
-			}
-		},
-	});
+  return useMutation({
+    mutationFn: async ({ invoiceNumber, platformId }: { invoiceNumber: string; platformId: string }) => {
+      try {
+        const response = await apiClient.get(`/client/v1/invoice/download-pdf/${invoiceNumber}?pid=${platformId}`, {
+          responseType: 'blob',
+        });
+        return response.data;
+      } catch (error) {
+        throwApiError(error);
+      }
+    },
+  });
 }
 
 /**

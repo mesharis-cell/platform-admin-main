@@ -45,7 +45,6 @@ export default function InvoicesPage() {
 		sortOrder: 'desc',
 	});
 
-	const [searchTerm, setSearchTerm] = useState('');
 	const [selectedCompany, setSelectedCompany] = useState<string>('');
 	const [paymentStatus, setPaymentStatus] = useState<string>('all');
 	const { platform } = usePlatform();
@@ -125,13 +124,20 @@ export default function InvoicesPage() {
 	};
 
 	const handleDownloadInvoice = async (invoiceNumber: string) => {
+		if (!invoiceNumber) return
+
 		try {
-			const res = await downloadInvoice.mutateAsync({ invoiceNumber, platformId: platform.platform_id });
-			window.open(res.data.download_url, '_blank');
+			const pdfBlob = await downloadInvoice.mutateAsync({ invoiceNumber, platformId: platform.platform_id });
+			const url = URL.createObjectURL(pdfBlob);
+			const link = document.createElement('a');
+			link.href = url;
+			link.download = `invoice-${invoiceNumber}.pdf`;
+			link.click();
+			URL.revokeObjectURL(url);
 		} catch (error: any) {
-			toast.error(error.message || 'Failed to download Cost Estimate');
+			toast.error(error.message || 'Failed to download Invoice');
 		}
-	};
+	}
 
 	// Calculate stats
 	const stats = invoicesData?.data

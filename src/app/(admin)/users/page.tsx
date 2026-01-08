@@ -38,7 +38,7 @@ import {
 	useUsers
 } from "@/hooks/use-users";
 import { cn } from "@/lib/utils";
-import { PERMISSION_GROUPS, PERMISSION_TEMPLATES, PermissionTemplate, User } from "@/types/auth";
+import { PERMISSION_GROUPS, PERMISSION_TEMPLATES, PermissionTemplate, User, ADMIN_PERMISSION_GROUPS, LOGISTICS_PERMISSION_GROUPS } from "@/types/auth";
 import {
 	AlertCircle,
 	Ban,
@@ -139,14 +139,90 @@ export default function UsersManagementPage() {
 		}));
 	};
 
-	// Helper to resolve wildcards to specific permissions
-	const resolvePermissions = (templatePerms: string[]) => {
-		const allPermissions = Object.values(PERMISSION_GROUPS).flat();
-		return allPermissions.filter(p =>
-			templatePerms.includes(p) ||
-			templatePerms.includes("*") ||
-			templatePerms.some(tp => tp.endsWith("*") && p.startsWith(tp.replace("*", "")))
-		);
+	// Get permission groups based on user type
+	const getPermissionGroupsForRole = (userType: "admin" | "logistic" | "client" | "") => {
+		if (userType === "admin") return ADMIN_PERMISSION_GROUPS;
+		if (userType === "logistic") return LOGISTICS_PERMISSION_GROUPS;
+		return {}; // CLIENT has no permissions
+	};
+
+	// Get non-wildcard permissions from a group
+	const getNonWildcardPermissions = (permissions: string[]) => {
+		return permissions.filter(p => !p.endsWith(":*"));
+	};
+
+	// Get all non-wildcard permissions from role groups
+	const getAllPermissionsForRole = (userType: "admin" | "logistic" | "client" | "") => {
+		const groups = getPermissionGroupsForRole(userType);
+		const allPerms: string[] = [];
+		Object.values(groups).forEach(permissions => {
+			allPerms.push(...getNonWildcardPermissions(permissions));
+		});
+		return allPerms;
+	};
+
+	// Check if all permissions in a module are selected
+	const isModuleAllSelected = (moduleName: string, permissions: string[], selectedPermissions: string[]) => {
+		const nonWildcard = getNonWildcardPermissions(permissions);
+		const wildcardPerm = permissions.find(p => p.endsWith(":*"));
+		// If wildcard is selected, module is "all"
+		if (wildcardPerm && selectedPermissions.includes(wildcardPerm)) return true;
+		// Otherwise check if all non-wildcard perms are selected
+		return nonWildcard.every(p => selectedPermissions.includes(p));
+	};
+
+	// Toggle all permissions in a module
+	const toggleModuleAll = (moduleName: string, permissions: string[], isCurrentlyAll: boolean) => {
+		const wildcardPerm = permissions.find(p => p.endsWith(":*"));
+		const nonWildcard = getNonWildcardPermissions(permissions);
+
+		setNewUser(prev => {
+			let newPerms = [...prev.customPermissions];
+
+			if (isCurrentlyAll) {
+				// Unselect all in module
+				newPerms = newPerms.filter(p => !permissions.includes(p));
+			} else {
+				// Select all - add wildcard if exists, otherwise add all individual permissions
+				if (wildcardPerm) {
+					// Remove individual perms, add wildcard
+					newPerms = newPerms.filter(p => !nonWildcard.includes(p));
+					if (!newPerms.includes(wildcardPerm)) newPerms.push(wildcardPerm);
+				} else {
+					// Add all non-wildcard permissions
+					nonWildcard.forEach(p => {
+						if (!newPerms.includes(p)) newPerms.push(p);
+					});
+				}
+			}
+			return { ...prev, customPermissions: newPerms };
+		});
+	};
+
+	// Toggle all permissions in a module (for edit)
+	const toggleModuleAllEdit = (moduleName: string, permissions: string[], isCurrentlyAll: boolean) => {
+		const wildcardPerm = permissions.find(p => p.endsWith(":*"));
+		const nonWildcard = getNonWildcardPermissions(permissions);
+
+		setEditFormData(prev => {
+			let newPerms = [...prev.customPermissions];
+
+			if (isCurrentlyAll) {
+				// Unselect all in module
+				newPerms = newPerms.filter(p => !permissions.includes(p));
+			} else {
+				// Select all - add wildcard if exists
+				if (wildcardPerm) {
+					newPerms = newPerms.filter(p => !nonWildcard.includes(p));
+					if (!newPerms.includes(wildcardPerm)) newPerms.push(wildcardPerm);
+				} else {
+					nonWildcard.forEach(p => {
+						if (!newPerms.includes(p)) newPerms.push(p);
+					});
+				}
+			}
+			return { ...prev, customPermissions: newPerms };
+		});
 	};
 
 	// Apply template (for create)
@@ -155,15 +231,15 @@ export default function UsersManagementPage() {
 			let newCustomPermissions = prev.customPermissions;
 
 			if (value === "CUSTOM") {
-				// Populate with default permissions for the role
-				const baseTemplate = prev.userType === "admin" ? "PLATFORM_ADMIN"
-					: prev.userType === "logistic" ? "LOGISTICS_STAFF"
-						: "CLIENT_USER";
-				const templatePerms = PERMISSION_TEMPLATES[baseTemplate as PermissionTemplate].permissions;
-				newCustomPermissions = resolvePermissions(templatePerms);
+				// Populate with all permissions for the role (all selected by default)
+				newCustomPermissions = getAllPermissionsForRole(prev.userType);
 			} else if (value !== "") {
-				// Load template permissions
-				newCustomPermissions = PERMISSION_TEMPLATES[value as PermissionTemplate]?.permissions || [];
+				// Load template permissions (wildcards for each module)
+				const groups = getPermissionGroupsForRole(prev.userType);
+				const wildcards = Object.values(groups)
+					.map(perms => perms.find(p => p.endsWith(":*")))
+					.filter(Boolean) as string[];
+				newCustomPermissions = wildcards;
 			}
 
 			return {
@@ -178,20 +254,19 @@ export default function UsersManagementPage() {
 	const handleTemplateChangeEdit = (value: string) => {
 		setEditFormData(prev => {
 			let newCustomPermissions = prev.customPermissions;
+			const role = editingUser?.role;
+			const userType = role === "ADMIN" ? "admin" : role === "LOGISTICS" ? "logistic" : "client";
 
 			if (value === "CUSTOM") {
-				// Populate with default permissions for the role
-				const role = editingUser?.role;
-				const baseTemplate = role === "ADMIN" ? "PLATFORM_ADMIN"
-					: role === "LOGISTICS" ? "LOGISTICS_STAFF"
-						: "CLIENT_USER";
-
-				// Handle case where role might match multiple or mapped differently if needed, but for now simple map
-				const templatePerms = PERMISSION_TEMPLATES[baseTemplate as PermissionTemplate]?.permissions || [];
-				newCustomPermissions = resolvePermissions(templatePerms);
+				// Populate with all permissions for the role (all selected by default)
+				newCustomPermissions = getAllPermissionsForRole(userType);
 			} else if (value !== "") {
-				// Load template permissions
-				newCustomPermissions = PERMISSION_TEMPLATES[value as PermissionTemplate]?.permissions || [];
+				// Load template permissions (wildcards for each module)
+				const groups = getPermissionGroupsForRole(userType);
+				const wildcards = Object.values(groups)
+					.map(perms => perms.find(p => p.endsWith(":*")))
+					.filter(Boolean) as string[];
+				newCustomPermissions = wildcards;
 			}
 
 			return {
@@ -566,113 +641,147 @@ export default function UsersManagementPage() {
 
 									{newUser.userType && (
 										<>
-											<Separator />
-											{/* Permission Configuration Section */}
-											<div className="space-y-4">
-												<h3 className="font-semibold text-sm font-mono uppercase flex items-center gap-2">
-													<Filter className="h-4 w-4" />
-													Permission Configuration
-												</h3>
+											{/* Permission Configuration Section - Only for ADMIN and LOGISTICS */}
+											{(newUser.userType === "admin" || newUser.userType === "logistic") && (
+												<div className="space-y-4">
+													<h3 className="font-semibold text-sm font-mono uppercase flex items-center gap-2">
+														<Filter className="h-4 w-4" />
+														Permission Configuration
+													</h3>
 
-												<div>
-													<Label htmlFor="template" className="font-mono uppercase text-xs">
-														Permission Template *
-													</Label>
-													<Select
-														key={newUser.userType}
-														value={newUser.permissionTemplate}
-														onValueChange={handleTemplateChange}
-													>
-														<SelectTrigger className="font-mono">
-															<SelectValue placeholder="Select template or custom" />
-														</SelectTrigger>
-														<SelectContent>
-															{newUser.userType === "admin" && (
-																<SelectItem value="PLATFORM_ADMIN">
-																	Platform Admin (Full Platform Access)
+													<div>
+														<Label htmlFor="template" className="font-mono uppercase text-xs">
+															Permission Template *
+														</Label>
+														<Select
+															key={newUser.userType}
+															value={newUser.permissionTemplate}
+															onValueChange={handleTemplateChange}
+														>
+															<SelectTrigger className="font-mono">
+																<SelectValue placeholder="Select template or custom" />
+															</SelectTrigger>
+															<SelectContent>
+																{newUser.userType === "admin" && (
+																	<SelectItem value="PLATFORM_ADMIN">
+																		Admin Template (Full Access with ★)
+																	</SelectItem>
+																)}
+																{newUser.userType === "logistic" && (
+																	<SelectItem value="LOGISTICS_STAFF">
+																		Logistics Template (Operations Access with ★)
+																	</SelectItem>
+																)}
+																<SelectItem value="CUSTOM">
+																	Custom (Select Individual Permissions)
 																</SelectItem>
-															)}
-															{newUser.userType === "logistic" && (
-																<SelectItem value="LOGISTICS_STAFF">
-																	Logistics Staff (Inventory & Fulfillment)
-																</SelectItem>
-															)}
-															{newUser.userType === "client" && (
-																<SelectItem value="CLIENT_USER">
-																	Client User (Catalog & Ordering)
-																</SelectItem>
-															)}
-															<SelectItem value="CUSTOM">
-																Custom (Select Individual Permissions)
-															</SelectItem>
-														</SelectContent>
-													</Select>
-												</div>
+															</SelectContent>
+														</Select>
+													</div>
 
-												{/* Custom Permissions Selector - Only show for CUSTOM */}
-												{newUser.permissionTemplate === "CUSTOM" && (
-													<div className="space-y-4 border border-border rounded-lg p-4 bg-muted/30">
-														<div className="flex items-center justify-between">
-															<Label className="font-mono uppercase text-xs">
-																Select Individual Permissions *
-															</Label>
-															<Badge variant="outline" className="font-mono text-xs">
-																{newUser.customPermissions.length} selected
-															</Badge>
-														</div>
+													{/* Custom Permissions Selector - Only show for CUSTOM */}
+													{newUser.permissionTemplate === "CUSTOM" && (
+														<div className="space-y-4 border border-border rounded-lg p-4 bg-muted/30">
+															<div className="flex items-center justify-between">
+																<Label className="font-mono uppercase text-xs">
+																	Select Permissions by Module
+																</Label>
+																<Badge variant="outline" className="font-mono text-xs">
+																	{newUser.customPermissions.length} selected
+																</Badge>
+															</div>
 
-														<ScrollArea className="h-[300px] pr-4">
-															<div className="space-y-4">
-																{Object.entries(PERMISSION_GROUPS).map(([category, permissions]) => {
-																	// Filter permissions based on user role's base template
-																	const baseTemplate = newUser.userType === "admin" ? "PLATFORM_ADMIN"
-																		: newUser.userType === "logistic" ? "LOGISTICS_STAFF"
-																			: "CLIENT_USER";
+															<ScrollArea className="h-[300px] pr-4">
+																<div className="space-y-4">
+																	{Object.entries(getPermissionGroupsForRole(newUser.userType)).map(([moduleName, permissions]) => {
+																		const nonWildcard = getNonWildcardPermissions(permissions);
+																		const isAllSelected = isModuleAllSelected(moduleName, permissions, newUser.customPermissions);
+																		const wildcardPerm = permissions.find(p => p.endsWith(":*"));
 
-																	const allowedPermissions = PERMISSION_TEMPLATES[baseTemplate as PermissionTemplate].permissions;
-
-																	// Only show permissions available in the base template
-																	const availablePermissions = permissions.filter(p => allowedPermissions.includes(p) || allowedPermissions.includes("*") || allowedPermissions.some(ap => ap.endsWith("*") && p.startsWith(ap.replace("*", ""))));
-
-																	if (availablePermissions.length === 0) return null;
-
-																	return (
-																		<div key={category} className="space-y-2">
-																			<h4 className="font-mono text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-																				{category}
-																			</h4>
-																			<div className="grid grid-cols-2 gap-2 ml-2">
-																				{availablePermissions.map(permission => (
-																					<div key={permission} className="flex items-center space-x-2">
+																		return (
+																			<div key={moduleName} className="space-y-2 border-b border-border pb-3 last:border-0">
+																				{/* Module header with "All" checkbox */}
+																				<div className="flex items-center justify-between">
+																					<h4 className="font-mono text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+																						{moduleName}
+																						{isAllSelected && wildcardPerm && (
+																							<span className="text-primary">★</span>
+																						)}
+																					</h4>
+																					<div className="flex items-center gap-2">
 																						<Checkbox
-																							id={permission}
-																							checked={newUser.customPermissions.includes(permission)}
-																							onCheckedChange={() => togglePermission(permission)}
+																							id={`all-${moduleName}`}
+																							checked={isAllSelected}
+																							onCheckedChange={() => toggleModuleAll(moduleName, permissions, isAllSelected)}
 																						/>
 																						<Label
-																							htmlFor={permission}
-																							className="text-xs font-mono cursor-pointer"
+																							htmlFor={`all-${moduleName}`}
+																							className="text-xs font-mono cursor-pointer text-primary"
 																						>
-																							{permission}
+																							All
 																						</Label>
 																					</div>
-																				))}
+																				</div>
+																				{/* Individual permissions */}
+																				<div className="grid grid-cols-2 gap-2 ml-2">
+																					{nonWildcard.map(permission => (
+																						<div key={permission} className="flex items-center space-x-2">
+																							<Checkbox
+																								id={permission}
+																								checked={newUser.customPermissions.includes(permission) || (wildcardPerm && newUser.customPermissions.includes(wildcardPerm))}
+																								onCheckedChange={() => togglePermission(permission)}
+																								disabled={wildcardPerm && newUser.customPermissions.includes(wildcardPerm)}
+																							/>
+																							<Label
+																								htmlFor={permission}
+																								className={cn(
+																									"text-xs font-mono cursor-pointer",
+																									wildcardPerm && newUser.customPermissions.includes(wildcardPerm) && "text-muted-foreground"
+																								)}
+																							>
+																								{permission.split(":")[1]}
+																							</Label>
+																						</div>
+																					))}
+																				</div>
 																			</div>
-																		</div>
-																	);
-																})}
-															</div>
-														</ScrollArea>
+																		);
+																	})}
+																</div>
+															</ScrollArea>
 
-														{newUser.customPermissions.length === 0 && (
-															<div className="flex items-center gap-2 text-amber-600 text-xs font-mono">
-																<AlertCircle className="h-4 w-4" />
-																No permissions selected - user won't be able to access anything
-															</div>
-														)}
-													</div>
-												)}
-											</div>
+															{newUser.customPermissions.length === 0 && (
+																<div className="flex items-center gap-2 text-amber-600 text-xs font-mono">
+																	<AlertCircle className="h-4 w-4" />
+																	No permissions selected - user won't be able to access anything
+																</div>
+															)}
+														</div>
+													)}
+
+													{/* Template Preview - for non-custom */}
+													{newUser.permissionTemplate && newUser.permissionTemplate !== "CUSTOM" && (
+														<div className="bg-muted/50 rounded-lg p-3 border border-border">
+															<p className="text-xs font-mono text-muted-foreground">
+																<span className="text-primary">★</span> Template includes full access (wildcard) for all modules
+															</p>
+														</div>
+													)}
+												</div>
+											)}
+
+											{/* CLIENT user - No permissions needed */}
+											{newUser.userType === "client" && (
+												<div className="bg-muted/50 rounded-lg p-4 border border-border">
+													<h3 className="font-semibold text-sm font-mono uppercase flex items-center gap-2 mb-2">
+														<Filter className="h-4 w-4" />
+														Permission Configuration
+													</h3>
+													<p className="text-xs font-mono text-muted-foreground">
+														Client users have a fixed set of permissions for catalog browsing and ordering. No additional configuration needed.
+													</p>
+												</div>
+											)}
 
 
 											{/* Separator between sections */}
@@ -866,110 +975,148 @@ export default function UsersManagementPage() {
 
 									<Separator />
 
-									{/* Permission Template */}
-									<div className="space-y-4">
-										<h3 className="font-semibold text-sm font-mono uppercase flex items-center gap-2">
-											<Filter className="h-4 w-4" />
-											Permission Configuration
-										</h3>
+									{/* Permission Template - Only for ADMIN/LOGISTICS */}
+									{(editingUser?.role === "ADMIN" || editingUser?.role === "LOGISTICS") && (
+										<div className="space-y-4">
+											<h3 className="font-semibold text-sm font-mono uppercase flex items-center gap-2">
+												<Filter className="h-4 w-4" />
+												Permission Configuration
+											</h3>
 
-										<div>
-											<Label htmlFor="edit-template" className="font-mono uppercase text-xs">
-												Permission Template *
-											</Label>
-											<Select
-												value={editFormData.permissionTemplate}
-												onValueChange={handleTemplateChangeEdit}
-											>
-												<SelectTrigger className="font-mono">
-													<SelectValue placeholder="Select template or custom" />
-												</SelectTrigger>
-												<SelectContent>
-													<SelectItem value="PLATFORM_ADMIN">
-														Platform Admin (Full Platform Access)
-													</SelectItem>
-													<SelectItem value="LOGISTICS_STAFF">
-														Logistics Staff (Inventory & Fulfillment)
-													</SelectItem>
-													<SelectItem value="CLIENT_USER">
-														Client User (Catalog & Ordering)
-													</SelectItem>
-													<SelectItem value="CUSTOM">
-														Custom (Select Individual Permissions)
-													</SelectItem>
-												</SelectContent>
-											</Select>
-										</div>
+											<div>
+												<Label htmlFor="edit-template" className="font-mono uppercase text-xs">
+													Permission Template *
+												</Label>
+												<Select
+													value={editFormData.permissionTemplate}
+													onValueChange={handleTemplateChangeEdit}
+												>
+													<SelectTrigger className="font-mono">
+														<SelectValue placeholder="Select template or custom" />
+													</SelectTrigger>
+													<SelectContent>
+														{editingUser?.role === "ADMIN" && (
+															<SelectItem value="PLATFORM_ADMIN">
+																Admin Template (Full Access with ★)
+															</SelectItem>
+														)}
+														{editingUser?.role === "LOGISTICS" && (
+															<SelectItem value="LOGISTICS_STAFF">
+																Logistics Template (Operations Access with ★)
+															</SelectItem>
+														)}
+														<SelectItem value="CUSTOM">
+															Custom (Select Individual Permissions)
+														</SelectItem>
+													</SelectContent>
+												</Select>
+											</div>
 
-										{/* Show template preview */}
+											{/* Custom Permissions Selector */}
+											{editFormData.permissionTemplate === "CUSTOM" && (
+												<div className="space-y-4 border border-border rounded-lg p-4 bg-muted/30">
+													<div className="flex items-center justify-between">
+														<Label className="font-mono uppercase text-xs">
+															Select Permissions by Module
+														</Label>
+														<Badge variant="outline" className="font-mono text-xs">
+															{editFormData.customPermissions.length} selected
+														</Badge>
+													</div>
 
+													<ScrollArea className="h-[300px] pr-4">
+														<div className="space-y-4">
+															{Object.entries(getPermissionGroupsForRole(
+																editingUser?.role === "ADMIN" ? "admin" : "logistic"
+															)).map(([moduleName, permissions]) => {
+																const nonWildcard = getNonWildcardPermissions(permissions);
+																const isAllSelected = isModuleAllSelected(moduleName, permissions, editFormData.customPermissions);
+																const wildcardPerm = permissions.find(p => p.endsWith(":*"));
 
-
-										{/* Custom Permissions Selector */}
-										{editFormData.permissionTemplate === "CUSTOM" && (
-											<div className="space-y-4 border border-border rounded-lg p-4 bg-muted/30">
-												<div className="flex items-center justify-between">
-													<Label className="font-mono uppercase text-xs">
-														Select Individual Permissions *
-													</Label>
-													<Badge variant="outline" className="font-mono text-xs">
-														{editFormData.customPermissions.length} selected
-													</Badge>
-												</div>
-
-												<ScrollArea className="h-[300px] pr-4">
-													<div className="space-y-4">
-														{Object.entries(PERMISSION_GROUPS).map(([category, permissions]) => {
-															// Filter permissions based on user role
-															const baseTemplate = editingUser?.role === "ADMIN" ? "PLATFORM_ADMIN"
-																: editingUser?.role === "LOGISTICS" ? "LOGISTICS_STAFF"
-																	: "CLIENT_USER";
-
-															// Safe check if template exists
-															const allowedPermissions = PERMISSION_TEMPLATES[baseTemplate as PermissionTemplate]?.permissions || [];
-
-															// Only show permissions available in the base template
-															const availablePermissions = permissions.filter(p => allowedPermissions.includes(p) || allowedPermissions.includes("*") || allowedPermissions.some(ap => ap.endsWith("*") && p.startsWith(ap.replace("*", ""))));
-
-															if (availablePermissions.length === 0) return null;
-
-															return (
-																<div key={category} className="space-y-2">
-																	<h4 className="font-mono text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-																		{category}
-																	</h4>
-																	<div className="grid grid-cols-2 gap-2 ml-2">
-																		{availablePermissions.map(permission => (
-																			<div key={permission} className="flex items-center space-x-2">
+																return (
+																	<div key={moduleName} className="space-y-2 border-b border-border pb-3 last:border-0">
+																		{/* Module header with "All" checkbox */}
+																		<div className="flex items-center justify-between">
+																			<h4 className="font-mono text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+																				{moduleName}
+																				{isAllSelected && wildcardPerm && (
+																					<span className="text-primary">★</span>
+																				)}
+																			</h4>
+																			<div className="flex items-center gap-2">
 																				<Checkbox
-																					id={`edit-${permission}`}
-																					checked={editFormData.customPermissions.includes(permission)}
-																					onCheckedChange={() => togglePermissionEdit(permission)}
+																					id={`edit-all-${moduleName}`}
+																					checked={isAllSelected}
+																					onCheckedChange={() => toggleModuleAllEdit(moduleName, permissions, isAllSelected)}
 																				/>
 																				<Label
-																					htmlFor={`edit-${permission}`}
-																					className="text-xs font-mono cursor-pointer"
+																					htmlFor={`edit-all-${moduleName}`}
+																					className="text-xs font-mono cursor-pointer text-primary"
 																				>
-																					{permission}
+																					All
 																				</Label>
 																			</div>
-																		))}
+																		</div>
+																		{/* Individual permissions */}
+																		<div className="grid grid-cols-2 gap-2 ml-2">
+																			{nonWildcard.map(permission => (
+																				<div key={permission} className="flex items-center space-x-2">
+																					<Checkbox
+																						id={`edit-${permission}`}
+																						checked={editFormData.customPermissions.includes(permission) || (wildcardPerm && editFormData.customPermissions.includes(wildcardPerm))}
+																						onCheckedChange={() => togglePermissionEdit(permission)}
+																						disabled={wildcardPerm && editFormData.customPermissions.includes(wildcardPerm)}
+																					/>
+																					<Label
+																						htmlFor={`edit-${permission}`}
+																						className={cn(
+																							"text-xs font-mono cursor-pointer",
+																							wildcardPerm && editFormData.customPermissions.includes(wildcardPerm) && "text-muted-foreground"
+																						)}
+																					>
+																						{permission.split(":")[1]}
+																					</Label>
+																				</div>
+																			))}
+																		</div>
 																	</div>
-																</div>
-															);
-														})}
-													</div>
-												</ScrollArea>
+																);
+															})}
+														</div>
+													</ScrollArea>
 
-												{editFormData.customPermissions.length === 0 && (
-													<div className="flex items-center gap-2 text-amber-600 text-xs font-mono">
-														<AlertCircle className="h-4 w-4" />
-														No permissions selected - user won't be able to access anything
-													</div>
-												)}
-											</div>
-										)}
-									</div>
+													{editFormData.customPermissions.length === 0 && (
+														<div className="flex items-center gap-2 text-amber-600 text-xs font-mono">
+															<AlertCircle className="h-4 w-4" />
+															No permissions selected - user won't be able to access anything
+														</div>
+													)}
+												</div>
+											)}
+
+											{/* Template Preview - for non-custom */}
+											{editFormData.permissionTemplate && editFormData.permissionTemplate !== "CUSTOM" && (
+												<div className="bg-muted/50 rounded-lg p-3 border border-border">
+													<p className="text-xs font-mono text-muted-foreground">
+														<span className="text-primary">★</span> Template includes full access (wildcard) for all modules
+													</p>
+												</div>
+											)}
+										</div>
+									)}
+
+									{/* CLIENT user - No permissions needed */}
+									{editingUser?.role === "CLIENT" && (
+										<div className="bg-muted/50 rounded-lg p-4 border border-border">
+											<h3 className="font-semibold text-sm font-mono uppercase flex items-center gap-2 mb-2">
+												<Filter className="h-4 w-4" />
+												Permission Configuration
+											</h3>
+											<p className="text-xs font-mono text-muted-foreground">
+												Client users have a fixed set of permissions for catalog browsing and ordering. No additional configuration needed.
+											</p>
+										</div>
+									)}
 
 									<Separator />
 

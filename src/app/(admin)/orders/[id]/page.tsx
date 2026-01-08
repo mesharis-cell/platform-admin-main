@@ -377,7 +377,13 @@ export default function AdminOrderDetailPage({
 									<DialogTrigger asChild>
 										<Button
 											size='sm'
-											className='gap-2 font-mono text-xs'
+											className='gap-2 font-mono text-xs disabled:pointer-events-auto disabled:cursor-not-allowed'
+											disabled={
+												progressLoading ||
+												order.data.order_status === 'IN_PREPARATION' ||
+												order.data.order_status === 'AWAITING_RETURN' ||
+												order.data.order_status === 'QUOTED'
+											}
 										>
 											<PlayCircle className='h-3.5 w-3.5' />
 											PROGRESS
@@ -450,7 +456,7 @@ export default function AdminOrderDetailPage({
 											</Button>
 											<Button
 												onClick={handleStatusProgression}
-												disabled={!selectedNextStatus || progressLoading}
+												disabled={!selectedNextStatus || progressLoading || order.data.order_status === 'IN_PREPARATION' || order.data.order_status === 'AWAITING_RETURN'}
 												className='font-mono text-xs'
 											>
 												{progressLoading ? (
