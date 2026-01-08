@@ -1384,34 +1384,45 @@ export default function AdminOrderDetailPage({
 							</CardHeader>
 							<CardContent className='space-y-2'>
 								{order?.data?.items?.map((item: any) => (
-									<div
-										key={item.id}
-										className='p-3 bg-muted/30 rounded border'
-									>
-										<p className='font-mono text-sm font-medium'>
-											{item.asset?.name}
-										</p>
-										<p className='font-mono text-xs text-muted-foreground mt-1'>
-											QTY: {item?.order_item?.quantity} | VOL:{' '}
-											{item?.order_item?.total_volume}m³ | WT:{' '}
-											{item?.order_item?.total_weight}kg
-										</p>
-										{item?.order_item?.handling_tags?.length > 0 && (
-											<div className='flex gap-1 mt-2'>
-												{item?.order_item?.handling_tags.map(
-													(tag: string) => (
-														<Badge
-															key={tag}
-															variant='outline'
-															className='text-[10px] font-mono bg-amber-500/10 border-amber-500/20'
-														>
-															{tag}
-														</Badge>
-													)
+									<Link className='block' key={item.id} href={`/assets/${item.asset?.id}`}>
+										<div className='flex items-center justify-between gap-2 bg-muted/30 rounded border border-border p-3 group'>
+											<div
+												className='flex-1'
+											>
+												<p className='font-mono text-sm font-medium'>
+													{item.asset?.name}
+												</p>
+												<p className='font-mono text-xs text-muted-foreground mt-1'>
+													QTY: {item?.order_item?.quantity} | VOL:{' '}
+													{item?.order_item?.total_volume}m³ | WT:{' '}
+													{item?.order_item?.total_weight}kg
+												</p>
+												{item?.order_item?.handling_tags?.length > 0 && (
+													<div className='flex gap-1 mt-2'>
+														{item?.order_item?.handling_tags.map(
+															(tag: string) => (
+																<Badge
+																	key={tag}
+																	variant='outline'
+																	className='text-[10px] font-mono bg-amber-500/10 border-amber-500/20'
+																>
+																	{tag}
+																</Badge>
+															)
+														)}
+													</div>
 												)}
 											</div>
-										)}
-									</div>
+
+											<Button
+												variant="ghost"
+												size="sm"
+												className="opacity-0 group-hover:opacity-100 transition-opacity"
+											>
+												View Details
+											</Button>
+										</div>
+									</Link>
 								))}
 							</CardContent>
 						</Card>

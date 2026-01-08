@@ -337,7 +337,7 @@ export interface ConfirmPaymentResponse {
 // Invoice list params
 export interface InvoiceListParams {
 	company?: string
-	isPaid?: boolean
+	isPaid?: string;
 	dateFrom?: string // ISO date
 	dateTo?: string // ISO date
 	page?: number

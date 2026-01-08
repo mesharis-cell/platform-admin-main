@@ -63,7 +63,7 @@ export default function InvoicesPage() {
 	const { data: invoicesData, isLoading } = useInvoices({
 		...filters,
 		company: selectedCompany || undefined,
-		isPaid: paymentStatus === 'paid' ? true : paymentStatus === 'unpaid' ? false : undefined,
+		isPaid: paymentStatus,
 	});
 	const confirmPayment = useConfirmPayment();
 	const downloadInvoice = useDownloadInvoice();
@@ -72,7 +72,7 @@ export default function InvoicesPage() {
 		setFilters((prev) => ({
 			...prev,
 			company: selectedCompany || undefined,
-			isPaid: paymentStatus === 'paid' ? true : paymentStatus === 'unpaid' ? false : undefined,
+			isPaid: paymentStatus,
 			page: 1,
 		}));
 	};
