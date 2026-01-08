@@ -33,7 +33,6 @@ import {
 	Box,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useSession } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -150,7 +149,6 @@ const navigation: NavItem[] = [
 function AdminSidebarContent() {
 	const pathname = usePathname()
 	const router = useRouter()
-	const { data: session, isPending } = useSession()
 	const { state } = useSidebar()
 	const { logout, user } = useToken()
 	const { platform } = usePlatform()
@@ -196,93 +194,78 @@ function AdminSidebarContent() {
 
 			<SidebarContent className='p-3 space-y-0.5 overflow-y-auto bg-background'>
 				<SidebarMenu>
-					{isPending ? (
-						// Loading skeletons
-						<>
-							{[...Array(8)].map((_, i) => (
-								<SidebarMenuItem key={i}>
-									<div className='flex items-center gap-3 px-3 py-2.5'>
-										<Skeleton className='h-4 w-4 rounded' />
+					{navigation.map(item => {
+						const Icon = item.icon
+						// Find the most specific matching route
+						const matchingRoutes = navigation.filter(
+							navItem =>
+								pathname === navItem.href ||
+								pathname.startsWith(navItem.href + '/')
+						)
+						// Highlight only the longest matching route (most specific)
+						const mostSpecificRoute = matchingRoutes.reduce(
+							(longest, current) =>
+								current.href.length > longest.href.length
+									? current
+									: longest,
+							matchingRoutes[0]
+						)
+						const isActive =
+							mostSpecificRoute?.href === item.href
+						return (
+							<SidebarMenuItem key={item.name}>
+								<SidebarMenuButton
+									asChild
+									isActive={isActive}
+									tooltip={
+										isCollapsed ? item.name : undefined
+									}
+									className={cn(
+										'group/nav-item flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-mono transition-all relative overflow-hidden',
+										isActive
+											? 'bg-primary text-primary-foreground font-semibold shadow-sm'
+											: 'text-foreground/70 hover:text-foreground hover:bg-muted'
+									)}
+								>
+									<Link href={item.href}>
+										{/* Active indicator bar */}
+										{isActive && (
+											<div className='absolute left-0 top-0 bottom-0 w-1 bg-primary-foreground/30' />
+										)}
+
+										<Icon className='h-4 w-4 relative z-10 shrink-0' />
 										{!isCollapsed && (
-											<Skeleton className='h-3.5 flex-1' />
+											<>
+												<span className='flex-1 relative z-10 uppercase tracking-wide text-xs'>
+													{item.name}
+												</span>
+
+												{'badge' in item &&
+													item.badge && (
+														<span
+															className={cn(
+																'px-1.5 py-0.5 text-[10px] font-mono rounded uppercase tracking-wider relative z-10 shrink-0',
+																isActive
+																	? 'bg-primary-foreground/20 text-primary-foreground'
+																	: 'bg-primary/10 text-primary border border-primary/20'
+															)}
+														>
+															{item.badge}
+														</span>
+													)}
+											</>
 										)}
-									</div>
-								</SidebarMenuItem>
-							))}
-						</>
-					) : (
-						navigation.map(item => {
-							const Icon = item.icon
-							// Find the most specific matching route
-							const matchingRoutes = navigation.filter(
-								navItem =>
-									pathname === navItem.href ||
-									pathname.startsWith(navItem.href + '/')
-							)
-							// Highlight only the longest matching route (most specific)
-							const mostSpecificRoute = matchingRoutes.reduce(
-								(longest, current) =>
-									current.href.length > longest.href.length
-										? current
-										: longest,
-								matchingRoutes[0]
-							)
-							const isActive =
-								mostSpecificRoute?.href === item.href
-							return (
-								<SidebarMenuItem key={item.name}>
-									<SidebarMenuButton
-										asChild
-										isActive={isActive}
-										tooltip={
-											isCollapsed ? item.name : undefined
-										}
-										className={cn(
-											'group/nav-item flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-mono transition-all relative overflow-hidden',
-											isActive
-												? 'bg-primary text-primary-foreground font-semibold shadow-sm'
-												: 'text-foreground/70 hover:text-foreground hover:bg-muted'
+
+										{/* Hover glow effect */}
+										{!isActive && (
+											<div className='absolute inset-0 bg-primary/0 group-hover/nav-item:bg-primary/5 transition-colors' />
 										)}
-									>
-										<Link href={item.href}>
-											{/* Active indicator bar */}
-											{isActive && (
-												<div className='absolute left-0 top-0 bottom-0 w-1 bg-primary-foreground/30' />
-											)}
-
-											<Icon className='h-4 w-4 relative z-10 shrink-0' />
-											{!isCollapsed && (
-												<>
-													<span className='flex-1 relative z-10 uppercase tracking-wide text-xs'>
-														{item.name}
-													</span>
-
-													{'badge' in item &&
-														item.badge && (
-															<span
-																className={cn(
-																	'px-1.5 py-0.5 text-[10px] font-mono rounded uppercase tracking-wider relative z-10 shrink-0',
-																	isActive
-																		? 'bg-primary-foreground/20 text-primary-foreground'
-																		: 'bg-primary/10 text-primary border border-primary/20'
-																)}
-															>
-																{item.badge}
-															</span>
-														)}
-												</>
-											)}
-
-											{/* Hover glow effect */}
-											{!isActive && (
-												<div className='absolute inset-0 bg-primary/0 group-hover/nav-item:bg-primary/5 transition-colors' />
-											)}
-										</Link>
-									</SidebarMenuButton>
-								</SidebarMenuItem>
-							)
-						})
-					)}
+									</Link>
+								</SidebarMenuButton>
+							</SidebarMenuItem>
+						)
+					})
+					}
 				</SidebarMenu>
 			</SidebarContent>
 
