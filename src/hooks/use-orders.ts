@@ -16,6 +16,7 @@ import type {
 	SubmitOrderResponse,
 } from '@/types/order'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { invoiceKeys } from './use-invoices'
 
 // ============================================================
 // Order Submission
@@ -210,6 +211,29 @@ export function useAdminOrderStatusHistory(orderId: string | null) {
 			}
 		},
 		enabled: !!orderId,
+	})
+}
+
+export function useSendInvoice() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async (orderId: string) => {
+			try {
+				const response = await apiClient.patch(`/client/v1/order/${orderId}/send-invoice`)
+				return response.data
+			} catch (error) {
+				throwApiError(error)
+			}
+		},
+		onSuccess: (data, variables) => {
+			// Invalidate invoice queries
+			queryClient.invalidateQueries({ queryKey: invoiceKeys.detail(variables) });
+			queryClient.invalidateQueries({ queryKey: invoiceKeys.lists() });
+
+			// Invalidate order queries (status changed to PAID)
+			queryClient.invalidateQueries({ queryKey: ['orders'] });
+		},
 	})
 }
 

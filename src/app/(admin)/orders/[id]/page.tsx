@@ -46,18 +46,14 @@ import {
 	Save,
 	X,
 	Boxes,
-	ChevronRight,
 	Truck,
 	PlayCircle,
 	AlertCircle,
 	ScanLine,
-	DollarSign,
 	CheckCircle,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { DateTimePicker } from '@/components/ui/datetime-picker'
-import { hasPermission } from '@/lib/auth/permissions'
-import { useSession } from '@/lib/auth'
 import { apiClient } from '@/lib/api/api-client'
 
 // Status configuration with next states for state machine (Feedback #1: Updated for new flow)

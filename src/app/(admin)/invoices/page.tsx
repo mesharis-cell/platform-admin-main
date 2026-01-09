@@ -20,6 +20,7 @@ import {
 	AlertCircle,
 	TrendingUp,
 	Receipt,
+	Send,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -35,6 +36,7 @@ import { toast } from 'sonner';
 import { InvoiceListParams } from '@/types/order';
 import { AdminHeader } from '@/components/admin-header';
 import { usePlatform } from '@/contexts/platform-context';
+import { useSendInvoice } from '@/hooks/use-orders';
 
 export default function InvoicesPage() {
 	// Filters
@@ -47,6 +49,7 @@ export default function InvoicesPage() {
 
 	const [selectedCompany, setSelectedCompany] = useState<string>('');
 	const [paymentStatus, setPaymentStatus] = useState<string>('all');
+	const [sentInvoice, setSentInvoice] = useState<boolean>(false);
 	const { platform } = usePlatform();
 
 	// Modals
@@ -66,6 +69,7 @@ export default function InvoicesPage() {
 	});
 	const confirmPayment = useConfirmPayment();
 	const downloadInvoice = useDownloadInvoice();
+	const { mutateAsync: sendInvoice, isPending: isSendingInvoice } = useSendInvoice();
 
 	const handleApplyFilters = () => {
 		setFilters((prev) => ({
@@ -136,6 +140,19 @@ export default function InvoicesPage() {
 			URL.revokeObjectURL(url);
 		} catch (error: any) {
 			toast.error(error.message || 'Failed to download Invoice');
+		}
+	}
+
+	const handleSendInvoice = async () => {
+		if (!selectedInvoice) return
+
+		try {
+			await sendInvoice(selectedInvoice.order.id);
+			toast.success('Invoice sent successfully');
+			setSentInvoice(false);
+			setSelectedInvoice(null);
+		} catch (error: any) {
+			toast.error(error.message || 'Failed to send Invoice');
 		}
 	}
 
@@ -318,15 +335,20 @@ export default function InvoicesPage() {
 																Order: {invoice?.order?.order_id}
 															</div>
 														</div>
-														{invoice.invoice_paid_at ? (
+														{invoice?.order?.financial_status === 'PAID' ? (
 															<Badge className="bg-green-500/10 text-green-600 border-green-500/30 font-mono">
 																<CheckCircle2 className="w-3 h-3 mr-1" />
 																PAID
 															</Badge>
-														) : (
+														) : invoice?.order?.financial_status === 'INVOICED' ? (
 															<Badge className="bg-amber-500/10 text-amber-600 border-amber-500/30 font-mono">
 																<Clock className="w-3 h-3 mr-1" />
-																PENDING
+																INVOICE SENT
+															</Badge>
+														) : (
+															<Badge className="bg-red-500/10 text-red-600 border-red-500/30 font-mono">
+																<Clock className="w-3 h-3 mr-1" />
+																PENDING INVOICE
 															</Badge>
 														)}
 													</div>
@@ -394,7 +416,21 @@ export default function InvoicesPage() {
 															<Download className="w-4 h-4" />
 														</Button>
 
-														{!invoice.invoice_paid_at && (
+														{invoice.order.financial_status === "PENDING_INVOICE" && (
+															<Button
+																onClick={() => {
+																	setSentInvoice(true)
+																	setSelectedInvoice(invoice)
+																}}
+																size="sm"
+																className="font-mono"
+															>
+																<Send className="w-4 h-4 mr-2" />
+																SENT INVOICE
+															</Button>
+														)}
+
+														{invoice.order.financial_status === "INVOICED" && (
 															<Button
 																onClick={() => handleOpenConfirmPayment(invoice)}
 																size="sm"
@@ -471,11 +507,11 @@ export default function InvoicesPage() {
 								<div className="grid grid-cols-2 gap-3 text-sm font-mono">
 									<div>
 										<span className="text-muted-foreground">Invoice:</span>{' '}
-										<span className="font-bold">{selectedInvoice.invoiceNumber}</span>
+										<span className="font-bold">{selectedInvoice.invoice_id}</span>
 									</div>
 									<div>
 										<span className="text-muted-foreground">Order:</span>{' '}
-										<span className="font-bold">{selectedInvoice.orderIdReadable}</span>
+										<span className="font-bold">{selectedInvoice.order.order_id}</span>
 									</div>
 									<div>
 										<span className="text-muted-foreground">Company:</span>{' '}
@@ -484,7 +520,7 @@ export default function InvoicesPage() {
 									<div>
 										<span className="text-muted-foreground">Amount:</span>{' '}
 										<span className="font-bold text-primary">
-											{parseFloat(selectedInvoice.finalTotalPrice).toFixed(2)} AED
+											{parseFloat(selectedInvoice?.order?.final_pricing?.total_price?.toFixed(2))} AED
 										</span>
 									</div>
 								</div>
@@ -558,6 +594,33 @@ export default function InvoicesPage() {
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>
+
+			{sentInvoice && (
+				<Dialog open={sentInvoice} onOpenChange={setSentInvoice}>
+					<DialogContent>
+						<DialogHeader>
+							<DialogTitle>Are you sure invoice is sent?</DialogTitle>
+						</DialogHeader>
+						<DialogFooter>
+							<Button
+								onClick={() => setSentInvoice(false)}
+								variant="outline"
+								className="font-mono"
+								disabled={isSendingInvoice}
+							>
+								CANCEL
+							</Button>
+							<Button
+								onClick={handleSendInvoice}
+								className="font-mono"
+								disabled={isSendingInvoice}
+							>
+								{isSendingInvoice ? 'YES...' : 'YES'}
+							</Button>
+						</DialogFooter>
+					</DialogContent>
+				</Dialog>
+			)}
 		</div>
 	);
 }

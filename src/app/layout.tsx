@@ -17,15 +17,15 @@ const geistMono = Geist_Mono({
 // Update this
 export const metadata: Metadata = {
 	title: {
-		default: 'Creatr',
-		template: '%s | Creatr',
+		default: 'Admin Platform',
+		template: '%s | Admin Platform',
 	},
 	description: 'A modern web application built with Next.js and TypeScript',
-	applicationName: 'Creatr',
+	applicationName: 'Admin Platform',
 	keywords: ['next.js', 'react', 'typescript', 'web application'],
-	authors: [{ name: 'Creatr Team' }],
-	creator: 'Creatr Team',
-	publisher: 'Creatr Team',
+	authors: [{ name: 'Admin Platform Team' }],
+	creator: 'Admin Platform Team',
+	publisher: 'Admin Platform Team',
 	icons: {
 		icon: [
 			{ url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
@@ -44,7 +44,7 @@ export const metadata: Metadata = {
 	appleWebApp: {
 		capable: true,
 		statusBarStyle: 'default',
-		title: 'Creatr',
+		title: 'Admin Platform',
 	},
 	formatDetection: {
 		telephone: false,
