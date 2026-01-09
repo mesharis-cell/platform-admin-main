@@ -204,10 +204,10 @@ export default function HomePage() {
 								{/* Forgot Password Link */}
 								<div className="flex justify-end">
 									<Link
-										href="/reset-password"
+										href="/forgot-password"
 										className="text-xs font-mono text-muted-foreground hover:text-primary transition-colors uppercase tracking-wider"
 									>
-										Reset Credentials →
+										Forget password →
 									</Link>
 								</div>
 
