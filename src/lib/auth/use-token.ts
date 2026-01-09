@@ -36,5 +36,15 @@ export const useToken = () => {
 		setIsAuthenticated(false);
 	}, []);
 
-	return { access_token, setAccessToken, refresh_token, setRefreshToken, isAuthenticated, loading, logout, user, setUser };
+	return { 
+		access_token, 
+		setAccessToken, 
+		refresh_token, 
+		setRefreshToken, 
+		isAuthenticated, 
+		loading, 
+		logout, 
+		user, 
+		setUser 
+	};
 };

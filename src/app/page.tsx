@@ -35,7 +35,7 @@ export default function HomePage() {
 
 			if (role === 'ADMIN') {
 				// PMG Admin goes to analytics dashboard
-				router.push('/orders');
+				router.push('/analytics');
 			} else {
 				// User is not an admin, sign out and invalidate token
 				logout();
@@ -58,7 +58,7 @@ export default function HomePage() {
 				const { access_token, refresh_token, ...user } = res.data;
 				localStorage.setItem("user", JSON.stringify(user));
 
-				router.push('/orders')
+				router.push('/analytics')
 			} else {
 				// User is not an admin, sign out and invalidate token
 				logout();
