@@ -284,34 +284,23 @@ export function useExportOrders() {
 			dateFrom?: string
 			dateTo?: string
 			search?: string
+			sortBy?: string
+			sortOrder?: 'asc' | 'desc'
 		}) => {
 			const queryParams = new URLSearchParams()
-			if (params.company) queryParams.append('company', params.company)
-			if (params.brand) queryParams.append('brand', params.brand)
-			if (params.status) queryParams.append('status', params.status)
-			if (params.dateFrom) queryParams.append('dateFrom', params.dateFrom)
-			if (params.dateTo) queryParams.append('dateTo', params.dateTo)
-			if (params.search) queryParams.append('search', params.search)
+			if (params.company) queryParams.append('company_id', params.company)
+			if (params.brand) queryParams.append('brand_id', params.brand)
+			if (params.status) queryParams.append('order_status', params.status)
+			if (params.dateFrom) queryParams.append('date_from', params.dateFrom)
+			if (params.dateTo) queryParams.append('date_to', params.dateTo)
+			if (params.search) queryParams.append('search_term', params.search)
+			if (params.sortBy) queryParams.append('sort_by', params.sortBy)
+			if (params.sortOrder) queryParams.append('sort_order', params.sortOrder)
 
-			const response = await fetch(`/api/orders/export?${queryParams}`)
-
-			if (!response.ok) {
-				const error = await response.json()
-				throw new Error(error.error || 'Failed to export orders')
-			}
-
-			// Get blob and create download link
-			const blob = await response.blob()
-			const url = window.URL.createObjectURL(blob)
-			const a = document.createElement('a')
-			a.href = url
-			a.download = `orders-export-${new Date().toISOString().split('T')[0]}.csv`
-			document.body.appendChild(a)
-			a.click()
-			document.body.removeChild(a)
-			window.URL.revokeObjectURL(url)
-
-			return true
+			const res = await apiClient.get(`/client/v1/order/export?${queryParams}`, {
+				responseType: 'blob',
+			})
+			return res.data
 		},
 	})
 }

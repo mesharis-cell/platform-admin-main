@@ -9,9 +9,11 @@ import { toast } from "sonner";
 import { Eye, EyeOff, KeyRound, Lock, RefreshCcw, ShieldCheck } from "lucide-react";
 import { useToken } from "@/lib/auth/use-token";
 import { apiClient } from "@/lib/api/api-client";
+import { useRouter } from "next/navigation";
 
 export default function ResetPasswordPage() {
-  const { access_token } = useToken();
+  const router = useRouter();
+  const { logout } = useToken();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -61,6 +63,8 @@ export default function ResetPasswordPage() {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
+      logout();
+      router.push('/');
     } catch (error) {
       toast.error("Change Failed", {
         description: error instanceof Error ? error.message : "Unable to change password.",

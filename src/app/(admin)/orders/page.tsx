@@ -28,10 +28,7 @@ const ORDER_STATUS_CONFIG = {
 	PRICING_REVIEW: { label: 'Pricing Review', color: 'bg-yellow-100 text-yellow-700 border-yellow-300' },
 	PENDING_APPROVAL: { label: 'Pending Approval', color: 'bg-orange-100 text-orange-700 border-orange-300' },
 	QUOTED: { label: 'Quoted', color: 'bg-purple-100 text-purple-700 border-purple-300' },
-	APPROVED: { label: 'Approved', color: 'bg-green-100 text-green-700 border-green-300' },
 	DECLINED: { label: 'Declined', color: 'bg-red-100 text-red-700 border-red-300' },
-	INVOICED: { label: 'Invoiced', color: 'bg-indigo-100 text-indigo-700 border-indigo-300' },
-	PAID: { label: 'Paid', color: 'bg-emerald-100 text-emerald-700 border-emerald-300' },
 	CONFIRMED: { label: 'Confirmed', color: 'bg-teal-100 text-teal-700 border-teal-300' },
 	IN_PREPARATION: { label: 'In Preparation', color: 'bg-cyan-100 text-cyan-700 border-cyan-300' },
 	READY_FOR_DELIVERY: { label: 'Ready', color: 'bg-sky-100 text-sky-700 border-sky-300' },
@@ -85,12 +82,22 @@ export default function AdminOrdersPage() {
 	// Handle export
 	const handleExport = async () => {
 		try {
-			await exportOrders.mutateAsync({
+			const csvBlob = await exportOrders.mutateAsync({
 				company: company || undefined,
 				brand: brand || undefined,
 				status: status || undefined,
 				search: search || undefined,
+				sortBy,
+				sortOrder,
 			});
+
+			const url = URL.createObjectURL(csvBlob);
+			const link = document.createElement('a');
+			link.href = url;
+			link.download = `orders-${new Date().toISOString().split('T')[0]}.csv`;
+			link.click();
+			URL.revokeObjectURL(url);
+
 			toast.success('Orders exported successfully');
 		} catch (error) {
 			toast.error('Failed to export orders');
