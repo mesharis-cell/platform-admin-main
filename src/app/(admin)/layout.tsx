@@ -31,11 +31,11 @@ import {
 	BarChart3,
 	LogOut,
 	Box,
+	Lock,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Skeleton } from '@/components/ui/skeleton'
 import {
 	Sidebar,
 	SidebarContent,
@@ -143,6 +143,11 @@ const navigation: NavItem[] = [
 		name: 'Pricing Tiers',
 		href: '/pricing-tiers',
 		icon: DollarSign,
+	},
+	{
+		name: 'Reset Password',
+		href: '/reset-password',
+		icon: Lock,
 	},
 ]
 

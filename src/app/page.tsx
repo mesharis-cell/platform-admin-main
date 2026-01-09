@@ -118,7 +118,7 @@ export default function HomePage() {
 							</div>
 							<div>
 								<h1 className="text-2xl font-bold tracking-tight font-mono uppercase">
-									{platform?.company_name || "PMG Platform"}
+									{platform?.platform_name || "PMG Platform"}
 								</h1>
 								<p className="text-xs text-muted-foreground font-mono tracking-wider">
 									Asset Fulfillment System
