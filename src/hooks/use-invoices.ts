@@ -63,8 +63,9 @@ export function useInvoices(params: InvoiceListParams = {}) {
 	const queryParams = new URLSearchParams();
 
 	if (params.company) queryParams.set('company', params.company);
-	if (params.isPaid !== undefined)
-		queryParams.set('paid_status', params.isPaid.toString());
+	if (params.isPaid && params.isPaid !== 'all') {
+		queryParams.set('paid_status', params.isPaid);
+	}
 	if (params.dateFrom) queryParams.set('date_from', params.dateFrom);
 	if (params.dateTo) queryParams.set('date_to', params.dateTo);
 	if (params.page) queryParams.set('page', params.page.toString());
@@ -149,16 +150,18 @@ export function useSendInvoiceEmail() {
  * Download invoice PDF
  */
 export function useDownloadInvoice() {
-	return useMutation({
-		mutationFn: async ({ invoiceNumber, platformId }: { invoiceNumber: string; platformId: string }) => {
-			try {
-				const response = await apiClient.get(`/client/v1/invoice/download/${invoiceNumber}?pid=${platformId}`);
-				return response.data;
-			} catch (error) {
-				throwApiError(error);
-			}
-		},
-	});
+  return useMutation({
+    mutationFn: async ({ invoiceNumber, platformId }: { invoiceNumber: string; platformId: string }) => {
+      try {
+        const response = await apiClient.get(`/client/v1/invoice/download-pdf/${invoiceNumber}?pid=${platformId}`, {
+          responseType: 'blob',
+        });
+        return response.data;
+      } catch (error) {
+        throwApiError(error);
+      }
+    },
+  });
 }
 
 /**

@@ -1,6 +1,5 @@
-import { CompanyDomain } from "./company-domains";
-
 export interface PlatformDomain {
+    platform_name: string;
     platform_id: string;
     company_id: string;
     company_name: string;

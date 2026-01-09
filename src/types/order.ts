@@ -337,7 +337,7 @@ export interface ConfirmPaymentResponse {
 // Invoice list params
 export interface InvoiceListParams {
 	company?: string
-	isPaid?: boolean
+	isPaid?: string;
 	dateFrom?: string // ISO date
 	dateTo?: string // ISO date
 	page?: number
@@ -360,6 +360,8 @@ export interface InvoiceListItem {
 		contact_name: string
 		event_start_date: string
 		venue_name: string
+		order_status: string
+		financial_status: string
 		final_pricing: {
 			total_price: number
 			quote_sent_at: string

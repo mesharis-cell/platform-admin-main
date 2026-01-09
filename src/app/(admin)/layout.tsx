@@ -31,12 +31,11 @@ import {
 	BarChart3,
 	LogOut,
 	Box,
+	Lock,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useSession } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Skeleton } from '@/components/ui/skeleton'
 import {
 	Sidebar,
 	SidebarContent,
@@ -52,6 +51,7 @@ import {
 import Providers from '@/providers'
 import { toast } from 'sonner'
 import { useToken } from '@/lib/auth/use-token'
+import { usePlatform } from '@/contexts/platform-context'
 
 type NavItem = {
 	name: string
@@ -144,14 +144,19 @@ const navigation: NavItem[] = [
 		href: '/pricing-tiers',
 		icon: DollarSign,
 	},
+	{
+		name: 'Reset Password',
+		href: '/reset-password',
+		icon: Lock,
+	},
 ]
 
 function AdminSidebarContent() {
 	const pathname = usePathname()
 	const router = useRouter()
-	const { data: session, isPending } = useSession()
 	const { state } = useSidebar()
-	const { logout } = useToken()
+	const { logout, user } = useToken()
+	const { platform } = usePlatform()
 
 	const handleSignOut = () => {
 		logout()
@@ -182,7 +187,7 @@ function AdminSidebarContent() {
 					{!isCollapsed && (
 						<div>
 							<h2 className='text-lg font-mono font-bold tracking-tight uppercase'>
-								PMG Platform
+								{platform?.platform_name || 'Platform'}
 							</h2>
 							<p className='text-[10px] font-mono text-muted-foreground tracking-[0.15em] uppercase'>
 								Operations Command
@@ -194,93 +199,78 @@ function AdminSidebarContent() {
 
 			<SidebarContent className='p-3 space-y-0.5 overflow-y-auto bg-background'>
 				<SidebarMenu>
-					{isPending ? (
-						// Loading skeletons
-						<>
-							{[...Array(8)].map((_, i) => (
-								<SidebarMenuItem key={i}>
-									<div className='flex items-center gap-3 px-3 py-2.5'>
-										<Skeleton className='h-4 w-4 rounded' />
+					{navigation.map(item => {
+						const Icon = item.icon
+						// Find the most specific matching route
+						const matchingRoutes = navigation.filter(
+							navItem =>
+								pathname === navItem.href ||
+								pathname.startsWith(navItem.href + '/')
+						)
+						// Highlight only the longest matching route (most specific)
+						const mostSpecificRoute = matchingRoutes.reduce(
+							(longest, current) =>
+								current.href.length > longest.href.length
+									? current
+									: longest,
+							matchingRoutes[0]
+						)
+						const isActive =
+							mostSpecificRoute?.href === item.href
+						return (
+							<SidebarMenuItem key={item.name}>
+								<SidebarMenuButton
+									asChild
+									isActive={isActive}
+									tooltip={
+										isCollapsed ? item.name : undefined
+									}
+									className={cn(
+										'group/nav-item flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-mono transition-all relative overflow-hidden',
+										isActive
+											? 'bg-primary text-primary-foreground font-semibold shadow-sm'
+											: 'text-foreground/70 hover:text-foreground hover:bg-muted'
+									)}
+								>
+									<Link href={item.href}>
+										{/* Active indicator bar */}
+										{isActive && (
+											<div className='absolute left-0 top-0 bottom-0 w-1 bg-primary-foreground/30' />
+										)}
+
+										<Icon className='h-4 w-4 relative z-10 shrink-0' />
 										{!isCollapsed && (
-											<Skeleton className='h-3.5 flex-1' />
+											<>
+												<span className='flex-1 relative z-10 uppercase tracking-wide text-xs'>
+													{item.name}
+												</span>
+
+												{'badge' in item &&
+													item.badge && (
+														<span
+															className={cn(
+																'px-1.5 py-0.5 text-[10px] font-mono rounded uppercase tracking-wider relative z-10 shrink-0',
+																isActive
+																	? 'bg-primary-foreground/20 text-primary-foreground'
+																	: 'bg-primary/10 text-primary border border-primary/20'
+															)}
+														>
+															{item.badge}
+														</span>
+													)}
+											</>
 										)}
-									</div>
-								</SidebarMenuItem>
-							))}
-						</>
-					) : (
-						navigation.map(item => {
-							const Icon = item.icon
-							// Find the most specific matching route
-							const matchingRoutes = navigation.filter(
-								navItem =>
-									pathname === navItem.href ||
-									pathname.startsWith(navItem.href + '/')
-							)
-							// Highlight only the longest matching route (most specific)
-							const mostSpecificRoute = matchingRoutes.reduce(
-								(longest, current) =>
-									current.href.length > longest.href.length
-										? current
-										: longest,
-								matchingRoutes[0]
-							)
-							const isActive =
-								mostSpecificRoute?.href === item.href
-							return (
-								<SidebarMenuItem key={item.name}>
-									<SidebarMenuButton
-										asChild
-										isActive={isActive}
-										tooltip={
-											isCollapsed ? item.name : undefined
-										}
-										className={cn(
-											'group/nav-item flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-mono transition-all relative overflow-hidden',
-											isActive
-												? 'bg-primary text-primary-foreground font-semibold shadow-sm'
-												: 'text-foreground/70 hover:text-foreground hover:bg-muted'
+
+										{/* Hover glow effect */}
+										{!isActive && (
+											<div className='absolute inset-0 bg-primary/0 group-hover/nav-item:bg-primary/5 transition-colors' />
 										)}
-									>
-										<Link href={item.href}>
-											{/* Active indicator bar */}
-											{isActive && (
-												<div className='absolute left-0 top-0 bottom-0 w-1 bg-primary-foreground/30' />
-											)}
-
-											<Icon className='h-4 w-4 relative z-10 shrink-0' />
-											{!isCollapsed && (
-												<>
-													<span className='flex-1 relative z-10 uppercase tracking-wide text-xs'>
-														{item.name}
-													</span>
-
-													{'badge' in item &&
-														item.badge && (
-															<span
-																className={cn(
-																	'px-1.5 py-0.5 text-[10px] font-mono rounded uppercase tracking-wider relative z-10 shrink-0',
-																	isActive
-																		? 'bg-primary-foreground/20 text-primary-foreground'
-																		: 'bg-primary/10 text-primary border border-primary/20'
-																)}
-															>
-																{item.badge}
-															</span>
-														)}
-												</>
-											)}
-
-											{/* Hover glow effect */}
-											{!isActive && (
-												<div className='absolute inset-0 bg-primary/0 group-hover/nav-item:bg-primary/5 transition-colors' />
-											)}
-										</Link>
-									</SidebarMenuButton>
-								</SidebarMenuItem>
-							)
-						})
-					)}
+									</Link>
+								</SidebarMenuButton>
+							</SidebarMenuItem>
+						)
+					})
+					}
 				</SidebarMenu>
 			</SidebarContent>
 
@@ -299,60 +289,37 @@ function AdminSidebarContent() {
 				)}
 
 				{/* User Profile & Sign Out */}
-				{isPending ? (
-					<>
-						<div className='flex items-center gap-3 px-2'>
-							<Skeleton className='h-10 w-10 rounded-lg' />
-							{!isCollapsed && (
-								<div className='flex-1 space-y-2'>
-									<Skeleton className='h-3.5 w-28' />
-									<Skeleton className='h-3 w-20' />
-								</div>
-							)}
-						</div>
+				<>
+					<div className='flex items-center gap-3 px-2 py-1'>
+						<Avatar className='h-10 w-10 border-2 border-primary/20 shrink-0'>
+							<AvatarFallback className='bg-primary/10 text-primary font-mono text-sm font-bold'>
+								{user?.name?.charAt(0).toUpperCase() || 'A'}
+							</AvatarFallback>
+						</Avatar>
 						{!isCollapsed && (
-							<Skeleton className='h-9 w-full rounded-md' />
+							<div className='flex-1 min-w-0'>
+								<p className='text-sm font-mono font-semibold truncate'>
+									{user?.name || 'Admin User'}
+								</p>
+								<p className='text-[10px] font-mono text-muted-foreground tracking-[0.15em] uppercase'>
+									{user?.role === 'ADMIN' && 'Admin'}
+									{user?.role === 'LOGISTICS' && 'Logistics'}
+								</p>
+							</div>
 						)}
-					</>
-				) : (
-					<>
-						<div className='flex items-center gap-3 px-2 py-1'>
-							<Avatar className='h-10 w-10 border-2 border-primary/20 shrink-0'>
-								<AvatarFallback className='bg-primary/10 text-primary font-mono text-sm font-bold'>
-									{session?.user?.name
-										?.charAt(0)
-										.toUpperCase() || 'A'}
-								</AvatarFallback>
-							</Avatar>
-							{!isCollapsed && (
-								<div className='flex-1 min-w-0'>
-									<p className='text-sm font-mono font-semibold truncate'>
-										{session?.user?.name || 'Admin User'}
-									</p>
-									<p className='text-[10px] font-mono text-muted-foreground tracking-[0.15em] uppercase'>
-										{session?.user?.permissionTemplate ===
-											'PMG_ADMIN' && 'PMG Admin'}
-										{session?.user?.permissionTemplate ===
-											'A2_STAFF' && 'A2 Staff'}
-										{!session?.user?.permissionTemplate &&
-											'Admin'}
-									</p>
-								</div>
-							)}
-						</div>
-						{!isCollapsed && (
-							<Button
-								variant='outline'
-								size='sm'
-								onClick={handleSignOut}
-								className='w-full font-mono text-xs uppercase tracking-wide hover:bg-destructive hover:text-destructive-foreground hover:border-destructive transition-colors'
-							>
-								<LogOut className='h-3.5 w-3.5 mr-2' />
-								Sign Out
-							</Button>
-						)}
-					</>
-				)}
+					</div>
+					{!isCollapsed && (
+						<Button
+							variant='outline'
+							size='sm'
+							onClick={handleSignOut}
+							className='w-full font-mono text-xs uppercase tracking-wide hover:bg-destructive hover:text-destructive-foreground hover:border-destructive transition-colors'
+						>
+							<LogOut className='h-3.5 w-3.5 mr-2' />
+							Sign Out
+						</Button>
+					)}
+				</>
 
 				{/* Bottom zone marker */}
 				{!isCollapsed && (
