@@ -70,7 +70,7 @@ export const apiClient = axios.create({
     headers: {
         "Content-Type": "application/json",
     },
-    // withCredentials: true,
+    withCredentials: true,
 });
 
 // Add request interceptor to dynamically inject platform_id header and access token
