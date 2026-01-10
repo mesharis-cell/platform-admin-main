@@ -25,9 +25,8 @@ async function fetchAssets(params?: Record<string, string>): Promise<{
         delete params[key];
       }
     }
-    console.log(params)
+
     const searchParams = new URLSearchParams(params);
-    console.log(searchParams)
     const response = await apiClient.get(`/operations/v1/asset?${searchParams}`);
     return response.data;
   } catch (error) {
