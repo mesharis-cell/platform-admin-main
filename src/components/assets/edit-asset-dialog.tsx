@@ -1093,11 +1093,11 @@ export function EditAssetDialog({
 						<Button
 							onClick={handleSubmit}
 							disabled={
-								!canProceedToNext() || updateMutation.isPending
+								!canProceedToNext() || updateMutation.isPending || uploadMutation.isPending
 							}
 							className='font-mono'
 						>
-							{updateMutation.isPending ? (
+							{updateMutation.isPending || uploadMutation.isPending ? (
 								<>
 									<Loader2 className='w-4 h-4 mr-2 animate-spin' />
 									Updating...

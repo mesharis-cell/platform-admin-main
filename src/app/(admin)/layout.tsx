@@ -76,13 +76,11 @@ const navigation: NavItem[] = [
 		name: 'Pricing Review',
 		href: '/orders/pricing-review',
 		icon: DollarSign,
-		badge: 'A2',
 	},
 	{
 		name: 'Pending Approval',
 		href: '/orders/pending-approval',
 		icon: AlertCircle,
-		badge: 'PMG',
 	},
 	{
 		name: 'Scanning',
