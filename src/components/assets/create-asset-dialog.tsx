@@ -1262,11 +1262,12 @@ export function CreateAssetDialog({
 								onClick={handleSubmit}
 								disabled={
 									!canProceedToNext() ||
-									createMutation.isPending
+									createMutation.isPending ||
+									uploadMutation.isPending
 								}
 								className='font-mono'
 							>
-								{createMutation.isPending ? (
+								{createMutation.isPending || uploadMutation.isPending ? (
 									<>
 										<Loader2 className='w-4 h-4 mr-2 animate-spin' />
 										Creating...

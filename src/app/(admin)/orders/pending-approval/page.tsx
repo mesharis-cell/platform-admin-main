@@ -260,7 +260,7 @@ export default function PendingApprovalPage() {
 												</p>
 											</div>
 										</div>
-										<div className='mb-3'>
+										<div className='mb-6'>
 											<p className='text-xs text-muted-foreground mb-1'>
 												Adjustment Reason:
 											</p>
@@ -269,6 +269,14 @@ export default function PendingApprovalPage() {
 											</p>
 										</div>
 										<div className='space-y-2 text-sm font-mono'>
+											{order?.logistics_pricing?.base_price && (
+												<div className='flex justify-between'>
+													<span>Base Price</span>
+													<span className='font-semibold'>
+														{Number(order?.logistics_pricing?.base_price).toFixed(2)} AED
+													</span>
+												</div>
+											)}
 											<div className='flex justify-between'>
 												<span>Adjusted Base Price</span>
 												<span className='font-semibold'>
@@ -276,9 +284,11 @@ export default function PendingApprovalPage() {
 												</span>
 											</div>
 											<div className='flex justify-between'>
-												<span>Margin Amount</span>
+												<p>
+													<span>Margin Amount</span>
+													<span className="text-sm mr-2"> ({order?.platform_pricing?.margin_percent}%)</span>
+												</p>
 												<span className='font-semibold'>
-													<span className="text-sm mr-2">({order?.platform_pricing?.margin_percent}%)</span>
 													{Number(order?.platform_pricing?.margin_amount).toFixed(2)} AED
 												</span>
 											</div>

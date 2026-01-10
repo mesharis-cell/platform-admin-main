@@ -56,6 +56,39 @@ import { toast } from 'sonner'
 import { DateTimePicker } from '@/components/ui/datetime-picker'
 import { apiClient } from '@/lib/api/api-client'
 
+const FINANCIAL_STATUS = {
+	PENDING_QUOTE: {
+		label: 'PENDING_QUOTE',
+		color: 'bg-slate-500/10 text-slate-600 border-slate-500/20',
+		nextStates: ['QUOTE_SENT'],
+	},
+	QUOTE_SENT: {
+		label: 'QUOTE_SENT',
+		color: 'bg-blue-500/10 text-blue-600 border-blue-500/20',
+		nextStates: ['QUOTE_ACCEPTED'],
+	},
+	QUOTE_ACCEPTED: {
+		label: 'QUOTE_ACCEPTED',
+		color: 'bg-yellow-500/10 text-yellow-700 border-yellow-500/20',
+		nextStates: ['PENDING_INVOICE'],
+	},
+	PENDING_INVOICE: {
+		label: 'PENDING_INVOICE',
+		color: 'bg-orange-500/10 text-orange-700 border-orange-500/20',
+		nextStates: ['INVOICED'],
+	},
+	INVOICED: {
+		label: 'INVOICED',
+		color: 'bg-purple-500/10 text-purple-700 border-purple-500/20',
+		nextStates: ['PAID'],
+	},
+	PAID: {
+		label: 'PAID',
+		color: 'bg-teal-500/10 text-teal-700 border-teal-500/20',
+		nextStates: [],
+	},
+}
+
 // Status configuration with next states for state machine (Feedback #1: Updated for new flow)
 const STATUS_CONFIG: Record<
 	string,
@@ -359,6 +392,11 @@ export default function AdminOrderDetailPage({
 						</div>
 
 						<div className='flex items-center gap-3'>
+							<Badge
+								className={`${FINANCIAL_STATUS[order?.data?.financial_status].color} border font-mono text-xs px-3 py-1`}
+							>
+								{FINANCIAL_STATUS[order?.data?.financial_status].label}
+							</Badge>
 							<Badge
 								className={`${currentStatusConfig.color} border font-mono text-xs px-3 py-1`}
 							>

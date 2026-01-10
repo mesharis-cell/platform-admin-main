@@ -62,7 +62,7 @@ export default function HomePage() {
 			} else {
 				// User is not an admin, sign out and invalidate token
 				logout();
-				toast.success("Access Denied", {
+				toast.error("Access Denied", {
 					description: "You do not have access to this platform.",
 				});
 			}
@@ -121,7 +121,7 @@ export default function HomePage() {
 									{platform?.platform_name || "PMG Platform"}
 								</h1>
 								<p className="text-xs text-muted-foreground font-mono tracking-wider">
-									Asset Fulfillment System
+									Asset Management System
 								</p>
 							</div>
 						</div>
@@ -137,7 +137,7 @@ export default function HomePage() {
 								<div className="h-1 w-24 bg-primary rounded-full mt-3" />
 							</div>
 							<p className="text-sm text-muted-foreground mt-4 font-mono">
-								Authenticate to access warehouse management system
+								Authenticate to access admin system
 							</p>
 						</div>
 					</div>
@@ -243,7 +243,7 @@ export default function HomePage() {
 					{/* Footer Info */}
 					<div className="mt-8 text-center animate-in fade-in duration-700 delay-300">
 						<p className="text-xs text-muted-foreground font-mono">
-							PMG Asset Fulfillment Platform v1.0 • Secure Connection Active
+							Admin System v1.0 • Secure Connection Active
 						</p>
 					</div>
 				</div>

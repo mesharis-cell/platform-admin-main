@@ -11,7 +11,7 @@
  * - Scanning indicators and QR code visual language
  */
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import { useAssets } from '@/hooks/use-assets'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -20,14 +20,10 @@ import {
 	Package,
 	Plus,
 	Search,
-	Filter,
 	Grid3x3,
 	List,
 	QrCode,
 	Box,
-	Warehouse,
-	MapPin,
-	Tag,
 	ChevronRight,
 	Upload,
 } from 'lucide-react'
@@ -42,17 +38,10 @@ import {
 	SelectValue,
 } from '@/components/ui/select'
 import { Card, CardContent } from '@/components/ui/card'
-import {
-	Dialog,
-	DialogContent,
-	DialogHeader,
-	DialogTitle,
-	DialogTrigger,
-} from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
-import type { Asset } from '@/types/asset'
 import { CreateAssetDialog } from '@/components/assets/create-asset-dialog'
 import { AdminHeader } from '@/components/admin-header'
+import { useCompanies } from '@/hooks/use-companies'
 
 export default function AssetsPage() {
 	const router = useRouter()
@@ -63,8 +52,10 @@ export default function AssetsPage() {
 		condition: 'all',
 		status: 'all',
 		warehouse: 'all',
+		company: 'all',
 	})
 	const [showCreateDialog, setShowCreateDialog] = useState(false)
+	const { data: companies } = useCompanies()
 
 	// Build query params
 	const queryParams = useMemo(() => {
@@ -78,6 +69,8 @@ export default function AssetsPage() {
 			params.status = filters.status
 		if (filters.warehouse && filters.warehouse !== 'all')
 			params.warehouse_id = filters.warehouse
+		if (filters.company && filters.company !== 'all')
+			params.company_id = filters.company
 		return params
 	}, [searchQuery, filters])
 
@@ -165,6 +158,27 @@ export default function AssetsPage() {
 
 						{/* Filters */}
 						<div className='flex gap-2 flex-wrap'>
+							<Select
+								value={filters.company}
+								onValueChange={value =>
+									setFilters({ ...filters, company: value })
+								}
+							>
+								<SelectTrigger className='w-[160px] font-mono'>
+									<SelectValue placeholder='Company' />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value='all'>
+										All Companies
+									</SelectItem>
+									{companies?.data.map(company => (
+										<SelectItem key={company.id} value={company.id}>
+											{company.name}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+
 							<Select
 								value={filters.category}
 								onValueChange={value =>
