@@ -618,7 +618,7 @@ export default function UsersManagementPage() {
 													setNewUser(prev => ({
 														...prev,
 														userType: "client",
-														permissionTemplate: "",
+														permissionTemplate: "CLIENT_USER",
 														selectedCompany: null,
 													}));
 												}}
