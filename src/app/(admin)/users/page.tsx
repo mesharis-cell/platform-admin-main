@@ -423,8 +423,6 @@ export default function UsersManagementPage() {
 		}
 	};
 
-	console.log('editFormData.........', editFormData);
-
 	return (
 		<div className="min-h-screen bg-background">
 			<AdminHeader
