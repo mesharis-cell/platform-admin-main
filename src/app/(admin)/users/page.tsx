@@ -620,7 +620,7 @@ export default function UsersManagementPage() {
 													setNewUser(prev => ({
 														...prev,
 														userType: "client",
-														permissionTemplate: "CLIENT_USER",
+														permissionTemplate: "",
 														selectedCompany: null,
 													}));
 												}}
@@ -877,16 +877,20 @@ export default function UsersManagementPage() {
 														<span className="text-muted-foreground">Template:</span>
 														<span className="font-semibold">{newUser.permissionTemplate || "None"}</span>
 													</div>
-													<div className="flex justify-between">
-														<span className="text-muted-foreground">Permissions:</span>
-														<span className="font-semibold">
-															{newUser.permissionTemplate === "CUSTOM"
-																? `${newUser.customPermissions.length} custom`
-																: newUser.permissionTemplate
-																	? `${PERMISSION_TEMPLATES[newUser.permissionTemplate as PermissionTemplate]?.permissions.length} from template`
-																	: "0"}
-														</span>
-													</div>
+
+													{newUser.userType !== "client" && (
+														<div className="flex justify-between">
+															<span className="text-muted-foreground">Permissions:</span>
+															<span className="font-semibold">
+																{newUser.permissionTemplate === "CUSTOM"
+																	? `${newUser.customPermissions.length} custom`
+																	: newUser.permissionTemplate
+																		? `${PERMISSION_TEMPLATES[newUser.permissionTemplate as PermissionTemplate]?.permissions.length} from template`
+																		: "0"}
+															</span>
+														</div>
+													)}
+
 													<div className="flex justify-between">
 														<span className="text-muted-foreground">Company Access:</span>
 														<span className="font-semibold">
