@@ -1081,12 +1081,10 @@ export function CreateAssetDialog({
 										</SelectTrigger>
 										<SelectContent>
 											<SelectItem value='INDIVIDUAL'>
-												Individual (Each unit tracked
-												separately)
+												Individual (Each unit tracked separately, e.g. Bar, Stool, Bucket)
 											</SelectItem>
 											<SelectItem value='BATCH'>
-												Batch (All units tracked
-												together)
+												Box (Multiple units tracked together, e.g. Box of wine glasses, Bottles, Coasters)
 											</SelectItem>
 										</SelectContent>
 									</Select>
