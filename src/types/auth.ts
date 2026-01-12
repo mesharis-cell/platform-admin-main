@@ -490,6 +490,7 @@ export const LOGISTICS_PERMISSION_GROUPS: Record<string, string[]> = {
 	],
 	"Zone Management": [
 		"zones:read",
+		"zones:create",
 		"zones:*",
 	],
 	"Brand Management": [

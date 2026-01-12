@@ -53,8 +53,6 @@ import {
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
-
-
 export default function UsersManagementPage() {
 	const [searchQuery, setSearchQuery] = useState("");
 	const [filterTemplate, setFilterTemplate] = useState<string>("all");
