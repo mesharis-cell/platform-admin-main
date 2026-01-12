@@ -32,6 +32,7 @@ import {
 	LogOut,
 	Box,
 	Lock,
+	Calendar,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -101,6 +102,11 @@ const navigation: NavItem[] = [
 		name: 'Notifications',
 		href: '/notifications',
 		icon: Mail,
+	},
+	{
+		name: 'Events Calendar',
+		href: '/event-calendar',
+		icon: Calendar,
 	},
 	{
 		name: 'Users',
