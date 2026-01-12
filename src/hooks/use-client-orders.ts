@@ -3,6 +3,8 @@
  * Phase 13: Client Order Tracking Dashboard
  */
 
+import { apiClient } from '@/lib/api/api-client';
+import { throwApiError } from '@/lib/utils/throw-api-error';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 // Types for client order operations
@@ -193,19 +195,19 @@ export function useClientCalendar(params: { month?: string; year?: string } = {}
   return useQuery({
     queryKey: ['client-calendar', params],
     queryFn: async () => {
+      try {
       const queryParams = new URLSearchParams();
       if (params.month) queryParams.append('month', params.month);
       if (params.year) queryParams.append('year', params.year);
 
-      const response = await fetch(`/api/client/calendar?${queryParams.toString()}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch calendar events');
-      }
-      return response.json();
+      const response = await apiClient.get(`/client/v1/calendar?${queryParams.toString()}`);
+      return response.data;
+    } catch (error) {
+      throwApiError(error);
+    }
     },
   });
 }
-
 /**
  * Hook to fetch dashboard summary
  */
