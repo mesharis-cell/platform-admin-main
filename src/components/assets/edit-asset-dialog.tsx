@@ -156,7 +156,7 @@ export function EditAssetDialog({
 
 	// Mutations
 	const updateMutation = useUpdateAsset()
-	const uploadMutation = useUploadImage()
+	const imageUploadMutation = useUploadImage()
 
 	// Handle image selection - store files locally, create previews
 	function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
@@ -297,7 +297,7 @@ export function EditAssetDialog({
 				uploadFormData.append('companyId', formData.company)
 				selectedImages.forEach(file => uploadFormData.append('files', file))
 
-				const uploadResult = await uploadMutation.mutateAsync(uploadFormData)
+				const uploadResult = await imageUploadMutation.mutateAsync(uploadFormData)
 				newImageUrls = uploadResult.data?.imageUrls || []
 			}
 
@@ -1093,11 +1093,11 @@ export function EditAssetDialog({
 						<Button
 							onClick={handleSubmit}
 							disabled={
-								!canProceedToNext() || updateMutation.isPending || uploadMutation.isPending
+								!canProceedToNext() || updateMutation.isPending || imageUploadMutation.isPending
 							}
 							className='font-mono'
 						>
-							{updateMutation.isPending || uploadMutation.isPending ? (
+							{updateMutation.isPending || imageUploadMutation.isPending ? (
 								<>
 									<Loader2 className='w-4 h-4 mr-2 animate-spin' />
 									Updating...
