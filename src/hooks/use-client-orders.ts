@@ -1,3 +1,5 @@
+"use client"
+
 /**
  * React Query hooks for client order tracking operations
  * Phase 13: Client Order Tracking Dashboard

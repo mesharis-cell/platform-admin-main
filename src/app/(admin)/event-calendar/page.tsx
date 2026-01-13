@@ -233,12 +233,6 @@ export default function EventCalendarPage() {
 								View your upcoming event schedule
 							</p>
 						</div>
-						<Link href='/catalog'>
-							<Button className='gap-2'>
-								<Plus className='h-4 w-4' />
-								New Order
-							</Button>
-						</Link>
 					</div>
 				</div>
 			</div>
