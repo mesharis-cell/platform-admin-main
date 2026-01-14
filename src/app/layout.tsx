@@ -34,15 +34,15 @@ export async function generateMetadata(): Promise<Metadata> {
 
 		return {
 			title: {
-				default: `${data.data.platform_name || 'Admin Platform'}`,
-				template: '%s | Admin Platform',
+				default: `${data.data.platform_name || 'Admin'}`,
+				template: '%s | Admin',
 			},
 			description: 'Admin Platform - Asset Management Platform',
-			applicationName: 'Admin Platform',
+			applicationName: 'Admin',
 			keywords: ['admin', 'asset management', 'inventory', 'tracking'],
-			authors: [{ name: 'PMG Team' }],
-			creator: 'PMG Team',
-			publisher: 'PMG Team',
+			authors: [{ name: 'Platform Team' }],
+			creator: 'Platform Team',
+			publisher: 'Platform Team',
 			icons: {
 				icon: [
 					{ url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
@@ -61,7 +61,7 @@ export async function generateMetadata(): Promise<Metadata> {
 			appleWebApp: {
 				capable: true,
 				statusBarStyle: 'default',
-				title: `${data.data.platform_name || 'Admin Platform'}`,
+				title: `${data.data.platform_name || 'Admin'}`,
 			},
 			formatDetection: {
 				telephone: false,
@@ -71,15 +71,15 @@ export async function generateMetadata(): Promise<Metadata> {
 		// Fallback to static metadata
 		return {
 			title: {
-				default: 'Admin Platform',
-				template: '%s | Admin Platform',
+				default: 'Admin',
+				template: '%s | Admin',
 			},
-			description: 'Admin Platform - Asset Management Platform',
-			applicationName: 'Admin Platform',
+			description: 'Admin - Asset Management Platform',
+			applicationName: 'Admin',
 			keywords: ['admin', 'asset management', 'inventory', 'tracking'],
-			authors: [{ name: 'PMG Team' }],
-			creator: 'PMG Team',
-			publisher: 'PMG Team',
+			authors: [{ name: 'Platform Team' }],
+			creator: 'Platform Team',
+			publisher: 'Platform Team',
 			icons: {
 				icon: [
 					{ url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
@@ -98,7 +98,7 @@ export async function generateMetadata(): Promise<Metadata> {
 			appleWebApp: {
 				capable: true,
 				statusBarStyle: 'default',
-				title: 'Admin Platform',
+				title: 'Admin',
 			},
 			formatDetection: {
 				telephone: false,

@@ -370,7 +370,7 @@ export default function CompaniesPage() {
 														domain: e.target.value,
 													})
 												}
-												placeholder="richard, custom.com, sub.custom.com"
+												placeholder="client, custom.com, sub.custom.com"
 												className="font-mono"
 												required
 											/>
@@ -856,7 +856,7 @@ export default function CompaniesPage() {
 
 			{/* Footer with zone marker */}
 			<div className="fixed bottom-4 right-4 font-mono text-xs text-muted-foreground/40">
-				ZONE: ADMIN-COMPANIES · SEC-LEVEL: PMG-ADMIN
+				ZONE: ADMIN-COMPANIES · SEC-LEVEL: PLATFORM-ADMIN
 			</div>
 
 			{/* Confirm Archive Dialog */}

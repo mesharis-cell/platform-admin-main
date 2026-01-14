@@ -38,7 +38,9 @@ import {
 	useUsers
 } from "@/hooks/use-users";
 import { cn } from "@/lib/utils";
-import { PERMISSION_GROUPS, PERMISSION_TEMPLATES, PermissionTemplate, User, ADMIN_PERMISSION_GROUPS, LOGISTICS_PERMISSION_GROUPS } from "@/types/auth";
+import { hasPermission } from "@/lib/auth/permissions";
+import { capitalizeFirstLetter, removeUnderScore } from "@/lib/utils/helper";
+import { PERMISSION_TEMPLATES, PermissionTemplate, User, ADMIN_PERMISSION_GROUPS, LOGISTICS_PERMISSION_GROUPS } from "@/types/auth";
 import {
 	AlertCircle,
 	Ban,
@@ -52,11 +54,13 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { useToken } from "@/lib/auth/use-token";
 
 export default function UsersManagementPage() {
 	const [searchQuery, setSearchQuery] = useState("");
 	const [filterTemplate, setFilterTemplate] = useState<string>("all");
 	const [filterActive, setFilterActive] = useState<string>("all");
+	const { user: AuthUser } = useToken()
 
 	// Create user dialog state
 	const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -75,6 +79,7 @@ export default function UsersManagementPage() {
 	const [editingUser, setEditingUser] = useState<User | null>(null);
 	const [editFormData, setEditFormData] = useState({
 		name: "",
+		userType: "" as "ADMIN" | "LOGISTICS" | "CLIENT" | "",
 		permissionTemplate: "" as PermissionTemplate | "CUSTOM" | "",
 		customPermissions: [] as string[],
 		selectedCompany: null as string | null,
@@ -286,6 +291,7 @@ export default function UsersManagementPage() {
 
 		setEditFormData({
 			name: user.name,
+			userType: user.role,
 			permissionTemplate: isCustom ? "CUSTOM" : (user.permission_template as PermissionTemplate),
 			customPermissions: user.permissions,
 			selectedCompany: user.company?.id || null,
@@ -373,8 +379,6 @@ export default function UsersManagementPage() {
 			toast.error("Please select at least one permission for custom user");
 			return;
 		}
-
-
 
 		try {
 			// Build payload
@@ -584,7 +588,7 @@ export default function UsersManagementPage() {
 											>
 												<div className="font-mono font-bold text-sm mb-1">ADMIN USER</div>
 												<div className="text-xs text-muted-foreground">
-													PMG Admin or A2 Staff with wildcard access
+													Platform Admin or A2 Staff with wildcard access
 												</div>
 											</button>
 											<button
@@ -735,7 +739,7 @@ export default function UsersManagementPage() {
 																									wildcardPerm && newUser.customPermissions.includes(wildcardPerm) && "text-muted-foreground"
 																								)}
 																							>
-																								{permission.split(":")[1]}
+																								{removeUnderScore(permission.split(":")[1])}
 																							</Label>
 																						</div>
 																					))}
@@ -1074,7 +1078,7 @@ export default function UsersManagementPage() {
 																							wildcardPerm && editFormData.customPermissions.includes(wildcardPerm) && "text-muted-foreground"
 																						)}
 																					>
-																						{permission.split(":")[1]}
+																						{removeUnderScore(permission.split(":")[1])}
 																					</Label>
 																				</div>
 																			))}
@@ -1121,47 +1125,50 @@ export default function UsersManagementPage() {
 									<Separator />
 
 									{/* Company Access */}
-									<div className="space-y-4">
-										<h3 className="font-semibold text-sm font-mono uppercase flex items-center gap-2">
-											<Package className="h-4 w-4" />
-											Company Access Scope
-										</h3>
-
-										{/* Admin logic - always global */}
-										{(editFormData.permissionTemplate === "PLATFORM_ADMIN" || editFormData.permissionTemplate === "LOGISTICS_STAFF") && (
-											<div className="bg-muted/50 rounded-lg p-3 border border-border">
-												<div className="flex items-center gap-2">
-													<CheckCircle className="h-4 w-4 text-primary" />
-													<span className="text-sm font-mono">
-														Global Access (All Companies)
-													</span>
-												</div>
-												<p className="text-xs text-muted-foreground font-mono mt-1 ml-6">
-													Admin users have access to all companies by default
-												</p>
+									{(editFormData.userType === "ADMIN" || editFormData.userType === "LOGISTICS") ? (
+										<>
+											<div className="flex items-center space-x-2">
+												<Checkbox
+													id="allCompanies"
+													checked={true}
+													disabled={true}
+												/>
+												<Label htmlFor="allCompanies" className="font-mono text-sm cursor-pointer">
+													All Companies (*) - Full Platform Access
+												</Label>
 											</div>
-										)}
-
-										{/* Client/Custom logic - specific company */}
-										{(editFormData.permissionTemplate === "CLIENT_USER" || editFormData.permissionTemplate === "CUSTOM") && (
+											<p className="text-xs text-muted-foreground font-mono">
+												{newUser.userType === "admin" ? "Admin" : "Logistic"} users have access to all companies by default
+											</p>
+										</>
+									) : (
+										<>
+											<div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+												<div className="flex items-center gap-2 text-yellow-700">
+													<AlertCircle className="h-4 w-4" />
+													<p className="text-xs font-mono font-semibold">
+														CLIENT_USER must belong to a company
+													</p>
+												</div>
+											</div>
 											<div className="space-y-2 border border-border rounded-lg p-4 bg-muted/30">
 												<Label className="font-mono uppercase text-xs">
-													Select Specific Company *
+													Select Company *
 												</Label>
-												<div className="grid grid-cols-2 gap-2">
+												<div className="space-y-2">
 													{companies.map(company => (
 														<div key={company.id} className="flex items-center space-x-2">
 															<input
 																type="radio"
-																id={`edit-company-${company.id}`}
-																name="edit-client-company"
-																checked={editFormData.selectedCompany === company.id}
-																onChange={() => handleCompanyChangeEdit(company.id)}
+																id={`company-${company.id}`}
+																name="client-company"
+																checked={newUser.selectedCompany === company.id}
+																onChange={() => handleCompanyChange(company.id)}
 																className="h-4 w-4"
 															/>
 															<Label
-																htmlFor={`edit-company-${company.id}`}
-																className="text-xs font-mono cursor-pointer"
+																htmlFor={`company-${company.id}`}
+																className="text-sm font-mono cursor-pointer flex-1"
 															>
 																{company.name}
 															</Label>
@@ -1169,16 +1176,21 @@ export default function UsersManagementPage() {
 													))}
 												</div>
 
-												{!editFormData.selectedCompany && companies.length > 0 && (
+												{companies.length === 0 && (
+													<p className="text-xs text-muted-foreground font-mono italic">
+														No companies available. Create companies first.
+													</p>
+												)}
+
+												{!newUser.selectedCompany && companies.length > 0 && (
 													<div className="flex items-center gap-2 text-amber-600 text-xs font-mono mt-2">
 														<AlertCircle className="h-4 w-4" />
 														Please select a company
 													</div>
 												)}
 											</div>
-										)}
-									</div>
-
+										</>
+									)}
 									<Separator />
 
 									{/* Summary */}
@@ -1297,7 +1309,7 @@ export default function UsersManagementPage() {
 										</TableCell>
 										<TableCell>
 											<Badge variant="outline" className="font-mono text-xs border-border/50 text-muted-foreground bg-muted/10">
-												{user.permission_template || "Custom"}
+												{capitalizeFirstLetter(user.permission_template || "Custom")}
 											</Badge>
 										</TableCell>
 										<TableCell>
@@ -1338,35 +1350,40 @@ export default function UsersManagementPage() {
 										</TableCell>
 										<TableCell className="text-right">
 											<div className="flex justify-end gap-2">
-												<Button
-													size="sm"
-													variant="ghost"
-													onClick={() => handleOpenEdit(user)}
-													className="font-mono text-xs"
-												>
-													<Edit className="h-3 w-3 mr-1" />
-													Edit
-												</Button>
-												{user.is_active ? (
+												{hasPermission(AuthUser, "users:update") && (
 													<Button
 														size="sm"
 														variant="ghost"
-														onClick={() => handleDeactivate(user.id)}
+														onClick={() => handleOpenEdit(user)}
 														className="font-mono text-xs"
 													>
-														<Ban className="h-3 w-3 mr-1" />
-														Deactivate
+														<Edit className="h-3 w-3 mr-1" />
+														Edit
 													</Button>
-												) : (
-													<Button
-														size="sm"
-														variant="ghost"
-														onClick={() => handleReactivate(user.id)}
-														className="font-mono text-xs"
-													>
-														<CheckCircle className="h-3 w-3 mr-1" />
-														Reactivate
-													</Button>
+												)}
+
+												{hasPermission(AuthUser, "users:deactivate") && (
+													user.is_active ? (
+														<Button
+															size="sm"
+															variant="ghost"
+															onClick={() => handleDeactivate(user.id)}
+															className="font-mono text-xs"
+														>
+															<Ban className="h-3 w-3 mr-1" />
+															Deactivate
+														</Button>
+													) : (
+														<Button
+															size="sm"
+															variant="ghost"
+															onClick={() => handleReactivate(user.id)}
+															className="font-mono text-xs"
+														>
+															<CheckCircle className="h-3 w-3 mr-1" />
+															Reactivate
+														</Button>
+													)
 												)}
 											</div>
 										</TableCell>

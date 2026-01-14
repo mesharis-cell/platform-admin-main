@@ -186,7 +186,7 @@ export default function AnalyticsPage() {
             <CardHeader className="pb-3 relative">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider font-mono">
-                  PMG Margin
+                  Platform Margin
                 </CardTitle>
                 <div className="h-8 w-8 rounded-lg bg-secondary/10 flex items-center justify-center">
                   <TrendingUp className="h-4 w-4 text-secondary" />
@@ -345,7 +345,7 @@ export default function AnalyticsPage() {
                     dataKey="totalMarginAmount"
                     stroke="hsl(var(--secondary))"
                     strokeWidth={2}
-                    name="PMG Margin"
+                    name="Platform Margin"
                     dot={{ fill: 'hsl(var(--secondary))', r: 4 }}
                     activeDot={{ r: 6 }}
                   />
@@ -381,7 +381,7 @@ export default function AnalyticsPage() {
                     <TableRow className="bg-muted/30 hover:bg-muted/30">
                       <TableHead className="font-mono text-xs uppercase">Company</TableHead>
                       <TableHead className="font-mono text-xs uppercase text-right">Revenue</TableHead>
-                      <TableHead className="font-mono text-xs uppercase text-right">PMG Margin</TableHead>
+                      <TableHead className="font-mono text-xs uppercase text-right">Platform Margin</TableHead>
                       <TableHead className="font-mono text-xs uppercase text-right">Margin %</TableHead>
                       <TableHead className="font-mono text-xs uppercase text-right">Orders</TableHead>
                       <TableHead className="font-mono text-xs uppercase text-right">Avg Order</TableHead>

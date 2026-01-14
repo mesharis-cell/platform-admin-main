@@ -607,7 +607,7 @@ export default function ZonesPage() {
 			</div>
 
 			<div className="fixed bottom-4 right-4 font-mono text-xs text-muted-foreground/40">
-				ZONE: ADMIN-ZONES · SEC-LEVEL: PMG-ADMIN
+				ZONE: ADMIN-ZONES · SEC-LEVEL: PLATFORM-ADMIN
 			</div>
 
 			{/* Confirm Delete Dialog */}

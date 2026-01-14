@@ -65,7 +65,7 @@ export default function PendingApprovalPage() {
 		}
 
 		if (isNaN(marginNum) || marginNum < 0 || marginNum > 100) {
-			toast.error('PMG margin must be between 0 and 100%')
+			toast.error('Platform margin must be between 0 and 100%')
 			return
 		}
 
@@ -133,7 +133,7 @@ export default function PendingApprovalPage() {
 			<AdminHeader
 				icon={AlertCircle}
 				title='PENDING APPROVAL QUEUE'
-				description='PMG Review · Margin Control · Final Approval'
+				description='Platform Review · Margin Control · Final Approval'
 				stats={
 					data
 						? {
@@ -173,7 +173,7 @@ export default function PendingApprovalPage() {
 								No Orders Pending Approval
 							</h3>
 							<p className='text-sm text-muted-foreground'>
-								There are currently no orders waiting for PMG
+								There are currently no orders waiting for Platform
 								pricing approval.
 							</p>
 						</CardContent>
@@ -333,7 +333,7 @@ export default function PendingApprovalPage() {
 							<span className='font-mono font-semibold'>
 								{selectedOrder?.order_id}
 							</span>
-							. You can modify the A2 base price and PMG margin
+							. You can modify the A2 base price and Platform margin
 							before approving.
 						</p>
 
@@ -372,7 +372,7 @@ export default function PendingApprovalPage() {
 							</div>
 							<div>
 								<Label htmlFor='pmgMarginPercent'>
-									PMG Margin %{' '}
+									Platform Margin %{' '}
 									<span className='text-destructive'>*</span>
 								</Label>
 								<Input
@@ -402,7 +402,7 @@ export default function PendingApprovalPage() {
 								</div>
 								<div className='flex justify-between text-muted-foreground'>
 									<span>
-										PMG Margin (
+										Platform Margin (
 										{parseFloat(
 											pmgMarginPercent || '0'
 										).toFixed(2)}
@@ -424,7 +424,7 @@ export default function PendingApprovalPage() {
 						{/* Review Notes */}
 						<div>
 							<Label htmlFor='pmgReviewNotes'>
-								PMG Review Notes (Optional)
+								Platform Review Notes (Optional)
 							</Label>
 							<Textarea
 								id='pmgReviewNotes'
