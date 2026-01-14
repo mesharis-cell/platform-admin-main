@@ -51,10 +51,12 @@ import {
 	AlertCircle,
 	ScanLine,
 	CheckCircle,
+	Loader2,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { DateTimePicker } from '@/components/ui/datetime-picker'
 import { apiClient } from '@/lib/api/api-client'
+import { removeUnderScore } from '@/lib/utils/helper'
 
 const FINANCIAL_STATUS = {
 	PENDING_QUOTE: {
@@ -114,7 +116,7 @@ const STATUS_CONFIG: Record<
 		nextStates: ['QUOTED', 'PENDING_APPROVAL'],
 	},
 	PENDING_APPROVAL: {
-		label: 'PMG REVIEW',
+		label: 'PLATFORM REVIEW',
 		color: 'bg-orange-500/10 text-orange-700 border-orange-500/20',
 		nextStates: ['QUOTED'],
 	},
@@ -189,6 +191,8 @@ export default function AdminOrderDetailPage({
 	const [statusNotes, setStatusNotes] = useState('')
 	const [timeWindowsOpen, setTimeWindowsOpen] = useState(false)
 	const [paymentDialogOpen, setPaymentDialogOpen] = useState(false)
+	const [updateTimeWindowsLoading, setUpdateTimeWindowsLoading] = useState(false)
+
 	const [paymentDetails, setPaymentDetails] = useState({
 		paymentMethod: '',
 		paymentReference: '',
@@ -272,6 +276,7 @@ export default function AdminOrderDetailPage({
 		}
 
 		try {
+			setUpdateTimeWindowsLoading(true)
 			await apiClient.patch(
 				`/client/v1/order/${order.data.id}/time-windows`,
 				{
@@ -287,6 +292,8 @@ export default function AdminOrderDetailPage({
 			window.location.reload()
 		} catch (error: any) {
 			toast.error(error.response.data.message)
+		} finally {
+			setUpdateTimeWindowsLoading(false)
 		}
 	}
 
@@ -395,12 +402,12 @@ export default function AdminOrderDetailPage({
 							<Badge
 								className={`${FINANCIAL_STATUS[order?.data?.financial_status].color} border font-mono text-xs px-3 py-1`}
 							>
-								{FINANCIAL_STATUS[order?.data?.financial_status].label}
+								{removeUnderScore(FINANCIAL_STATUS[order?.data?.financial_status].label)}
 							</Badge>
 							<Badge
 								className={`${currentStatusConfig.color} border font-mono text-xs px-3 py-1`}
 							>
-								{currentStatusConfig.label}
+								{removeUnderScore(currentStatusConfig.label)}
 							</Badge>
 
 							{allowedNextStates.length > 0 && (
@@ -416,7 +423,10 @@ export default function AdminOrderDetailPage({
 												progressLoading ||
 												order.data.order_status === 'IN_PREPARATION' ||
 												order.data.order_status === 'AWAITING_RETURN' ||
-												order.data.order_status === 'QUOTED'
+												order.data.order_status === 'QUOTED' ||
+												(order.data.order_status === 'CONFIRMED' &&
+													(!order?.data?.delivery_window?.start ||
+														!order?.data?.delivery_window?.end))
 											}
 										>
 											<PlayCircle className='h-3.5 w-3.5' />
@@ -490,7 +500,16 @@ export default function AdminOrderDetailPage({
 											</Button>
 											<Button
 												onClick={handleStatusProgression}
-												disabled={!selectedNextStatus || progressLoading || order.data.order_status === 'IN_PREPARATION' || order.data.order_status === 'AWAITING_RETURN'}
+												disabled={
+													!selectedNextStatus ||
+													progressLoading ||
+													order.data.order_status === 'IN_PREPARATION' ||
+													order.data.order_status === 'AWAITING_RETURN' ||
+													order.data.order_status === 'QUOTED' ||
+													(order.data.order_status === 'CONFIRMED' &&
+														(!order?.data?.delivery_window?.start ||
+															!order?.data?.delivery_window?.end))
+												}
 												className='font-mono text-xs'
 											>
 												{progressLoading ? (
@@ -606,8 +625,8 @@ export default function AdminOrderDetailPage({
 							</Card>
 						)}
 
-						{order.data.order_status === 'CONFIRMED' &&
-							!order.data.delivery_window_start && (
+						{order?.data?.order_status === 'CONFIRMED' &&
+							!order?.data?.delivery_window?.start && (
 								<Card className='p-4 bg-orange-500/5 border-orange-500/30'>
 									<div className='flex items-start gap-3'>
 										<AlertCircle className='h-5 w-5 text-orange-600 shrink-0 mt-0.5' />
@@ -624,7 +643,7 @@ export default function AdminOrderDetailPage({
 								</Card>
 							)}
 
-						{order.data.order_status === 'AWAITING_RETURN' &&
+						{order?.data?.order_status === 'AWAITING_RETURN' &&
 							order?.data?.pickup_window?.start &&
 							(() => {
 								const hoursUntilPickup =
@@ -662,13 +681,13 @@ export default function AdminOrderDetailPage({
 							})()}
 
 						{/* Job Number Card */}
-						{order.data.job_number !== undefined && (
+						{order?.data?.job_number !== undefined && (
 							<Card className='border-2 border-primary/20 bg-primary/5'>
 								<CardContent className='pt-6'>
 									<div className='flex items-center justify-between'>
 										<div className='flex-1'>
 											<Label className='font-mono text-xs text-muted-foreground'>
-												PMG JOB NUMBER
+												PLATFORM JOB NUMBER
 											</Label>
 											{isEditingJobNumber ? (
 												<Input
@@ -701,11 +720,16 @@ export default function AdminOrderDetailPage({
 													</Button>
 													<Button
 														size='icon'
+														disabled={updateJobNumber.isPending}
 														onClick={
 															handleJobNumberSave
 														}
 													>
-														<Save className='h-4 w-4' />
+														{updateJobNumber.isPending ? (
+															<Loader2 className='h-4 w-4 animate-spin' />
+														) : (
+															<Save className='h-4 w-4' />
+														)}
 													</Button>
 												</>
 											) : (
@@ -783,20 +807,14 @@ export default function AdminOrderDetailPage({
 													{order?.data?.platform_pricing?.margin_percent && (
 														<div className='flex justify-between text-muted-foreground'>
 															<span>
-																PMG Margin (
-																{parseFloat(
-																	order?.data?.platform_pricing?.margin_percent
-																).toFixed(0)}
+																Platform Margin (
+																{parseFloat(order?.data?.platform_pricing?.margin_percent).toFixed(2)}
 																%)
 															</span>
 															<span>
 																+
 																{order?.data?.platform_pricing?.margin_amount
-																	? parseFloat(
-																		order?.data?.platform_pricing?.margin_amount
-																	).toFixed(
-																		2
-																	)
+																	? parseFloat(order?.data?.platform_pricing?.margin_amount).toFixed(2)
 																	: '0.00'}{' '}
 																AED
 															</span>
@@ -1254,6 +1272,7 @@ export default function AdminOrderDetailPage({
 													<DialogFooter>
 														<Button
 															variant='outline'
+															disabled={updateTimeWindowsLoading}
 															onClick={() => setTimeWindowsOpen(false)}
 															className='font-mono text-xs'
 														>
@@ -1261,9 +1280,14 @@ export default function AdminOrderDetailPage({
 														</Button>
 														<Button
 															onClick={handleTimeWindowsSave}
+															disabled={updateTimeWindowsLoading}
 															className='font-mono text-xs'
 														>
-															SAVE SCHEDULE
+															{updateTimeWindowsLoading ? (
+																"Saving..."
+															) : (
+																"SAVE SCHEDULE"
+															)}
 														</Button>
 													</DialogFooter>
 												</DialogContent>
@@ -1292,6 +1316,8 @@ export default function AdminOrderDetailPage({
 														).toLocaleTimeString(
 															'en-US',
 															{
+																month: 'short',
+																day: 'numeric',
 																hour: '2-digit',
 																minute: '2-digit',
 															}
@@ -1314,13 +1340,12 @@ export default function AdminOrderDetailPage({
 														{' → '}
 														{new Date(
 															order?.data?.pickup_window?.end
-														).toLocaleTimeString(
-															'en-US',
-															{
-																hour: '2-digit',
-																minute: '2-digit',
-															}
-														)}
+														).toLocaleString('en-US', {
+															month: 'short',
+															day: 'numeric',
+															hour: '2-digit',
+															minute: '2-digit',
+														})}
 													</p>
 												</div>
 											</>

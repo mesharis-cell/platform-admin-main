@@ -187,7 +187,7 @@ export default function WarehousesPage() {
 				icon={Warehouse}
 				title="WAREHOUSE REGISTRY"
 				description="Physical Locations · Capacity · Operations"
-				stats={{ label: 'ACTIVE FACILITIES', value: total }}
+				stats={{ label: 'ACTIVE WAREHOUSES', value: total }}
 				actions={
 					<Dialog
 						open={isCreateOpen}
@@ -202,7 +202,7 @@ export default function WarehousesPage() {
 						<DialogTrigger asChild>
 							<Button className="gap-2 font-mono">
 								<Plus className="h-4 w-4" />
-								NEW FACILITY
+								NEW WAREHOUSE
 							</Button>
 						</DialogTrigger>
 						<DialogContent className="max-w-2xl">
@@ -214,14 +214,14 @@ export default function WarehousesPage() {
 								</DialogTitle>
 								<DialogDescription className="font-mono text-xs">
 									{editingWarehouse
-										? "Update warehouse facility details"
-										: "Add new storage location to network"}
+										? "Update warehouse details"
+										: "Add new warehouse to network"}
 								</DialogDescription>
 							</DialogHeader>
 							<form onSubmit={handleSubmit} className="space-y-6">
 								<div className="space-y-2">
 									<Label htmlFor="name" className="font-mono text-xs">
-										FACILITY NAME *
+										WAREHOUSE NAME *
 									</Label>
 									<Input
 										id="name"
@@ -473,7 +473,7 @@ export default function WarehousesPage() {
 							<TableHeader>
 								<TableRow className="bg-muted/50 border-border/50">
 									<TableHead className="font-mono text-xs font-bold">
-										FACILITY
+										WAREHOUSE
 									</TableHead>
 									<TableHead className="font-mono text-xs font-bold">
 										LOCATION
@@ -609,7 +609,7 @@ export default function WarehousesPage() {
 			</div>
 
 			<div className="fixed bottom-4 right-4 font-mono text-xs text-muted-foreground/40">
-				ZONE: ADMIN-WAREHOUSES · SEC-LEVEL: PMG-ADMIN
+				ZONE: ADMIN-WAREHOUSES · SEC-LEVEL: PLATFORM-ADMIN
 			</div>
 
 			{/* Confirm Archive Dialog */}

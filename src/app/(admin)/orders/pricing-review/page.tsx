@@ -69,7 +69,7 @@ export default function PricingReviewPage() {
 				adjustedPrice: priceNum,
 				adjustmentReason: adjustmentReason.trim(),
 			});
-			toast.success('Pricing adjusted. Sent to PMG for approval.');
+			toast.success('Pricing adjusted. Sent to Platform for approval.');
 			setAdjustDialogOpen(false);
 			setSelectedOrder(null);
 			setAdjustedPrice('');
@@ -283,7 +283,7 @@ export default function PricingReviewPage() {
 										<span className="font-bold">{selectedOrder.standardPricing.a2BasePrice.toFixed(2)} AED</span>
 									</div>
 									<p className="text-xs text-muted-foreground mt-2">
-										PMG will add their margin during approval. You are only approving the A2 base price.
+										Platform will add their margin during approval. You are only approving the A2 base price.
 									</p>
 								</div>
 							</div>
@@ -319,7 +319,7 @@ export default function PricingReviewPage() {
 					<div className="space-y-4">
 						<p className="text-sm text-muted-foreground">
 							Adjust the pricing for order <span className="font-mono font-semibold">{selectedOrder?.order_id}</span>.
-							This will send the adjusted pricing to PMG for final approval.
+							This will send the adjusted pricing to PLATFORM for final approval.
 						</p>
 						{selectedOrder?.logistics_pricing?.base_price && (
 							<div className="border border-border rounded-md p-3 bg-muted/50">
@@ -369,7 +369,7 @@ export default function PricingReviewPage() {
 							Cancel
 						</Button>
 						<Button onClick={handleAdjust} disabled={adjustPricing.isPending}>
-							{adjustPricing.isPending ? 'Submitting...' : 'Submit for PMG Approval'}
+							{adjustPricing.isPending ? 'Submitting...' : 'Submit for PLATFORM Approval'}
 						</Button>
 					</DialogFooter>
 				</DialogContent>

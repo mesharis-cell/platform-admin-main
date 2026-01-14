@@ -79,9 +79,9 @@ export function EditAssetDialog({
 	const [currentStep, setCurrentStep] = useState(0)
 	const [formData, setFormData] = useState({
 		company: extractId(asset.company),
-		brand: extractId(asset.brand) || undefined,
-		warehouse: extractId(asset.warehouse),
-		zone: extractId(asset.zone),
+		brand_id: extractId(asset.brand) || undefined,
+		warehouse_id: extractId(asset.warehouse),
+		zone_id: extractId(asset.zone),
 		name: asset.name,
 		description: asset.description || '',
 		category: asset.category,
@@ -108,9 +108,9 @@ export function EditAssetDialog({
 		if (open && asset) {
 			setFormData({
 				company: extractId(asset.company),
-				brand: extractId(asset.brand) || undefined,
-				warehouse: extractId(asset.warehouse),
-				zone: extractId(asset.zone),
+				brand_id: extractId(asset.brand) || undefined,
+				warehouse_id: extractId(asset.warehouse),
+				zone_id: extractId(asset.zone),
 				name: asset.name,
 				description: asset.description || '',
 				category: asset.category,
@@ -139,8 +139,8 @@ export function EditAssetDialog({
 	const { data: companiesData } = useCompanies()
 	const { data: warehousesData } = useWarehouses()
 	const { data: zonesData } = useZones(
-		formData.warehouse && typeof formData.warehouse === 'string'
-			? { warehouse: formData.warehouse }
+		formData.warehouse_id && typeof formData.warehouse_id === 'string'
+			? { warehouse_id: formData.warehouse_id }
 			: undefined
 	)
 	const { data: brandsData } = useBrands(
@@ -308,9 +308,9 @@ export function EditAssetDialog({
 			await updateMutation.mutateAsync({
 				id: asset.id,
 				data: {
-					brand: formData.brand || null,
-					warehouse: formData.warehouse,
-					zone: formData.zone,
+					brand_id: formData.brand_id || null,
+					warehouse_id: formData.warehouse_id,
+					zone_id: formData.zone_id,
 					name: formData.name,
 					description: formData.description || null,
 					category: formData.category,
@@ -557,12 +557,12 @@ export function EditAssetDialog({
 										Warehouse *
 									</Label>
 									<Select
-										value={formData.warehouse}
+										value={formData.warehouse_id}
 										onValueChange={value =>
 											setFormData({
 												...formData,
-												warehouse: value,
-												zone: undefined,
+												warehouse_id: value,
+												zone_id: undefined,
 											})
 										}
 									>
@@ -587,19 +587,19 @@ export function EditAssetDialog({
 										Zone *
 									</Label>
 									<Select
-										value={formData.zone}
+										value={formData.zone_id}
 										onValueChange={value =>
 											setFormData({
 												...formData,
-												zone: value,
+												zone_id: value,
 											})
 										}
-										disabled={!formData.warehouse}
+										disabled={!formData.warehouse_id}
 									>
 										<SelectTrigger className='font-mono'>
 											<SelectValue
 												placeholder={
-													!formData.warehouse
+													!formData.warehouse_id
 														? 'Select warehouse first'
 														: zones.length === 0
 															? 'No zones available'
@@ -632,11 +632,11 @@ export function EditAssetDialog({
 									Brand (Optional)
 								</Label>
 								<Select
-									value={formData.brand}
+									value={formData.brand_id}
 									onValueChange={value =>
 										setFormData({
 											...formData,
-											brand: value,
+											brand_id: value,
 										})
 									}
 									disabled={!formData.company}

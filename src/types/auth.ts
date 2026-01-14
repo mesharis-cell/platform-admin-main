@@ -328,6 +328,8 @@ export const ADMIN_PERMISSION_GROUPS: Record<string, string[]> = {
 	"User Management": [
 		"users:create",
 		"users:read",
+		"users:update",
+		"users:deactivate",
 		"users:*",
 	],
 	"Company Management": [

@@ -50,7 +50,7 @@ const STATUS_CONFIG: Record<
 		color: 'bg-yellow-500/10 text-yellow-700 border-yellow-500/20',
 	},
 	PENDING_APPROVAL: {
-		label: 'PMG REVIEW',
+		label: 'PLATFORM REVIEW',
 		color: 'bg-orange-500/10 text-orange-700 border-orange-500/20',
 	},
 	QUOTED: {

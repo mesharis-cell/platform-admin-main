@@ -65,9 +65,12 @@ export default function ResetPasswordPage() {
       setConfirmPassword("");
       logout();
       router.push('/');
-    } catch (error) {
+
+    } catch (error: any) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      const errorMessage = axiosError.response?.data?.message || error.message;
       toast.error("Change Failed", {
-        description: error instanceof Error ? error.message : "Unable to change password.",
+        description: errorMessage,
       });
     } finally {
       setIsLoading(false);
