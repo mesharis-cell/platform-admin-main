@@ -140,7 +140,7 @@ export function EditAssetDialog({
 	const { data: warehousesData } = useWarehouses()
 	const { data: zonesData } = useZones(
 		formData.warehouse_id && typeof formData.warehouse_id === 'string'
-			? { warehouse_id: formData.warehouse_id }
+			? { warehouse_id: formData.warehouse_id, company_id: formData.company }
 			: undefined
 	)
 	const { data: brandsData } = useBrands(
