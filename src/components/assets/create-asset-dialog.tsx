@@ -12,7 +12,7 @@ import { useCompanies } from '@/hooks/use-companies'
 import { useWarehouses } from '@/hooks/use-warehouses'
 import { useZones } from '@/hooks/use-zones'
 import { useBrands } from '@/hooks/use-brands'
-import { useCreateAsset, useUploadImage } from '@/hooks/use-assets'
+import { useCreateAsset, useUploadImages } from '@/hooks/use-assets'
 import {
 	Plus,
 	Upload,
@@ -105,7 +105,7 @@ export function CreateAssetDialog({
 
 	// Mutations
 	const createMutation = useCreateAsset()
-	const uploadMutation = useUploadImage()
+	const uploadMutation = useUploadImages()
 
 	// Handle image selection - store files locally, create previews
 	function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
@@ -257,15 +257,14 @@ export function CreateAssetDialog({
 		}
 
 		try {
-			// Upload images first if any are selected
+			// Upload images directly to S3 using presigned URLs
 			let imageUrls: string[] = []
 			if (selectedImages.length > 0) {
-				const uploadFormData = new FormData()
-				uploadFormData.append('companyId', formData.company_id!)
-				selectedImages.forEach(file => uploadFormData.append('files', file))
-
-				const uploadResult = await uploadMutation.mutateAsync(uploadFormData)
-				imageUrls = uploadResult.data?.imageUrls
+				const uploadResult = await uploadMutation.mutateAsync({
+					files: selectedImages,
+					companyId: formData.company_id!,
+				})
+				imageUrls = uploadResult.imageUrls || []
 			}
 
 			// Create asset with uploaded image URLs

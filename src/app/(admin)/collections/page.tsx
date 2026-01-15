@@ -9,7 +9,7 @@ import {
 } from '@/hooks/use-collections'
 import { useCompanies } from '@/hooks/use-companies'
 import { useBrands } from '@/hooks/use-brands'
-import { useAssets, useUploadImage } from '@/hooks/use-assets'
+import { useUploadImages } from '@/hooks/use-assets'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -102,7 +102,7 @@ export default function CollectionsPage() {
 
 	const createMutation = useCreateCollection()
 	const deleteMutation = useDeleteCollection()
-	const uploadMutation = useUploadImage()
+	const uploadMutation = useUploadImages()
 
 	const [selectedImages, setSelectedImages] = useState<File[]>([])
 	const [previewUrls, setPreviewUrls] = useState<string[]>([])
@@ -140,10 +140,11 @@ export default function CollectionsPage() {
 			// Upload images first
 			let imageUrls: string[] = []
 			if (selectedImages.length > 0) {
-				const formData = new FormData()
-				selectedImages.forEach(file => formData.append('files', file))
-				const uploadResult = await uploadMutation.mutateAsync(formData)
-				imageUrls = uploadResult.data?.imageUrls || []
+				const uploadResult = await uploadMutation.mutateAsync({
+					files: selectedImages,
+					companyId: formData.company,
+				})
+				imageUrls = uploadResult.imageUrls || []
 			}
 
 			// Create collection
