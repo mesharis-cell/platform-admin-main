@@ -12,7 +12,7 @@ import { useCompanies } from '@/hooks/use-companies'
 import { useWarehouses } from '@/hooks/use-warehouses'
 import { useZones } from '@/hooks/use-zones'
 import { useBrands } from '@/hooks/use-brands'
-import { useCreateAsset, useUploadImages } from '@/hooks/use-assets'
+import { useCreateAsset, useUploadImage } from '@/hooks/use-assets'
 import {
 	Plus,
 	Upload,
@@ -105,7 +105,7 @@ export function CreateAssetDialog({
 
 	// Mutations
 	const createMutation = useCreateAsset()
-	const uploadMutation = useUploadImages()
+	const uploadMutation = useUploadImage()
 
 	// Handle image selection - store files locally, create previews
 	function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
@@ -257,14 +257,15 @@ export function CreateAssetDialog({
 		}
 
 		try {
-			// Upload images directly to S3 using presigned URLs
+			// Upload images first if any are selected
 			let imageUrls: string[] = []
 			if (selectedImages.length > 0) {
-				const uploadResult = await uploadMutation.mutateAsync({
-					files: selectedImages,
-					companyId: formData.company_id!,
-				})
-				imageUrls = uploadResult.imageUrls || []
+				const uploadFormData = new FormData()
+				uploadFormData.append('companyId', formData.company_id!)
+				selectedImages.forEach(file => uploadFormData.append('files', file))
+
+				const uploadResult = await uploadMutation.mutateAsync(uploadFormData)
+				imageUrls = uploadResult.data?.imageUrls
 			}
 
 			// Create asset with uploaded image URLs
@@ -1102,11 +1103,11 @@ export function CreateAssetDialog({
 										</Label>
 										<Input
 											type='number'
-											min='0'
+											min='1'
 											placeholder='1'
 											value={formData.total_quantity || ''}
 											onChange={e => {
-												const newTotal = parseInt(e.target.value)
+												const newTotal = parseInt(e.target.value) || 1
 												setFormData({
 													...formData,
 													total_quantity: newTotal,

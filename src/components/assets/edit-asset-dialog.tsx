@@ -11,7 +11,7 @@ import { useCompanies } from '@/hooks/use-companies'
 import { useWarehouses } from '@/hooks/use-warehouses'
 import { useZones } from '@/hooks/use-zones'
 import { useBrands } from '@/hooks/use-brands'
-import { useUpdateAsset, useUploadImages } from '@/hooks/use-assets'
+import { useUpdateAsset, useUploadImage } from '@/hooks/use-assets'
 import {
 	Upload,
 	Package,
@@ -79,9 +79,9 @@ export function EditAssetDialog({
 	const [currentStep, setCurrentStep] = useState(0)
 	const [formData, setFormData] = useState({
 		company: extractId(asset.company),
-		brand_id: extractId(asset.brand) || undefined,
-		warehouse_id: extractId(asset.warehouse),
-		zone_id: extractId(asset.zone),
+		brand: extractId(asset.brand) || undefined,
+		warehouse: extractId(asset.warehouse),
+		zone: extractId(asset.zone),
 		name: asset.name,
 		description: asset.description || '',
 		category: asset.category,
@@ -108,9 +108,9 @@ export function EditAssetDialog({
 		if (open && asset) {
 			setFormData({
 				company: extractId(asset.company),
-				brand_id: extractId(asset.brand) || undefined,
-				warehouse_id: extractId(asset.warehouse),
-				zone_id: extractId(asset.zone),
+				brand: extractId(asset.brand) || undefined,
+				warehouse: extractId(asset.warehouse),
+				zone: extractId(asset.zone),
 				name: asset.name,
 				description: asset.description || '',
 				category: asset.category,
@@ -139,8 +139,8 @@ export function EditAssetDialog({
 	const { data: companiesData } = useCompanies()
 	const { data: warehousesData } = useWarehouses()
 	const { data: zonesData } = useZones(
-		formData.warehouse_id && typeof formData.warehouse_id === 'string'
-			? { warehouse_id: formData.warehouse_id, company_id: formData.company }
+		formData.warehouse && typeof formData.warehouse === 'string'
+			? { warehouse: formData.warehouse }
 			: undefined
 	)
 	const { data: brandsData } = useBrands(
@@ -156,7 +156,7 @@ export function EditAssetDialog({
 
 	// Mutations
 	const updateMutation = useUpdateAsset()
-	const imageUploadMutation = useUploadImages()
+	const imageUploadMutation = useUploadImage()
 
 	// Handle image selection - store files locally, create previews
 	function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
@@ -290,14 +290,15 @@ export function EditAssetDialog({
 		}
 
 		try {
-			// Upload new images directly to S3 using presigned URLs
+			// Upload new images first if any are selected
 			let newImageUrls: string[] = []
 			if (selectedImages.length > 0) {
-				const uploadResult = await imageUploadMutation.mutateAsync({
-					files: selectedImages,
-					companyId: formData.company,
-				})
-				newImageUrls = uploadResult.imageUrls || []
+				const uploadFormData = new FormData()
+				uploadFormData.append('companyId', formData.company)
+				selectedImages.forEach(file => uploadFormData.append('files', file))
+
+				const uploadResult = await imageUploadMutation.mutateAsync(uploadFormData)
+				newImageUrls = uploadResult.data?.imageUrls || []
 			}
 
 			// Combine existing images with newly uploaded ones
@@ -307,9 +308,9 @@ export function EditAssetDialog({
 			await updateMutation.mutateAsync({
 				id: asset.id,
 				data: {
-					brand_id: formData.brand_id || null,
-					warehouse_id: formData.warehouse_id,
-					zone_id: formData.zone_id,
+					brand: formData.brand || null,
+					warehouse: formData.warehouse,
+					zone: formData.zone,
 					name: formData.name,
 					description: formData.description || null,
 					category: formData.category,
@@ -556,12 +557,12 @@ export function EditAssetDialog({
 										Warehouse *
 									</Label>
 									<Select
-										value={formData.warehouse_id}
+										value={formData.warehouse}
 										onValueChange={value =>
 											setFormData({
 												...formData,
-												warehouse_id: value,
-												zone_id: undefined,
+												warehouse: value,
+												zone: undefined,
 											})
 										}
 									>
@@ -586,19 +587,19 @@ export function EditAssetDialog({
 										Zone *
 									</Label>
 									<Select
-										value={formData.zone_id}
+										value={formData.zone}
 										onValueChange={value =>
 											setFormData({
 												...formData,
-												zone_id: value,
+												zone: value,
 											})
 										}
-										disabled={!formData.warehouse_id}
+										disabled={!formData.warehouse}
 									>
 										<SelectTrigger className='font-mono'>
 											<SelectValue
 												placeholder={
-													!formData.warehouse_id
+													!formData.warehouse
 														? 'Select warehouse first'
 														: zones.length === 0
 															? 'No zones available'
@@ -631,11 +632,11 @@ export function EditAssetDialog({
 									Brand (Optional)
 								</Label>
 								<Select
-									value={formData.brand_id}
+									value={formData.brand}
 									onValueChange={value =>
 										setFormData({
 											...formData,
-											brand_id: value,
+											brand: value,
 										})
 									}
 									disabled={!formData.company}
