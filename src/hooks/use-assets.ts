@@ -74,8 +74,52 @@ async function deleteAsset(id: string): Promise<void> {
   }
 }
 
-// Upload image
-async function uploadImage(formData: FormData): Promise<{ data: { imageUrls: string[], presignedUrl: string } }> {
+// Upload image using presigned S3 URL (bypasses Vercel's 4.5MB limit)
+async function uploadImages(files: File[], companyId?: string): Promise<{ imageUrls: string[] }> {
+  try {
+    // Step 1: Get presigned URLs from backend
+    const presignedResponse = await apiClient.post('/operations/v1/upload/presigned-urls', {
+      files: files.map(file => ({
+        fileName: file.name,
+        contentType: file.type,
+      })),
+      companyId,
+    });
+
+    const uploads = presignedResponse.data.data.uploads as Array<{
+      uploadUrl: string;
+      fileUrl: string;
+      key: string;
+    }>;
+
+    // Step 2: Upload files directly to S3 using presigned URLs
+    await Promise.all(
+      uploads.map((upload, index) =>
+        fetch(upload.uploadUrl, {
+          method: 'PUT',
+          body: files[index],
+          headers: {
+            'Content-Type': files[index].type,
+          },
+        }).then(response => {
+          if (!response.ok) {
+            throw new Error(`Failed to upload ${files[index].name} to S3`);
+          }
+        })
+      )
+    );
+
+    // Step 3: Return the final S3 URLs
+    return {
+      imageUrls: uploads.map(upload => upload.fileUrl),
+    };
+  } catch (error) {
+    throwApiError(error);
+  }
+}
+
+// Legacy upload function (kept for backwards compatibility, limited to ~4.5MB on Vercel)
+async function uploadImageLegacy(formData: FormData): Promise<{ data: { imageUrls: string[] } }> {
   try {
     const response = await apiClient.post('/operations/v1/upload/images', formData, {
       headers: {
@@ -129,9 +173,17 @@ export function useCreateAsset() {
   });
 }
 
-export function useUploadImage() {
+export function useUploadImages() {
   return useMutation({
-    mutationFn: uploadImage,
+    mutationFn: ({ files, companyId }: { files: File[]; companyId?: string }) =>
+      uploadImages(files, companyId),
+  });
+}
+
+// Legacy hook using traditional multipart upload (limited to ~4.5MB on Vercel)
+export function useUploadImageLegacy() {
+  return useMutation({
+    mutationFn: uploadImageLegacy,
   });
 }
 

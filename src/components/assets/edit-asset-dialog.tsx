@@ -11,7 +11,7 @@ import { useCompanies } from '@/hooks/use-companies'
 import { useWarehouses } from '@/hooks/use-warehouses'
 import { useZones } from '@/hooks/use-zones'
 import { useBrands } from '@/hooks/use-brands'
-import { useUpdateAsset, useUploadImage } from '@/hooks/use-assets'
+import { useUpdateAsset, useUploadImages } from '@/hooks/use-assets'
 import {
 	Upload,
 	Package,
@@ -156,7 +156,7 @@ export function EditAssetDialog({
 
 	// Mutations
 	const updateMutation = useUpdateAsset()
-	const imageUploadMutation = useUploadImage()
+	const imageUploadMutation = useUploadImages()
 
 	// Handle image selection - store files locally, create previews
 	function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
@@ -290,15 +290,14 @@ export function EditAssetDialog({
 		}
 
 		try {
-			// Upload new images first if any are selected
+			// Upload new images directly to S3 using presigned URLs
 			let newImageUrls: string[] = []
 			if (selectedImages.length > 0) {
-				const uploadFormData = new FormData()
-				uploadFormData.append('companyId', formData.company)
-				selectedImages.forEach(file => uploadFormData.append('files', file))
-
-				const uploadResult = await imageUploadMutation.mutateAsync(uploadFormData)
-				newImageUrls = uploadResult.data?.imageUrls || []
+				const uploadResult = await imageUploadMutation.mutateAsync({
+					files: selectedImages,
+					companyId: formData.company,
+				})
+				newImageUrls = uploadResult.imageUrls || []
 			}
 
 			// Combine existing images with newly uploaded ones

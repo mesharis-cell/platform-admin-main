@@ -38,7 +38,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import type { Company } from "@/types";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { useUploadImage } from "@/hooks/use-assets";
+import { useUploadImages } from "@/hooks/use-assets";
 
 export default function CompaniesPage() {
 	const [searchQuery, setSearchQuery] = useState("");
@@ -90,7 +90,7 @@ export default function CompaniesPage() {
 	const updateMutation = useUpdateCompany();
 	const archiveMutation = useArchiveCompany();
 	const unarchiveMutation = useUnarchiveCompany();
-	const uploadMutation = useUploadImage()
+	const uploadMutation = useUploadImages()
 
 	// Handle logo selection
 	const handleLogoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -142,14 +142,13 @@ export default function CompaniesPage() {
 		e.preventDefault();
 
 		try {
-			// Upload logo if selected
+			// Upload logo directly to S3 using presigned URL
 			let logoUrl = formData.settings.branding.logo_url;
 			if (selectedLogo) {
-				const uploadFormData = new FormData();
-				uploadFormData.append('files', selectedLogo);
-
-				const uploadResult = await uploadMutation.mutateAsync(uploadFormData);
-				logoUrl = uploadResult.data?.imageUrls?.[0]
+				const uploadResult = await uploadMutation.mutateAsync({
+					files: [selectedLogo],
+				});
+				logoUrl = uploadResult.imageUrls?.[0]
 			}
 
 			const payload = {
