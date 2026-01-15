@@ -1103,11 +1103,11 @@ export function CreateAssetDialog({
 										</Label>
 										<Input
 											type='number'
-											min='1'
+											min='0'
 											placeholder='1'
 											value={formData.total_quantity || ''}
 											onChange={e => {
-												const newTotal = parseInt(e.target.value) || 1
+												const newTotal = parseInt(e.target.value)
 												setFormData({
 													...formData,
 													total_quantity: newTotal,
