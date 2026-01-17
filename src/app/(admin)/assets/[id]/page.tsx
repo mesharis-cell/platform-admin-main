@@ -76,7 +76,7 @@ export default function AssetDetailPage({
 
 	// Generate QR code when asset loads
 	useEffect(() => {
-		if (asset?.qr_code && !qrCodeImage) {
+		if (asset?.qr_code) {
 			generateQRCode(asset.qr_code)
 				.then(data => {
 					setQrCodeImage(data)
