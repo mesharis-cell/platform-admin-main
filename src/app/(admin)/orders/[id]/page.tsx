@@ -20,6 +20,7 @@ import { OrderLineItemsList } from '@/components/orders/OrderLineItemsList'
 import { AddCatalogLineItemModal } from '@/components/orders/AddCatalogLineItemModal'
 import { AddCustomLineItemModal } from '@/components/orders/AddCustomLineItemModal'
 import { CancelOrderModal } from '@/components/orders/CancelOrderModal'
+import { PendingApprovalSection, AwaitingFabricationSection, CancelOrderButton } from './hybrid-sections'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -424,6 +425,9 @@ export default function AdminOrderDetailPage({
 								{removeUnderScore(currentStatusConfig.label)}
 							</Badge>
 
+							{/* NEW: Cancel Order Button */}
+							<CancelOrderButton order={order.data} orderId={order.data.id} />
+
 							{allowedNextStates.length > 0 && (
 								<Dialog
 									open={statusDialogOpen}
@@ -545,6 +549,16 @@ export default function AdminOrderDetailPage({
 				<div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
 					{/* Main Content */}
 					<div className='lg:col-span-2 space-y-6'>
+						{/* NEW: PENDING_APPROVAL - Admin Review Section */}
+						{order.data.order_status === 'PENDING_APPROVAL' && (
+							<PendingApprovalSection order={order.data} orderId={order.data.id} />
+						)}
+
+						{/* NEW: AWAITING_FABRICATION - Fabrication Tracking */}
+						{order.data.order_status === 'AWAITING_FABRICATION' && (
+							<AwaitingFabricationSection order={order.data} orderId={order.data.id} />
+						)}
+
 						{/* Feedback #3: Refurb Items Banner - Show for PRICING_REVIEW and PENDING_APPROVAL */}
 						{(order.data.order_status === 'PRICING_REVIEW' ||
 							order.data.order_status === 'PENDING_APPROVAL') &&
