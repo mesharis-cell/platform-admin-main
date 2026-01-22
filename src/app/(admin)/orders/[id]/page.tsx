@@ -13,8 +13,13 @@
 
 import { use, useState } from 'react'
 import Link from 'next/link'
-import { useAdminOrderDetails, useAdminOrderStatusHistory, useUpdateJobNumber } from '@/hooks/use-orders'
+import { useAdminOrderDetails, useAdminOrderStatusHistory, useUpdateJobNumber, useAdminApproveQuote, useReturnToLogistics, useCancelOrder } from '@/hooks/use-orders'
 import { ScanActivityTimeline } from '@/components/scanning/scan-activity-timeline'
+import { ReskinRequestsList } from '@/components/orders/ReskinRequestsList'
+import { OrderLineItemsList } from '@/components/orders/OrderLineItemsList'
+import { AddCatalogLineItemModal } from '@/components/orders/AddCatalogLineItemModal'
+import { AddCustomLineItemModal } from '@/components/orders/AddCustomLineItemModal'
+import { CancelOrderModal } from '@/components/orders/CancelOrderModal'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -22,6 +27,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
 	Dialog,
 	DialogContent,
@@ -192,6 +198,14 @@ export default function AdminOrderDetailPage({
 	const [timeWindowsOpen, setTimeWindowsOpen] = useState(false)
 	const [paymentDialogOpen, setPaymentDialogOpen] = useState(false)
 	const [updateTimeWindowsLoading, setUpdateTimeWindowsLoading] = useState(false)
+	
+	// NEW: Hybrid pricing workflow states
+	const [addCatalogLineItemOpen, setAddCatalogLineItemOpen] = useState(false)
+	const [addCustomLineItemOpen, setAddCustomLineItemOpen] = useState(false)
+	const [cancelOrderOpen, setCancelOrderOpen] = useState(false)
+	const [marginOverride, setMarginOverride] = useState(false)
+	const [marginPercent, setMarginPercent] = useState(25)
+	const [marginReason, setMarginReason] = useState('')
 
 	const [paymentDetails, setPaymentDetails] = useState({
 		paymentMethod: '',
