@@ -18,6 +18,7 @@ export type OrderStatus =
 	| 'QUOTED'
 	| 'DECLINED'
 	| 'CONFIRMED'
+	| 'AWAITING_FABRICATION'
 	| 'IN_PREPARATION'
 	| 'READY_FOR_DELIVERY'
 	| 'IN_TRANSIT'
@@ -25,6 +26,7 @@ export type OrderStatus =
 	| 'IN_USE'
 	| 'AWAITING_RETURN'
 	| 'CLOSED'
+	| 'CANCELLED'
 
 // Feedback #1: Add separate financial status type
 export type FinancialStatus =
@@ -34,6 +36,7 @@ export type FinancialStatus =
 	| 'PENDING_INVOICE'
 	| 'INVOICED'
 	| 'PAID'
+	| 'CANCELLED'
 
 // ============================================================
 // Order Types

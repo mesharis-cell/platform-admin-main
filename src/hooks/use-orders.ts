@@ -550,3 +550,123 @@ export function useClientDeclineQuote() {
 		},
 	})
 }
+
+// ============================================================
+// Phase: Hybrid Pricing Workflow Hooks (NEW)
+// ============================================================
+
+/**
+ * Submit order for Admin approval (Logistics → Admin)
+ */
+export function useSubmitForApproval() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async (orderId: string) => {
+			try {
+				const response = await apiClient.post(`/client/v1/order/${orderId}/submit-for-approval`)
+				return response.data
+			} catch (error) {
+				throwApiError(error)
+			}
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ['orders', 'pricing-review'] })
+			queryClient.invalidateQueries({ queryKey: ['orders', 'pending-approval'] })
+			queryClient.invalidateQueries({ queryKey: ['orders', 'admin-list'] })
+		},
+	})
+}
+
+/**
+ * Admin approve quote and send to client
+ */
+export function useAdminApproveQuote() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({
+			orderId,
+			marginOverridePercent,
+			marginOverrideReason,
+		}: {
+			orderId: string
+			marginOverridePercent?: number
+			marginOverrideReason?: string
+		}) => {
+			try {
+				const response = await apiClient.post(`/client/v1/order/${orderId}/admin-approve-quote`, {
+					margin_override_percent: marginOverridePercent,
+					margin_override_reason: marginOverrideReason,
+				})
+				return response.data
+			} catch (error) {
+				throwApiError(error)
+			}
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ['orders', 'pending-approval'] })
+			queryClient.invalidateQueries({ queryKey: ['orders', 'admin-list'] })
+		},
+	})
+}
+
+/**
+ * Admin returns order to Logistics for revisions
+ */
+export function useReturnToLogistics() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ orderId, reason }: { orderId: string; reason: string }) => {
+			try {
+				const response = await apiClient.post(`/client/v1/order/${orderId}/return-to-logistics`, {
+					reason,
+				})
+				return response.data
+			} catch (error) {
+				throwApiError(error)
+			}
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ['orders', 'pending-approval'] })
+			queryClient.invalidateQueries({ queryKey: ['orders', 'pricing-review'] })
+			queryClient.invalidateQueries({ queryKey: ['orders', 'admin-list'] })
+		},
+	})
+}
+
+/**
+ * Cancel order (Admin only)
+ */
+export function useCancelOrder() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({
+			orderId,
+			reason,
+			notes,
+			notifyClient,
+		}: {
+			orderId: string
+			reason: string
+			notes: string
+			notifyClient: boolean
+		}) => {
+			try {
+				const response = await apiClient.post(`/client/v1/order/${orderId}/cancel`, {
+					reason,
+					notes,
+					notify_client: notifyClient,
+				})
+				return response.data
+			} catch (error) {
+				throwApiError(error)
+			}
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ['orders'] })
+		},
+	})
+}
