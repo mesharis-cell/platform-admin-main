@@ -1,42 +1,42 @@
-import { cookies } from 'next/headers'
-import { NextResponse, type NextRequest } from 'next/server'
-import { jwtDecode } from 'jwt-decode'
-import { CustomJwtPayload } from './app/page'
+import { cookies } from "next/headers";
+import { NextResponse, type NextRequest } from "next/server";
+import { jwtDecode } from "jwt-decode";
+import { CustomJwtPayload } from "./app/page";
 // Routes that don't require authentication
-const publicRoutes = ['/', '/forgot-password']
+const publicRoutes = ["/", "/forgot-password"];
 
 export async function middleware(request: NextRequest) {
-	const { pathname } = request.nextUrl
-	const cookieStore = await cookies()
+    const { pathname } = request.nextUrl;
+    const cookieStore = await cookies();
 
-	// Check if the current path is a public route
-	const isPublicRoute = publicRoutes.some(route =>
-		pathname === route || pathname.startsWith(`${route}/`)
-	)
+    // Check if the current path is a public route
+    const isPublicRoute = publicRoutes.some(
+        (route) => pathname === route || pathname.startsWith(`${route}/`)
+    );
 
-	// Allow public routes without authentication
-	if (isPublicRoute) {
-		return NextResponse.next()
-	}
+    // Allow public routes without authentication
+    if (isPublicRoute) {
+        return NextResponse.next();
+    }
 
-	// Check for access_token cookie
-	const accessToken = cookieStore.get('access_token')?.value || null
+    // Check for access_token cookie
+    const accessToken = cookieStore.get("access_token")?.value || null;
 
-	// If no token and trying to access protected route, redirect to homepage
-	if (!accessToken) {
-		return NextResponse.redirect(new URL('/', request.url))
-	}
+    // If no token and trying to access protected route, redirect to homepage
+    if (!accessToken) {
+        return NextResponse.redirect(new URL("/", request.url));
+    }
 
-	const role = jwtDecode<CustomJwtPayload>(accessToken || '').role;
+    const role = jwtDecode<CustomJwtPayload>(accessToken || "").role;
 
-	if (role !== 'ADMIN') {
-		return NextResponse.redirect(new URL('/', request.url))
-	}
-	return NextResponse.next()
+    if (role !== "ADMIN") {
+        return NextResponse.redirect(new URL("/", request.url));
+    }
+    return NextResponse.next();
 }
 
 export const config = {
-	matcher: [
-		'/((?!api/cron|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
-	],
-}
+    matcher: [
+        "/((?!api/cron|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    ],
+};

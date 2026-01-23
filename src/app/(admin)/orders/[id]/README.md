@@ -3,27 +3,31 @@
 ## Components Integrated
 
 ### ✅ Status Badges
+
 - Updated STATUS_CONFIG with AWAITING_FABRICATION and CANCELLED
 - Color coding correct
 
 ### ✅ PENDING_APPROVAL Section
+
 - PendingApprovalSection component imported
 - Conditionally rendered when order_status === 'PENDING_APPROVAL'
 - Includes:
-  - ReskinRequestsList
-  - OrderLineItemsList  
-  - Add catalog/custom line item modals
-  - Margin override
-  - Approve/return actions
+    - ReskinRequestsList
+    - OrderLineItemsList
+    - Add catalog/custom line item modals
+    - Margin override
+    - Approve/return actions
 
 ### ✅ AWAITING_FABRICATION Section
+
 - AwaitingFabricationSection component imported
 - Conditionally rendered when order_status === 'AWAITING_FABRICATION'
 - Includes:
-  - ReskinRequestsList (with Mark Complete/Cancel actions)
-  - Fabrication status banner
+    - ReskinRequestsList (with Mark Complete/Cancel actions)
+    - Fabrication status banner
 
 ### ✅ Cancel Order Button
+
 - CancelOrderButton component imported
 - Added to header actions area
 - Shows only for cancellable statuses

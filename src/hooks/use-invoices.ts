@@ -6,31 +6,31 @@
  * Client-side hooks for invoice operations.
  */
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-	GenerateInvoiceRequest,
-	GenerateInvoiceResponse,
-	SendInvoiceEmailRequest,
-	SendInvoiceEmailResponse,
-	InvoiceMetadata,
-	ConfirmPaymentRequest,
-	ConfirmPaymentResponse,
-	InvoiceListParams,
-	InvoiceListResponse,
-} from '@/types/order';
-import { throwApiError } from '@/lib/utils/throw-api-error';
-import { apiClient } from '@/lib/api/api-client';
+    GenerateInvoiceRequest,
+    GenerateInvoiceResponse,
+    SendInvoiceEmailRequest,
+    SendInvoiceEmailResponse,
+    InvoiceMetadata,
+    ConfirmPaymentRequest,
+    ConfirmPaymentResponse,
+    InvoiceListParams,
+    InvoiceListResponse,
+} from "@/types/order";
+import { throwApiError } from "@/lib/utils/throw-api-error";
+import { apiClient } from "@/lib/api/api-client";
 
 // ============================================================
 // Query Keys
 // ============================================================
 
 export const invoiceKeys = {
-	all: ['invoices'] as const,
-	lists: () => [...invoiceKeys.all, 'list'] as const,
-	list: (params: InvoiceListParams) => [...invoiceKeys.lists(), params] as const,
-	details: () => [...invoiceKeys.all, 'detail'] as const,
-	detail: (orderId: string) => [...invoiceKeys.details(), orderId] as const,
+    all: ["invoices"] as const,
+    lists: () => [...invoiceKeys.all, "list"] as const,
+    list: (params: InvoiceListParams) => [...invoiceKeys.lists(), params] as const,
+    details: () => [...invoiceKeys.all, "detail"] as const,
+    detail: (orderId: string) => [...invoiceKeys.details(), orderId] as const,
 };
 
 // ============================================================
@@ -41,51 +41,53 @@ export const invoiceKeys = {
  * Get invoice metadata by order ID
  */
 export function useInvoice(orderId: string) {
-	return useQuery({
-		queryKey: invoiceKeys.detail(orderId),
-		queryFn: async () => {
-			const response = await fetch(`/api/invoices/${orderId}`);
-			if (!response.ok) {
-				const error = await response.json();
-				throw new Error(error.error || 'Failed to fetch invoice');
-			}
-			const data = await response.json();
-			return data.invoice as InvoiceMetadata;
-		},
-		enabled: !!orderId,
-	});
+    return useQuery({
+        queryKey: invoiceKeys.detail(orderId),
+        queryFn: async () => {
+            const response = await fetch(`/api/invoices/${orderId}`);
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || "Failed to fetch invoice");
+            }
+            const data = await response.json();
+            return data.invoice as InvoiceMetadata;
+        },
+        enabled: !!orderId,
+    });
 }
 
 /**
  * List invoices with filtering
  */
 export function useInvoices(params: InvoiceListParams = {}) {
-	const queryParams = new URLSearchParams();
+    const queryParams = new URLSearchParams();
 
-	if (params.company) queryParams.set('company', params.company);
-	if (params.isPaid && params.isPaid !== 'all') {
-		queryParams.set('paid_status', params.isPaid);
-	}
-	if (params.dateFrom) queryParams.set('date_from', params.dateFrom);
-	if (params.dateTo) queryParams.set('date_to', params.dateTo);
-	if (params.page) queryParams.set('page', params.page.toString());
-	if (params.limit) queryParams.set('limit', params.limit.toString());
-	if (params.sortBy) queryParams.set('sort_by', params.sortBy);
-	if (params.sortOrder) queryParams.set('sort_order', params.sortOrder);
+    if (params.company) queryParams.set("company", params.company);
+    if (params.isPaid && params.isPaid !== "all") {
+        queryParams.set("paid_status", params.isPaid);
+    }
+    if (params.dateFrom) queryParams.set("date_from", params.dateFrom);
+    if (params.dateTo) queryParams.set("date_to", params.dateTo);
+    if (params.page) queryParams.set("page", params.page.toString());
+    if (params.limit) queryParams.set("limit", params.limit.toString());
+    if (params.sortBy) queryParams.set("sort_by", params.sortBy);
+    if (params.sortOrder) queryParams.set("sort_order", params.sortOrder);
 
-	return useQuery({
-		queryKey: invoiceKeys.list(params),
-		queryFn: async (): Promise<InvoiceListResponse> => {
-			try {
-				const response = await apiClient.get(`/client/v1/invoice?${queryParams.toString()}`);
+    return useQuery({
+        queryKey: invoiceKeys.list(params),
+        queryFn: async (): Promise<InvoiceListResponse> => {
+            try {
+                const response = await apiClient.get(
+                    `/client/v1/invoice?${queryParams.toString()}`
+                );
 
-				const data = await response.data;
-				return data as InvoiceListResponse;
-			} catch (error) {
-				throwApiError(error);
-			}
-		},
-	});
+                const data = await response.data;
+                return data as InvoiceListResponse;
+            } catch (error) {
+                throwApiError(error);
+            }
+        },
+    });
 }
 
 // ============================================================
@@ -96,103 +98,109 @@ export function useInvoices(params: InvoiceListParams = {}) {
  * Generate invoice for order
  */
 export function useGenerateInvoice() {
-	const queryClient = useQueryClient();
+    const queryClient = useQueryClient();
 
-	return useMutation({
-		mutationFn: async (data: GenerateInvoiceRequest) => {
-			const response = await fetch('/api/invoices/generate', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(data),
-			});
+    return useMutation({
+        mutationFn: async (data: GenerateInvoiceRequest) => {
+            const response = await fetch("/api/invoices/generate", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data),
+            });
 
-			if (!response.ok) {
-				const error = await response.json();
-				throw new Error(error.error || 'Failed to generate invoice');
-			}
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || "Failed to generate invoice");
+            }
 
-			return (await response.json()) as GenerateInvoiceResponse;
-		},
-		onSuccess: (data, variables) => {
-			// Invalidate invoice queries
-			queryClient.invalidateQueries({ queryKey: invoiceKeys.detail(variables.orderId) });
-			queryClient.invalidateQueries({ queryKey: invoiceKeys.lists() });
+            return (await response.json()) as GenerateInvoiceResponse;
+        },
+        onSuccess: (data, variables) => {
+            // Invalidate invoice queries
+            queryClient.invalidateQueries({ queryKey: invoiceKeys.detail(variables.orderId) });
+            queryClient.invalidateQueries({ queryKey: invoiceKeys.lists() });
 
-			// Invalidate order queries (status changed to INVOICED)
-			queryClient.invalidateQueries({ queryKey: ['orders'] });
-		},
-	});
+            // Invalidate order queries (status changed to INVOICED)
+            queryClient.invalidateQueries({ queryKey: ["orders"] });
+        },
+    });
 }
 
 /**
  * Send invoice email
  */
 export function useSendInvoiceEmail() {
-	return useMutation({
-		mutationFn: async (data: SendInvoiceEmailRequest) => {
-			const response = await fetch('/api/invoices/send', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(data),
-			});
+    return useMutation({
+        mutationFn: async (data: SendInvoiceEmailRequest) => {
+            const response = await fetch("/api/invoices/send", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data),
+            });
 
-			if (!response.ok) {
-				const error = await response.json();
-				throw new Error(error.error || 'Failed to send invoice email');
-			}
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || "Failed to send invoice email");
+            }
 
-			return (await response.json()) as SendInvoiceEmailResponse;
-		},
-	});
+            return (await response.json()) as SendInvoiceEmailResponse;
+        },
+    });
 }
 
 /**
  * Download invoice PDF
  */
 export function useDownloadInvoice() {
-  return useMutation({
-    mutationFn: async ({ invoiceNumber, platformId }: { invoiceNumber: string; platformId: string }) => {
-      try {
-        const response = await apiClient.get(`/client/v1/invoice/download-pdf/${invoiceNumber}?pid=${platformId}`, {
-          responseType: 'blob',
-        });
-        return response.data;
-      } catch (error) {
-        throwApiError(error);
-      }
-    },
-  });
+    return useMutation({
+        mutationFn: async ({
+            invoiceNumber,
+            platformId,
+        }: {
+            invoiceNumber: string;
+            platformId: string;
+        }) => {
+            try {
+                const response = await apiClient.get(
+                    `/client/v1/invoice/download-pdf/${invoiceNumber}?pid=${platformId}`,
+                    {
+                        responseType: "blob",
+                    }
+                );
+                return response.data;
+            } catch (error) {
+                throwApiError(error);
+            }
+        },
+    });
 }
 
 /**
  * Confirm payment for invoice
  */
 export function useConfirmPayment() {
-	const queryClient = useQueryClient();
+    const queryClient = useQueryClient();
 
-	return useMutation({
-		mutationFn: async ({
-			orderId,
-			data,
-		}: {
-			orderId: string;
-			data: ConfirmPaymentRequest;
-		}) => {
-			try {
-			const response = await apiClient.patch(`/client/v1/invoice/${orderId}/confirm-payment`, data);
-			return response.data;
-			} catch (error) {
-				throwApiError(error);
-			}
-		},
-		onSuccess: (data, variables) => {
-			// Invalidate invoice queries
-			queryClient.invalidateQueries({ queryKey: invoiceKeys.detail(variables.orderId) });
-			queryClient.invalidateQueries({ queryKey: invoiceKeys.lists() });
+    return useMutation({
+        mutationFn: async ({ orderId, data }: { orderId: string; data: ConfirmPaymentRequest }) => {
+            try {
+                const response = await apiClient.patch(
+                    `/client/v1/invoice/${orderId}/confirm-payment`,
+                    data
+                );
+                return response.data;
+            } catch (error) {
+                throwApiError(error);
+            }
+        },
+        onSuccess: (data, variables) => {
+            // Invalidate invoice queries
+            queryClient.invalidateQueries({ queryKey: invoiceKeys.detail(variables.orderId) });
+            queryClient.invalidateQueries({ queryKey: invoiceKeys.lists() });
 
-			// Invalidate order queries (status changed to PAID)
-			queryClient.invalidateQueries({ queryKey: ['orders'] });
-			queryClient.invalidateQueries({ queryKey: ['analytics'] });
-		},
-	});
+            // Invalidate order queries (status changed to PAID)
+            queryClient.invalidateQueries({ queryKey: ["orders"] });
+            queryClient.invalidateQueries({ queryKey: ["analytics"] });
+        },
+    });
 }

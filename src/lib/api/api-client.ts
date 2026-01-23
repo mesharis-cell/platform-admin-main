@@ -43,7 +43,11 @@ export const getRefreshToken = (): string | undefined => {
     return Cookies.get(REFRESH_TOKEN_KEY);
 };
 
-export const setTokens = (accessToken: string, refreshToken: string, expiresInDays: number = 7): void => {
+export const setTokens = (
+    accessToken: string,
+    refreshToken: string,
+    expiresInDays: number = 7
+): void => {
     Cookies.set(ACCESS_TOKEN_KEY, accessToken, {
         ...TOKEN_COOKIE_OPTIONS,
         expires: 1, // Access token expires in 1 day
@@ -98,7 +102,12 @@ apiClient.interceptors.response.use(
         // If error is 401 and we haven't retried yet
         if (error.response?.status === 401 && !originalRequest._retry) {
             // Skip refresh for auth endpoints to prevent infinite loop
-            if (originalRequest.url?.includes("/auth/login") || originalRequest.url?.includes("/auth/refresh") || originalRequest.url?.includes("/auth/context") || originalRequest.url?.includes("/auth/reset-password")) {
+            if (
+                originalRequest.url?.includes("/auth/login") ||
+                originalRequest.url?.includes("/auth/refresh") ||
+                originalRequest.url?.includes("/auth/context") ||
+                originalRequest.url?.includes("/auth/reset-password")
+            ) {
                 return Promise.reject(error);
             }
 
@@ -138,7 +147,8 @@ apiClient.interceptors.response.use(
                     { headers: { "Content-Type": "application/json" } }
                 );
 
-                const { access_token: newAccessToken, refresh_token: newRefreshToken } = response.data.data;
+                const { access_token: newAccessToken, refresh_token: newRefreshToken } =
+                    response.data.data;
 
                 // Store new tokens
                 setTokens(newAccessToken, newRefreshToken);
