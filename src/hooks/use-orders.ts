@@ -670,3 +670,36 @@ export function useCancelOrder() {
 		},
 	})
 }
+
+/**
+ * Update order vehicle type (Logistics)
+ */
+export function useUpdateOrderVehicle() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({
+			orderId,
+			vehicleType,
+			reason,
+		}: {
+			orderId: string
+			vehicleType: string
+			reason: string
+		}) => {
+			try {
+				const response = await apiClient.patch(`/client/v1/order/${orderId}/vehicle`, {
+					vehicle_type: vehicleType,
+					reason,
+				})
+				return response.data
+			} catch (error) {
+				throwApiError(error)
+			}
+		},
+		onSuccess: (_, variables) => {
+			queryClient.invalidateQueries({ queryKey: ['orders', 'admin-detail', variables.orderId] })
+			queryClient.invalidateQueries({ queryKey: ['orders', 'pricing-review'] })
+		},
+	})
+}
