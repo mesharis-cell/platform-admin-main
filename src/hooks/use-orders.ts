@@ -331,22 +331,18 @@ export function usePricingReviewOrders() {
 }
 
 /**
- * List orders in PENDING_APPROVAL status (PMG Admin)
+ * List orders in PENDING_APPROVAL status (Admin)
  */
 export function usePendingApprovalOrders() {
 	return useQuery({
 		queryKey: ['orders', 'pending-approval'],
 		queryFn: async () => {
-			const response = await fetch('/api/admin/orders/pending-approval')
-
-			if (!response.ok) {
-				const error = await response.json()
-				throw new Error(
-					error.error || 'Failed to fetch pending approval orders'
-				)
+			try {
+				const response = await apiClient.get('/client/v1/order/pending-approval')
+				return response.data
+			} catch (error) {
+				throwApiError(error)
 			}
-
-			return response.json()
 		},
 	})
 }
