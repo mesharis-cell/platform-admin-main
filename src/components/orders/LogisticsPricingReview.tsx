@@ -25,15 +25,12 @@ interface LogisticsPricingReviewProps {
 export function LogisticsPricingReview({ orderId, order }: LogisticsPricingReviewProps) {
   const submitForApproval = useSubmitForApproval()
   const [addCatalogOpen, setAddCatalogOpen] = useState(false)
-  const [vehicleChanged, setVehicleChanged] = useState(false)
 
   const pricing = order?.pricing as OrderPricing | undefined
 
   const handleVehicleChange = (vehicle: VehicleType, reason: string) => {
-    // TODO: Call API to update vehicle type
-    // For now, just track that it changed
-    setVehicleChanged(true)
-    toast.info(`Vehicle upgrade to ${vehicle} noted. Will update pricing.`)
+    // Vehicle update is handled by VehicleUpgradeSelector via API call
+    // This callback is optional, used for any additional UI updates if needed
   }
 
   const handleSubmit = async () => {
