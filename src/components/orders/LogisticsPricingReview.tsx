@@ -107,6 +107,7 @@ export function LogisticsPricingReview({ orderId, order }: LogisticsPricingRevie
         </CardHeader>
         <CardContent>
           <VehicleUpgradeSelector
+            orderId={orderId}
             currentVehicle={order?.transportVehicleType || order?.transport_vehicle_type || 'STANDARD'}
             onVehicleChange={handleVehicleChange}
           />
