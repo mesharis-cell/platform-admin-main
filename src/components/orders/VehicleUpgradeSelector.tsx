@@ -6,29 +6,41 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { toast } from 'sonner'
+import { useUpdateOrderVehicle } from '@/hooks/use-orders'
 import type { VehicleType } from '@/types/hybrid-pricing'
 
 interface VehicleUpgradeSelectorProps {
+  orderId: string
   currentVehicle: VehicleType
-  onVehicleChange: (vehicle: VehicleType, reason: string) => void
+  onVehicleChange?: (vehicle: VehicleType, reason: string) => void
 }
 
-export function VehicleUpgradeSelector({ currentVehicle, onVehicleChange }: VehicleUpgradeSelectorProps) {
+export function VehicleUpgradeSelector({ orderId, currentVehicle, onVehicleChange }: VehicleUpgradeSelectorProps) {
+  const updateVehicle = useUpdateOrderVehicle()
   const [changeVehicle, setChangeVehicle] = useState(false)
   const [selectedVehicle, setSelectedVehicle] = useState<VehicleType>(currentVehicle)
   const [reason, setReason] = useState('')
 
-  const handleVehicleSelect = (vehicle: VehicleType) => {
-    setSelectedVehicle(vehicle)
-    if (vehicle !== currentVehicle && reason.trim()) {
-      onVehicleChange(vehicle, reason.trim())
+  const handleSaveVehicleChange = async () => {
+    if (!reason.trim() || reason.trim().length < 10) {
+      toast.error('Please provide a reason (min 10 characters)')
+      return
     }
-  }
 
-  const handleReasonChange = (value: string) => {
-    setReason(value)
-    if (selectedVehicle !== currentVehicle && value.trim()) {
-      onVehicleChange(selectedVehicle, value.trim())
+    try {
+      await updateVehicle.mutateAsync({
+        orderId,
+        vehicleType: selectedVehicle,
+        reason: reason.trim(),
+      })
+      toast.success('Vehicle type updated and transport rate recalculated')
+      if (onVehicleChange) {
+        onVehicleChange(selectedVehicle, reason.trim())
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to update vehicle')
     }
   }
 
@@ -56,7 +68,7 @@ export function VehicleUpgradeSelector({ currentVehicle, onVehicleChange }: Vehi
         <div className="space-y-3 pl-6 border-l-2 border-primary">
           <div>
             <Label>New Vehicle Type</Label>
-            <Select value={selectedVehicle} onValueChange={(v: VehicleType) => handleVehicleSelect(v)}>
+            <Select value={selectedVehicle} onValueChange={(v: VehicleType) => setSelectedVehicle(v)}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -74,7 +86,7 @@ export function VehicleUpgradeSelector({ currentVehicle, onVehicleChange }: Vehi
             </Label>
             <Textarea
               value={reason}
-              onChange={(e) => handleReasonChange(e.target.value)}
+              onChange={(e) => setReason(e.target.value)}
               placeholder="e.g., Large items require 7-ton truck, volume exceeds standard capacity..."
               rows={3}
             />
@@ -82,6 +94,16 @@ export function VehicleUpgradeSelector({ currentVehicle, onVehicleChange }: Vehi
               Required when upgrading vehicle type
             </p>
           </div>
+
+          {selectedVehicle !== currentVehicle && reason.trim().length >= 10 && (
+            <Button
+              onClick={handleSaveVehicleChange}
+              disabled={updateVehicle.isPending}
+              className="w-full"
+            >
+              {updateVehicle.isPending ? 'Updating...' : 'Update Vehicle & Recalculate Rate'}
+            </Button>
+          )}
 
           {selectedVehicle !== currentVehicle && (
             <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 rounded-md p-3">
