@@ -70,6 +70,21 @@ export function LogisticsPricingReview({ orderId, order }: LogisticsPricingRevie
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                    {!pricing && (
+                        <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-md">
+                            <p className="text-sm font-semibold text-destructive mb-2">
+                                ⚠️ Pricing calculation failed
+                            </p>
+                            <p className="text-xs text-muted-foreground mb-3">
+                                This order may be missing required configuration (e.g., transport rate
+                                for the emirate, trip type, or vehicle type).
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                                Please contact your Platform Admin to add the missing transport rate
+                                configuration.
+                            </p>
+                        </div>
+                    )}
                     {pricing && (
                         <div className="space-y-2 text-sm">
                             <div className="flex justify-between p-2 bg-muted/30 rounded">

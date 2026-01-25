@@ -28,6 +28,7 @@ import { AddCatalogLineItemModal } from "@/components/orders/AddCatalogLineItemM
 import { AddCustomLineItemModal } from "@/components/orders/AddCustomLineItemModal";
 import { CancelOrderModal } from "@/components/orders/CancelOrderModal";
 import {
+    PricingReviewSection,
     PendingApprovalSection,
     AwaitingFabricationSection,
     CancelOrderButton,
@@ -532,6 +533,11 @@ export default function AdminOrderDetailPage({ params }: { params: { id: string 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     {/* Main Content */}
                     <div className="lg:col-span-2 space-y-6">
+                        {/* NEW: PRICING_REVIEW - Logistics Review Section */}
+                        {order.data.order_status === "PRICING_REVIEW" && (
+                            <PricingReviewSection order={order.data} orderId={order.data.id} />
+                        )}
+
                         {/* NEW: PENDING_APPROVAL - Admin Review Section */}
                         {order.data.order_status === "PENDING_APPROVAL" && (
                             <PendingApprovalSection order={order.data} orderId={order.data.id} />

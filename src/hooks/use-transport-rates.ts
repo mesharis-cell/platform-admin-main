@@ -30,7 +30,7 @@ export function useListTransportRates(filters: Record<string, any> = {}) {
         queryFn: async () => {
             try {
                 const response = await apiClient.get(
-                    `/client/v1/pricing/transport-rates?${queryParams}`
+                    `/operations/v1/pricing/transport-rates?${queryParams}`
                 );
                 return response.data;
             } catch (error) {
@@ -47,7 +47,7 @@ export function useGetTransportRate(id: string | null) {
         queryFn: async () => {
             if (!id) return Promise.reject("No ID");
             try {
-                const response = await apiClient.get(`/client/v1/pricing/transport-rates/${id}`);
+                const response = await apiClient.get(`/operations/v1/pricing/transport-rates/${id}`);
                 return response.data.data;
             } catch (error) {
                 throwApiError(error);
@@ -64,7 +64,7 @@ export function useCreateTransportRate() {
     return useMutation({
         mutationFn: async (data: CreateTransportRateRequest) => {
             try {
-                const response = await apiClient.post("/client/v1/pricing/transport-rates", data);
+                const response = await apiClient.post("/operations/v1/pricing/transport-rates", data);
                 return response.data.data;
             } catch (error) {
                 throwApiError(error);
@@ -84,7 +84,7 @@ export function useUpdateTransportRate() {
         mutationFn: async ({ id, data }: { id: string; data: UpdateTransportRateRequest }) => {
             try {
                 const response = await apiClient.put(
-                    `/client/v1/pricing/transport-rates/${id}`,
+                    `/operations/v1/pricing/transport-rates/${id}`,
                     data
                 );
                 return response.data.data;
@@ -106,7 +106,7 @@ export function useDeleteTransportRate() {
     return useMutation({
         mutationFn: async (id: string) => {
             try {
-                const response = await apiClient.delete(`/client/v1/pricing/transport-rates/${id}`);
+                const response = await apiClient.delete(`/operations/v1/pricing/transport-rates/${id}`);
                 return response.data;
             } catch (error) {
                 throwApiError(error);
@@ -129,7 +129,7 @@ export function useLookupTransportRate() {
                     vehicle_type: params.vehicleType,
                 });
                 const response = await apiClient.get(
-                    `/client/v1/pricing/transport-rate/lookup?${queryParams}`
+                    `/operations/v1/pricing/transport-rate/lookup?${queryParams}`
                 );
                 return response.data.data;
             } catch (error) {

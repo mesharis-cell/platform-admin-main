@@ -19,6 +19,7 @@ import { OrderLineItemsList } from "@/components/orders/OrderLineItemsList";
 import { AddCatalogLineItemModal } from "@/components/orders/AddCatalogLineItemModal";
 import { AddCustomLineItemModal } from "@/components/orders/AddCustomLineItemModal";
 import { CancelOrderModal } from "@/components/orders/CancelOrderModal";
+import { LogisticsPricingReview } from "@/components/orders/LogisticsPricingReview";
 import { useAdminApproveQuote, useReturnToLogistics, useCancelOrder } from "@/hooks/use-orders";
 
 interface HybridPricingSectionProps {
@@ -83,7 +84,7 @@ export function PendingApprovalSection({ order, orderId }: HybridPricingSectionP
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <ReskinRequestsList orderId={orderId} orderStatus={order.orderStatus} />
+                    <ReskinRequestsList orderId={orderId} orderStatus={order.order_status} />
                 </CardContent>
             </Card>
 
@@ -233,6 +234,31 @@ export function PendingApprovalSection({ order, orderId }: HybridPricingSectionP
 }
 
 /**
+ * PRICING_REVIEW Section (Logistics Review)
+ */
+export function PricingReviewSection({ order, orderId }: HybridPricingSectionProps) {
+    return (
+        <div className="space-y-6">
+            <Card className="border-yellow-500 bg-yellow-50 dark:bg-yellow-950/20">
+                <CardHeader>
+                    <CardTitle className="text-yellow-900 dark:text-yellow-100">
+                        📋 Pricing Review
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                        Review the order details, add service line items if needed, and submit to Admin
+                        for approval.
+                    </p>
+                </CardContent>
+            </Card>
+
+            <LogisticsPricingReview orderId={orderId} order={order} />
+        </div>
+    );
+}
+
+/**
  * AWAITING_FABRICATION Section
  */
 export function AwaitingFabricationSection({ order, orderId }: HybridPricingSectionProps) {
@@ -258,7 +284,7 @@ export function AwaitingFabricationSection({ order, orderId }: HybridPricingSect
                     <CardTitle>Fabrication Status</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <ReskinRequestsList orderId={orderId} orderStatus={order.orderStatus} />
+                    <ReskinRequestsList orderId={orderId} orderStatus={order.order_status} />
                 </CardContent>
             </Card>
         </div>
@@ -282,7 +308,7 @@ export function CancelOrderButton({ order, orderId }: HybridPricingSectionProps)
         "IN_PREPARATION",
     ];
 
-    const canCancel = CANCELLABLE_STATUSES.includes(order.orderStatus);
+    const canCancel = CANCELLABLE_STATUSES.includes(order.order_status);
 
     if (!canCancel) return null;
 
@@ -296,12 +322,12 @@ export function CancelOrderButton({ order, orderId }: HybridPricingSectionProps)
                 open={cancelOpen}
                 onOpenChange={setCancelOpen}
                 orderId={orderId}
-                orderIdReadable={order.orderId}
+                orderIdReadable={order.order_id}
                 companyName={order.company?.name}
-                currentStatus={order.orderStatus}
+                currentStatus={order.order_status}
                 itemCount={order.items?.length || 0}
                 pendingReskinCount={
-                    order.reskinRequests?.filter((r: any) => r.status === "pending").length || 0
+                    order.reskin_requests?.filter((r: any) => r.status === "pending").length || 0
                 }
             />
         </>

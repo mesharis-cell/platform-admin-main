@@ -2,6 +2,7 @@
 
 import { apiClient } from "@/lib/api/api-client";
 import { throwApiError } from "@/lib/utils/throw-api-error";
+import { mapArraySnakeToCamel } from "@/lib/utils/helper";
 import type {
     ReskinRequest,
     ProcessReskinRequestRequest,
@@ -22,7 +23,8 @@ export function useListReskinRequests(orderId: string | null) {
             if (!orderId) return Promise.reject("No order ID");
             try {
                 const response = await apiClient.get(`/client/v1/order/${orderId}/reskin-requests`);
-                return response.data.data;
+                // Map snake_case API response to camelCase for UI components
+                return mapArraySnakeToCamel(response.data.data) as ReskinRequest[];
             } catch (error) {
                 throwApiError(error);
             }
