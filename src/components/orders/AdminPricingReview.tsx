@@ -235,11 +235,11 @@ export function AdminPricingReview({ orderId, order }: AdminPricingReviewProps) 
                                     ((pricing?.base_operations?.total || 0) +
                                         (pricing?.transport?.final_rate || 0) +
                                         catalogTotal) *
-                                        (1 +
-                                            (marginOverride
-                                                ? marginPercent
-                                                : pricing?.margin?.percent || 25) /
-                                                100) +
+                                    (1 +
+                                        (marginOverride
+                                            ? marginPercent
+                                            : pricing?.margin?.percent || 25) /
+                                        100) +
                                     customTotal
                                 ).toFixed(2)}{" "}
                                 AED

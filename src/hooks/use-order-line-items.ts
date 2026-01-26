@@ -25,7 +25,7 @@ export function useListOrderLineItems(orderId: string | null) {
             try {
                 const response = await apiClient.get(`/client/v1/order/${orderId}/line-items`);
                 // Map snake_case API response to camelCase for UI components
-                return mapArraySnakeToCamel(response.data.data) as OrderLineItem[];
+                return mapArraySnakeToCamel(response.data.data) as unknown as OrderLineItem[];
             } catch (error) {
                 throwApiError(error);
             }
