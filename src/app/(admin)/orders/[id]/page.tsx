@@ -17,16 +17,8 @@ import {
     useAdminOrderDetails,
     useAdminOrderStatusHistory,
     useUpdateJobNumber,
-    useAdminApproveQuote,
-    useReturnToLogistics,
-    useCancelOrder,
 } from "@/hooks/use-orders";
 import { ScanActivityTimeline } from "@/components/scanning/scan-activity-timeline";
-import { ReskinRequestsList } from "@/components/orders/ReskinRequestsList";
-import { OrderLineItemsList } from "@/components/orders/OrderLineItemsList";
-import { AddCatalogLineItemModal } from "@/components/orders/AddCatalogLineItemModal";
-import { AddCustomLineItemModal } from "@/components/orders/AddCustomLineItemModal";
-import { CancelOrderModal } from "@/components/orders/CancelOrderModal";
 import {
     PricingReviewSection,
     PendingApprovalSection,
@@ -40,7 +32,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
     Dialog,
     DialogContent,
@@ -209,14 +200,6 @@ export default function AdminOrderDetailPage({ params }: { params: { id: string 
     const [timeWindowsOpen, setTimeWindowsOpen] = useState(false);
     const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
     const [updateTimeWindowsLoading, setUpdateTimeWindowsLoading] = useState(false);
-
-    // NEW: Hybrid pricing workflow states
-    const [addCatalogLineItemOpen, setAddCatalogLineItemOpen] = useState(false);
-    const [addCustomLineItemOpen, setAddCustomLineItemOpen] = useState(false);
-    const [cancelOrderOpen, setCancelOrderOpen] = useState(false);
-    const [marginOverride, setMarginOverride] = useState(false);
-    const [marginPercent, setMarginPercent] = useState(25);
-    const [marginReason, setMarginReason] = useState("");
 
     const [paymentDetails, setPaymentDetails] = useState({
         paymentMethod: "",
@@ -620,7 +603,7 @@ export default function AdminOrderDetailPage({ params }: { params: { id: string 
                                                         new Date(
                                                             order?.data?.final_pricing?.quote_sent_at
                                                         ).getTime()) /
-                                                        (1000 * 60 * 60 * 24)
+                                                    (1000 * 60 * 60 * 24)
                                                 )}{" "}
                                                 days ago
                                                 {Math.floor(
@@ -628,7 +611,7 @@ export default function AdminOrderDetailPage({ params }: { params: { id: string 
                                                         new Date(
                                                             order?.data?.final_pricing?.quote_sent_at
                                                         ).getTime()) /
-                                                        (1000 * 60 * 60 * 24)
+                                                    (1000 * 60 * 60 * 24)
                                                 ) >= 2 && " - Consider following up with client"}
                                             </p>
                                         </div>
@@ -752,556 +735,555 @@ export default function AdminOrderDetailPage({ params }: { params: { id: string 
                                 "AWAITING_RETURN",
                                 "CLOSED",
                             ].includes(order?.data?.order_status)) && (
-                            <Card className="border-2 border-indigo-500/20 bg-indigo-500/5">
-                                <CardHeader>
-                                    <CardTitle className="font-mono text-sm flex items-center gap-2">
-                                        <FileText className="h-4 w-4 text-indigo-600" />
-                                        INVOICE & PAYMENT
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent className="space-y-3">
-                                    <div className="flex justify-between items-center">
-                                        <Label className="font-mono text-xs text-muted-foreground">
-                                            INVOICE NUMBER
-                                        </Label>
-                                        <p className="font-mono text-sm font-bold">
-                                            {order?.data?.invoice?.invoice_id || (
-                                                <span className="text-muted-foreground">
-                                                    Pending...
-                                                </span>
-                                            )}
-                                        </p>
-                                    </div>
-                                    {/* Amount with Breakdown - PMG Admin sees breakdown */}
-                                    {order?.data?.company?.platform_margin_percent &&
-                                    order?.data?.final_pricing?.total_price &&
-                                    order?.data?.final_pricing?.total_price ? (
-                                        <div className="space-y-2">
-                                            <Label className="font-mono text-xs text-muted-foreground">
-                                                AMOUNT BREAKDOWN
-                                            </Label>
-                                            <div className="p-3 bg-muted/20 rounded border space-y-2 text-sm font-mono">
-                                                <div className="flex justify-between">
-                                                    <span className="text-muted-foreground">
-                                                        Base Price
-                                                    </span>
-                                                    <span>
-                                                        {parseFloat(
-                                                            order?.data?.logistics_pricing
-                                                                ?.adjusted_price ||
-                                                                order?.data?.logistics_pricing
-                                                                    ?.base_price
-                                                        ).toFixed(2)}{" "}
-                                                        AED
-                                                    </span>
-                                                </div>
-                                                {order?.data?.platform_pricing?.margin_percent && (
-                                                    <div className="flex justify-between text-muted-foreground">
-                                                        <span>
-                                                            Platform Margin (
-                                                            {parseFloat(
-                                                                order?.data?.platform_pricing
-                                                                    ?.margin_percent
-                                                            ).toFixed(2)}
-                                                            %)
-                                                        </span>
-                                                        <span>
-                                                            +
-                                                            {order?.data?.platform_pricing
-                                                                ?.margin_amount
-                                                                ? parseFloat(
-                                                                      order?.data?.platform_pricing
-                                                                          ?.margin_amount
-                                                                  ).toFixed(2)
-                                                                : "0.00"}{" "}
-                                                            AED
-                                                        </span>
-                                                    </div>
-                                                )}
-                                                <Separator />
-                                                <div className="flex justify-between font-bold text-base">
-                                                    <span>Total</span>
-                                                    <span className="text-primary">
-                                                        {parseFloat(
-                                                            order?.data?.final_pricing?.total_price
-                                                        ).toFixed(2)}{" "}
-                                                        AED
-                                                    </span>
-                                                </div>
-                                            </div>
-                                            {order.a2AdjustedPrice && order.a2AdjustmentReason && (
-                                                <p className="text-xs text-muted-foreground font-mono italic">
-                                                    A2 Adjustment: {order.a2AdjustmentReason}
-                                                </p>
-                                            )}
-                                        </div>
-                                    ) : (
+                                <Card className="border-2 border-indigo-500/20 bg-indigo-500/5">
+                                    <CardHeader>
+                                        <CardTitle className="font-mono text-sm flex items-center gap-2">
+                                            <FileText className="h-4 w-4 text-indigo-600" />
+                                            INVOICE & PAYMENT
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="space-y-3">
                                         <div className="flex justify-between items-center">
                                             <Label className="font-mono text-xs text-muted-foreground">
-                                                AMOUNT
+                                                INVOICE NUMBER
                                             </Label>
-                                            <p className="font-mono text-lg font-bold text-primary">
-                                                {order?.data?.final_pricing?.total_price ? (
-                                                    `${parseFloat(order?.data?.final_pricing?.total_price).toFixed(2)} AED`
-                                                ) : (
-                                                    <span className="text-sm text-muted-foreground">
-                                                        Pending Invoice
+                                            <p className="font-mono text-sm font-bold">
+                                                {order?.data?.invoice?.invoice_id || (
+                                                    <span className="text-muted-foreground">
+                                                        Pending...
                                                     </span>
                                                 )}
                                             </p>
                                         </div>
-                                    )}
-                                    <Separator />
-                                    <div className="flex justify-between items-center">
-                                        <Label className="font-mono text-xs text-muted-foreground">
-                                            PAYMENT STATUS
-                                        </Label>
-                                        <Badge
-                                            className={`font-mono text-xs ${
-                                                order?.data?.financial_status === "PAID"
-                                                    ? "bg-green-500/10 text-green-700 border-green-500/30"
-                                                    : order?.data?.financial_status === "INVOICED"
-                                                      ? "bg-amber-500/10 text-amber-700 border-amber-500/30"
-                                                      : "bg-slate-500/10 text-slate-600 border-slate-500/20"
-                                            }`}
-                                        >
-                                            {order?.data?.financial_status === "PAID"
-                                                ? "PAID"
-                                                : order?.data?.financial_status === "INVOICED"
-                                                  ? "PENDING"
-                                                  : order?.data?.financial_status || "N/A"}
-                                        </Badge>
-                                    </div>
-                                    {order?.data?.invoice?.invoice_paid_at && (
-                                        <>
+                                        {/* Amount with Breakdown - PMG Admin sees breakdown */}
+                                        {order?.data?.company?.platform_margin_percent &&
+                                            order?.data?.final_pricing?.total_price &&
+                                            order?.data?.final_pricing?.total_price ? (
+                                            <div className="space-y-2">
+                                                <Label className="font-mono text-xs text-muted-foreground">
+                                                    AMOUNT BREAKDOWN
+                                                </Label>
+                                                <div className="p-3 bg-muted/20 rounded border space-y-2 text-sm font-mono">
+                                                    <div className="flex justify-between">
+                                                        <span className="text-muted-foreground">
+                                                            Base Price
+                                                        </span>
+                                                        <span>
+                                                            {parseFloat(
+                                                                order?.data?.logistics_pricing
+                                                                    ?.adjusted_price ||
+                                                                order?.data?.logistics_pricing
+                                                                    ?.base_price
+                                                            ).toFixed(2)}{" "}
+                                                            AED
+                                                        </span>
+                                                    </div>
+                                                    {order?.data?.platform_pricing?.margin_percent && (
+                                                        <div className="flex justify-between text-muted-foreground">
+                                                            <span>
+                                                                Platform Margin (
+                                                                {parseFloat(
+                                                                    order?.data?.platform_pricing
+                                                                        ?.margin_percent
+                                                                ).toFixed(2)}
+                                                                %)
+                                                            </span>
+                                                            <span>
+                                                                +
+                                                                {order?.data?.platform_pricing
+                                                                    ?.margin_amount
+                                                                    ? parseFloat(
+                                                                        order?.data?.platform_pricing
+                                                                            ?.margin_amount
+                                                                    ).toFixed(2)
+                                                                    : "0.00"}{" "}
+                                                                AED
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                    <Separator />
+                                                    <div className="flex justify-between font-bold text-base">
+                                                        <span>Total</span>
+                                                        <span className="text-primary">
+                                                            {parseFloat(
+                                                                order?.data?.final_pricing?.total_price
+                                                            ).toFixed(2)}{" "}
+                                                            AED
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                {order.a2AdjustedPrice && order.a2AdjustmentReason && (
+                                                    <p className="text-xs text-muted-foreground font-mono italic">
+                                                        A2 Adjustment: {order.a2AdjustmentReason}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        ) : (
                                             <div className="flex justify-between items-center">
                                                 <Label className="font-mono text-xs text-muted-foreground">
-                                                    PAID ON
+                                                    AMOUNT
                                                 </Label>
-                                                <p className="font-mono text-xs">
-                                                    {new Date(
-                                                        order?.data?.invoice?.invoice_paid_at
-                                                    ).toLocaleDateString()}
+                                                <p className="font-mono text-lg font-bold text-primary">
+                                                    {order?.data?.final_pricing?.total_price ? (
+                                                        `${parseFloat(order?.data?.final_pricing?.total_price).toFixed(2)} AED`
+                                                    ) : (
+                                                        <span className="text-sm text-muted-foreground">
+                                                            Pending Invoice
+                                                        </span>
+                                                    )}
                                                 </p>
                                             </div>
-                                            {order?.data?.payment_method && (
-                                                <div className="flex justify-between items-center">
-                                                    <Label className="font-mono text-xs text-muted-foreground">
-                                                        METHOD
-                                                    </Label>
-                                                    <p className="font-mono text-xs">
-                                                        {order?.data?.payment_method}
-                                                    </p>
-                                                </div>
-                                            )}
-                                            {order?.data?.payment_reference && (
-                                                <div className="flex justify-between items-center">
-                                                    <Label className="font-mono text-xs text-muted-foreground">
-                                                        REFERENCE
-                                                    </Label>
-                                                    <p className="font-mono text-xs">
-                                                        {order?.data?.payment_reference}
-                                                    </p>
-                                                </div>
-                                            )}
-                                        </>
-                                    )}
-                                    {/* Payment Confirmation Section - PMG Admin Only */}
-                                    {order?.data?.financial_status === "INVOICED" &&
-                                        !order?.data?.invoice?.invoice_paid_at && (
+                                        )}
+                                        <Separator />
+                                        <div className="flex justify-between items-center">
+                                            <Label className="font-mono text-xs text-muted-foreground">
+                                                PAYMENT STATUS
+                                            </Label>
+                                            <Badge
+                                                className={`font-mono text-xs ${order?.data?.financial_status === "PAID"
+                                                        ? "bg-green-500/10 text-green-700 border-green-500/30"
+                                                        : order?.data?.financial_status === "INVOICED"
+                                                            ? "bg-amber-500/10 text-amber-700 border-amber-500/30"
+                                                            : "bg-slate-500/10 text-slate-600 border-slate-500/20"
+                                                    }`}
+                                            >
+                                                {order?.data?.financial_status === "PAID"
+                                                    ? "PAID"
+                                                    : order?.data?.financial_status === "INVOICED"
+                                                        ? "PENDING"
+                                                        : order?.data?.financial_status || "N/A"}
+                                            </Badge>
+                                        </div>
+                                        {order?.data?.invoice?.invoice_paid_at && (
                                             <>
-                                                <Separator />
-                                                <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-md space-y-3">
-                                                    <div className="flex items-start gap-2">
-                                                        <AlertCircle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-                                                        <div className="flex-1">
-                                                            <p className="text-xs font-mono font-bold text-amber-700">
-                                                                AWAITING PAYMENT CONFIRMATION
-                                                            </p>
-                                                            <p className="text-xs font-mono text-muted-foreground mt-1">
-                                                                Invoice sent to client. Confirm
-                                                                payment when received.
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                    <Dialog
-                                                        open={paymentDialogOpen}
-                                                        onOpenChange={setPaymentDialogOpen}
-                                                    >
-                                                        <DialogTrigger asChild>
-                                                            <Button
-                                                                size="sm"
-                                                                className="w-full gap-2 font-mono text-xs bg-green-600 hover:bg-green-700"
-                                                            >
-                                                                <CheckCircle className="h-3.5 w-3.5" />
-                                                                CONFIRM PAYMENT RECEIVED
-                                                            </Button>
-                                                        </DialogTrigger>
-                                                        <DialogContent className="sm:max-w-md">
-                                                            <DialogHeader>
-                                                                <DialogTitle className="font-mono">
-                                                                    CONFIRM PAYMENT
-                                                                </DialogTitle>
-                                                                <DialogDescription className="font-mono text-xs">
-                                                                    Record external payment details
-                                                                    for invoice{" "}
-                                                                    {
-                                                                        order?.data?.invoice
-                                                                            ?.invoice_id
-                                                                    }
-                                                                </DialogDescription>
-                                                            </DialogHeader>
-
-                                                            <div className="space-y-4 py-4">
-                                                                <div className="space-y-2">
-                                                                    <Label className="font-mono text-xs">
-                                                                        PAYMENT METHOD *
-                                                                    </Label>
-                                                                    <select
-                                                                        className="w-full border rounded px-3 py-2 bg-background font-mono text-sm"
-                                                                        value={
-                                                                            paymentDetails.paymentMethod
-                                                                        }
-                                                                        onChange={(e) =>
-                                                                            setPaymentDetails(
-                                                                                (prev) => ({
-                                                                                    ...prev,
-                                                                                    paymentMethod:
-                                                                                        e.target
-                                                                                            .value,
-                                                                                })
-                                                                            )
-                                                                        }
-                                                                    >
-                                                                        <option value="">
-                                                                            Select method...
-                                                                        </option>
-                                                                        <option value="Bank Transfer">
-                                                                            Bank Transfer
-                                                                        </option>
-                                                                        <option value="Wire Transfer">
-                                                                            Wire Transfer
-                                                                        </option>
-                                                                        <option value="Check">
-                                                                            Check
-                                                                        </option>
-                                                                        <option value="Cash">
-                                                                            Cash
-                                                                        </option>
-                                                                        <option value="Other">
-                                                                            Other
-                                                                        </option>
-                                                                    </select>
-                                                                </div>
-
-                                                                <div className="space-y-2">
-                                                                    <Label className="font-mono text-xs">
-                                                                        PAYMENT REFERENCE *
-                                                                    </Label>
-                                                                    <Input
-                                                                        placeholder="Transaction ID, Check #, etc."
-                                                                        value={
-                                                                            paymentDetails.paymentReference
-                                                                        }
-                                                                        onChange={(e) =>
-                                                                            setPaymentDetails(
-                                                                                (prev) => ({
-                                                                                    ...prev,
-                                                                                    paymentReference:
-                                                                                        e.target
-                                                                                            .value,
-                                                                                })
-                                                                            )
-                                                                        }
-                                                                        className="font-mono text-sm"
-                                                                    />
-                                                                </div>
-
-                                                                <div className="space-y-2">
-                                                                    <Label className="font-mono text-xs">
-                                                                        PAYMENT DATE *
-                                                                    </Label>
-                                                                    <DateTimePicker
-                                                                        value={
-                                                                            paymentDetails.paymentDate
-                                                                        }
-                                                                        onChange={(date) =>
-                                                                            setPaymentDetails(
-                                                                                (prev) => ({
-                                                                                    ...prev,
-                                                                                    paymentDate:
-                                                                                        date ||
-                                                                                        new Date(),
-                                                                                })
-                                                                            )
-                                                                        }
-                                                                        placeholder="Select payment date"
-                                                                    />
-                                                                </div>
-
-                                                                <div className="space-y-2">
-                                                                    <Label className="font-mono text-xs">
-                                                                        NOTES (Optional)
-                                                                    </Label>
-                                                                    <Textarea
-                                                                        placeholder="Additional payment notes..."
-                                                                        value={paymentDetails.notes}
-                                                                        onChange={(e) =>
-                                                                            setPaymentDetails(
-                                                                                (prev) => ({
-                                                                                    ...prev,
-                                                                                    notes: e.target
-                                                                                        .value,
-                                                                                })
-                                                                            )
-                                                                        }
-                                                                        className="font-mono text-sm"
-                                                                        rows={3}
-                                                                    />
-                                                                </div>
-                                                            </div>
-
-                                                            <DialogFooter>
-                                                                <Button
-                                                                    variant="outline"
-                                                                    onClick={() =>
-                                                                        setPaymentDialogOpen(false)
-                                                                    }
-                                                                    className="font-mono text-xs"
-                                                                >
-                                                                    CANCEL
-                                                                </Button>
-                                                                <Button
-                                                                    onClick={handleConfirmPayment}
-                                                                    disabled={
-                                                                        !paymentDetails.paymentMethod ||
-                                                                        !paymentDetails.paymentReference
-                                                                    }
-                                                                    className="font-mono text-xs bg-green-600 hover:bg-green-700"
-                                                                >
-                                                                    CONFIRM PAYMENT
-                                                                </Button>
-                                                            </DialogFooter>
-                                                        </DialogContent>
-                                                    </Dialog>
+                                                <div className="flex justify-between items-center">
+                                                    <Label className="font-mono text-xs text-muted-foreground">
+                                                        PAID ON
+                                                    </Label>
+                                                    <p className="font-mono text-xs">
+                                                        {new Date(
+                                                            order?.data?.invoice?.invoice_paid_at
+                                                        ).toLocaleDateString()}
+                                                    </p>
                                                 </div>
+                                                {order?.data?.payment_method && (
+                                                    <div className="flex justify-between items-center">
+                                                        <Label className="font-mono text-xs text-muted-foreground">
+                                                            METHOD
+                                                        </Label>
+                                                        <p className="font-mono text-xs">
+                                                            {order?.data?.payment_method}
+                                                        </p>
+                                                    </div>
+                                                )}
+                                                {order?.data?.payment_reference && (
+                                                    <div className="flex justify-between items-center">
+                                                        <Label className="font-mono text-xs text-muted-foreground">
+                                                            REFERENCE
+                                                        </Label>
+                                                        <p className="font-mono text-xs">
+                                                            {order?.data?.payment_reference}
+                                                        </p>
+                                                    </div>
+                                                )}
                                             </>
                                         )}
-                                </CardContent>
-                            </Card>
-                        )}
+                                        {/* Payment Confirmation Section - PMG Admin Only */}
+                                        {order?.data?.financial_status === "INVOICED" &&
+                                            !order?.data?.invoice?.invoice_paid_at && (
+                                                <>
+                                                    <Separator />
+                                                    <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-md space-y-3">
+                                                        <div className="flex items-start gap-2">
+                                                            <AlertCircle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                                                            <div className="flex-1">
+                                                                <p className="text-xs font-mono font-bold text-amber-700">
+                                                                    AWAITING PAYMENT CONFIRMATION
+                                                                </p>
+                                                                <p className="text-xs font-mono text-muted-foreground mt-1">
+                                                                    Invoice sent to client. Confirm
+                                                                    payment when received.
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                        <Dialog
+                                                            open={paymentDialogOpen}
+                                                            onOpenChange={setPaymentDialogOpen}
+                                                        >
+                                                            <DialogTrigger asChild>
+                                                                <Button
+                                                                    size="sm"
+                                                                    className="w-full gap-2 font-mono text-xs bg-green-600 hover:bg-green-700"
+                                                                >
+                                                                    <CheckCircle className="h-3.5 w-3.5" />
+                                                                    CONFIRM PAYMENT RECEIVED
+                                                                </Button>
+                                                            </DialogTrigger>
+                                                            <DialogContent className="sm:max-w-md">
+                                                                <DialogHeader>
+                                                                    <DialogTitle className="font-mono">
+                                                                        CONFIRM PAYMENT
+                                                                    </DialogTitle>
+                                                                    <DialogDescription className="font-mono text-xs">
+                                                                        Record external payment details
+                                                                        for invoice{" "}
+                                                                        {
+                                                                            order?.data?.invoice
+                                                                                ?.invoice_id
+                                                                        }
+                                                                    </DialogDescription>
+                                                                </DialogHeader>
+
+                                                                <div className="space-y-4 py-4">
+                                                                    <div className="space-y-2">
+                                                                        <Label className="font-mono text-xs">
+                                                                            PAYMENT METHOD *
+                                                                        </Label>
+                                                                        <select
+                                                                            className="w-full border rounded px-3 py-2 bg-background font-mono text-sm"
+                                                                            value={
+                                                                                paymentDetails.paymentMethod
+                                                                            }
+                                                                            onChange={(e) =>
+                                                                                setPaymentDetails(
+                                                                                    (prev) => ({
+                                                                                        ...prev,
+                                                                                        paymentMethod:
+                                                                                            e.target
+                                                                                                .value,
+                                                                                    })
+                                                                                )
+                                                                            }
+                                                                        >
+                                                                            <option value="">
+                                                                                Select method...
+                                                                            </option>
+                                                                            <option value="Bank Transfer">
+                                                                                Bank Transfer
+                                                                            </option>
+                                                                            <option value="Wire Transfer">
+                                                                                Wire Transfer
+                                                                            </option>
+                                                                            <option value="Check">
+                                                                                Check
+                                                                            </option>
+                                                                            <option value="Cash">
+                                                                                Cash
+                                                                            </option>
+                                                                            <option value="Other">
+                                                                                Other
+                                                                            </option>
+                                                                        </select>
+                                                                    </div>
+
+                                                                    <div className="space-y-2">
+                                                                        <Label className="font-mono text-xs">
+                                                                            PAYMENT REFERENCE *
+                                                                        </Label>
+                                                                        <Input
+                                                                            placeholder="Transaction ID, Check #, etc."
+                                                                            value={
+                                                                                paymentDetails.paymentReference
+                                                                            }
+                                                                            onChange={(e) =>
+                                                                                setPaymentDetails(
+                                                                                    (prev) => ({
+                                                                                        ...prev,
+                                                                                        paymentReference:
+                                                                                            e.target
+                                                                                                .value,
+                                                                                    })
+                                                                                )
+                                                                            }
+                                                                            className="font-mono text-sm"
+                                                                        />
+                                                                    </div>
+
+                                                                    <div className="space-y-2">
+                                                                        <Label className="font-mono text-xs">
+                                                                            PAYMENT DATE *
+                                                                        </Label>
+                                                                        <DateTimePicker
+                                                                            value={
+                                                                                paymentDetails.paymentDate
+                                                                            }
+                                                                            onChange={(date) =>
+                                                                                setPaymentDetails(
+                                                                                    (prev) => ({
+                                                                                        ...prev,
+                                                                                        paymentDate:
+                                                                                            date ||
+                                                                                            new Date(),
+                                                                                    })
+                                                                                )
+                                                                            }
+                                                                            placeholder="Select payment date"
+                                                                        />
+                                                                    </div>
+
+                                                                    <div className="space-y-2">
+                                                                        <Label className="font-mono text-xs">
+                                                                            NOTES (Optional)
+                                                                        </Label>
+                                                                        <Textarea
+                                                                            placeholder="Additional payment notes..."
+                                                                            value={paymentDetails.notes}
+                                                                            onChange={(e) =>
+                                                                                setPaymentDetails(
+                                                                                    (prev) => ({
+                                                                                        ...prev,
+                                                                                        notes: e.target
+                                                                                            .value,
+                                                                                    })
+                                                                                )
+                                                                            }
+                                                                            className="font-mono text-sm"
+                                                                            rows={3}
+                                                                        />
+                                                                    </div>
+                                                                </div>
+
+                                                                <DialogFooter>
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        onClick={() =>
+                                                                            setPaymentDialogOpen(false)
+                                                                        }
+                                                                        className="font-mono text-xs"
+                                                                    >
+                                                                        CANCEL
+                                                                    </Button>
+                                                                    <Button
+                                                                        onClick={handleConfirmPayment}
+                                                                        disabled={
+                                                                            !paymentDetails.paymentMethod ||
+                                                                            !paymentDetails.paymentReference
+                                                                        }
+                                                                        className="font-mono text-xs bg-green-600 hover:bg-green-700"
+                                                                    >
+                                                                        CONFIRM PAYMENT
+                                                                    </Button>
+                                                                </DialogFooter>
+                                                            </DialogContent>
+                                                        </Dialog>
+                                                    </div>
+                                                </>
+                                            )}
+                                    </CardContent>
+                                </Card>
+                            )}
 
                         {/* Delivery Schedule Card - Show for CONFIRMED+ states (Feedback #1: Independent from payment) */}
                         {["CONFIRMED", "IN_PREPARATION", "READY_FOR_DELIVERY"].includes(
                             order?.data?.order_status
                         ) && (
-                            <Card className="border-2">
-                                <CardHeader>
-                                    <div className="flex items-center justify-between">
-                                        <CardTitle className="font-mono text-sm flex items-center gap-2">
-                                            <Truck className="h-4 w-4 text-secondary" />
-                                            DELIVERY SCHEDULE
-                                        </CardTitle>
-                                        <Dialog
-                                            open={timeWindowsOpen}
-                                            onOpenChange={setTimeWindowsOpen}
-                                        >
-                                            <DialogTrigger asChild>
-                                                <Button
-                                                    size="sm"
-                                                    variant="outline"
-                                                    className="font-mono text-xs"
-                                                >
-                                                    <Edit className="h-3 w-3 mr-2" />
-                                                    EDIT
-                                                </Button>
-                                            </DialogTrigger>
-                                            <DialogContent className="sm:max-w-lg overflow-y-auto">
-                                                <DialogHeader>
-                                                    <DialogTitle className="font-mono">
-                                                        UPDATE DELIVERY SCHEDULE
-                                                    </DialogTitle>
-                                                    <DialogDescription className="font-mono text-xs">
-                                                        Set time windows for delivery and pickup
-                                                        coordination
-                                                    </DialogDescription>
-                                                </DialogHeader>
-
-                                                <div className="space-y-6 py-4">
-                                                    <div className="space-y-3">
-                                                        <Label className="font-mono text-sm font-bold">
-                                                            DELIVERY WINDOW
-                                                        </Label>
-                                                        <div className="grid grid-cols-2 gap-4">
-                                                            <div className="space-y-2">
-                                                                <Label className="font-mono text-xs text-muted-foreground">
-                                                                    START
-                                                                </Label>
-                                                                <DateTimePicker
-                                                                    value={
-                                                                        timeWindows.deliveryWindowStart
-                                                                    }
-                                                                    onChange={(date) =>
-                                                                        setTimeWindows((prev) => ({
-                                                                            ...prev,
-                                                                            deliveryWindowStart:
-                                                                                date,
-                                                                        }))
-                                                                    }
-                                                                    placeholder="Select delivery start"
-                                                                />
-                                                            </div>
-                                                            <div className="space-y-2">
-                                                                <Label className="font-mono text-xs text-muted-foreground">
-                                                                    END
-                                                                </Label>
-                                                                <DateTimePicker
-                                                                    value={
-                                                                        timeWindows.deliveryWindowEnd
-                                                                    }
-                                                                    onChange={(date) =>
-                                                                        setTimeWindows((prev) => ({
-                                                                            ...prev,
-                                                                            deliveryWindowEnd: date,
-                                                                        }))
-                                                                    }
-                                                                    placeholder="Select delivery end"
-                                                                />
-                                                            </div>
-                                                        </div>
-                                                    </div>
-
-                                                    <Separator />
-
-                                                    <div className="space-y-3">
-                                                        <Label className="font-mono text-sm font-bold">
-                                                            PICKUP WINDOW
-                                                        </Label>
-                                                        <div className="grid grid-cols-2 gap-4">
-                                                            <div className="space-y-2">
-                                                                <Label className="font-mono text-xs text-muted-foreground">
-                                                                    START
-                                                                </Label>
-                                                                <DateTimePicker
-                                                                    value={
-                                                                        timeWindows.pickupWindowStart
-                                                                    }
-                                                                    onChange={(date) =>
-                                                                        setTimeWindows((prev) => ({
-                                                                            ...prev,
-                                                                            pickupWindowStart: date,
-                                                                        }))
-                                                                    }
-                                                                    placeholder="Select pickup start"
-                                                                />
-                                                            </div>
-                                                            <div className="space-y-2">
-                                                                <Label className="font-mono text-xs text-muted-foreground">
-                                                                    END
-                                                                </Label>
-                                                                <DateTimePicker
-                                                                    value={
-                                                                        timeWindows.pickupWindowEnd
-                                                                    }
-                                                                    onChange={(date) =>
-                                                                        setTimeWindows((prev) => ({
-                                                                            ...prev,
-                                                                            pickupWindowEnd: date,
-                                                                        }))
-                                                                    }
-                                                                    placeholder="Select pickup end"
-                                                                />
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                <DialogFooter>
+                                <Card className="border-2">
+                                    <CardHeader>
+                                        <div className="flex items-center justify-between">
+                                            <CardTitle className="font-mono text-sm flex items-center gap-2">
+                                                <Truck className="h-4 w-4 text-secondary" />
+                                                DELIVERY SCHEDULE
+                                            </CardTitle>
+                                            <Dialog
+                                                open={timeWindowsOpen}
+                                                onOpenChange={setTimeWindowsOpen}
+                                            >
+                                                <DialogTrigger asChild>
                                                     <Button
+                                                        size="sm"
                                                         variant="outline"
-                                                        disabled={updateTimeWindowsLoading}
-                                                        onClick={() => setTimeWindowsOpen(false)}
                                                         className="font-mono text-xs"
                                                     >
-                                                        CANCEL
+                                                        <Edit className="h-3 w-3 mr-2" />
+                                                        EDIT
                                                     </Button>
-                                                    <Button
-                                                        onClick={handleTimeWindowsSave}
-                                                        disabled={updateTimeWindowsLoading}
-                                                        className="font-mono text-xs"
-                                                    >
-                                                        {updateTimeWindowsLoading
-                                                            ? "Saving..."
-                                                            : "SAVE SCHEDULE"}
-                                                    </Button>
-                                                </DialogFooter>
-                                            </DialogContent>
-                                        </Dialog>
-                                    </div>
-                                </CardHeader>
-                                <CardContent className="space-y-3">
-                                    {order?.data?.delivery_window?.start ? (
-                                        <>
-                                            <div className="p-3 bg-green-500/5 border border-green-500/20 rounded">
-                                                <Label className="font-mono text-[10px] text-muted-foreground">
-                                                    DELIVERY
-                                                </Label>
-                                                <p className="font-mono text-xs mt-1">
-                                                    {new Date(
-                                                        order?.data?.delivery_window?.start
-                                                    ).toLocaleString("en-US", {
-                                                        month: "short",
-                                                        day: "numeric",
-                                                        hour: "2-digit",
-                                                        minute: "2-digit",
-                                                    })}
-                                                    {" → "}
-                                                    {new Date(
-                                                        order?.data?.delivery_window?.end
-                                                    ).toLocaleTimeString("en-US", {
-                                                        month: "short",
-                                                        day: "numeric",
-                                                        hour: "2-digit",
-                                                        minute: "2-digit",
-                                                    })}
-                                                </p>
-                                            </div>
-                                            <div className="p-3 bg-orange-500/5 border border-orange-500/20 rounded">
-                                                <Label className="font-mono text-[10px] text-muted-foreground">
-                                                    PICKUP
-                                                </Label>
-                                                <p className="font-mono text-xs mt-1">
-                                                    {new Date(
-                                                        order?.data?.pickup_window?.start
-                                                    ).toLocaleString("en-US", {
-                                                        month: "short",
-                                                        day: "numeric",
-                                                        hour: "2-digit",
-                                                        minute: "2-digit",
-                                                    })}
-                                                    {" → "}
-                                                    {new Date(
-                                                        order?.data?.pickup_window?.end
-                                                    ).toLocaleString("en-US", {
-                                                        month: "short",
-                                                        day: "numeric",
-                                                        hour: "2-digit",
-                                                        minute: "2-digit",
-                                                    })}
-                                                </p>
-                                            </div>
-                                        </>
-                                    ) : (
-                                        <div className="p-8 text-center bg-muted/20 rounded border-2 border-dashed">
-                                            <Clock className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
-                                            <p className="font-mono text-xs text-muted-foreground">
-                                                NO SCHEDULE SET
-                                            </p>
+                                                </DialogTrigger>
+                                                <DialogContent className="sm:max-w-lg overflow-y-auto">
+                                                    <DialogHeader>
+                                                        <DialogTitle className="font-mono">
+                                                            UPDATE DELIVERY SCHEDULE
+                                                        </DialogTitle>
+                                                        <DialogDescription className="font-mono text-xs">
+                                                            Set time windows for delivery and pickup
+                                                            coordination
+                                                        </DialogDescription>
+                                                    </DialogHeader>
+
+                                                    <div className="space-y-6 py-4">
+                                                        <div className="space-y-3">
+                                                            <Label className="font-mono text-sm font-bold">
+                                                                DELIVERY WINDOW
+                                                            </Label>
+                                                            <div className="grid grid-cols-2 gap-4">
+                                                                <div className="space-y-2">
+                                                                    <Label className="font-mono text-xs text-muted-foreground">
+                                                                        START
+                                                                    </Label>
+                                                                    <DateTimePicker
+                                                                        value={
+                                                                            timeWindows.deliveryWindowStart
+                                                                        }
+                                                                        onChange={(date) =>
+                                                                            setTimeWindows((prev) => ({
+                                                                                ...prev,
+                                                                                deliveryWindowStart:
+                                                                                    date,
+                                                                            }))
+                                                                        }
+                                                                        placeholder="Select delivery start"
+                                                                    />
+                                                                </div>
+                                                                <div className="space-y-2">
+                                                                    <Label className="font-mono text-xs text-muted-foreground">
+                                                                        END
+                                                                    </Label>
+                                                                    <DateTimePicker
+                                                                        value={
+                                                                            timeWindows.deliveryWindowEnd
+                                                                        }
+                                                                        onChange={(date) =>
+                                                                            setTimeWindows((prev) => ({
+                                                                                ...prev,
+                                                                                deliveryWindowEnd: date,
+                                                                            }))
+                                                                        }
+                                                                        placeholder="Select delivery end"
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        <Separator />
+
+                                                        <div className="space-y-3">
+                                                            <Label className="font-mono text-sm font-bold">
+                                                                PICKUP WINDOW
+                                                            </Label>
+                                                            <div className="grid grid-cols-2 gap-4">
+                                                                <div className="space-y-2">
+                                                                    <Label className="font-mono text-xs text-muted-foreground">
+                                                                        START
+                                                                    </Label>
+                                                                    <DateTimePicker
+                                                                        value={
+                                                                            timeWindows.pickupWindowStart
+                                                                        }
+                                                                        onChange={(date) =>
+                                                                            setTimeWindows((prev) => ({
+                                                                                ...prev,
+                                                                                pickupWindowStart: date,
+                                                                            }))
+                                                                        }
+                                                                        placeholder="Select pickup start"
+                                                                    />
+                                                                </div>
+                                                                <div className="space-y-2">
+                                                                    <Label className="font-mono text-xs text-muted-foreground">
+                                                                        END
+                                                                    </Label>
+                                                                    <DateTimePicker
+                                                                        value={
+                                                                            timeWindows.pickupWindowEnd
+                                                                        }
+                                                                        onChange={(date) =>
+                                                                            setTimeWindows((prev) => ({
+                                                                                ...prev,
+                                                                                pickupWindowEnd: date,
+                                                                            }))
+                                                                        }
+                                                                        placeholder="Select pickup end"
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <DialogFooter>
+                                                        <Button
+                                                            variant="outline"
+                                                            disabled={updateTimeWindowsLoading}
+                                                            onClick={() => setTimeWindowsOpen(false)}
+                                                            className="font-mono text-xs"
+                                                        >
+                                                            CANCEL
+                                                        </Button>
+                                                        <Button
+                                                            onClick={handleTimeWindowsSave}
+                                                            disabled={updateTimeWindowsLoading}
+                                                            className="font-mono text-xs"
+                                                        >
+                                                            {updateTimeWindowsLoading
+                                                                ? "Saving..."
+                                                                : "SAVE SCHEDULE"}
+                                                        </Button>
+                                                    </DialogFooter>
+                                                </DialogContent>
+                                            </Dialog>
                                         </div>
-                                    )}
-                                </CardContent>
-                            </Card>
-                        )}
+                                    </CardHeader>
+                                    <CardContent className="space-y-3">
+                                        {order?.data?.delivery_window?.start ? (
+                                            <>
+                                                <div className="p-3 bg-green-500/5 border border-green-500/20 rounded">
+                                                    <Label className="font-mono text-[10px] text-muted-foreground">
+                                                        DELIVERY
+                                                    </Label>
+                                                    <p className="font-mono text-xs mt-1">
+                                                        {new Date(
+                                                            order?.data?.delivery_window?.start
+                                                        ).toLocaleString("en-US", {
+                                                            month: "short",
+                                                            day: "numeric",
+                                                            hour: "2-digit",
+                                                            minute: "2-digit",
+                                                        })}
+                                                        {" → "}
+                                                        {new Date(
+                                                            order?.data?.delivery_window?.end
+                                                        ).toLocaleTimeString("en-US", {
+                                                            month: "short",
+                                                            day: "numeric",
+                                                            hour: "2-digit",
+                                                            minute: "2-digit",
+                                                        })}
+                                                    </p>
+                                                </div>
+                                                <div className="p-3 bg-orange-500/5 border border-orange-500/20 rounded">
+                                                    <Label className="font-mono text-[10px] text-muted-foreground">
+                                                        PICKUP
+                                                    </Label>
+                                                    <p className="font-mono text-xs mt-1">
+                                                        {new Date(
+                                                            order?.data?.pickup_window?.start
+                                                        ).toLocaleString("en-US", {
+                                                            month: "short",
+                                                            day: "numeric",
+                                                            hour: "2-digit",
+                                                            minute: "2-digit",
+                                                        })}
+                                                        {" → "}
+                                                        {new Date(
+                                                            order?.data?.pickup_window?.end
+                                                        ).toLocaleString("en-US", {
+                                                            month: "short",
+                                                            day: "numeric",
+                                                            hour: "2-digit",
+                                                            minute: "2-digit",
+                                                        })}
+                                                    </p>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <div className="p-8 text-center bg-muted/20 rounded border-2 border-dashed">
+                                                <Clock className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
+                                                <p className="font-mono text-xs text-muted-foreground">
+                                                    NO SCHEDULE SET
+                                                </p>
+                                            </div>
+                                        )}
+                                    </CardContent>
+                                </Card>
+                            )}
 
                         {/* Event & Venue */}
                         <Card className="border-2">
@@ -1449,18 +1431,18 @@ export default function AdminOrderDetailPage({ params }: { params: { id: string 
                             "CLOSED",
                             "PRICING_REVIEW",
                         ].includes(order?.data?.order_status) && (
-                            <Card className="border-2">
-                                <CardHeader>
-                                    <CardTitle className="font-mono text-sm flex items-center gap-2">
-                                        <ScanLine className="h-4 w-4 text-primary" />
-                                        SCANNING ACTIVITY
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <ScanActivityTimeline orderId={order?.data?.order_id} />
-                                </CardContent>
-                            </Card>
-                        )}
+                                <Card className="border-2">
+                                    <CardHeader>
+                                        <CardTitle className="font-mono text-sm flex items-center gap-2">
+                                            <ScanLine className="h-4 w-4 text-primary" />
+                                            SCANNING ACTIVITY
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <ScanActivityTimeline orderId={order?.data?.order_id} />
+                                    </CardContent>
+                                </Card>
+                            )}
                     </div>
 
                     {/* Status History Timeline */}
@@ -1495,15 +1477,14 @@ export default function AdminOrderDetailPage({ params }: { params: { id: string 
                                                     >
                                                         {index <
                                                             statusHistory?.data?.history?.length -
-                                                                1 && (
-                                                            <div className="absolute left-[7px] top-5 bottom-0 w-px bg-border" />
-                                                        )}
+                                                            1 && (
+                                                                <div className="absolute left-[7px] top-5 bottom-0 w-px bg-border" />
+                                                            )}
                                                         <div
-                                                            className={`absolute left-0 top-0.5 h-4 w-4 rounded-full border-2 ${
-                                                                isLatest
+                                                            className={`absolute left-0 top-0.5 h-4 w-4 rounded-full border-2 ${isLatest
                                                                     ? "bg-primary border-primary"
                                                                     : "bg-muted border-border"
-                                                            }`}
+                                                                }`}
                                                         />
                                                         <div>
                                                             <Badge

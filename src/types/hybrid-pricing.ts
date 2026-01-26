@@ -134,9 +134,9 @@ export interface OrderLineItem {
 }
 
 export interface CreateCatalogLineItemRequest {
-    serviceTypeId: string;
+    service_type_id: string;
     quantity: number;
-    unitRate: number;
+    unit_rate: number;
     notes?: string;
 }
 
