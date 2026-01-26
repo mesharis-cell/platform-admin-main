@@ -2,6 +2,7 @@
 
 import { apiClient } from "@/lib/api/api-client";
 import { throwApiError } from "@/lib/utils/throw-api-error";
+import { mapCamelToSnake } from "@/lib/utils/helper";
 import type {
     TransportRate,
     CreateTransportRateRequest,
@@ -64,7 +65,9 @@ export function useCreateTransportRate() {
     return useMutation({
         mutationFn: async (data: CreateTransportRateRequest) => {
             try {
-                const response = await apiClient.post("/operations/v1/pricing/transport-rates", data);
+                // Transform camelCase to snake_case for API
+                const apiData = mapCamelToSnake(data as Record<string, unknown>);
+                const response = await apiClient.post("/operations/v1/pricing/transport-rates", apiData);
                 return response.data.data;
             } catch (error) {
                 throwApiError(error);
@@ -83,9 +86,11 @@ export function useUpdateTransportRate() {
     return useMutation({
         mutationFn: async ({ id, data }: { id: string; data: UpdateTransportRateRequest }) => {
             try {
+                // Transform camelCase to snake_case for API
+                const apiData = mapCamelToSnake(data as Record<string, unknown>);
                 const response = await apiClient.put(
                     `/operations/v1/pricing/transport-rates/${id}`,
-                    data
+                    apiData
                 );
                 return response.data.data;
             } catch (error) {

@@ -2,6 +2,7 @@
 
 import { apiClient } from "@/lib/api/api-client";
 import { throwApiError } from "@/lib/utils/throw-api-error";
+import { mapCamelToSnake } from "@/lib/utils/helper";
 import type { PricingConfig, SetPricingConfigRequest } from "@/types/hybrid-pricing";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -49,7 +50,9 @@ export function useSetPlatformDefault() {
     return useMutation({
         mutationFn: async (data: SetPricingConfigRequest) => {
             try {
-                const response = await apiClient.put("/operations/v1/pricing/config", data);
+                // Transform camelCase to snake_case for API
+                const apiData = mapCamelToSnake(data as Record<string, unknown>);
+                const response = await apiClient.put("/operations/v1/pricing/config", apiData);
                 return response.data.data;
             } catch (error) {
                 throwApiError(error);
@@ -74,9 +77,11 @@ export function useSetCompanyOverride() {
             data: SetPricingConfigRequest;
         }) => {
             try {
+                // Transform camelCase to snake_case for API
+                const apiData = mapCamelToSnake(data as Record<string, unknown>);
                 const response = await apiClient.put(
                     `/operations/v1/pricing/config/${companyId}`,
-                    data
+                    apiData
                 );
                 return response.data.data;
             } catch (error) {

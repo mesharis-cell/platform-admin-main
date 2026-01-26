@@ -239,16 +239,14 @@ export function PendingApprovalSection({ order, orderId }: HybridPricingSectionP
 export function PricingReviewSection({ order, orderId }: HybridPricingSectionProps) {
     return (
         <div className="space-y-6">
-            <Card className="border-yellow-500 bg-yellow-50 dark:bg-yellow-950/20">
+            <Card className="border-yellow-500 bg-yellow-50">
                 <CardHeader>
-                    <CardTitle className="text-yellow-900 dark:text-yellow-100">
-                        📋 Pricing Review
-                    </CardTitle>
+                    <CardTitle className="text-yellow-900">📋 Pricing Review</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                        Review the order details, add service line items if needed, and submit to Admin
-                        for approval.
+                    <p className="text-sm text-yellow-800">
+                        Review the order details, add service line items if needed, and submit to
+                        Admin for approval.
                     </p>
                 </CardContent>
             </Card>
@@ -264,14 +262,12 @@ export function PricingReviewSection({ order, orderId }: HybridPricingSectionPro
 export function AwaitingFabricationSection({ order, orderId }: HybridPricingSectionProps) {
     return (
         <div className="space-y-6">
-            <Card className="border-blue-500 bg-blue-50 dark:bg-blue-950/20">
+            <Card className="border-blue-500 bg-blue-50">
                 <CardHeader>
-                    <CardTitle className="text-blue-900 dark:text-blue-100">
-                        ⏳ Order Awaiting Fabrication
-                    </CardTitle>
+                    <CardTitle className="text-blue-900">⏳ Order Awaiting Fabrication</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <p className="text-sm text-blue-800 dark:text-blue-200">
+                    <p className="text-sm text-blue-800">
                         This order is confirmed but waiting for custom rebranding work to complete.
                         Once all fabrication is done, the order will automatically move to
                         IN_PREPARATION.

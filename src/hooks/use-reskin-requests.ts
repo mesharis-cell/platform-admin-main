@@ -2,7 +2,7 @@
 
 import { apiClient } from "@/lib/api/api-client";
 import { throwApiError } from "@/lib/utils/throw-api-error";
-import { mapArraySnakeToCamel } from "@/lib/utils/helper";
+import { mapArraySnakeToCamel, mapCamelToSnake } from "@/lib/utils/helper";
 import type {
     ReskinRequest,
     ProcessReskinRequestRequest,
@@ -46,9 +46,11 @@ export function useProcessReskinRequest(orderId: string) {
             data: ProcessReskinRequestRequest;
         }) => {
             try {
+                // Transform camelCase to snake_case for API
+                const apiData = mapCamelToSnake(data as Record<string, unknown>);
                 const response = await apiClient.post(
                     `/client/v1/order/${orderId}/reskin-requests/${orderItemId}/process`,
-                    data
+                    apiData
                 );
                 return response.data.data;
             } catch (error) {
@@ -76,9 +78,11 @@ export function useCompleteReskinRequest() {
             data: CompleteReskinRequestRequest;
         }) => {
             try {
+                // Transform camelCase to snake_case for API
+                const apiData = mapCamelToSnake(data as Record<string, unknown>);
                 const response = await apiClient.post(
                     `/client/v1/reskin-requests/${reskinId}/complete`,
-                    data
+                    apiData
                 );
                 return response.data.data;
             } catch (error) {
@@ -106,9 +110,11 @@ export function useCancelReskinRequest() {
             data: CancelReskinRequestRequest;
         }) => {
             try {
+                // Transform camelCase to snake_case for API
+                const apiData = mapCamelToSnake(data as Record<string, unknown>);
                 const response = await apiClient.post(
                     `/client/v1/reskin-requests/${reskinId}/cancel`,
-                    data
+                    apiData
                 );
                 return response.data.data;
             } catch (error) {

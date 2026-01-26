@@ -27,6 +27,7 @@ import {
     Receipt,
     Mail,
     ScanLine,
+    Truck,
     AlertCircle,
     BarChart3,
     LogOut,
@@ -147,6 +148,21 @@ const navigation: NavItem[] = [
         name: "Pricing Tiers",
         href: "/pricing-tiers",
         icon: DollarSign,
+    },
+    {
+        name: "Pricing Config",
+        href: "/settings/pricing/config",
+        icon: DollarSign,
+    },
+    {
+        name: "Transport Rates",
+        href: "/settings/pricing/transport-rates",
+        icon: Truck,
+    },
+    {
+        name: "Service Types",
+        href: "/settings/pricing/service-types",
+        icon: Layers,
     },
     {
         name: "Reset Password",
