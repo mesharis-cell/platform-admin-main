@@ -2,6 +2,7 @@
 
 import { apiClient } from "@/lib/api/api-client";
 import { throwApiError } from "@/lib/utils/throw-api-error";
+import { mapArraySnakeToCamel } from "@/lib/utils/helper";
 import type {
     OrderLineItem,
     CreateCatalogLineItemRequest,
@@ -23,7 +24,8 @@ export function useListOrderLineItems(orderId: string | null) {
             if (!orderId) return Promise.reject("No order ID");
             try {
                 const response = await apiClient.get(`/client/v1/order/${orderId}/line-items`);
-                return response.data.data;
+                // Map snake_case API response to camelCase for UI components
+                return mapArraySnakeToCamel(response.data.data) as unknown as OrderLineItem[];
             } catch (error) {
                 throwApiError(error);
             }

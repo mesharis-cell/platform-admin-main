@@ -16,7 +16,7 @@ export function useGetPlatformConfig() {
         queryKey: pricingConfigKeys.platform(),
         queryFn: async (): Promise<PricingConfig> => {
             try {
-                const response = await apiClient.get("/client/v1/pricing/config");
+                const response = await apiClient.get("/operations/v1/pricing/config");
                 return response.data.data;
             } catch (error) {
                 throwApiError(error);
@@ -32,7 +32,7 @@ export function useGetCompanyConfig(companyId: string | null) {
         queryFn: async (): Promise<PricingConfig> => {
             if (!companyId) return Promise.reject("No company ID");
             try {
-                const response = await apiClient.get(`/client/v1/pricing/config/${companyId}`);
+                const response = await apiClient.get(`/operations/v1/pricing/config/${companyId}`);
                 return response.data.data;
             } catch (error) {
                 throwApiError(error);
@@ -49,7 +49,7 @@ export function useSetPlatformDefault() {
     return useMutation({
         mutationFn: async (data: SetPricingConfigRequest) => {
             try {
-                const response = await apiClient.put("/client/v1/pricing/config", data);
+                const response = await apiClient.put("/operations/v1/pricing/config", data);
                 return response.data.data;
             } catch (error) {
                 throwApiError(error);
@@ -75,7 +75,7 @@ export function useSetCompanyOverride() {
         }) => {
             try {
                 const response = await apiClient.put(
-                    `/client/v1/pricing/config/${companyId}`,
+                    `/operations/v1/pricing/config/${companyId}`,
                     data
                 );
                 return response.data.data;
@@ -98,7 +98,7 @@ export function useRemoveCompanyOverride() {
     return useMutation({
         mutationFn: async (companyId: string) => {
             try {
-                const response = await apiClient.delete(`/client/v1/pricing/config/${companyId}`);
+                const response = await apiClient.delete(`/operations/v1/pricing/config/${companyId}`);
                 return response.data;
             } catch (error) {
                 throwApiError(error);

@@ -28,7 +28,7 @@ export function useListServiceTypes(filters: Record<string, any> = {}) {
         queryFn: async () => {
             try {
                 const response = await apiClient.get(
-                    `/client/v1/pricing/service-types?${queryParams}`
+                    `/operations/v1/pricing/service-types?${queryParams}`
                 );
                 return response.data;
             } catch (error) {
@@ -45,7 +45,7 @@ export function useGetServiceType(id: string | null) {
         queryFn: async () => {
             if (!id) return Promise.reject("No ID");
             try {
-                const response = await apiClient.get(`/client/v1/pricing/service-types/${id}`);
+                const response = await apiClient.get(`/operations/v1/pricing/service-types/${id}`);
                 return response.data.data;
             } catch (error) {
                 throwApiError(error);
@@ -62,7 +62,7 @@ export function useCreateServiceType() {
     return useMutation({
         mutationFn: async (data: CreateServiceTypeRequest) => {
             try {
-                const response = await apiClient.post("/client/v1/pricing/service-types", data);
+                const response = await apiClient.post("/operations/v1/pricing/service-types", data);
                 return response.data.data;
             } catch (error) {
                 throwApiError(error);
@@ -82,7 +82,7 @@ export function useUpdateServiceType() {
         mutationFn: async ({ id, data }: { id: string; data: UpdateServiceTypeRequest }) => {
             try {
                 const response = await apiClient.put(
-                    `/client/v1/pricing/service-types/${id}`,
+                    `/operations/v1/pricing/service-types/${id}`,
                     data
                 );
                 return response.data.data;
@@ -104,7 +104,7 @@ export function useDeleteServiceType() {
     return useMutation({
         mutationFn: async (id: string) => {
             try {
-                const response = await apiClient.delete(`/client/v1/pricing/service-types/${id}`);
+                const response = await apiClient.delete(`/operations/v1/pricing/service-types/${id}`);
                 return response.data;
             } catch (error) {
                 throwApiError(error);

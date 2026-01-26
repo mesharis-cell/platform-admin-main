@@ -99,6 +99,8 @@ export default function AdminOrdersPage() {
     const { data: companiesData } = useCompanies({ limit: "100" });
     const { data: brandsData } = useBrands({ limit: "100" });
     const exportOrders = useExportOrders();
+    const totalOrders = data?.meta?.total ?? 0;
+    const totalPages = Math.max(1, Math.ceil(totalOrders / (data?.meta?.limit ?? limit)));
 
     // Handle search
     const handleSearch = () => {
@@ -539,12 +541,11 @@ export default function AdminOrdersPage() {
                                         </Table>
 
                                         {/* Pagination */}
-                                        {data?.meta.total / data?.meta.limit > 1 && (
+                                        {totalPages > 1 && (
                                             <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200 bg-slate-50/30">
                                                 <p className="text-sm text-slate-600">
                                                     Showing {(page - 1) * limit + 1} to{" "}
-                                                    {Math.min(page * limit, data?.meta.total)} of{" "}
-                                                    {data?.meta.total} orders
+                                                    {Math.min(page * limit, totalOrders)} of {totalOrders} orders
                                                 </p>
                                                 <div className="flex gap-2">
                                                     <Button
@@ -561,16 +562,9 @@ export default function AdminOrdersPage() {
                                                     </Button>
                                                     <Button
                                                         onClick={() =>
-                                                            setPage((p) =>
-                                                                Math.min(
-                                                                    data.pagination.totalPages,
-                                                                    p + 1
-                                                                )
-                                                            )
+                                                            setPage((p) => Math.min(totalPages, p + 1))
                                                         }
-                                                        disabled={
-                                                            page === data.pagination.totalPages
-                                                        }
+                                                        disabled={page >= totalPages}
                                                         variant="outline"
                                                         size="sm"
                                                         className="gap-1"
