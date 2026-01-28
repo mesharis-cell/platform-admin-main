@@ -58,6 +58,7 @@ export function useProcessReskinRequest(orderId: string) {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: reskinRequestsKeys.list(orderId) });
             queryClient.invalidateQueries({ queryKey: ["order-line-items", orderId] });
+            queryClient.invalidateQueries({ queryKey: ["orders", "admin-detail", orderId] });
             queryClient.invalidateQueries({ queryKey: ["orders"] });
         },
     });

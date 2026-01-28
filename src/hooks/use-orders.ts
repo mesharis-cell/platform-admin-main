@@ -361,12 +361,15 @@ export function useA2ApproveStandard() {
                 throwApiError(error);
             }
         },
-        onSuccess: () => {
+        onSuccess: (data, variables) => {
             queryClient.invalidateQueries({
                 queryKey: ["orders", "pricing-review"],
             });
             queryClient.invalidateQueries({
                 queryKey: ["orders", "admin-list"],
+            });
+            queryClient.invalidateQueries({
+                queryKey: ["orders", "admin-detail", variables.orderId],
             });
         },
     });
@@ -402,12 +405,15 @@ export function useAdjustPricing() {
                 throwApiError(error);
             }
         },
-        onSuccess: () => {
+        onSuccess: (data, variables) => {
             queryClient.invalidateQueries({
                 queryKey: ["orders", "pricing-review"],
             });
             queryClient.invalidateQueries({
                 queryKey: ["orders", "admin-list"],
+            });
+            queryClient.invalidateQueries({
+                queryKey: ["orders", "admin-detail", variables.orderId],
             });
         },
     });
@@ -446,12 +452,15 @@ export function usePMGApprovePricing() {
                 throwApiError(error);
             }
         },
-        onSuccess: () => {
+        onSuccess: (data, variables) => {
             queryClient.invalidateQueries({
                 queryKey: ["orders", "pending-approval"],
             });
             queryClient.invalidateQueries({
                 queryKey: ["orders", "admin-list"],
+            });
+            queryClient.invalidateQueries({
+                queryKey: ["orders", "admin-detail", variables.orderId],
             });
         },
     });
@@ -546,10 +555,11 @@ export function useSubmitForApproval() {
                 throwApiError(error);
             }
         },
-        onSuccess: () => {
+        onSuccess: (data, variables) => {
             queryClient.invalidateQueries({ queryKey: ["orders", "pricing-review"] });
             queryClient.invalidateQueries({ queryKey: ["orders", "pending-approval"] });
             queryClient.invalidateQueries({ queryKey: ["orders", "admin-list"] });
+            queryClient.invalidateQueries({ queryKey: ["orders", "admin-detail", variables] });
         },
     });
 }
@@ -583,9 +593,10 @@ export function useAdminApproveQuote() {
                 throwApiError(error);
             }
         },
-        onSuccess: () => {
+        onSuccess: (data, variables) => {
             queryClient.invalidateQueries({ queryKey: ["orders", "pending-approval"] });
             queryClient.invalidateQueries({ queryKey: ["orders", "admin-list"] });
+            queryClient.invalidateQueries({ queryKey: ["orders", "admin-detail", variables.orderId] });
         },
     });
 }
@@ -610,10 +621,11 @@ export function useReturnToLogistics() {
                 throwApiError(error);
             }
         },
-        onSuccess: () => {
+        onSuccess: (data, variables) => {
             queryClient.invalidateQueries({ queryKey: ["orders", "pending-approval"] });
             queryClient.invalidateQueries({ queryKey: ["orders", "pricing-review"] });
             queryClient.invalidateQueries({ queryKey: ["orders", "admin-list"] });
+            queryClient.invalidateQueries({ queryKey: ["orders", "admin-detail", variables.orderId] });
         },
     });
 }
@@ -647,8 +659,9 @@ export function useCancelOrder() {
                 throwApiError(error);
             }
         },
-        onSuccess: () => {
+        onSuccess: (data, variables) => {
             queryClient.invalidateQueries({ queryKey: ["orders"] });
+            queryClient.invalidateQueries({ queryKey: ["orders", "admin-detail", variables.orderId] });
         },
     });
 }
