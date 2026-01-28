@@ -16,6 +16,8 @@ export function OrderLineItemsList({ orderId, canManage = false }: OrderLineItem
     const { data: lineItems, isLoading } = useListOrderLineItems(orderId);
     const voidLineItem = useVoidLineItem(orderId);
 
+    console.log(lineItems);
+
     const handleVoid = async (item: OrderLineItem) => {
         const reason = prompt("Reason for removing this line item:");
         if (!reason || reason.trim().length < 10) {
