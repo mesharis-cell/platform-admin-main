@@ -143,8 +143,8 @@ export function CancelReskinModal({
                         </RadioGroup>
                     </div>
 
-                    <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 rounded-md p-3">
-                        <p className="text-xs text-amber-800 dark:text-amber-300">
+                    <div className="bg-primary/10 border border-primary/20 dark:border-primary/80 rounded-md p-3">
+                        <p className="text-xs text-primary dark:text-primary/80">
                             The {costAmount.toFixed(2)} AED line item will be voided and removed
                             from the quote.
                         </p>

@@ -229,7 +229,7 @@ export interface ReskinRequest {
 
 export interface ProcessReskinRequestRequest {
     cost: number;
-    adminNotes?: string;
+    admin_notes?: string;
 }
 
 export interface CompleteReskinRequestRequest {

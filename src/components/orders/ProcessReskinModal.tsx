@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { useProcessReskinRequest } from "@/hooks/use-reskin-requests";
 
@@ -50,7 +51,7 @@ export function ProcessReskinModal({
                 orderItemId,
                 data: {
                     cost: costNum,
-                    adminNotes: adminNotes || undefined,
+                    admin_notes: adminNotes || undefined,
                 },
             });
             toast.success("Reskin request processed and cost line item added");
@@ -64,76 +65,93 @@ export function ProcessReskinModal({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-lg">
-                <DialogHeader>
-                    <DialogTitle>Process Rebrand Request</DialogTitle>
+            <DialogContent className="max-w-md p-0 overflow-hidden border-2">
+                <DialogHeader className="px-2 py-4 bg-muted/50 border-b border-border">
+                    <DialogTitle className="font-mono text-sm uppercase tracking-widest">
+                        Process Rebrand Request
+                    </DialogTitle>
                 </DialogHeader>
 
-                <div className="space-y-4">
-                    <div className="p-3 bg-muted rounded-md space-y-2 text-sm">
-                        <div>
-                            <span className="text-muted-foreground">Original Asset:</span>{" "}
-                            <span className="font-semibold">{originalAssetName}</span>
+                <div className="px-4 space-y-6 font-mono">
+                    <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                            <span className="text-muted-foreground uppercase text-[10px]">Original Asset</span>
+                            <span className="font-bold">{originalAssetName}</span>
                         </div>
-                        <div>
-                            <span className="text-muted-foreground">Target Brand:</span>{" "}
-                            <span className="font-semibold">{targetBrandName}</span>
+                        <div className="flex justify-between">
+                            <span className="text-muted-foreground uppercase text-[10px]">Target Brand</span>
+                            <span className="font-bold">{targetBrandName}</span>
                         </div>
                     </div>
 
-                    <div>
-                        <Label>Client Instructions</Label>
-                        <div className="mt-1 p-3 bg-muted/50 rounded-md text-sm">{clientNotes}</div>
+                    <div className="space-y-2">
+                        <Label className="uppercase text-[10px] text-muted-foreground">Client Instructions</Label>
+                        <div className="p-4 bg-muted/30 border border-border rounded italic text-sm leading-relaxed">
+                            "{clientNotes}"
+                        </div>
                     </div>
 
-                    <div className="border-t border-border my-4"></div>
+                    <div className="space-y-4">
+                        <div className="space-y-2">
+                            <Label className="uppercase text-[10px] text-muted-foreground flex items-center gap-1">
+                                Rebrand Cost to Client <span className="text-destructive">*</span>
+                            </Label>
+                            <div className="relative">
+                                <Input
+                                    type="number"
+                                    step="0.01"
+                                    value={cost}
+                                    onChange={(e) => setCost(e.target.value)}
+                                    placeholder="1,500.00"
+                                    className="pl-3 pr-12 font-bold text-lg h-12 border-primary/20 focus-visible:ring-primary/30"
+                                />
+                                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-bold text-muted-foreground">
+                                    AED
+                                </div>
+                            </div>
+                            <p className="text-[10px] text-muted-foreground italic">
+                                (Enter final amount including your margin)
+                            </p>
+                        </div>
 
-                    <div>
-                        <Label htmlFor="cost">
-                            Rebrand Cost to Client (AED) <span className="text-destructive">*</span>
-                        </Label>
-                        <Input
-                            id="cost"
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            value={cost}
-                            onChange={(e) => setCost(e.target.value)}
-                            placeholder="1500.00"
-                        />
-                        <p className="text-xs text-muted-foreground mt-1">
-                            Enter final amount including your margin
+                        <div className="space-y-2">
+                            <Label className="uppercase text-[10px] text-muted-foreground">Internal Notes (Optional)</Label>
+                            <Textarea
+                                value={adminNotes}
+                                onChange={(e) => setAdminNotes(e.target.value)}
+                                placeholder="Using ABC Fabricators, est. 5 days"
+                                className="text-sm bg-muted/10"
+                                rows={2}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="bg-primary/5 border border-primary/20 rounded-md p-4 space-y-2">
+                        <p className="text-[10px] font-bold text-primary flex items-center gap-2">
+                            <span className="flex h-4 w-4 items-center justify-center rounded-full bg-primary text-white text-[8px]">i</span>
+                            THIS WILL:
                         </p>
-                    </div>
-
-                    <div>
-                        <Label htmlFor="adminNotes">Internal Notes (Optional)</Label>
-                        <Textarea
-                            id="adminNotes"
-                            value={adminNotes}
-                            onChange={(e) => setAdminNotes(e.target.value)}
-                            placeholder="e.g., Using ABC Fabricators, est. 5 days"
-                            rows={3}
-                        />
-                    </div>
-
-                    <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 rounded-md p-3">
-                        <p className="text-xs text-blue-800 dark:text-blue-300">
-                            ℹ️ This will create a reskin tracking record and add "
-                            {originalAssetName} Rebrand" line item for {cost || "___"} AED
-                        </p>
+                        <ul className="text-[10px] space-y-1 text-muted-foreground ml-6 list-disc">
+                            <li>Create a formal reskin tracking record</li>
+                            <li>Add "{originalAssetName} Rebrand" line item ({cost || "1,500.00"} AED)</li>
+                            <li>Order will enter AWAITING_FABRICATION after confirm</li>
+                        </ul>
                     </div>
                 </div>
 
-                <DialogFooter>
+                <DialogFooter className="p-6 pt-2 gap-2 bg-muted/30 border-t border-border">
                     <Button
-                        variant="outline"
+                        variant="ghost"
                         onClick={() => onOpenChange(false)}
-                        disabled={processReskin.isPending}
+                        className="font-mono text-xs uppercase tracking-wider"
                     >
                         Cancel
                     </Button>
-                    <Button onClick={handleProcess} disabled={processReskin.isPending}>
+                    <Button
+                        onClick={handleProcess}
+                        disabled={processReskin.isPending || !cost}
+                        className="font-mono text-xs uppercase tracking-wider px-6"
+                    >
                         {processReskin.isPending ? "Processing..." : "Process & Add to Quote"}
                     </Button>
                 </DialogFooter>

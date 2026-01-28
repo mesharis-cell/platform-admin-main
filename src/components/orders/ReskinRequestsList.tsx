@@ -18,7 +18,6 @@ interface ReskinRequestsListProps {
 export function ReskinRequestsList({ orderId, orderStatus }: ReskinRequestsListProps) {
     const { data: reskinRequests, isLoading } = useListReskinRequests(orderId);
 
-    const [processModalOpen, setProcessModalOpen] = useState(false);
     const [completeModalOpen, setCompleteModalOpen] = useState(false);
     const [cancelModalOpen, setCancelModalOpen] = useState(false);
     const [selectedReskin, setSelectedReskin] = useState<any>(null);
@@ -68,43 +67,30 @@ export function ReskinRequestsList({ orderId, orderStatus }: ReskinRequestsListP
                             <p className="text-sm">{reskin.clientNotes}</p>
                         </div>
 
-                        {orderStatus === "PENDING_APPROVAL" && (
-                            <div className="flex gap-2">
-                                <Button
-                                    size="sm"
-                                    onClick={() => {
-                                        setSelectedReskin(reskin);
-                                        setProcessModalOpen(true);
-                                    }}
-                                >
-                                    Process Rebrand
-                                </Button>
-                            </div>
-                        )}
 
-                        {orderStatus === "AWAITING_FABRICATION" && (
-                            <div className="flex gap-2">
-                                <Button
-                                    size="sm"
-                                    onClick={() => {
-                                        setSelectedReskin(reskin);
-                                        setCompleteModalOpen(true);
-                                    }}
-                                >
-                                    Mark Complete
-                                </Button>
-                                <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => {
-                                        setSelectedReskin(reskin);
-                                        setCancelModalOpen(true);
-                                    }}
-                                >
-                                    Cancel Reskin
-                                </Button>
-                            </div>
-                        )}
+                        {/* {orderStatus === "AWAITING_FABRICATION" && ( */}
+                        <div className="flex gap-2">
+                            <Button
+                                size="sm"
+                                onClick={() => {
+                                    setSelectedReskin(reskin);
+                                    setCompleteModalOpen(true);
+                                }}
+                            >
+                                Mark Complete
+                            </Button>
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                    setSelectedReskin(reskin);
+                                    setCancelModalOpen(true);
+                                }}
+                            >
+                                Cancel Reskin
+                            </Button>
+                        </div>
+                        {/* )} */}
                     </div>
                 ))}
 
@@ -150,15 +136,6 @@ export function ReskinRequestsList({ orderId, orderStatus }: ReskinRequestsListP
             {/* Modals */}
             {selectedReskin && (
                 <>
-                    <ProcessReskinModal
-                        open={processModalOpen}
-                        onOpenChange={setProcessModalOpen}
-                        orderId={orderId}
-                        orderItemId={selectedReskin.orderItemId}
-                        originalAssetName={selectedReskin.originalAssetName}
-                        targetBrandName={selectedReskin.targetBrandCustom || "Brand"}
-                        clientNotes={selectedReskin.clientNotes}
-                    />
                     <CompleteFabricationModal
                         open={completeModalOpen}
                         onOpenChange={setCompleteModalOpen}

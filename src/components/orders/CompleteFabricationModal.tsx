@@ -162,11 +162,11 @@ export function CompleteFabricationModal({
                         />
                     </div>
 
-                    <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 rounded-md p-3">
-                        <p className="text-xs text-amber-800 dark:text-amber-300 font-semibold mb-1">
+                    <div className="bg-primary/10 border border-primary/20 dark:border-primary/80 rounded-md p-3">
+                        <p className="text-xs text-primary dark:text-primary/80 font-semibold mb-1">
                             ⚠️ This will:
                         </p>
-                        <ul className="text-xs text-amber-700 dark:text-amber-400 space-y-1 ml-4 list-disc">
+                        <ul className="text-xs text-primary dark:text-primary/80 space-y-1 ml-4 list-disc">
                             <li>Create new asset "{newAssetName || "..."}"</li>
                             <li>Mark "{originalAssetName}" as TRANSFORMED</li>
                             <li>Update order to use new asset</li>

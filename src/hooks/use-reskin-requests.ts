@@ -24,7 +24,7 @@ export function useListReskinRequests(orderId: string | null) {
             try {
                 const response = await apiClient.get(`/client/v1/order/${orderId}/reskin-requests`);
                 // Map snake_case API response to camelCase for UI components
-                return mapArraySnakeToCamel(response.data.data) as ReskinRequest[];
+                return mapArraySnakeToCamel(response.data.data) as unknown as ReskinRequest[];
             } catch (error) {
                 throwApiError(error);
             }
