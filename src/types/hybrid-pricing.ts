@@ -134,9 +134,9 @@ export interface OrderLineItem {
 }
 
 export interface CreateCatalogLineItemRequest {
-    serviceTypeId: string;
+    service_type_id: string;
     quantity: number;
-    unitRate: number;
+    unit_rate: number;
     notes?: string;
 }
 
@@ -164,6 +164,8 @@ export interface VoidLineItemRequest {
 // ============================================================
 
 export interface OrderPricing {
+    base_ops_total: string;
+    logistics_sub_total: string;
     base_operations: {
         volume: number;
         rate: number;

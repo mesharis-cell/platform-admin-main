@@ -18,16 +18,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogFooter,
-} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { AdminHeader } from "@/components/admin-header";
 
@@ -198,9 +188,8 @@ export default function PricingReviewPage() {
                                                 <span>Venue</span>
                                             </div>
                                             <p className="font-medium">
-                                                {order?.venue_location?.country},
-                                                {order?.venue_location?.city},
-                                                {order?.venue_location?.state}
+                                                {order?.venue_city},
+                                                {order?.venue_name}
                                             </p>
                                         </div>
                                         <div>
@@ -218,96 +207,14 @@ export default function PricingReviewPage() {
                                                 <span>Base Price</span>
                                             </div>
                                             <p className="font-medium font-mono">
-                                                {order.logistics_pricing?.base_price ? (
-                                                    `${(Number(order.logistics_pricing.base_price) + Number(order.platform_pricing.margin_amount)).toFixed(2)} AED`
-                                                ) : (
-                                                    <span className="text-amber-600 text-xs">
-                                                        No Tier Matched
-                                                    </span>
-                                                )}
+                                                {order.order_pricing?.base_ops_total}
                                             </p>
                                         </div>
                                     </div>
 
-                                    {/* Pricing Details - A2 Staff Only Sees Base Price */}
-                                    {order.logistics_pricing?.base_price ? (
-                                        <div className="border border-border rounded-md p-4 bg-muted/50">
-                                            <h4 className="font-semibold text-sm mb-3">
-                                                Calculated Price
-                                            </h4>
-                                            <div className="flex items-baseline justify-between">
-                                                <span className="text-sm text-muted-foreground font-mono">
-                                                    Base Price
-                                                </span>
-                                                <span className="text-2xl font-bold font-mono text-primary">
-                                                    {Number(order.logistics_pricing.base_price)} AED
-                                                </span>
-                                            </div>
-                                            <div className="flex items-baseline justify-between">
-                                                <span className="text-sm text-muted-foreground font-mono">
-                                                    Margin Amount
-                                                </span>
-                                                <span className="text-2xl font-bold font-mono text-primary">
-                                                    <span className="text-sm mr-2">
-                                                        ({order.platform_pricing.margin_percent}%)
-                                                    </span>
-                                                    {Number(order.platform_pricing.margin_amount)}{" "}
-                                                    AED
-                                                </span>
-                                            </div>
-                                            {order?.pricing_tier && (
-                                                <p className="text-xs text-muted-foreground mt-3 font-mono">
-                                                    Based on tier: {order.pricing_tier.city},{" "}
-                                                    {order.pricing_tier.country} (
-                                                    {order.calculated_totals.volume} m³)
-                                                </p>
-                                            )}
-                                        </div>
-                                    ) : (
-                                        <div className="border border-amber-500/30 rounded-md p-4 bg-amber-500/5">
-                                            <h4 className="font-semibold text-sm mb-2 text-amber-700 dark:text-amber-400">
-                                                No Standard Pricing Available
-                                            </h4>
-                                            <p className="text-xs text-muted-foreground">
-                                                No pricing tier found for{" "}
-                                                {order.venue_location.city},{" "}
-                                                {order.venue_location.country} with volume{" "}
-                                                {order.calculated_volume} m³. You must manually
-                                                adjust pricing for this order.
-                                            </p>
-                                        </div>
-                                    )}
-
                                     {/* Actions */}
                                     <div className="flex gap-3 pt-2">
-                                        {order.logistics_pricing?.base_price && (
-                                            <Button
-                                                onClick={() => {
-                                                    setSelectedOrder(order);
-                                                    setNotes("");
-                                                }}
-                                                disabled={
-                                                    approveStandard.isPending ||
-                                                    adjustPricing.isPending
-                                                }
-                                                className="font-mono"
-                                            >
-                                                Approve Base Price
-                                            </Button>
-                                        )}
-                                        <Button
-                                            variant="outline"
-                                            onClick={() => handleOpenAdjust(order)}
-                                            disabled={
-                                                approveStandard.isPending || adjustPricing.isPending
-                                            }
-                                            className="font-mono"
-                                        >
-                                            {order.logistics_pricing?.base_price
-                                                ? "Adjust Price"
-                                                : "Set Custom Price"}
-                                        </Button>
-                                        <Button variant="ghost" asChild>
+                                        <Button variant="default" asChild>
                                             <Link href={`/orders/${order.order_id}`}>
                                                 View Full Details
                                             </Link>
@@ -319,157 +226,6 @@ export default function PricingReviewPage() {
                     </div>
                 )}
             </div>
-
-            {/* Approve Standard Dialog */}
-            <Dialog
-                open={!!selectedOrder && !adjustDialogOpen}
-                onOpenChange={(open) => !open && setSelectedOrder(null)}
-            >
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Approve Standard Pricing</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                        <p className="text-sm text-muted-foreground">
-                            You are about to approve the standard tier pricing for order{" "}
-                            <span className="font-mono font-semibold">
-                                {selectedOrder?.orderId}
-                            </span>
-                            . The quote will be sent directly to the client.
-                        </p>
-                        {selectedOrder?.standardPricing && (
-                            <div className="border border-border rounded-md p-3 bg-muted/50">
-                                <div className="text-sm font-mono">
-                                    <div className="flex justify-between">
-                                        <span>A2 Base Price</span>
-                                        <span className="font-bold">
-                                            {selectedOrder.standardPricing.a2BasePrice.toFixed(2)}{" "}
-                                            AED
-                                        </span>
-                                    </div>
-                                    <p className="text-xs text-muted-foreground mt-2">
-                                        Platform will add their margin during approval. You are only
-                                        approving the A2 base price.
-                                    </p>
-                                </div>
-                            </div>
-                        )}
-                        <div>
-                            <Label htmlFor="notes">Notes (Optional)</Label>
-                            <Textarea
-                                id="notes"
-                                value={notes}
-                                onChange={(e) => setNotes(e.target.value)}
-                                placeholder="Add any internal notes..."
-                                rows={3}
-                            />
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button
-                            variant="outline"
-                            onClick={() => setSelectedOrder(null)}
-                            disabled={approveStandard.isPending}
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            onClick={() => handleApproveStandard(selectedOrder)}
-                            disabled={approveStandard.isPending}
-                        >
-                            {approveStandard.isPending ? "Approving..." : "Approve & Send Quote"}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            {/* Adjust Pricing Dialog */}
-            <Dialog open={adjustDialogOpen} onOpenChange={setAdjustDialogOpen}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Adjust Pricing</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                        <p className="text-sm text-muted-foreground">
-                            Adjust the pricing for order{" "}
-                            <span className="font-mono font-semibold">
-                                {selectedOrder?.order_id}
-                            </span>
-                            . This will send the adjusted pricing to PLATFORM for final approval.
-                        </p>
-                        {selectedOrder?.logistics_pricing?.base_price && (
-                            <div className="border border-border rounded-md p-3 bg-muted/50">
-                                <p className="text-xs text-muted-foreground mb-2">
-                                    Standard Base Price (for reference)
-                                </p>
-                                <div className="text-sm font-mono space-y-2">
-                                    <div className="flex justify-between">
-                                        <span>Base Price</span>
-                                        <span className="font-bold">
-                                            {Number(
-                                                selectedOrder?.logistics_pricing?.base_price
-                                            ).toFixed(2)}{" "}
-                                            AED
-                                        </span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span>Margin Amount</span>
-                                        <span className="font-bold">
-                                            {Number(
-                                                selectedOrder?.platform_pricing?.margin_amount
-                                            ).toFixed(2)}{" "}
-                                            AED
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                        <div>
-                            <Label htmlFor="adjustedPrice">
-                                Adjusted Base Price <span className="text-destructive">*</span>
-                            </Label>
-                            <Input
-                                id="adjustedPrice"
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                value={adjustedPrice}
-                                onChange={(e) => setAdjustedPrice(e.target.value)}
-                                placeholder="Enter adjusted price..."
-                            />
-                        </div>
-                        <div>
-                            <Label htmlFor="adjustmentReason">
-                                Reason for Adjustment <span className="text-destructive">*</span>
-                            </Label>
-                            <Textarea
-                                id="adjustmentReason"
-                                value={adjustmentReason}
-                                onChange={(e) => setAdjustmentReason(e.target.value)}
-                                placeholder="e.g., Oversized items need special truck handling..."
-                                rows={4}
-                            />
-                            <p className="text-xs text-muted-foreground mt-1">
-                                Minimum 10 characters required
-                            </p>
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button
-                            variant="outline"
-                            onClick={() => setAdjustDialogOpen(false)}
-                            disabled={adjustPricing.isPending}
-                        >
-                            Cancel
-                        </Button>
-                        <Button onClick={handleAdjust} disabled={adjustPricing.isPending}>
-                            {adjustPricing.isPending
-                                ? "Submitting..."
-                                : "Submit for PLATFORM Approval"}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
         </div>
     );
 }

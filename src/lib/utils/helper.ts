@@ -1,16 +1,18 @@
-export const capitalizeFirstLetter = (str: string): string => {
-    return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase().replace("_", " ");
+"use client";
+
+export const capitalizeFirstLetter = (str?: string): string => {
+    return str?.charAt(0).toUpperCase() + str.slice(1).toLowerCase().replace("_", " ");
 };
 
-export const removeUnderScore = (str: string): string => {
-    return str.replace("_", " ");
+export const removeUnderScore = (str?: string): string => {
+    return str?.replace("_", " ");
 };
 
 /**
  * Convert snake_case string to camelCase
  */
-export const snakeToCamel = (str: string): string => {
-    return str.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+export const snakeToCamel = (str?: string): string => {
+    return str?.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
 };
 
 /**

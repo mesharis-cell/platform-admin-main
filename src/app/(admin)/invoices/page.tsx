@@ -174,17 +174,17 @@ export default function InvoicesPage() {
     // Calculate stats
     const stats = invoicesData?.data
         ? {
-              totalInvoices: invoicesData?.meta?.total,
-              paidInvoices: invoicesData.data.filter((inv) => inv.invoice_paid_at).length,
-              unpaidInvoices: invoicesData.data.filter((inv) => !inv.invoice_paid_at).length,
-              totalRevenue: invoicesData.data
-                  .filter((inv) => inv.invoice_paid_at)
-                  .reduce(
-                      (sum, inv) =>
-                          sum + parseFloat(inv.order.final_pricing.total_price.toString()),
-                      0
-                  ),
-          }
+            totalInvoices: invoicesData?.meta?.total,
+            paidInvoices: invoicesData.data.filter((inv) => inv.invoice_paid_at).length,
+            unpaidInvoices: invoicesData.data.filter((inv) => !inv.invoice_paid_at).length,
+            totalRevenue: invoicesData.data
+                .filter((inv) => inv.invoice_paid_at)
+                .reduce(
+                    (sum, inv) =>
+                        sum + parseFloat(inv.order.final_pricing?.total_price?.toString() || "0"),
+                    0
+                ),
+        }
         : null;
 
     return (
@@ -372,13 +372,13 @@ export default function InvoicesPage() {
                                                             </div>
                                                         </div>
                                                         {invoice?.order?.financial_status ===
-                                                        "PAID" ? (
+                                                            "PAID" ? (
                                                             <Badge className="bg-green-500/10 text-green-600 border-green-500/30 font-mono">
                                                                 <CheckCircle2 className="w-3 h-3 mr-1" />
                                                                 PAID
                                                             </Badge>
                                                         ) : invoice?.order?.financial_status ===
-                                                          "INVOICED" ? (
+                                                            "INVOICED" ? (
                                                             <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/30 font-mono">
                                                                 <Clock className="w-3 h-3 mr-1" />
                                                                 INVOICE SENT
@@ -458,7 +458,7 @@ export default function InvoicesPage() {
                                                         </div>
                                                         <div className="text-3xl font-bold font-mono text-primary">
                                                             {parseFloat(
-                                                                invoice.order.final_pricing.total_price.toString()
+                                                                invoice.order.final_pricing?.total_price?.toString() || "0"
                                                             ).toFixed(2)}
                                                         </div>
                                                         <div className="text-xs text-muted-foreground font-mono">
@@ -482,34 +482,34 @@ export default function InvoicesPage() {
 
                                                         {invoice.order.financial_status ===
                                                             "PENDING_INVOICE" && (
-                                                            <Button
-                                                                onClick={() => {
-                                                                    setSentInvoice(true);
-                                                                    setSelectedInvoice(invoice);
-                                                                }}
-                                                                size="sm"
-                                                                className="font-mono"
-                                                            >
-                                                                <Send className="w-4 h-4 mr-2" />
-                                                                SENT INVOICE
-                                                            </Button>
-                                                        )}
+                                                                <Button
+                                                                    onClick={() => {
+                                                                        setSentInvoice(true);
+                                                                        setSelectedInvoice(invoice);
+                                                                    }}
+                                                                    size="sm"
+                                                                    className="font-mono"
+                                                                >
+                                                                    <Send className="w-4 h-4 mr-2" />
+                                                                    SENT INVOICE
+                                                                </Button>
+                                                            )}
 
                                                         {invoice.order.financial_status ===
                                                             "INVOICED" && (
-                                                            <Button
-                                                                onClick={() =>
-                                                                    handleOpenConfirmPayment(
-                                                                        invoice
-                                                                    )
-                                                                }
-                                                                size="sm"
-                                                                className="font-mono"
-                                                            >
-                                                                <DollarSign className="w-4 h-4 mr-2" />
-                                                                CONFIRM PAYMENT
-                                                            </Button>
-                                                        )}
+                                                                <Button
+                                                                    onClick={() =>
+                                                                        handleOpenConfirmPayment(
+                                                                            invoice
+                                                                        )
+                                                                    }
+                                                                    size="sm"
+                                                                    className="font-mono"
+                                                                >
+                                                                    <DollarSign className="w-4 h-4 mr-2" />
+                                                                    CONFIRM PAYMENT
+                                                                </Button>
+                                                            )}
                                                     </div>
                                                 </div>
                                             </div>
@@ -521,55 +521,55 @@ export default function InvoicesPage() {
                             {/* Pagination */}
                             {Math.ceil(invoicesData?.meta?.total / invoicesData?.meta?.limit) >
                                 1 && (
-                                <div className="flex items-center justify-center gap-2 mt-8">
-                                    <Button
-                                        onClick={() =>
-                                            setFilters((prev) => ({
-                                                ...prev,
-                                                page: Math.max(1, prev.page! - 1),
-                                            }))
-                                        }
-                                        disabled={filters.page === 1}
-                                        variant="outline"
-                                        size="sm"
-                                        className="font-mono"
-                                    >
-                                        PREV
-                                    </Button>
-                                    <div className="px-4 py-2 font-mono text-sm">
-                                        Page {filters.page} of{" "}
-                                        {Math.ceil(
-                                            invoicesData?.meta?.total / invoicesData?.meta?.limit
-                                        )}
-                                    </div>
-                                    <Button
-                                        onClick={() =>
-                                            setFilters((prev) => ({
-                                                ...prev,
-                                                page: Math.min(
-                                                    Math.ceil(
-                                                        invoicesData?.meta?.total /
+                                    <div className="flex items-center justify-center gap-2 mt-8">
+                                        <Button
+                                            onClick={() =>
+                                                setFilters((prev) => ({
+                                                    ...prev,
+                                                    page: Math.max(1, prev.page! - 1),
+                                                }))
+                                            }
+                                            disabled={filters.page === 1}
+                                            variant="outline"
+                                            size="sm"
+                                            className="font-mono"
+                                        >
+                                            PREV
+                                        </Button>
+                                        <div className="px-4 py-2 font-mono text-sm">
+                                            Page {filters.page} of{" "}
+                                            {Math.ceil(
+                                                invoicesData?.meta?.total / invoicesData?.meta?.limit
+                                            )}
+                                        </div>
+                                        <Button
+                                            onClick={() =>
+                                                setFilters((prev) => ({
+                                                    ...prev,
+                                                    page: Math.min(
+                                                        Math.ceil(
+                                                            invoicesData?.meta?.total /
                                                             invoicesData?.meta?.limit
+                                                        ),
+                                                        prev.page! + 1
                                                     ),
-                                                    prev.page! + 1
-                                                ),
-                                            }))
-                                        }
-                                        disabled={
-                                            filters.page ===
-                                            Math.ceil(
-                                                invoicesData?.meta?.total /
+                                                }))
+                                            }
+                                            disabled={
+                                                filters.page ===
+                                                Math.ceil(
+                                                    invoicesData?.meta?.total /
                                                     invoicesData?.meta?.limit
-                                            )
-                                        }
-                                        variant="outline"
-                                        size="sm"
-                                        className="font-mono"
-                                    >
-                                        NEXT
-                                    </Button>
-                                </div>
-                            )}
+                                                )
+                                            }
+                                            variant="outline"
+                                            size="sm"
+                                            className="font-mono"
+                                        >
+                                            NEXT
+                                        </Button>
+                                    </div>
+                                )}
                         </div>
                     ) : (
                         <Card className="p-12 text-center border-2 border-dashed">

@@ -26,7 +26,7 @@ export function LogisticsPricingReview({ orderId, order }: LogisticsPricingRevie
     const submitForApproval = useSubmitForApproval();
     const [addCatalogOpen, setAddCatalogOpen] = useState(false);
 
-    const pricing = order?.pricing as OrderPricing | undefined;
+    const pricing = order?.order_pricing as OrderPricing | undefined;
 
     const handleVehicleChange = (vehicle: VehicleType, reason: string) => {
         // Vehicle update is handled by VehicleUpgradeSelector via API call
@@ -93,7 +93,7 @@ export function LogisticsPricingReview({ orderId, order }: LogisticsPricingRevie
                                     {pricing.base_operations?.volume?.toFixed(1) || 0} m³)
                                 </span>
                                 <span className="font-mono">
-                                    {pricing.base_operations?.total?.toFixed(2) || 0} AED
+                                    {pricing.base_ops_total || 0} AED
                                 </span>
                             </div>
                             <div className="flex justify-between p-2 bg-muted/30 rounded">
@@ -112,13 +112,13 @@ export function LogisticsPricingReview({ orderId, order }: LogisticsPricingRevie
                             <div className="flex justify-between font-semibold">
                                 <span>Estimated Subtotal</span>
                                 <span className="font-mono">
-                                    {pricing.logistics_subtotal?.toFixed(2) || 0} AED
+                                    {pricing.logistics_sub_total || 0} AED
                                 </span>
                             </div>
-                            <p className="text-xs text-muted-foreground">
+                            {/* <p className="text-xs text-muted-foreground">
                                 + Platform margin ({pricing.margin?.percent || 25}%) will be added
                                 by Admin
-                            </p>
+                            </p> */}
                         </div>
                     )}
                 </CardContent>

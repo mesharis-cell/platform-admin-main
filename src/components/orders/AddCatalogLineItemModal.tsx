@@ -64,9 +64,9 @@ export function AddCatalogLineItemModal({
 
         try {
             await createLineItem.mutateAsync({
-                serviceTypeId,
+                service_type_id: serviceTypeId,
                 quantity: qtyNum,
-                unitRate: rateNum,
+                unit_rate: rateNum,
                 notes: notes || undefined,
             });
             toast.success("Service line item added");
