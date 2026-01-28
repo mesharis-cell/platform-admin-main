@@ -156,7 +156,7 @@ export interface UpdateLineItemRequest {
 }
 
 export interface VoidLineItemRequest {
-    voidReason: string;
+    void_reason: string;
 }
 
 // ============================================================

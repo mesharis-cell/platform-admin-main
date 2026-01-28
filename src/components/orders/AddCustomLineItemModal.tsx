@@ -11,13 +11,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useCreateCustomLineItem } from "@/hooks/use-order-line-items";
@@ -28,14 +21,6 @@ interface AddCustomLineItemModalProps {
     onOpenChange: (open: boolean) => void;
     orderId: string;
 }
-
-const CATEGORIES: { value: ServiceCategory; label: string }[] = [
-    { value: "ASSEMBLY", label: "Assembly" },
-    { value: "EQUIPMENT", label: "Equipment" },
-    { value: "HANDLING", label: "Handling" },
-    { value: "RESKIN", label: "Reskin/Rebrand" },
-    { value: "OTHER", label: "Other" },
-];
 
 export function AddCustomLineItemModal({
     open,
@@ -101,27 +86,6 @@ export function AddCustomLineItemModal({
 
                     <div>
                         <Label>
-                            Category <span className="text-destructive">*</span>
-                        </Label>
-                        <Select
-                            value={category}
-                            onValueChange={(v: ServiceCategory) => setCategory(v)}
-                        >
-                            <SelectTrigger>
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {CATEGORIES.map((cat) => (
-                                    <SelectItem key={cat.value} value={cat.value}>
-                                        {cat.label}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-
-                    <div>
-                        <Label>
                             Total Amount (AED) <span className="text-destructive">*</span>
                         </Label>
                         <Input
@@ -147,8 +111,8 @@ export function AddCustomLineItemModal({
                         />
                     </div>
 
-                    <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 rounded-md p-3">
-                        <p className="text-xs text-blue-800 dark:text-blue-300">
+                    <div className="bg-primary/10 border border-primary/20 rounded-md p-3">
+                        <p className="text-xs text-primary">
                             ℹ️ Custom items are entered as final amounts. The margin you've included
                             in this price will NOT have platform margin applied again.
                         </p>
