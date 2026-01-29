@@ -20,11 +20,12 @@ import { AddCatalogLineItemModal } from "@/components/orders/AddCatalogLineItemM
 import { AddCustomLineItemModal } from "@/components/orders/AddCustomLineItemModal";
 import { CancelOrderModal } from "@/components/orders/CancelOrderModal";
 import { LogisticsPricingReview } from "@/components/orders/LogisticsPricingReview";
-import { useAdminApproveQuote, useReturnToLogistics, useCancelOrder } from "@/hooks/use-orders";
+import { useAdminApproveQuote, useReturnToLogistics } from "@/hooks/use-orders";
 
 interface HybridPricingSectionProps {
     order: any;
     orderId: string;
+    onRefresh?: () => void;
 }
 
 /**
@@ -39,6 +40,8 @@ export function PendingApprovalSection({ order, orderId }: HybridPricingSectionP
     const [marginOverride, setMarginOverride] = useState(false);
     const [marginPercent, setMarginPercent] = useState(order?.company?.platformMarginPercent || 25);
     const [marginReason, setMarginReason] = useState("");
+
+    console.log("order", order);
 
     const handleApprove = async () => {
         if (marginOverride && !marginReason.trim()) {
@@ -124,24 +127,24 @@ export function PendingApprovalSection({ order, orderId }: HybridPricingSectionP
                 </CardHeader>
                 <CardContent className="space-y-4">
                     {/* Display current pricing if available */}
-                    {order.pricing && (
+                    {order.order_pricing && (
                         <div className="space-y-2 text-sm">
                             <div className="flex justify-between">
                                 <span className="text-muted-foreground">Base Operations</span>
                                 <span className="font-mono">
-                                    {order.pricing.base_operations?.total?.toFixed(2)} AED
+                                    {order.order_pricing.base_ops_total} AED
                                 </span>
                             </div>
                             <div className="flex justify-between">
                                 <span className="text-muted-foreground">Transport</span>
                                 <span className="font-mono">
-                                    {order.pricing.transport?.final_rate?.toFixed(2)} AED
+                                    {order.order_pricing.transport?.final_rate} AED
                                 </span>
                             </div>
                             <div className="flex justify-between">
                                 <span className="text-muted-foreground">Catalog Services</span>
                                 <span className="font-mono">
-                                    {order.pricing.line_items?.catalog_total?.toFixed(2) || "0.00"}{" "}
+                                    {order.order_pricing.line_items?.catalog_total || "0.00"}{" "}
                                     AED
                                 </span>
                             </div>
@@ -149,7 +152,7 @@ export function PendingApprovalSection({ order, orderId }: HybridPricingSectionP
                             <div className="flex justify-between font-semibold">
                                 <span>Logistics Subtotal</span>
                                 <span className="font-mono">
-                                    {order.pricing.logistics_subtotal?.toFixed(2)} AED
+                                    {order.order_pricing.logistics_subtotal?.toFixed(2)} AED
                                 </span>
                             </div>
                         </div>
@@ -236,7 +239,7 @@ export function PendingApprovalSection({ order, orderId }: HybridPricingSectionP
 /**
  * PRICING_REVIEW Section (Logistics Review)
  */
-export function PricingReviewSection({ order, orderId }: HybridPricingSectionProps) {
+export function PricingReviewSection({ order, orderId, onRefresh }: HybridPricingSectionProps) {
     return (
         <div className="space-y-6">
             <Card className="border-yellow-500 bg-yellow-50 dark:bg-yellow-950/20">
@@ -253,7 +256,7 @@ export function PricingReviewSection({ order, orderId }: HybridPricingSectionPro
                 </CardContent>
             </Card>
 
-            <LogisticsPricingReview orderId={orderId} order={order} />
+            <LogisticsPricingReview orderId={orderId} order={order} onSubmitSuccess={onRefresh} />
         </div>
     );
 }

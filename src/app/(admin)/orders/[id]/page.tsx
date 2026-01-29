@@ -187,7 +187,7 @@ const STATUS_CONFIG: Record<
 export default function AdminOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
     const [progressLoading, setProgressLoading] = useState(false);
-    const { data: order, isLoading } = useAdminOrderDetails(id);
+    const { data: order, isLoading, refetch } = useAdminOrderDetails(id);
     const [processModalOpen, setProcessModalOpen] = useState(false);
     const [selectedReskinData, setSelectedReskinData] = useState<any>(null);
 
@@ -523,7 +523,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                     <div className="lg:col-span-2 space-y-6">
                         {/* NEW: PRICING_REVIEW - Logistics Review Section */}
                         {order.data.order_status === "PRICING_REVIEW" && (
-                            <PricingReviewSection order={order.data} orderId={order.data.id} />
+                            <PricingReviewSection order={order.data} orderId={order.data.id} onRefresh={refetch} />
                         )}
 
                         {/* NEW: PENDING_APPROVAL - Admin Review Section */}

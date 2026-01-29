@@ -20,9 +20,10 @@ import type { OrderPricing, VehicleType } from "@/types/hybrid-pricing";
 interface LogisticsPricingReviewProps {
     orderId: string;
     order: any;
+    onSubmitSuccess?: () => void;
 }
 
-export function LogisticsPricingReview({ orderId, order }: LogisticsPricingReviewProps) {
+export function LogisticsPricingReview({ orderId, order, onSubmitSuccess }: LogisticsPricingReviewProps) {
     const submitForApproval = useSubmitForApproval();
     const [addCatalogOpen, setAddCatalogOpen] = useState(false);
 
@@ -37,6 +38,7 @@ export function LogisticsPricingReview({ orderId, order }: LogisticsPricingRevie
         try {
             await submitForApproval.mutateAsync(orderId);
             toast.success("Order submitted to Admin for approval!");
+            onSubmitSuccess?.();
         } catch (error: any) {
             toast.error(error.message || "Failed to submit order");
         }
@@ -48,12 +50,12 @@ export function LogisticsPricingReview({ orderId, order }: LogisticsPricingRevie
         <div className="space-y-6">
             {/* Rebrand Notice */}
             {hasRebrandRequests && (
-                <Card className="border-amber-500/30 bg-amber-50/50 dark:bg-amber-950/10">
+                <Card className="border-amber-500/30 bg-amber-500/10">
                     <CardContent className="p-4">
-                        <p className="text-sm font-semibold text-amber-800 dark:text-amber-300 mb-1">
+                        <p className="text-sm font-semibold text-amber-500 mb-1">
                             🔄 This order includes rebrand requests
                         </p>
-                        <p className="text-xs text-amber-700 dark:text-amber-400">
+                        <p className="text-xs text-amber-500">
                             Admin will process rebrand requests and add costs during their approval
                             step. You can add service line items as needed before submitting.
                         </p>
@@ -90,7 +92,7 @@ export function LogisticsPricingReview({ orderId, order }: LogisticsPricingRevie
                             <div className="flex justify-between p-2 bg-muted/30 rounded">
                                 <span className="text-muted-foreground">
                                     Base Operations (
-                                    {pricing.base_operations?.volume?.toFixed(1) || 0} m³)
+                                    {order?.calculated_totals?.volume || 0} m³)
                                 </span>
                                 <span className="font-mono">
                                     {pricing.base_ops_total || 0} AED
@@ -98,8 +100,8 @@ export function LogisticsPricingReview({ orderId, order }: LogisticsPricingRevie
                             </div>
                             <div className="flex justify-between p-2 bg-muted/30 rounded">
                                 <span className="text-muted-foreground">
-                                    Transport ({pricing.transport?.emirate},{" "}
-                                    {pricing.transport?.trip_type === "ROUND_TRIP"
+                                    Transport ({order?.venue_city},{" "}
+                                    {order?.transport_trip_type === "ROUND_TRIP"
                                         ? "Round-trip"
                                         : "One-way"}
                                     )
@@ -108,6 +110,14 @@ export function LogisticsPricingReview({ orderId, order }: LogisticsPricingRevie
                                     {pricing.transport?.final_rate?.toFixed(2) || 0} AED
                                 </span>
                             </div>
+                            {pricing.line_items?.catalog_total ? <div className="flex justify-between p-2 bg-muted/30 rounded">
+                                <span className="text-muted-foreground">
+                                    Service Line Item
+                                </span>
+                                <span className="font-mono">
+                                    {pricing.line_items?.catalog_total?.toFixed(2) || 0} AED
+                                </span>
+                            </div> : null}
                             <div className="border-t border-border my-2"></div>
                             <div className="flex justify-between font-semibold">
                                 <span>Estimated Subtotal</span>
