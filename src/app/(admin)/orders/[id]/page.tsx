@@ -527,9 +527,9 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                         )}
 
                         {/* NEW: PENDING_APPROVAL - Admin Review Section */}
-                        {order.data.order_status === "PENDING_APPROVAL" && (
-                            <PendingApprovalSection order={order.data} orderId={order.data.id} />
-                        )}
+                        {/* {order.data.order_status === "PENDING_APPROVAL" && ( */}
+                        <PendingApprovalSection order={order.data} orderId={order.data.id} onRefresh={refetch} />
+                        {/* )} */}
 
                         {/* NEW: AWAITING_FABRICATION - Fabrication Tracking */}
                         {order.data.order_status === "AWAITING_FABRICATION" && (

@@ -31,14 +31,14 @@ interface HybridPricingSectionProps {
 /**
  * PENDING_APPROVAL Section (Admin Review)
  */
-export function PendingApprovalSection({ order, orderId }: HybridPricingSectionProps) {
+export function PendingApprovalSection({ order, orderId, onRefresh }: HybridPricingSectionProps) {
     const adminApproveQuote = useAdminApproveQuote();
     const returnToLogistics = useReturnToLogistics();
 
     const [addCatalogOpen, setAddCatalogOpen] = useState(false);
     const [addCustomOpen, setAddCustomOpen] = useState(false);
     const [marginOverride, setMarginOverride] = useState(false);
-    const [marginPercent, setMarginPercent] = useState(order?.company?.platformMarginPercent || 25);
+    const [marginPercent, setMarginPercent] = useState(order?.company?.platform_margin_percent);
     const [marginReason, setMarginReason] = useState("");
 
     const marginAmount = order?.order_pricing?.margin?.percent;
@@ -49,11 +49,15 @@ export function PendingApprovalSection({ order, orderId }: HybridPricingSectionP
     const customPrice = Number(order?.order_pricing?.line_items?.custom_total)
 
     const servicePrice = catalogPrice + customPrice;
-    const margin = Number(order?.order_pricing?.margin?.amount).toFixed(2);
-    const total = basePrice + transportPrice + servicePrice + Number(margin);
+    const total = basePrice + transportPrice + servicePrice;
 
 
     const handleApprove = async () => {
+        if (marginOverride && marginAmount === Number(marginPercent)) {
+            toast.error("Margin is same as company margin");
+            return;
+        }
+
         if (marginOverride && !marginReason.trim()) {
             toast.error("Please provide reason for margin override");
             return;
@@ -66,6 +70,7 @@ export function PendingApprovalSection({ order, orderId }: HybridPricingSectionP
                 marginOverrideReason: marginOverride ? marginReason : undefined,
             });
             toast.success("Quote approved and sent to client");
+            onRefresh?.();
         } catch (error: any) {
             toast.error(error.message || "Failed to approve quote");
         }
@@ -81,6 +86,7 @@ export function PendingApprovalSection({ order, orderId }: HybridPricingSectionP
         try {
             await returnToLogistics.mutateAsync({ orderId, reason: reason.trim() });
             toast.success("Order returned to Logistics for revision");
+            onRefresh?.();
         } catch (error: any) {
             toast.error(error.message || "Failed to return order");
         }
@@ -142,38 +148,38 @@ export function PendingApprovalSection({ order, orderId }: HybridPricingSectionP
                             <div className="flex justify-between">
                                 <span className="text-muted-foreground">Base Operations</span>
                                 <span className="font-mono">
-                                    {basePrice.toFixed(2)} AED
+                                    {Number(order?.order_pricing?.base_ops_total).toFixed(2)} AED
                                 </span>
                             </div>
                             <div className="flex justify-between">
                                 <span className="text-muted-foreground">Transport</span>
                                 <span className="font-mono">
-                                    {transportPrice.toFixed(2)} AED
+                                    {Number(order?.order_pricing?.transport.final_rate).toFixed(2)} AED
                                 </span>
                             </div>
                             <div className="flex justify-between">
                                 <span className="text-muted-foreground">Catalog Services</span>
                                 <span className="font-mono">
-                                    {servicePrice.toFixed(2)} AED
+                                    {Number(order?.order_pricing?.line_items?.catalog_total).toFixed(2)} AED
                                 </span>
                             </div>
                             <div className="flex justify-between">
                                 <span className="text-muted-foreground">Custom (Reskin) Services</span>
                                 <span className="font-mono">
-                                    {customPrice.toFixed(2)} AED
+                                    {Number(order?.order_pricing?.line_items?.custom_total).toFixed(2)} AED
                                 </span>
                             </div>
                             <div className="flex justify-between">
                                 <span className="text-muted-foreground">Margin ({order.order_pricing?.margin?.percent}%)</span>
                                 <span className="font-mono">
-                                    {order.order_pricing?.margin?.amount.toFixed(2)} AED
+                                    {Number(order.order_pricing?.margin?.amount).toFixed(2)} AED
                                 </span>
                             </div>
                             <div className="border-t border-border my-2"></div>
                             <div className="flex justify-between font-semibold">
                                 <span>Total</span>
                                 <span className="font-mono">
-                                    {total.toFixed(2)} AED
+                                    {Number(total).toFixed(2)} AED
                                 </span>
                             </div>
                         </div>
