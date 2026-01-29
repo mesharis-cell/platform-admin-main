@@ -233,9 +233,9 @@ export interface ProcessReskinRequestRequest {
 }
 
 export interface CompleteReskinRequestRequest {
-    newAssetName: string;
-    completionPhotos: string[];
-    completionNotes?: string;
+    new_asset_name: string;
+    completion_photos: string[];
+    completion_notes?: string;
 }
 
 export interface CancelReskinRequestRequest {

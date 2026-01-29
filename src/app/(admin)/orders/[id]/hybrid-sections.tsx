@@ -185,66 +185,68 @@ export function PendingApprovalSection({ order, orderId, onRefresh }: HybridPric
                         </div>
                     )}
 
-                    {/* Margin Override */}
-                    <div className="space-y-3 border-t border-border pt-4">
-                        <div className="flex items-center space-x-2">
-                            <Checkbox
-                                id="marginOverride"
-                                checked={marginOverride}
-                                onCheckedChange={(checked) => setMarginOverride(checked as boolean)}
-                            />
-                            <Label htmlFor="marginOverride" className="cursor-pointer">
-                                Override platform margin
-                            </Label>
+                    {order.order_status === "PENDING_APPROVAL" && <div>
+                        {/* Margin Override */}
+                        <div className="space-y-3 border-t border-border pt-4">
+                            <div className="flex items-center space-x-2">
+                                <Checkbox
+                                    id="marginOverride"
+                                    checked={marginOverride}
+                                    onCheckedChange={(checked) => setMarginOverride(checked as boolean)}
+                                />
+                                <Label htmlFor="marginOverride" className="cursor-pointer">
+                                    Override platform margin
+                                </Label>
+                            </div>
+
+                            {marginOverride && (
+                                <div className="space-y-3 pl-6 border-l-2 border-primary">
+                                    <div>
+                                        <Label>Margin Percent (%)</Label>
+                                        <Input
+                                            type="number"
+                                            step="0.01"
+                                            min="0"
+                                            max="100"
+                                            value={marginPercent}
+                                            onChange={(e) =>
+                                                setMarginPercent(parseFloat(e.target.value))
+                                            }
+                                        />
+                                    </div>
+                                    <div>
+                                        <Label>Reason for Override</Label>
+                                        <Textarea
+                                            value={marginReason}
+                                            onChange={(e) => setMarginReason(e.target.value)}
+                                            placeholder="e.g., High-value order, premium service justifies higher margin"
+                                            rows={2}
+                                        />
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
-                        {marginOverride && (
-                            <div className="space-y-3 pl-6 border-l-2 border-primary">
-                                <div>
-                                    <Label>Margin Percent (%)</Label>
-                                    <Input
-                                        type="number"
-                                        step="0.01"
-                                        min="0"
-                                        max="100"
-                                        value={marginPercent}
-                                        onChange={(e) =>
-                                            setMarginPercent(parseFloat(e.target.value))
-                                        }
-                                    />
-                                </div>
-                                <div>
-                                    <Label>Reason for Override</Label>
-                                    <Textarea
-                                        value={marginReason}
-                                        onChange={(e) => setMarginReason(e.target.value)}
-                                        placeholder="e.g., High-value order, premium service justifies higher margin"
-                                        rows={2}
-                                    />
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex gap-3 pt-4">
-                        <Button
-                            onClick={handleApprove}
-                            disabled={adminApproveQuote.isPending}
-                            className="flex-1"
-                        >
-                            {adminApproveQuote.isPending
-                                ? "Approving..."
-                                : "Approve & Send Quote to Client"}
-                        </Button>
-                        <Button
-                            variant="outline"
-                            onClick={handleReturnToLogistics}
-                            disabled={returnToLogistics.isPending}
-                        >
-                            Return to Logistics
-                        </Button>
-                    </div>
+                        {/* Actions */}
+                        <div className="flex gap-3 pt-4">
+                            <Button
+                                onClick={handleApprove}
+                                disabled={adminApproveQuote.isPending}
+                                className="flex-1"
+                            >
+                                {adminApproveQuote.isPending
+                                    ? "Approving..."
+                                    : "Approve & Send Quote to Client"}
+                            </Button>
+                            <Button
+                                variant="outline"
+                                onClick={handleReturnToLogistics}
+                                disabled={returnToLogistics.isPending}
+                            >
+                                Return to Logistics
+                            </Button>
+                        </div>
+                    </div>}
                 </CardContent>
             </Card>
 
@@ -294,27 +296,18 @@ export function PricingReviewSection({ order, orderId, onRefresh }: HybridPricin
 export function AwaitingFabricationSection({ order, orderId }: HybridPricingSectionProps) {
     return (
         <div className="space-y-6">
-            <Card className="border-blue-500 bg-blue-50 dark:bg-blue-950/20">
+            <Card className="border-blue-500 bg-blue-50">
                 <CardHeader>
-                    <CardTitle className="text-blue-900 dark:text-blue-100">
+                    <CardTitle className="text-blue-500">
                         ⏳ Order Awaiting Fabrication
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <p className="text-sm text-blue-800 dark:text-blue-200">
+                    <p className="text-sm text-blue-500">
                         This order is confirmed but waiting for custom rebranding work to complete.
                         Once all fabrication is done, the order will automatically move to
                         IN_PREPARATION.
                     </p>
-                </CardContent>
-            </Card>
-
-            <Card>
-                <CardHeader>
-                    <CardTitle>Fabrication Status</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <ReskinRequestsList orderId={orderId} orderStatus={order.order_status} />
                 </CardContent>
             </Card>
         </div>

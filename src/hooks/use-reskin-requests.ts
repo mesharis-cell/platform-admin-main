@@ -71,14 +71,16 @@ export function useCompleteReskinRequest() {
     return useMutation({
         mutationFn: async ({
             reskinId,
+            orderId,
             data,
         }: {
             reskinId: string;
+            orderId: string;
             data: CompleteReskinRequestRequest;
         }) => {
             try {
                 const response = await apiClient.post(
-                    `/client/v1/reskin-requests/${reskinId}/complete`,
+                    `/client/v1/order/${orderId}/reskin-requests/${reskinId}/complete`,
                     data
                 );
                 return response.data.data;

@@ -91,6 +91,7 @@ export function ReskinRequestsList({ orderId, orderStatus }: ReskinRequestsListP
                         open={completeModalOpen}
                         onOpenChange={setCompleteModalOpen}
                         reskinId={selectedReskin.id}
+                        orderId={orderId}
                         originalAssetName={selectedReskin.originalAssetName}
                         targetBrandName={selectedReskin.targetBrandCustom || "Brand"}
                     />
