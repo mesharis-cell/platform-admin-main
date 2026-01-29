@@ -41,7 +41,17 @@ export function PendingApprovalSection({ order, orderId }: HybridPricingSectionP
     const [marginPercent, setMarginPercent] = useState(order?.company?.platformMarginPercent || 25);
     const [marginReason, setMarginReason] = useState("");
 
-    console.log("order", order);
+    const marginAmount = order?.order_pricing?.margin?.percent;
+
+    const basePrice = Number(order?.order_pricing?.base_ops_total) + (Number(order?.order_pricing?.base_ops_total) * (marginAmount / 100));
+    const transportPrice = Number(order?.order_pricing?.transport.final_rate) + (Number(order?.order_pricing?.transport.final_rate) * (marginAmount / 100));
+    const catalogPrice = Number(order?.order_pricing?.line_items?.catalog_total) + (Number(order?.order_pricing?.line_items?.catalog_total) * (marginAmount / 100));
+    const customPrice = Number(order?.order_pricing?.line_items?.custom_total)
+
+    const servicePrice = catalogPrice + customPrice;
+    const margin = Number(order?.order_pricing?.margin?.amount).toFixed(2);
+    const total = basePrice + transportPrice + servicePrice + Number(margin);
+
 
     const handleApprove = async () => {
         if (marginOverride && !marginReason.trim()) {
@@ -132,27 +142,38 @@ export function PendingApprovalSection({ order, orderId }: HybridPricingSectionP
                             <div className="flex justify-between">
                                 <span className="text-muted-foreground">Base Operations</span>
                                 <span className="font-mono">
-                                    {order.order_pricing.base_ops_total} AED
+                                    {basePrice.toFixed(2)} AED
                                 </span>
                             </div>
                             <div className="flex justify-between">
                                 <span className="text-muted-foreground">Transport</span>
                                 <span className="font-mono">
-                                    {order.order_pricing.transport?.final_rate} AED
+                                    {transportPrice.toFixed(2)} AED
                                 </span>
                             </div>
                             <div className="flex justify-between">
                                 <span className="text-muted-foreground">Catalog Services</span>
                                 <span className="font-mono">
-                                    {order.order_pricing.line_items?.catalog_total || "0.00"}{" "}
-                                    AED
+                                    {servicePrice.toFixed(2)} AED
+                                </span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-muted-foreground">Custom (Reskin) Services</span>
+                                <span className="font-mono">
+                                    {customPrice.toFixed(2)} AED
+                                </span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-muted-foreground">Margin ({order.order_pricing?.margin?.percent}%)</span>
+                                <span className="font-mono">
+                                    {order.order_pricing?.margin?.amount.toFixed(2)} AED
                                 </span>
                             </div>
                             <div className="border-t border-border my-2"></div>
                             <div className="flex justify-between font-semibold">
-                                <span>Logistics Subtotal</span>
+                                <span>Total</span>
                                 <span className="font-mono">
-                                    {order.order_pricing.logistics_subtotal?.toFixed(2)} AED
+                                    {total.toFixed(2)} AED
                                 </span>
                             </div>
                         </div>
