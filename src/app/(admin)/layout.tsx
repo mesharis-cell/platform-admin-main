@@ -144,11 +144,6 @@ const navigation: NavItem[] = [
         icon: Layers,
     },
     {
-        name: "Pricing Tiers",
-        href: "/pricing-tiers",
-        icon: DollarSign,
-    },
-    {
         name: "Reset Password",
         href: "/reset-password",
         icon: Lock,
