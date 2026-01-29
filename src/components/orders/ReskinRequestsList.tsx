@@ -1,13 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { RefreshCw, CheckCircle, XCircle } from "lucide-react";
 import { useListReskinRequests } from "@/hooks/use-reskin-requests";
-import { ProcessReskinModal } from "./ProcessReskinModal";
 import { CompleteFabricationModal } from "./CompleteFabricationModal";
 import { CancelReskinModal } from "./CancelReskinModal";
+import { ReskinItemCard } from "./ReskinItemCard";
 import type { ReskinRequest } from "@/types/hybrid-pricing";
 
 interface ReskinRequestsListProps {
@@ -34,6 +32,16 @@ export function ReskinRequestsList({ orderId, orderStatus }: ReskinRequestsListP
     const completedReskins = reskinRequests.filter((r: ReskinRequest) => r.status === "complete");
     const cancelledReskins = reskinRequests.filter((r: ReskinRequest) => r.status === "cancelled");
 
+    const handleMarkComplete = (reskin: any) => {
+        setSelectedReskin(reskin);
+        setCompleteModalOpen(true);
+    };
+
+    const handleCancel = (reskin: any) => {
+        setSelectedReskin(reskin);
+        setCancelModalOpen(true);
+    };
+
     return (
         <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -47,89 +55,32 @@ export function ReskinRequestsList({ orderId, orderStatus }: ReskinRequestsListP
 
             <div className="space-y-3">
                 {pendingReskins.map((reskin: any) => (
-                    <div
+                    <ReskinItemCard
                         key={reskin.id}
-                        className="border border-amber-500/30 bg-amber-50/50 dark:bg-amber-950/10 rounded-md p-4"
-                    >
-                        <div className="flex items-start justify-between mb-3">
-                            <div className="flex items-center gap-2">
-                                <RefreshCw className="h-4 w-4 text-amber-600" />
-                                <span className="font-semibold text-sm">
-                                    {reskin.originalAssetName} →{" "}
-                                    {reskin.targetBrandCustom || "Brand"}
-                                </span>
-                            </div>
-                            <Badge className="bg-amber-500">Pending</Badge>
-                        </div>
-
-                        <div className="text-sm space-y-1 mb-3">
-                            <p className="text-muted-foreground">Client Notes:</p>
-                            <p className="text-sm">{reskin.clientNotes}</p>
-                        </div>
-
-
-                        {/* {orderStatus === "AWAITING_FABRICATION" && ( */}
-                        <div className="flex gap-2">
-                            <Button
-                                size="sm"
-                                onClick={() => {
-                                    setSelectedReskin(reskin);
-                                    setCompleteModalOpen(true);
-                                }}
-                            >
-                                Mark Complete
-                            </Button>
-                            <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => {
-                                    setSelectedReskin(reskin);
-                                    setCancelModalOpen(true);
-                                }}
-                            >
-                                Cancel Reskin
-                            </Button>
-                        </div>
-                        {/* )} */}
-                    </div>
+                        reskin={reskin}
+                        status="pending"
+                        onMarkComplete={handleMarkComplete}
+                        onCancel={handleCancel}
+                        orderStatus={orderStatus}
+                    />
                 ))}
 
                 {completedReskins.map((reskin: any) => (
-                    <div
+                    <ReskinItemCard
                         key={reskin.id}
-                        className="border border-green-500/30 bg-green-50/50 dark:bg-green-950/10 rounded-md p-4"
-                    >
-                        <div className="flex items-center gap-2 mb-2">
-                            <CheckCircle className="h-4 w-4 text-green-600" />
-                            <span className="font-semibold text-sm">
-                                {reskin.originalAssetName} → {reskin.newAssetName}
-                            </span>
-                            <Badge className="bg-green-500 ml-auto">Complete</Badge>
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                            Completed: {new Date(reskin.completedAt).toLocaleDateString()}
-                        </p>
-                    </div>
+                        reskin={reskin}
+                        status="complete"
+                        orderStatus={orderStatus}
+                    />
                 ))}
 
                 {cancelledReskins.map((reskin: any) => (
-                    <div
+                    <ReskinItemCard
                         key={reskin.id}
-                        className="border border-border bg-muted/30 rounded-md p-4"
-                    >
-                        <div className="flex items-center gap-2 mb-2">
-                            <XCircle className="h-4 w-4 text-muted-foreground" />
-                            <span className="font-semibold text-sm text-muted-foreground line-through">
-                                {reskin.originalAssetName}
-                            </span>
-                            <Badge variant="outline" className="ml-auto">
-                                Cancelled
-                            </Badge>
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                            Reason: {reskin.cancellationReason}
-                        </p>
-                    </div>
+                        reskin={reskin}
+                        status="cancelled"
+                        orderStatus={orderStatus}
+                    />
                 ))}
             </div>
 
