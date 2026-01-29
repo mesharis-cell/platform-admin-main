@@ -21,12 +21,14 @@ interface VehicleUpgradeSelectorProps {
     orderId: string;
     currentVehicle: VehicleType;
     onVehicleChange?: (vehicle: VehicleType, reason: string) => void;
+    onSuccess?: () => void;
 }
 
 export function VehicleUpgradeSelector({
     orderId,
     currentVehicle,
     onVehicleChange,
+    onSuccess,
 }: VehicleUpgradeSelectorProps) {
     const updateVehicle = useUpdateOrderVehicle();
     const [changeVehicle, setChangeVehicle] = useState(false);
@@ -49,6 +51,10 @@ export function VehicleUpgradeSelector({
             if (onVehicleChange) {
                 onVehicleChange(selectedVehicle, reason.trim());
             }
+            // Reset form and call onSuccess to refetch order data
+            setChangeVehicle(false);
+            setReason("");
+            onSuccess?.();
         } catch (error: any) {
             toast.error(error.message || "Failed to update vehicle");
         }
@@ -121,8 +127,8 @@ export function VehicleUpgradeSelector({
                     )}
 
                     {selectedVehicle !== currentVehicle && (
-                        <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 rounded-md p-3">
-                            <p className="text-xs text-blue-800 dark:text-blue-300">
+                        <div className="bg-blue-50 border border-blue-300 rounded-md p-3">
+                            <p className="text-xs text-blue-500">
                                 ℹ️ System will automatically look up the new transport rate for
                                 upgraded vehicle type.
                             </p>

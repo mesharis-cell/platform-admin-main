@@ -148,6 +148,7 @@ export function LogisticsPricingReview({ orderId, order, onSubmitSuccess }: Logi
                             "STANDARD"
                         }
                         onVehicleChange={handleVehicleChange}
+                        onSuccess={onSubmitSuccess}
                     />
                 </CardContent>
             </Card>
