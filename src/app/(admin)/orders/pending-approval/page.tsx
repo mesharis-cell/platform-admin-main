@@ -125,7 +125,8 @@ export default function PendingApprovalPage() {
                                             <div>
                                                 <p className="text-muted-foreground">Venue</p>
                                                 <p className="font-medium">
-                                                    {order.venue_location?.city}
+                                                    {order.venue_location?.address},
+                                                    {order.venue_name}
                                                 </p>
                                             </div>
                                             <div>
@@ -138,8 +139,8 @@ export default function PendingApprovalPage() {
 
                                         {/* Rebrand Notice */}
                                         {hasReskins && (
-                                            <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 rounded-md p-3">
-                                                <p className="text-xs text-amber-800 dark:text-amber-300">
+                                            <div className="bg-red-500/10 border border-red-200 rounded-md p-3">
+                                                <p className="text-xs text-red-500">
                                                     🔄 This order includes {reskinCount} rebrand
                                                     request{reskinCount > 1 ? "s" : ""} that need
                                                     processing

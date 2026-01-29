@@ -26,6 +26,7 @@ import {
     CancelOrderButton,
 } from "./hybrid-sections";
 import { ProcessReskinModal } from "@/components/orders/ProcessReskinModal";
+import { OrderItemCard } from "@/components/orders/OrderItemCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -1379,75 +1380,20 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                             </CardHeader>
                             <CardContent className="space-y-2">
                                 {order?.data?.items?.map((item: any) => (
-                                    <div key={item.id} className="bg-muted/30 rounded border border-border p-3">
-                                        <div className="flex-1">
-                                            <p className="font-mono text-sm font-medium">
-                                                {item.asset?.name}
-                                            </p>
-                                            <p className="font-mono text-xs text-muted-foreground mt-1">
-                                                QTY: {item?.order_item?.quantity} | VOL:{" "}
-                                                {item?.order_item?.total_volume}m³ | WT:{" "}
-                                                {item?.order_item?.total_weight}kg
-                                            </p>
-                                            {item?.order_item?.handling_tags?.length > 0 && (
-                                                <div className="flex gap-1 mt-2">
-                                                    {item?.order_item?.handling_tags.map(
-                                                        (tag: string) => (
-                                                            <Badge
-                                                                key={tag}
-                                                                variant="outline"
-                                                                className="text-[10px] font-mono bg-amber-500/10 border-amber-500/20"
-                                                            >
-                                                                {tag}
-                                                            </Badge>
-                                                        )
-                                                    )}
-                                                </div>
-                                            )}
-
-                                            {/* Reskin Request for pricing review */}
-                                            {order?.data?.order_status === "PRICING_REVIEW" && item?.order_item?.is_reskin_request && (
-                                                <div className="bg-primary/10 p-2 rounded border border-primary/20 mt-4 font-mono text-xs text-muted-foreground">
-                                                    <p>Target brand: {item?.order_item?.reskin_target_brand_name}</p>
-                                                    <p className="mt-2">Client instructions: {item?.order_item?.reskin_notes}</p>
-                                                    <p className="mt-2">Status: ⏳ Pending Admin Action</p>
-                                                </div>
-                                            )}
-
-                                            {/* Reskin Request for pending approval */}
-                                            {order?.data?.order_status === "PENDING_APPROVAL" && item?.order_item?.is_reskin_request && (
-                                                <div className="bg-primary/10 p-2 rounded border border-primary/20 mt-4 font-mono text-xs text-muted-foreground">
-                                                    <p className="mt-2">Client instructions: {item?.order_item?.reskin_notes}</p>
-                                                    <p className="mt-2">Status: ⏳ Awaiting Processing</p>
-
-                                                    <div className="mt-4 flex gap-2">
-                                                        <Button
-                                                            variant="default"
-                                                            className="text-xs font-mono"
-                                                            onClick={() => {
-                                                                setSelectedReskinData({
-                                                                    orderItemId: item?.order_item?.id,
-                                                                    originalAssetName: item.asset?.name,
-                                                                    targetBrandName: item?.order_item?.reskin_target_brand_custom || "Linked Brand",
-                                                                    clientNotes: item?.order_item?.reskin_notes || "No notes provided"
-                                                                });
-                                                                setProcessModalOpen(true);
-                                                            }}
-                                                        >
-                                                            Rebrand Request
-                                                        </Button>
-                                                        <Button
-                                                            variant="outline"
-                                                            className="text-xs font-mono"
-                                                        // onClick={() => handleReskinRequest(item?.order_item?.id)}
-                                                        >
-                                                            Reject & Contact Client
-                                                        </Button>
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
+                                    <OrderItemCard
+                                        key={item.id}
+                                        item={item}
+                                        orderId={order?.data?.id}
+                                        orderStatus={order?.data?.order_status}
+                                        onProcessReskin={(reskinData) => {
+                                            setSelectedReskinData(reskinData);
+                                            setProcessModalOpen(true);
+                                        }}
+                                        onRejectReskin={(orderItemId) => {
+                                            // TODO: Implement reject and contact client logic
+                                            console.log("Reject reskin for order item:", orderItemId);
+                                        }}
+                                    />
                                 ))}
                             </CardContent>
                         </Card>
