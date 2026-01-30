@@ -3,17 +3,17 @@
  * Combines Calendar for date selection with time input
  */
 
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import { format } from "date-fns";
-import { Calendar as CalendarIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { useState, useEffect } from 'react';
+import { format } from 'date-fns';
+import { Calendar as CalendarIcon } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 interface DateTimePickerProps {
     value: Date | undefined;
@@ -21,24 +21,19 @@ interface DateTimePickerProps {
     placeholder?: string;
     disabled?: boolean;
     className?: string;
+    disabledDays?: import('react-day-picker').Matcher | import('react-day-picker').Matcher[];
 }
 
-export function DateTimePicker({
-    value,
-    onChange,
-    placeholder = "Pick date & time",
-    disabled,
-    className,
-}: DateTimePickerProps) {
+export function DateTimePicker({ value, onChange, placeholder = 'Pick date & time', disabled, className, disabledDays }: DateTimePickerProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [selectedDate, setSelectedDate] = useState<Date | undefined>(value);
-    const [time, setTime] = useState<string>(value ? format(value, "HH:mm") : "09:00");
+    const [time, setTime] = useState<string>(value ? format(value, 'HH:mm') : '09:00');
 
     // Sync internal state with external value prop
     useEffect(() => {
         setSelectedDate(value);
         if (value) {
-            setTime(format(value, "HH:mm"));
+            setTime(format(value, 'HH:mm'));
         }
     }, [value]);
 
@@ -47,9 +42,9 @@ export function DateTimePicker({
         if (isOpen) {
             setSelectedDate(value);
             if (value) {
-                setTime(format(value, "HH:mm"));
+                setTime(format(value, 'HH:mm'));
             } else {
-                setTime("09:00");
+                setTime('09:00');
             }
         }
     }, [isOpen, value]);
@@ -75,7 +70,7 @@ export function DateTimePicker({
         }
 
         // Combine selected date with time
-        const [hours, minutes] = time.split(":").map(Number);
+        const [hours, minutes] = time.split(':').map(Number);
         const newDate = new Date(selectedDate);
         newDate.setHours(hours, minutes, 0, 0);
 
@@ -85,14 +80,14 @@ export function DateTimePicker({
 
     const handleClear = () => {
         setSelectedDate(undefined);
-        setTime("09:00");
+        setTime('09:00');
         onChange(undefined);
         setIsOpen(false);
     };
 
     // Format display text
     const displayText = value
-        ? `${format(value, "MMM d, yyyy")} ${format(value, "HH:mm")}`
+        ? `${format(value, 'MMM d, yyyy')} ${format(value, 'HH:mm')}`
         : placeholder;
 
     return (
@@ -100,11 +95,7 @@ export function DateTimePicker({
             <PopoverTrigger asChild>
                 <Button
                     variant="outline"
-                    className={cn(
-                        "w-full min-w-0 justify-start text-left font-mono text-sm h-10",
-                        !value && "text-muted-foreground",
-                        className
-                    )}
+                    className={cn('w-full min-w-0 justify-start text-left font-mono text-sm h-10', !value && 'text-muted-foreground', className)}
                     disabled={disabled}
                 >
                     <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
@@ -112,41 +103,23 @@ export function DateTimePicker({
                 </Button>
             </PopoverTrigger>
             <PopoverContent
-                className="w-[280px] p-0 z-100 max-h-[min(400px,80vh)] overflow-y-auto"
-                align="start"
-                side="bottom"
+                className="w-[280px] p-0 z-100"
+                align="center"
+                side="left"
                 sideOffset={4}
                 alignOffset={0}
                 collisionPadding={20}
                 avoidCollisions={true}
             >
                 <div className="p-4 space-y-4">
-                    <Calendar
-                        className="w-full"
-                        mode="single"
-                        selected={selectedDate}
-                        onSelect={handleDateSelect}
-                        initialFocus
-                    />
+                    <Calendar className='w-full' mode="single" selected={selectedDate} onSelect={handleDateSelect} disabled={disabledDays} initialFocus />
                     <div className="space-y-2 border-t pt-4">
-                        <Label className="text-xs font-mono text-muted-foreground uppercase">
-                            Time
-                        </Label>
-                        <Input
-                            type="time"
-                            value={time}
-                            onChange={(e) => handleTimeChange(e.target.value)}
-                            className="font-mono"
-                        />
+                        <Label className="text-xs font-mono text-muted-foreground uppercase">Time</Label>
+                        <Input type="time" value={time} onChange={(e) => handleTimeChange(e.target.value)} className="font-mono" />
                     </div>
                     <div className="flex gap-2">
                         {value && (
-                            <Button
-                                onClick={handleClear}
-                                variant="outline"
-                                className="flex-1 font-mono"
-                                size="sm"
-                            >
+                            <Button onClick={handleClear} variant="outline" className="flex-1 font-mono" size="sm">
                                 Clear
                             </Button>
                         )}

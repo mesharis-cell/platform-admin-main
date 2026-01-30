@@ -64,7 +64,7 @@ export function useCreateServiceType() {
         mutationFn: async (data: CreateServiceTypeRequest) => {
             try {
                 // Transform camelCase to snake_case for API
-                const apiData = mapCamelToSnake(data as Record<string, unknown>);
+                const apiData = mapCamelToSnake(data);
                 const response = await apiClient.post("/operations/v1/pricing/service-types", apiData);
                 return response.data.data;
             } catch (error) {
@@ -85,7 +85,7 @@ export function useUpdateServiceType() {
         mutationFn: async ({ id, data }: { id: string; data: UpdateServiceTypeRequest }) => {
             try {
                 // Transform camelCase to snake_case for API
-                const apiData = mapCamelToSnake(data as Record<string, unknown>);
+                const apiData = mapCamelToSnake(data);
                 const response = await apiClient.put(
                     `/operations/v1/pricing/service-types/${id}`,
                     apiData

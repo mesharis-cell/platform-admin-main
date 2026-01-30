@@ -69,6 +69,7 @@ import { toast } from "sonner";
 import { DateTimePicker } from "@/components/ui/datetime-picker";
 import { apiClient } from "@/lib/api/api-client";
 import { removeUnderScore } from "@/lib/utils/helper";
+import { addDays, endOfDay, isAfter, isBefore, startOfDay, subDays } from "date-fns";
 
 const FINANCIAL_STATUS = {
     PENDING_QUOTE: {
@@ -394,6 +395,25 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
     const currentStatusConfig = STATUS_CONFIG[order.data.order_status] || STATUS_CONFIG.DRAFT;
     const allowedNextStates = currentStatusConfig.nextStates || [];
 
+    const eventStartDate = order?.data?.event_start_date
+        ? new Date(order.data.event_start_date)
+        : undefined
+    const eventEndDate = order?.data?.event_end_date
+        ? new Date(order.data.event_end_date)
+        : undefined
+
+    const deliveryDisabledDays = eventStartDate
+        ? (date: Date) =>
+            isBefore(date, startOfDay(subDays(eventStartDate, 5))) ||
+            isAfter(date, endOfDay(subDays(eventStartDate, 1)))
+        : undefined
+
+    const pickupDisabledDays = eventEndDate
+        ? (date: Date) =>
+            isBefore(date, startOfDay(addDays(eventEndDate, 1))) ||
+            isAfter(date, endOfDay(addDays(eventEndDate, 3)))
+        : undefined
+
     return (
         <div className="min-h-screen bg-background">
             {/* Sticky Header */}
@@ -544,6 +564,23 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     {/* Main Content */}
                     <div className="lg:col-span-2 space-y-6">
+                        {(order?.data?.order_status === "CONFIRMED" || order?.data?.order_status === "AWAITING_FABRICATION") &&
+                            !order?.data?.delivery_window?.start && (
+                                <Card className="p-4 bg-orange-500/5 border-orange-500/30">
+                                    <div className="flex items-start gap-3">
+                                        <AlertCircle className="h-5 w-5 text-orange-600 shrink-0 mt-0.5" />
+                                        <div>
+                                            <p className="font-mono text-sm font-bold text-orange-700">
+                                                Action Required
+                                            </p>
+                                            <p className="font-mono text-xs text-muted-foreground mt-1">
+                                                Set delivery schedule before fabricating items and starting preparation
+                                            </p>
+                                        </div>
+                                    </div>
+                                </Card>
+                            )}
+
                         {/* NEW: AWAITING_FABRICATION - Fabrication Tracking */}
                         {order.data.order_status === "AWAITING_FABRICATION" && (
                             <AwaitingFabricationSection
@@ -643,23 +680,6 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                                         ).getTime()) /
                                                     (1000 * 60 * 60 * 24)
                                                 ) >= 2 && " - Consider following up with client"}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </Card>
-                            )}
-
-                        {order?.data?.order_status === "CONFIRMED" &&
-                            !order?.data?.delivery_window?.start && (
-                                <Card className="p-4 bg-orange-500/5 border-orange-500/30">
-                                    <div className="flex items-start gap-3">
-                                        <AlertCircle className="h-5 w-5 text-orange-600 shrink-0 mt-0.5" />
-                                        <div>
-                                            <p className="font-mono text-sm font-bold text-orange-700">
-                                                Action Required
-                                            </p>
-                                            <p className="font-mono text-xs text-muted-foreground mt-1">
-                                                Set delivery schedule before starting preparation
                                             </p>
                                         </div>
                                     </div>
@@ -1104,7 +1124,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                             )}
 
                         {/* Delivery Schedule Card - Show for CONFIRMED+ states (Feedback #1: Independent from payment) */}
-                        {["CONFIRMED", "IN_PREPARATION", "READY_FOR_DELIVERY"].includes(
+                        {["AWAITING_FABRICATION", "CONFIRMED", "IN_PREPARATION", "READY_FOR_DELIVERY"].includes(
                             order?.data?.order_status
                         ) && (
                                 <Card className="border-2">
@@ -1128,56 +1148,60 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                                         EDIT
                                                     </Button>
                                                 </DialogTrigger>
-                                                <DialogContent className="sm:max-w-lg overflow-y-auto">
+                                                <DialogContent className='sm:max-w-lg overflow-y-auto'>
                                                     <DialogHeader>
-                                                        <DialogTitle className="font-mono">
+                                                        <DialogTitle className='font-mono'>
                                                             UPDATE DELIVERY SCHEDULE
                                                         </DialogTitle>
-                                                        <DialogDescription className="font-mono text-xs">
-                                                            Set time windows for delivery and pickup
+                                                        <DialogDescription className='font-mono text-xs'>
+                                                            Set time windows for
+                                                            delivery and pickup
                                                             coordination
                                                         </DialogDescription>
                                                     </DialogHeader>
 
-                                                    <div className="space-y-6 py-4">
-                                                        <div className="space-y-3">
-                                                            <Label className="font-mono text-sm font-bold">
+                                                    <div className='space-y-6 py-4'>
+                                                        <div className='space-y-3'>
+                                                            <Label className='font-mono text-sm font-bold'>
                                                                 DELIVERY WINDOW
                                                             </Label>
-                                                            <div className="grid grid-cols-2 gap-4">
-                                                                <div className="space-y-2">
-                                                                    <Label className="font-mono text-xs text-muted-foreground">
+                                                            <div className='grid grid-cols-2 gap-4'>
+                                                                <div className='space-y-2'>
+                                                                    <Label className='font-mono text-xs text-muted-foreground'>
                                                                         START
                                                                     </Label>
                                                                     <DateTimePicker
-                                                                        value={
-                                                                            timeWindows.deliveryWindowStart
+                                                                        value={timeWindows.deliveryWindowStart}
+                                                                        onChange={date =>
+                                                                            setTimeWindows(
+                                                                                prev => ({
+                                                                                    ...prev,
+                                                                                    deliveryWindowStart:
+                                                                                        date,
+                                                                                })
+                                                                            )
                                                                         }
-                                                                        onChange={(date) =>
-                                                                            setTimeWindows((prev) => ({
-                                                                                ...prev,
-                                                                                deliveryWindowStart:
-                                                                                    date,
-                                                                            }))
-                                                                        }
-                                                                        placeholder="Select delivery start"
+                                                                        placeholder='Select delivery start'
+                                                                        disabledDays={deliveryDisabledDays}
                                                                     />
                                                                 </div>
-                                                                <div className="space-y-2">
-                                                                    <Label className="font-mono text-xs text-muted-foreground">
+                                                                <div className='space-y-2'>
+                                                                    <Label className='font-mono text-xs text-muted-foreground'>
                                                                         END
                                                                     </Label>
                                                                     <DateTimePicker
-                                                                        value={
-                                                                            timeWindows.deliveryWindowEnd
+                                                                        value={timeWindows.deliveryWindowEnd}
+                                                                        onChange={date =>
+                                                                            setTimeWindows(
+                                                                                prev => ({
+                                                                                    ...prev,
+                                                                                    deliveryWindowEnd:
+                                                                                        date,
+                                                                                })
+                                                                            )
                                                                         }
-                                                                        onChange={(date) =>
-                                                                            setTimeWindows((prev) => ({
-                                                                                ...prev,
-                                                                                deliveryWindowEnd: date,
-                                                                            }))
-                                                                        }
-                                                                        placeholder="Select delivery end"
+                                                                        placeholder='Select delivery end'
+                                                                        disabledDays={deliveryDisabledDays}
                                                                     />
                                                                 </div>
                                                             </div>
@@ -1185,43 +1209,47 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
 
                                                         <Separator />
 
-                                                        <div className="space-y-3">
-                                                            <Label className="font-mono text-sm font-bold">
+                                                        <div className='space-y-3'>
+                                                            <Label className='font-mono text-sm font-bold'>
                                                                 PICKUP WINDOW
                                                             </Label>
-                                                            <div className="grid grid-cols-2 gap-4">
-                                                                <div className="space-y-2">
-                                                                    <Label className="font-mono text-xs text-muted-foreground">
+                                                            <div className='grid grid-cols-2 gap-4'>
+                                                                <div className='space-y-2'>
+                                                                    <Label className='font-mono text-xs text-muted-foreground'>
                                                                         START
                                                                     </Label>
                                                                     <DateTimePicker
-                                                                        value={
-                                                                            timeWindows.pickupWindowStart
+                                                                        value={timeWindows.pickupWindowStart}
+                                                                        onChange={date =>
+                                                                            setTimeWindows(
+                                                                                prev => ({
+                                                                                    ...prev,
+                                                                                    pickupWindowStart:
+                                                                                        date,
+                                                                                })
+                                                                            )
                                                                         }
-                                                                        onChange={(date) =>
-                                                                            setTimeWindows((prev) => ({
-                                                                                ...prev,
-                                                                                pickupWindowStart: date,
-                                                                            }))
-                                                                        }
-                                                                        placeholder="Select pickup start"
+                                                                        placeholder='Select pickup start'
+                                                                        disabledDays={pickupDisabledDays}
                                                                     />
                                                                 </div>
-                                                                <div className="space-y-2">
-                                                                    <Label className="font-mono text-xs text-muted-foreground">
+                                                                <div className='space-y-2'>
+                                                                    <Label className='font-mono text-xs text-muted-foreground'>
                                                                         END
                                                                     </Label>
                                                                     <DateTimePicker
-                                                                        value={
-                                                                            timeWindows.pickupWindowEnd
+                                                                        value={timeWindows.pickupWindowEnd}
+                                                                        onChange={date =>
+                                                                            setTimeWindows(
+                                                                                prev => ({
+                                                                                    ...prev,
+                                                                                    pickupWindowEnd:
+                                                                                        date,
+                                                                                })
+                                                                            )
                                                                         }
-                                                                        onChange={(date) =>
-                                                                            setTimeWindows((prev) => ({
-                                                                                ...prev,
-                                                                                pickupWindowEnd: date,
-                                                                            }))
-                                                                        }
-                                                                        placeholder="Select pickup end"
+                                                                        placeholder='Select pickup end'
+                                                                        disabledDays={pickupDisabledDays}
                                                                     />
                                                                 </div>
                                                             </div>
@@ -1230,21 +1258,23 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
 
                                                     <DialogFooter>
                                                         <Button
-                                                            variant="outline"
+                                                            variant='outline'
                                                             disabled={updateTimeWindowsLoading}
                                                             onClick={() => setTimeWindowsOpen(false)}
-                                                            className="font-mono text-xs"
+                                                            className='font-mono text-xs'
                                                         >
                                                             CANCEL
                                                         </Button>
                                                         <Button
                                                             onClick={handleTimeWindowsSave}
                                                             disabled={updateTimeWindowsLoading}
-                                                            className="font-mono text-xs"
+                                                            className='font-mono text-xs'
                                                         >
-                                                            {updateTimeWindowsLoading
-                                                                ? "Saving..."
-                                                                : "SAVE SCHEDULE"}
+                                                            {updateTimeWindowsLoading ? (
+                                                                "Saving..."
+                                                            ) : (
+                                                                "SAVE SCHEDULE"
+                                                            )}
                                                         </Button>
                                                     </DialogFooter>
                                                 </DialogContent>

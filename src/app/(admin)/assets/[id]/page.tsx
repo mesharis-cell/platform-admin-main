@@ -7,7 +7,7 @@
  * Design: Industrial detail terminal with QR code scanning interface
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, use } from "react";
 import { useAsset, useGenerateQRCode, useDeleteAsset } from "@/hooks/use-assets";
 import { useConditionHistory } from "@/hooks/use-conditions";
 import { useAssetAvailabilityStats } from "@/hooks/use-asset-availability-stats";
@@ -48,8 +48,8 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EditAssetDialog } from "@/components/assets/edit-asset-dialog";
 import { generateQRCode } from "@/lib/services/qr-code";
 
-export default function AssetDetailPage({ params }: { params: { id: string } }) {
-    const { id } = params;
+export default function AssetDetailPage({ params }: { params: Promise<{ id: string }> }) {
+    const { id } = use(params);
     const router = useRouter();
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -383,11 +383,10 @@ export default function AssetDetailPage({ params }: { params: { id: string } }) 
                                                 <button
                                                     key={index}
                                                     onClick={() => setCurrentImageIndex(index)}
-                                                    className={`relative w-20 h-20 shrink-0 rounded-md overflow-hidden border-2 ${
-                                                        index === currentImageIndex
-                                                            ? "border-primary"
-                                                            : "border-border hover:border-primary/50"
-                                                    } transition-colors`}
+                                                    className={`relative w-20 h-20 shrink-0 rounded-md overflow-hidden border-2 ${index === currentImageIndex
+                                                        ? "border-primary"
+                                                        : "border-border hover:border-primary/50"
+                                                        } transition-colors`}
                                                 >
                                                     <Image
                                                         src={img}
@@ -763,13 +762,13 @@ export default function AssetDetailPage({ params }: { params: { id: string } }) 
                                         <AddNotesDialog
                                             assetId={asset.id}
                                             assetName={asset.name}
-                                            onSuccess={() => {}}
+                                            onSuccess={() => { }}
                                         />
                                         <MaintenanceCompletionDialog
                                             assetId={asset.id}
                                             assetName={asset.name}
                                             currentCondition={asset.condition}
-                                            onSuccess={() => {}}
+                                            onSuccess={() => { }}
                                         />
                                     </div>
                                 </div>

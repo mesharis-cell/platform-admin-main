@@ -99,6 +99,7 @@ export function AdminPricingReview({ orderId, order }: AdminPricingReviewProps) 
                 <CardContent>
                     <ReskinRequestsList
                         orderId={orderId}
+                        order={order}
                         orderStatus={order?.orderStatus || order?.order_status}
                     />
                 </CardContent>

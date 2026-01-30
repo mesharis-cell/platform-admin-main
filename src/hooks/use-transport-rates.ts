@@ -66,7 +66,7 @@ export function useCreateTransportRate() {
         mutationFn: async (data: CreateTransportRateRequest) => {
             try {
                 // Transform camelCase to snake_case for API
-                const apiData = mapCamelToSnake(data as Record<string, unknown>);
+                const apiData = mapCamelToSnake(data);
                 const response = await apiClient.post("/operations/v1/pricing/transport-rates", apiData);
                 return response.data.data;
             } catch (error) {
@@ -87,7 +87,7 @@ export function useUpdateTransportRate() {
         mutationFn: async ({ id, data }: { id: string; data: UpdateTransportRateRequest }) => {
             try {
                 // Transform camelCase to snake_case for API
-                const apiData = mapCamelToSnake(data as Record<string, unknown>);
+                const apiData = mapCamelToSnake(data);
                 const response = await apiClient.put(
                     `/operations/v1/pricing/transport-rates/${id}`,
                     apiData

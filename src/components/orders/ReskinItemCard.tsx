@@ -21,6 +21,7 @@ interface ReskinItemCardProps {
   onMarkComplete?: (reskin: any) => void;
   onCancel?: (reskin: any) => void;
   orderStatus?: string;
+  disabled?: boolean;
 }
 
 export function ReskinItemCard({
@@ -29,6 +30,7 @@ export function ReskinItemCard({
   onMarkComplete,
   onCancel,
   orderStatus,
+  disabled,
 }: ReskinItemCardProps) {
   const showActionButton = orderStatus === "AWAITING_FABRICATION" && reskin.completedAt === null;
 
@@ -51,7 +53,7 @@ export function ReskinItemCard({
           <p className="text-sm">{reskin.clientNotes}</p>
         </div>
 
-        {showActionButton && <div className="flex gap-2">
+        {showActionButton && !disabled && <div className="flex gap-2">
           <Button
             size="sm"
             onClick={() => onMarkComplete?.(reskin)}

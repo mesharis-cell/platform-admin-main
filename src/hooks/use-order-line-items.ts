@@ -42,7 +42,7 @@ export function useCreateCatalogLineItem(orderId: string) {
         mutationFn: async (data: CreateCatalogLineItemRequest) => {
             try {
                 // Transform camelCase to snake_case for API
-                const apiData = mapCamelToSnake(data as Record<string, unknown>);
+                const apiData = mapCamelToSnake(data);
                 const response = await apiClient.post(
                     `/client/v1/order/${orderId}/line-items/catalog`,
                     apiData
@@ -67,7 +67,7 @@ export function useCreateCustomLineItem(orderId: string) {
         mutationFn: async (data: CreateCustomLineItemRequest) => {
             try {
                 // Transform camelCase to snake_case for API
-                const apiData = mapCamelToSnake(data as Record<string, unknown>);
+                const apiData = mapCamelToSnake(data);
                 const response = await apiClient.post(
                     `/client/v1/order/${orderId}/line-items/custom`,
                     apiData
@@ -92,7 +92,7 @@ export function useUpdateLineItem(orderId: string) {
         mutationFn: async ({ itemId, data }: { itemId: string; data: UpdateLineItemRequest }) => {
             try {
                 // Transform camelCase to snake_case for API
-                const apiData = mapCamelToSnake(data as Record<string, unknown>);
+                const apiData = mapCamelToSnake(data);
                 const response = await apiClient.put(
                     `/client/v1/order/${orderId}/line-items/${itemId}`,
                     apiData
@@ -117,7 +117,7 @@ export function useVoidLineItem(orderId: string) {
         mutationFn: async ({ itemId, data }: { itemId: string; data: VoidLineItemRequest }) => {
             try {
                 // Transform camelCase to snake_case for API
-                const apiData = mapCamelToSnake(data as Record<string, unknown>);
+                const apiData = mapCamelToSnake(data);
                 const response = await apiClient.delete(
                     `/client/v1/order/${orderId}/line-items/${itemId}`,
                     {

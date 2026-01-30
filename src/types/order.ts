@@ -93,10 +93,14 @@ export interface Order {
     paymentMethod?: string | null;
     paymentReference?: string | null;
     // Time windows (Phase 10)
-    deliveryWindowStart?: Date | null;
-    deliveryWindowEnd?: Date | null;
-    pickupWindowStart?: Date | null;
-    pickupWindowEnd?: Date | null;
+    delivery_window: {
+        start: Date | null;
+        end: Date | null;
+    }
+    pickup_window: {
+        start: Date | null;
+        end: Date | null;
+    }
     // Truck photos (Phase 11)
     truckPhotos: string[];
     // Job number (Phase 7)
@@ -369,6 +373,27 @@ export interface InvoiceListItem {
             total_price: number;
             quote_sent_at: string;
         };
+        order_pricing: {
+            warehouse_ops_rate: number,
+            base_ops_total: number,
+            logistics_sub_total: number,
+            transport: {
+                final_rate: number,
+                system_rate: number
+            },
+            line_items: {
+                custom_total: number,
+                catalog_total: number
+            },
+            margin: {
+                amount: number,
+                percent: number,
+                is_override: boolean,
+                override_reason: string | null
+            },
+            final_total: number,
+            calculated_at: string
+        }
     };
     company: {
         id: string;

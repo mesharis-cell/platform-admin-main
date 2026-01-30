@@ -7,13 +7,15 @@ import { CompleteFabricationModal } from "./CompleteFabricationModal";
 import { CancelReskinModal } from "./CancelReskinModal";
 import { ReskinItemCard } from "./ReskinItemCard";
 import type { ReskinRequest } from "@/types/hybrid-pricing";
+import { Order } from "@/types";
 
 interface ReskinRequestsListProps {
     orderId: string;
+    order: Order;
     orderStatus: string;
 }
 
-export function ReskinRequestsList({ orderId, orderStatus }: ReskinRequestsListProps) {
+export function ReskinRequestsList({ orderId, order, orderStatus }: ReskinRequestsListProps) {
     const { data: reskinRequests, isLoading } = useListReskinRequests(orderId);
 
     const [completeModalOpen, setCompleteModalOpen] = useState(false);
@@ -62,6 +64,7 @@ export function ReskinRequestsList({ orderId, orderStatus }: ReskinRequestsListP
                         onMarkComplete={handleMarkComplete}
                         onCancel={handleCancel}
                         orderStatus={orderStatus}
+                        disabled={!order?.delivery_window?.start}
                     />
                 ))}
 

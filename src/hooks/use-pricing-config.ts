@@ -51,7 +51,7 @@ export function useSetPlatformDefault() {
         mutationFn: async (data: SetPricingConfigRequest) => {
             try {
                 // Transform camelCase to snake_case for API
-                const apiData = mapCamelToSnake(data as Record<string, unknown>);
+                const apiData = mapCamelToSnake(data);
                 const response = await apiClient.put("/operations/v1/pricing/config", apiData);
                 return response.data.data;
             } catch (error) {
@@ -78,7 +78,7 @@ export function useSetCompanyOverride() {
         }) => {
             try {
                 // Transform camelCase to snake_case for API
-                const apiData = mapCamelToSnake(data as Record<string, unknown>);
+                const apiData = mapCamelToSnake(data);
                 const response = await apiClient.put(
                     `/operations/v1/pricing/config/${companyId}`,
                     apiData

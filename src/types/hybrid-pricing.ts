@@ -164,27 +164,28 @@ export interface VoidLineItemRequest {
 // ============================================================
 
 export interface OrderPricing {
-    base_ops_total: string;
-    logistics_sub_total: string;
-    base_operations: {
+    warehouse_ops_rate?: number;
+    base_ops_total: number;
+    logistics_sub_total: number;
+    base_operations?: {
         volume: number;
         rate: number;
         total: number;
     };
     transport: {
-        emirate: string;
-        trip_type: TripType;
-        vehicle_type: VehicleType;
+        emirate?: string;
+        trip_type?: TripType;
+        vehicle_type?: VehicleType;
         system_rate: number;
         final_rate: number;
-        vehicle_changed: boolean;
-        vehicle_change_reason: string | null;
+        vehicle_changed?: boolean;
+        vehicle_change_reason?: string | null;
     };
     line_items: {
         catalog_total: number;
         custom_total: number;
     };
-    logistics_subtotal: number;
+    logistics_subtotal?: number;
     margin: {
         percent: number;
         amount: number;
@@ -193,7 +194,7 @@ export interface OrderPricing {
     };
     final_total: number;
     calculated_at: string;
-    calculated_by: string;
+    calculated_by?: string;
 }
 
 // ============================================================

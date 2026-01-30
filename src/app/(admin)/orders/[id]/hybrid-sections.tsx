@@ -22,6 +22,7 @@ import { CancelOrderModal } from "@/components/orders/CancelOrderModal";
 import { LogisticsPricingReview } from "@/components/orders/LogisticsPricingReview";
 import { useAdminApproveQuote, useReturnToLogistics } from "@/hooks/use-orders";
 import { canManageLineItems } from "@/lib/order-helpers";
+import { getOrderPrice } from "@/lib/utils/helper";
 
 interface HybridPricingSectionProps {
     order: any;
@@ -42,15 +43,7 @@ export function PendingApprovalSection({ order, orderId, onRefresh }: HybridPric
     const [marginPercent, setMarginPercent] = useState(order?.company?.platform_margin_percent);
     const [marginReason, setMarginReason] = useState("");
 
-    const marginAmount = order?.order_pricing?.margin?.percent;
-
-    const basePrice = Number(order?.order_pricing?.base_ops_total) + (Number(order?.order_pricing?.base_ops_total) * (marginAmount / 100));
-    const transportPrice = Number(order?.order_pricing?.transport.final_rate) + (Number(order?.order_pricing?.transport.final_rate) * (marginAmount / 100));
-    const catalogPrice = Number(order?.order_pricing?.line_items?.catalog_total) + (Number(order?.order_pricing?.line_items?.catalog_total) * (marginAmount / 100));
-    const customPrice = Number(order?.order_pricing?.line_items?.custom_total)
-
-    const servicePrice = catalogPrice + customPrice;
-    const total = basePrice + transportPrice + servicePrice;
+    const { total, marginAmount } = getOrderPrice(order?.order_pricing)
 
 
     const handleApprove = async () => {
@@ -104,7 +97,7 @@ export function PendingApprovalSection({ order, orderId, onRefresh }: HybridPric
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <ReskinRequestsList orderId={orderId} orderStatus={order.order_status} />
+                    <ReskinRequestsList orderId={orderId} order={order} orderStatus={order.order_status} />
                 </CardContent>
             </Card>
 
