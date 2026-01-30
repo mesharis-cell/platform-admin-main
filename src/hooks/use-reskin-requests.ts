@@ -107,16 +107,18 @@ export function useCancelReskinRequest() {
     return useMutation({
         mutationFn: async ({
             reskinId,
+            orderId,
             data,
         }: {
             reskinId: string;
+            orderId: string;
             data: CancelReskinRequestRequest;
         }) => {
             try {
                 // Transform camelCase to snake_case for API
-                const apiData = mapCamelToSnake(data as Record<string, unknown>);
+                const apiData = mapCamelToSnake(data as unknown as Record<string, unknown>);
                 const response = await apiClient.post(
-                    `/client/v1/reskin-requests/${reskinId}/cancel`,
+                    `/client/v1/order/${orderId}/reskin-requests/${reskinId}/cancel`,
                     apiData
                 );
                 return response.data.data;

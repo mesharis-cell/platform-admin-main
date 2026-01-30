@@ -86,6 +86,11 @@ const FINANCIAL_STATUS = {
         color: "bg-yellow-500/10 text-yellow-700 border-yellow-500/20",
         nextStates: ["PENDING_INVOICE"],
     },
+    QUOTE_REVISED: {
+        label: "QUOTE_REVISED",
+        color: "bg-yellow-500/10 text-yellow-700 border-yellow-500/20",
+        nextStates: ["PENDING_INVOICE"],
+    },
     PENDING_INVOICE: {
         label: "PENDING_INVOICE",
         color: "bg-orange-500/10 text-orange-700 border-orange-500/20",
@@ -548,13 +553,15 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                         )}
 
                         {/* NEW: PRICING_REVIEW - Logistics Review Section */}
-                        {order.data.order_status === "PRICING_REVIEW" && (
+                        {order.data.order_status === "PRICING_REVIEW" ? (
                             <PricingReviewSection order={order.data} orderId={order.data.id} onRefresh={refetch} />
+                        ) : (
+                            <PendingApprovalSection order={order.data} orderId={order.data.id} onRefresh={refetch} />
                         )}
 
                         {/* NEW: PENDING_APPROVAL - Admin Review Section */}
                         {/* {order.data.order_status === "PENDING_APPROVAL" && ( */}
-                        <PendingApprovalSection order={order.data} orderId={order.data.id} onRefresh={refetch} />
+                        {/* <PendingApprovalSection order={order.data} orderId={order.data.id} onRefresh={refetch} /> */}
                         {/* )} */}
 
                         {/* Feedback #3: Refurb Items Banner - Show for PRICING_REVIEW and PENDING_APPROVAL */}

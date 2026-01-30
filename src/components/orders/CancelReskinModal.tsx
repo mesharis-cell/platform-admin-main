@@ -19,6 +19,7 @@ interface CancelReskinModalProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     reskinId: string;
+    orderId: string;
     originalAssetName: string;
     targetBrandName: string;
     costAmount: number;
@@ -28,6 +29,7 @@ export function CancelReskinModal({
     open,
     onOpenChange,
     reskinId,
+    orderId,
     originalAssetName,
     targetBrandName,
     costAmount,
@@ -45,6 +47,7 @@ export function CancelReskinModal({
         try {
             await cancelReskin.mutateAsync({
                 reskinId,
+                orderId,
                 data: {
                     cancellationReason: reason.trim(),
                     orderAction,

@@ -99,6 +99,7 @@ export function ReskinRequestsList({ orderId, orderStatus }: ReskinRequestsListP
                         open={cancelModalOpen}
                         onOpenChange={setCancelModalOpen}
                         reskinId={selectedReskin.id}
+                        orderId={orderId}
                         originalAssetName={selectedReskin.originalAssetName}
                         targetBrandName={selectedReskin.targetBrandCustom || "Brand"}
                         costAmount={0} // TODO: Get from line items
