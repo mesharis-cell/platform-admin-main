@@ -5,80 +5,17 @@
  * A2 Staff reviews orders in PRICING_REVIEW status and approves standard pricing or adjusts pricing
  */
 
-import { useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, Calendar, MapPin, Package, DollarSign } from "lucide-react";
-import {
-    usePricingReviewOrders,
-    useA2ApproveStandard,
-    useAdjustPricing,
-    useAdminOrders,
-} from "@/hooks/use-orders";
+import { useAdminOrders } from "@/hooks/use-orders";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { toast } from "sonner";
 import { AdminHeader } from "@/components/admin-header";
 
 export default function PricingReviewPage() {
     const { data, isLoading, error } = useAdminOrders({ order_status: "PRICING_REVIEW" });
-    const approveStandard = useA2ApproveStandard();
-    const adjustPricing = useAdjustPricing();
-
-    const [selectedOrder, setSelectedOrder] = useState<any>(null);
-    const [adjustDialogOpen, setAdjustDialogOpen] = useState(false);
-    const [adjustedPrice, setAdjustedPrice] = useState<string>("");
-    const [adjustmentReason, setAdjustmentReason] = useState<string>("");
-    const [notes, setNotes] = useState<string>("");
-
-    const handleApproveStandard = async (order: any) => {
-        try {
-            await approveStandard.mutateAsync({ orderId: order.id, notes: notes || undefined });
-            toast.success("Standard pricing approved. Quote sent to client.");
-            setSelectedOrder(null);
-            setNotes("");
-        } catch (error: any) {
-            toast.error(error.message || "Failed to approve standard pricing");
-        }
-    };
-
-    const handleOpenAdjust = (order: any) => {
-        setSelectedOrder(order);
-        setAdjustDialogOpen(true);
-        setAdjustedPrice("");
-        setAdjustmentReason("");
-    };
-
-    const handleAdjust = async () => {
-        if (!selectedOrder) return;
-
-        const priceNum = parseFloat(adjustedPrice);
-        if (isNaN(priceNum) || priceNum <= 0) {
-            toast.error("Please enter a valid adjusted price");
-            return;
-        }
-
-        if (adjustmentReason.trim().length < 10) {
-            toast.error("Adjustment reason must be at least 10 characters");
-            return;
-        }
-
-        try {
-            await adjustPricing.mutateAsync({
-                orderId: selectedOrder.id,
-                adjustedPrice: priceNum,
-                adjustmentReason: adjustmentReason.trim(),
-            });
-            toast.success("Pricing adjusted. Sent to Platform for approval.");
-            setAdjustDialogOpen(false);
-            setSelectedOrder(null);
-            setAdjustedPrice("");
-            setAdjustmentReason("");
-        } catch (error: any) {
-            toast.error(error.message || "Failed to adjust pricing");
-        }
-    };
 
     if (error) {
         return (
