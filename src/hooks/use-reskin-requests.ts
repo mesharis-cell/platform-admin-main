@@ -47,7 +47,7 @@ export function useProcessReskinRequest(orderId: string) {
         }) => {
             try {
                 // Transform camelCase to snake_case for API
-                const apiData = mapCamelToSnake(data as Record<string, unknown>);
+                const apiData = mapCamelToSnake(data as unknown as Record<string, unknown>);
                 const response = await apiClient.post(
                     `/client/v1/order/${orderId}/reskin-requests/${orderItemId}/process`,
                     apiData
@@ -82,7 +82,7 @@ export function useCompleteReskinRequest() {
         }) => {
             try {
                 // Transform camelCase to snake_case for API
-                const apiData = mapCamelToSnake(data as Record<string, unknown>);
+                const apiData = mapCamelToSnake(data as unknown as Record<string, unknown>);
                 const response = await apiClient.post(
                     `/client/v1/order/${orderId}/reskin-requests/${reskinId}/complete`,
                     data
