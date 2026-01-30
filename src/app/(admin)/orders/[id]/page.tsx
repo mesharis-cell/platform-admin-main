@@ -152,6 +152,11 @@ const STATUS_CONFIG: Record<
         color: "bg-teal-500/10 text-teal-700 border-teal-500/20",
         nextStates: ["IN_PREPARATION"],
     },
+    AWAITING_FABRICATION: {
+        label: "AWAITING FABRICATION",
+        color: "bg-cyan-500/10 text-cyan-700 border-cyan-500/20",
+        nextStates: ["READY_FOR_DELIVERY"],
+    },
     IN_PREPARATION: {
         label: "IN PREP",
         color: "bg-cyan-500/10 text-cyan-700 border-cyan-500/20",

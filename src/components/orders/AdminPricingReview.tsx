@@ -22,6 +22,7 @@ import { AddCatalogLineItemModal } from "./AddCatalogLineItemModal";
 import { AddCustomLineItemModal } from "./AddCustomLineItemModal";
 import { useAdminApproveQuote, useReturnToLogistics } from "@/hooks/use-orders";
 import { useListOrderLineItems } from "@/hooks/use-order-line-items";
+import { canManageLineItems } from "@/lib/order-helpers";
 import type { OrderPricing } from "@/types/hybrid-pricing";
 
 interface AdminPricingReviewProps {
@@ -168,22 +169,24 @@ export function AdminPricingReview({ orderId, order }: AdminPricingReviewProps) 
                             <h4 className="text-sm font-semibold text-muted-foreground">
                                 SERVICE LINE ITEMS
                             </h4>
-                            <div className="flex gap-2">
-                                <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => setAddCatalogOpen(true)}
-                                >
-                                    <Plus className="h-3 w-3 mr-1" />
-                                    Catalog
-                                </Button>
-                                <Button size="sm" onClick={() => setAddCustomOpen(true)}>
-                                    <Plus className="h-3 w-3 mr-1" />
-                                    Custom
-                                </Button>
-                            </div>
+                            {canManageLineItems(order?.orderStatus || order?.order_status) && (
+                                <div className="flex gap-2">
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => setAddCatalogOpen(true)}
+                                    >
+                                        <Plus className="h-3 w-3 mr-1" />
+                                        Catalog
+                                    </Button>
+                                    <Button size="sm" onClick={() => setAddCustomOpen(true)}>
+                                        <Plus className="h-3 w-3 mr-1" />
+                                        Custom
+                                    </Button>
+                                </div>
+                            )}
                         </div>
-                        <OrderLineItemsList orderId={orderId} canManage={true} />
+                        <OrderLineItemsList orderId={orderId} canManage={canManageLineItems(order?.orderStatus || order?.order_status)} />
                     </div>
 
                     <Separator />

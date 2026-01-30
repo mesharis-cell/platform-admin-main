@@ -21,6 +21,7 @@ import { AddCustomLineItemModal } from "@/components/orders/AddCustomLineItemMod
 import { CancelOrderModal } from "@/components/orders/CancelOrderModal";
 import { LogisticsPricingReview } from "@/components/orders/LogisticsPricingReview";
 import { useAdminApproveQuote, useReturnToLogistics } from "@/hooks/use-orders";
+import { canManageLineItems } from "@/lib/order-helpers";
 
 interface HybridPricingSectionProps {
     order: any;
@@ -115,24 +116,26 @@ export function PendingApprovalSection({ order, orderId, onRefresh }: HybridPric
                             <DollarSign className="h-5 w-5" />
                             Service Line Items
                         </CardTitle>
-                        <div className="flex gap-2">
-                            <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => setAddCatalogOpen(true)}
-                            >
-                                <Plus className="h-4 w-4 mr-1" />
-                                Catalog Service
-                            </Button>
-                            <Button size="sm" onClick={() => setAddCustomOpen(true)}>
-                                <Plus className="h-4 w-4 mr-1" />
-                                Custom Charge
-                            </Button>
-                        </div>
+                        {canManageLineItems(order.order_status) && (
+                            <div className="flex gap-2">
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => setAddCatalogOpen(true)}
+                                >
+                                    <Plus className="h-4 w-4 mr-1" />
+                                    Catalog Service
+                                </Button>
+                                <Button size="sm" onClick={() => setAddCustomOpen(true)}>
+                                    <Plus className="h-4 w-4 mr-1" />
+                                    Custom Charge
+                                </Button>
+                            </div>
+                        )}
                     </div>
                 </CardHeader>
                 <CardContent>
-                    <OrderLineItemsList orderId={orderId} canManage={true} />
+                    <OrderLineItemsList orderId={orderId} canManage={canManageLineItems(order.order_status)} />
                 </CardContent>
             </Card>
 

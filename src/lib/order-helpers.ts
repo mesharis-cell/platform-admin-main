@@ -23,10 +23,20 @@ export function canCancelOrder(status: OrderStatus): boolean {
 }
 
 /**
- * Check if line items can be added
+ * Check if line items can be added or removed
+ * Line item management is only allowed BEFORE the order is CONFIRMED.
+ * Once an order reaches CONFIRMED status or later, line items are locked.
  */
 export function canManageLineItems(status: OrderStatus): boolean {
-    return ["PRICING_REVIEW", "PENDING_APPROVAL"].includes(status);
+    const MANAGEABLE_STATUSES = [
+        "DRAFT",
+        "SUBMITTED",
+        "PRICING_REVIEW",
+        "PENDING_APPROVAL",
+        // "QUOTED",
+        // "DECLINED",
+    ];
+    return MANAGEABLE_STATUSES.includes(status);
 }
 
 /**

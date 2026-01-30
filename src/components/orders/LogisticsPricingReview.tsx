@@ -15,6 +15,7 @@ import { OrderLineItemsList } from "./OrderLineItemsList";
 import { AddCatalogLineItemModal } from "./AddCatalogLineItemModal";
 import { VehicleUpgradeSelector } from "./VehicleUpgradeSelector";
 import { useSubmitForApproval } from "@/hooks/use-orders";
+import { canManageLineItems } from "@/lib/order-helpers";
 import type { OrderPricing, VehicleType } from "@/types/hybrid-pricing";
 
 interface LogisticsPricingReviewProps {
@@ -158,14 +159,16 @@ export function LogisticsPricingReview({ orderId, order, onSubmitSuccess }: Logi
                 <CardHeader>
                     <div className="flex items-center justify-between">
                         <CardTitle>Service Line Items</CardTitle>
-                        <Button size="sm" onClick={() => setAddCatalogOpen(true)}>
-                            <Plus className="h-3 w-3 mr-1" />
-                            Add Service
-                        </Button>
+                        {canManageLineItems(order?.orderStatus || order?.order_status) && (
+                            <Button size="sm" onClick={() => setAddCatalogOpen(true)}>
+                                <Plus className="h-3 w-3 mr-1" />
+                                Add Service
+                            </Button>
+                        )}
                     </div>
                 </CardHeader>
                 <CardContent>
-                    <OrderLineItemsList orderId={orderId} canManage={true} />
+                    <OrderLineItemsList orderId={orderId} canManage={canManageLineItems(order?.orderStatus || order?.order_status)} />
                     <p className="text-xs text-muted-foreground mt-3">
                         Add services like assembly, equipment rental, etc. Custom charges will be
                         handled by Admin.
