@@ -32,3 +32,21 @@ export const mapSnakeToCamel = <T extends Record<string, unknown>>(obj: T): T =>
 export const mapArraySnakeToCamel = <T extends Record<string, unknown>>(arr: T[]): T[] => {
     return arr.map(mapSnakeToCamel);
 };
+
+/**
+ * Convert camelCase string to snake_case
+ */
+export const camelToSnake = (str: string): string => {
+    return str.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
+};
+
+/**
+ * Convert object keys from camelCase to snake_case (shallow)
+ */
+export const mapCamelToSnake = <T extends Record<string, unknown>>(obj: T): Record<string, unknown> => {
+    const result: Record<string, unknown> = {};
+    for (const key of Object.keys(obj)) {
+        result[camelToSnake(key)] = obj[key];
+    }
+    return result;
+};

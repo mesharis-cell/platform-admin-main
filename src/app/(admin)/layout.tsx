@@ -27,6 +27,7 @@ import {
     Receipt,
     Mail,
     ScanLine,
+    Truck,
     AlertCircle,
     BarChart3,
     LogOut,

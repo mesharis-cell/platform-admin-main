@@ -2,7 +2,7 @@
 
 import { apiClient } from "@/lib/api/api-client";
 import { throwApiError } from "@/lib/utils/throw-api-error";
-import { mapArraySnakeToCamel } from "@/lib/utils/helper";
+import { mapArraySnakeToCamel, mapCamelToSnake } from "@/lib/utils/helper";
 import type {
     OrderLineItem,
     CreateCatalogLineItemRequest,
@@ -41,9 +41,11 @@ export function useCreateCatalogLineItem(orderId: string) {
     return useMutation({
         mutationFn: async (data: CreateCatalogLineItemRequest) => {
             try {
+                // Transform camelCase to snake_case for API
+                const apiData = mapCamelToSnake(data as Record<string, unknown>);
                 const response = await apiClient.post(
                     `/client/v1/order/${orderId}/line-items/catalog`,
-                    data
+                    apiData
                 );
                 return response.data.data;
             } catch (error) {
@@ -64,9 +66,11 @@ export function useCreateCustomLineItem(orderId: string) {
     return useMutation({
         mutationFn: async (data: CreateCustomLineItemRequest) => {
             try {
+                // Transform camelCase to snake_case for API
+                const apiData = mapCamelToSnake(data as Record<string, unknown>);
                 const response = await apiClient.post(
                     `/client/v1/order/${orderId}/line-items/custom`,
-                    data
+                    apiData
                 );
                 return response.data.data;
             } catch (error) {
@@ -87,9 +91,11 @@ export function useUpdateLineItem(orderId: string) {
     return useMutation({
         mutationFn: async ({ itemId, data }: { itemId: string; data: UpdateLineItemRequest }) => {
             try {
+                // Transform camelCase to snake_case for API
+                const apiData = mapCamelToSnake(data as Record<string, unknown>);
                 const response = await apiClient.put(
                     `/client/v1/order/${orderId}/line-items/${itemId}`,
-                    data
+                    apiData
                 );
                 return response.data.data;
             } catch (error) {
@@ -110,10 +116,12 @@ export function useVoidLineItem(orderId: string) {
     return useMutation({
         mutationFn: async ({ itemId, data }: { itemId: string; data: VoidLineItemRequest }) => {
             try {
+                // Transform camelCase to snake_case for API
+                const apiData = mapCamelToSnake(data as Record<string, unknown>);
                 const response = await apiClient.delete(
                     `/client/v1/order/${orderId}/line-items/${itemId}`,
                     {
-                        data,
+                        data: apiData,
                     }
                 );
                 return response.data.data;
