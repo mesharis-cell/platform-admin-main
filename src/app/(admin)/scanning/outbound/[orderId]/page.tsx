@@ -13,6 +13,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -41,6 +42,7 @@ type ScanStep = "scanning" | "photos" | "complete";
 export default function OutboundScanningPage() {
     const params = useParams();
     const router = useRouter();
+    const queryClient = useQueryClient();
     const orderId = params.orderId as string;
 
     const [step, setStep] = useState<ScanStep>("scanning");
@@ -529,6 +531,11 @@ export default function OutboundScanningPage() {
                                         description: `Order ${newStatus}`,
                                     });
                                     setTimeout(() => {
+                                        // Invalidate React Query cache for order details
+                                        queryClient.invalidateQueries({
+                                            queryKey: ["orders", "admin-detail", orderId],
+                                        });
+                                        // Navigate to order page - will fetch fresh data
                                         router.push(`/orders/${orderId}`);
                                     }, 2000);
                                 },
@@ -564,6 +571,11 @@ export default function OutboundScanningPage() {
                             description: `Order ${newStatus}`,
                         });
                         setTimeout(() => {
+                            // Invalidate React Query cache for order details
+                            queryClient.invalidateQueries({
+                                queryKey: ["orders", "admin-detail", orderId],
+                            });
+                            // Navigate to order page - will fetch fresh data
                             router.push(`/orders/${orderId}`);
                         }, 2000);
                     },
@@ -825,11 +837,10 @@ export default function OutboundScanningPage() {
                         {progressData.assets.map((asset) => (
                             <div
                                 key={asset.asset_id}
-                                className={`p-3 rounded-lg border ${
-                                    asset.scanned_quantity === asset.required_quantity
-                                        ? "bg-primary/10 border-primary/30"
-                                        : "bg-muted/20 border-border"
-                                }`}
+                                className={`p-3 rounded-lg border ${asset.scanned_quantity === asset.required_quantity
+                                    ? "bg-primary/10 border-primary/30"
+                                    : "bg-muted/20 border-border"
+                                    }`}
                             >
                                 <div className="flex items-center justify-between">
                                     <div className="flex-1">
