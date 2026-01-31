@@ -27,7 +27,7 @@ export function ReskinRequestsList({ orderId, order, orderStatus }: ReskinReques
     }
 
     if (!reskinRequests || reskinRequests.length === 0) {
-        return null;
+        return <p className="text-sm text-muted-foreground">No reskin requests found.</p>;
     }
 
     const pendingReskins = reskinRequests.filter((r: ReskinRequest) => r.status === "pending");
