@@ -4,7 +4,6 @@ import { apiClient } from "@/lib/api/api-client";
 import { throwApiError } from "@/lib/utils/throw-api-error";
 import { mapCamelToSnake } from "@/lib/utils/helper";
 import type {
-    ServiceType,
     CreateServiceTypeRequest,
     UpdateServiceTypeRequest,
 } from "@/types/hybrid-pricing";

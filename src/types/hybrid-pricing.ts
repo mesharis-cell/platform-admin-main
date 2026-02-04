@@ -76,22 +76,22 @@ export interface ServiceType {
     name: string;
     category: ServiceCategory;
     unit: string;
-    defaultRate: number | null;
+    default_rate: number | null;
     description: string | null;
-    displayOrder: number;
-    isActive: boolean;
-    createdAt: string;
-    updatedAt: string;
+    display_order: number;
+    is_active: boolean;
+    created_at: string;
+    updated_at: string;
 }
 
 export interface CreateServiceTypeRequest {
     name: string;
     category: ServiceCategory;
     unit: string;
-    defaultRate?: number | null;
+    default_rate?: number | null;
     description?: string;
-    displayOrder?: number;
-    isActive?: boolean;
+    display_order?: number;
+    is_active?: boolean;
 }
 
 export interface UpdateServiceTypeRequest {
