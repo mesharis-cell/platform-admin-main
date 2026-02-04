@@ -34,6 +34,7 @@ import {
     Box,
     Lock,
     Calendar,
+    ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -47,9 +48,17 @@ import {
     SidebarMenu,
     SidebarMenuButton,
     SidebarMenuItem,
+    SidebarMenuSub,
+    SidebarMenuSubButton,
+    SidebarMenuSubItem,
     SidebarProvider,
     useSidebar,
 } from "@/components/ui/sidebar";
+import {
+    Collapsible,
+    CollapsibleContent,
+    CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import Providers from "@/providers";
 import { toast } from "sonner";
 import { useToken } from "@/lib/auth/use-token";
@@ -61,6 +70,10 @@ type NavItem = {
     icon: React.ComponentType<{ className?: string }>;
     badge?: string;
     requiredPermission?: string;
+    items?: {
+        title: string;
+        url: string;
+    }[];
 };
 
 const navigation: NavItem[] = [
@@ -78,6 +91,16 @@ const navigation: NavItem[] = [
         name: "Pricing Review",
         href: "/orders/pricing-review",
         icon: DollarSign,
+    },
+    {
+        name: "System Pricing",
+        href: "/system-pricing",
+        icon: DollarSign,
+        items: [
+            { title: "City", url: "/cities" },
+            { title: "Country", url: "/countries" },
+            { title: "Vehicle Type", url: "/vehicle-type" },
+        ],
     },
     {
         name: "Pending Approval",
@@ -210,6 +233,74 @@ function AdminSidebarContent() {
                             matchingRoutes[0]
                         );
                         const isActive = mostSpecificRoute?.href === item.href;
+
+                        if (item.items && item.items.length > 0) {
+                            const isChildActive = item.items.some(
+                                (subItem) =>
+                                    pathname === subItem.url || pathname.startsWith(subItem.url + "/")
+                            );
+
+                            return (
+                                <Collapsible
+                                    key={item.name}
+                                    asChild
+                                    defaultOpen={isChildActive}
+                                    className="group/collapsible"
+                                >
+                                    <SidebarMenuItem>
+                                        <CollapsibleTrigger asChild>
+                                            <SidebarMenuButton
+                                                tooltip={item.name}
+                                                isActive={isActive || isChildActive}
+                                                className={cn(
+                                                    "group/nav-item flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-mono transition-all relative overflow-hidden",
+                                                    isActive || isChildActive
+                                                        ? "bg-primary text-primary-foreground font-semibold shadow-sm"
+                                                        : "text-foreground/70 hover:text-foreground hover:bg-muted"
+                                                )}
+                                            >
+                                                {/* Active indicator bar */}
+                                                {(isActive || isChildActive) && (
+                                                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary-foreground/30" />
+                                                )}
+
+                                                <Icon className="h-4 w-4 relative z-10 shrink-0" />
+                                                {!isCollapsed && (
+                                                    <>
+                                                        <span className="flex-1 relative z-10 uppercase tracking-wide text-xs">
+                                                            {item.name}
+                                                        </span>
+                                                        <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90 h-4 w-4" />
+                                                    </>
+                                                )}
+
+                                                {/* Hover glow effect */}
+                                                {!(isActive || isChildActive) && (
+                                                    <div className="absolute inset-0 bg-primary/0 group-hover/nav-item:bg-primary/5 transition-colors" />
+                                                )}
+                                            </SidebarMenuButton>
+                                        </CollapsibleTrigger>
+                                        <CollapsibleContent>
+                                            <SidebarMenuSub>
+                                                {item.items.map((subItem) => {
+                                                    const isSubItemActive = pathname === subItem.url || pathname.startsWith(subItem.url + "/");
+                                                    return (
+                                                        <SidebarMenuSubItem key={subItem.title}>
+                                                            <SidebarMenuSubButton asChild isActive={isSubItemActive}>
+                                                                <Link href={subItem.url} className={cn("text-xs uppercase tracking-wide font-mono", isSubItemActive && "font-semibold")}>
+                                                                    <span>{subItem.title}</span>
+                                                                </Link>
+                                                            </SidebarMenuSubButton>
+                                                        </SidebarMenuSubItem>
+                                                    );
+                                                })}
+                                            </SidebarMenuSub>
+                                        </CollapsibleContent>
+                                    </SidebarMenuItem>
+                                </Collapsible>
+                            );
+                        }
+
                         return (
                             <SidebarMenuItem key={item.name}>
                                 <SidebarMenuButton
