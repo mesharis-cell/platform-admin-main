@@ -30,26 +30,31 @@ export type VehicleType = "STANDARD" | "7_TON" | "10_TON";
 
 export interface TransportRate {
     id: string;
-    platformId: string;
-    companyId: string | null;
-    emirate: string;
+    platform_id: string;
+    company: {
+        id: string;
+        name: string;
+    };
+    city: {
+        id: string;
+        name: string;
+    };
     area: string | null;
-    tripType: TripType;
-    vehicleType: VehicleType;
+    trip_type: TripType;
+    vehicle_type: VehicleType;
     rate: number;
-    isActive: boolean;
-    createdAt: string;
-    updatedAt: string;
+    is_active: boolean;
+    created_at: string;
+    updated_at: string;
 }
 
 export interface CreateTransportRateRequest {
-    companyId?: string | null;
-    emirate: string;
+    company_id?: string | null;
+    city_id: string;
     area?: string | null;
-    tripType: TripType;
-    vehicleType: VehicleType;
+    trip_type: TripType;
+    vehicle_type: VehicleType;
     rate: number;
-    isActive?: boolean;
 }
 
 export interface UpdateTransportRateRequest {

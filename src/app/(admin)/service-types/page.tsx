@@ -6,6 +6,8 @@ import {
   Wrench,
   Edit,
   Search,
+  Power,
+  PowerOff,
   Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -45,7 +47,7 @@ export default function ServiceTypes() {
   const [editingService, setEditingService] = useState<ServiceType | null>(null);
   const [includeInactive, setIncludeInactive] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
-  const [confirmDelete, setConfirmDelete] = useState<ServiceType | null>(null);
+  const [confirmToggle, setConfirmToggle] = useState<{ id: string, name: string, currentStatus: boolean } | null>(null);
 
   // Form state
   const [formData, setFormData] = useState<Partial<CreateServiceTypeRequest>>({
@@ -59,7 +61,6 @@ export default function ServiceTypes() {
 
   const createService = useCreateServiceType();
   const updateService = useUpdateServiceType();
-  const deleteService = useDeleteServiceType();
 
   // Query params
   const queryParams = useMemo(() => {
@@ -150,12 +151,17 @@ export default function ServiceTypes() {
     }
   };
 
-  const handleDeleteRestore = async () => {
+  const handleToggleStatus = async () => {
     try {
-      if (confirmDelete) {
-        await deleteService.mutateAsync(confirmDelete.id);
-        toast.success("Service deleted successfully");
-        setConfirmDelete(null);
+      if (confirmToggle) {
+        await updateService.mutateAsync({
+          id: confirmToggle.id,
+          data: {
+            isActive: !confirmToggle.currentStatus
+          }
+        });
+        toast.success(`Service ${!confirmToggle.currentStatus ? 'activated' : 'deactivated'} successfully`);
+        setConfirmToggle(null);
       }
     } catch (error: any) {
       toast.error(error.message);
@@ -498,11 +504,24 @@ export default function ServiceTypes() {
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => setConfirmDelete(service)}
-                          className="font-mono text-xs text-destructive"
+                          onClick={() => setConfirmToggle({
+                            id: service.id,
+                            name: service.name,
+                            currentStatus: service.is_active
+                          })}
+                          className={`font-mono text-xs ${service.is_active ? "text-destructive" : "text-green-600"}`}
                         >
-                          <Trash2 className="h-3.5 w-3.5 mr-2" />
-                          Delete
+                          {service.is_active ? (
+                            <>
+                              <PowerOff className="h-3.5 w-3.5 mr-2" />
+                              Deactivate
+                            </>
+                          ) : (
+                            <>
+                              <Power className="h-3.5 w-3.5 mr-2" />
+                              Activate
+                            </>
+                          )}
                         </Button>
                       </div>
                     </TableCell>
@@ -514,16 +533,16 @@ export default function ServiceTypes() {
         )}
       </div>
 
-      {/* Confirm Delete Dialog */}
+      {/* Confirm Toggle Dialog */}
       <ConfirmDialog
-        open={!!confirmDelete}
-        onOpenChange={(open) => !open && setConfirmDelete(null)}
-        onConfirm={handleDeleteRestore}
-        title="Delete Service"
-        description={`Are you sure you want to delete ${confirmDelete?.name}?`}
-        confirmText="Delete"
+        open={!!confirmToggle}
+        onOpenChange={(open) => !open && setConfirmToggle(null)}
+        onConfirm={handleToggleStatus}
+        title={confirmToggle?.currentStatus ? "Deactivate Service" : "Activate Service"}
+        description={`Are you sure you want to ${confirmToggle?.currentStatus ? 'deactivate' : 'activate'} ${confirmToggle?.name}?`}
+        confirmText={confirmToggle?.currentStatus ? "Deactivate" : "Activate"}
         cancelText="Cancel"
-        variant="destructive"
+        variant={confirmToggle?.currentStatus ? "destructive" : "default"}
       />
     </div>
   );

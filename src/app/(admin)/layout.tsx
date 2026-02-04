@@ -100,6 +100,7 @@ const navigation: NavItem[] = [
             { title: "City", url: "/cities" },
             { title: "Country", url: "/countries" },
             { title: "Service Types", url: "/service-types" },
+            { title: "Transport Rates", url: "/transport-rates" },
             { title: "Vehicle Type", url: "/vehicle-type" },
         ],
     },
