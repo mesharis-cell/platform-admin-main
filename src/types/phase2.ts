@@ -28,6 +28,7 @@ export interface Company {
     created_at: Date;
     updated_at: Date;
     deleted_at: Date | null;
+    warehouse_ops_rate: number | null;
     domains: [
         {
             id: string;

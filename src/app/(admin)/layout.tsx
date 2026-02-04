@@ -102,6 +102,7 @@ const navigation: NavItem[] = [
             { title: "Service Types", url: "/service-types" },
             { title: "Transport Rates", url: "/transport-rates" },
             { title: "Vehicle Type", url: "/vehicle-type" },
+            { title: "Warehouse Opt Rates", url: "/warehouse-opt-rates" },
         ],
     },
     {

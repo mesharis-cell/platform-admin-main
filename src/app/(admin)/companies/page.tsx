@@ -75,6 +75,7 @@ export default function CompaniesPage() {
             },
         },
         platform_margin_percent: 0.3,
+        warehouse_ops_rate: null,
         contact_email: undefined,
         contact_phone: "",
     });
@@ -258,6 +259,7 @@ export default function CompaniesPage() {
                 },
             },
             platform_margin_percent: 0.3,
+            warehouse_ops_rate: null,
             contact_email: undefined,
             contact_phone: "",
         });
@@ -279,6 +281,7 @@ export default function CompaniesPage() {
                 },
             },
             platform_margin_percent: parseFloat(String(company.platform_margin_percent)),
+            warehouse_ops_rate: parseFloat(String(company.warehouse_ops_rate)),
             contact_email: company.contact_email || undefined,
             contact_phone: company.contact_phone || "",
         });
@@ -424,6 +427,35 @@ export default function CompaniesPage() {
                                             {/* <p className="text-xs text-muted-foreground font-mono">
 												Default margin applied to orders (2 decimal places)
 											</p> */}
+                                        </div>
+
+                                        {/* Warehouse Ops Rate */}
+                                        <div className="space-y-2">
+                                            <Label
+                                                htmlFor="warehouse_ops_rate"
+                                                className="font-mono text-xs flex items-center gap-2"
+                                            >
+                                                WAREHOUSE OPS RATE
+                                            </Label>
+                                            <Input
+                                                id="warehouse_ops_rate"
+                                                type="number"
+                                                step="0.01"
+                                                min="0"
+                                                value={formData.warehouse_ops_rate}
+                                                onChange={(e) =>
+                                                    setFormData({
+                                                        ...formData,
+                                                        warehouse_ops_rate: parseFloat(
+                                                            e.target.value
+                                                        ),
+                                                    })
+                                                }
+                                                className="font-mono"
+                                            />
+                                            <p className="text-xs text-muted-foreground font-mono">
+                                                Default rate applied to orders (2 decimal places)
+                                            </p>
                                         </div>
 
                                         {/* Contact Information */}
@@ -653,11 +685,11 @@ export default function CompaniesPage() {
                                                 className="font-mono"
                                             >
                                                 {createMutation.isPending ||
-                                                updateMutation.isPending
+                                                    updateMutation.isPending
                                                     ? "PROCESSING..."
                                                     : editingCompany
-                                                      ? "UPDATE"
-                                                      : "CREATE"}
+                                                        ? "UPDATE"
+                                                        : "CREATE"}
                                             </Button>
                                         </div>
                                     </form>
@@ -732,6 +764,9 @@ export default function CompaniesPage() {
                                     <TableHead className="font-mono text-xs font-bold text-right">
                                         PLATFORM MARGIN PERCENT
                                     </TableHead>
+                                    <TableHead className="font-mono text-xs font-bold text-right">
+                                        WAREHOUSE OPS RATE
+                                    </TableHead>
                                     <TableHead className="font-mono text-xs font-bold">
                                         CONTACT
                                     </TableHead>
@@ -780,16 +815,16 @@ export default function CompaniesPage() {
                                         <TableCell className="font-mono text-sm text-muted-foreground max-w-xs">
                                             {company.domain || "—"}
                                         </TableCell>
-                                        <TableCell className="text-right">
-                                            <div className="flex items-center justify-end gap-2">
-                                                {/* <Percent className="h-3.5 w-3.5 text-primary" /> */}
-                                                <span className="font-mono font-bold text-primary">
-                                                    {parseFloat(
-                                                        String(company.platform_margin_percent)
-                                                    ).toFixed(2)}
-                                                    %
-                                                </span>
-                                            </div>
+                                        <TableCell className="text-center">
+                                            <span className="font-mono font-bold text-primary">
+                                                {parseFloat(String(company.platform_margin_percent)).toFixed(2)}
+                                                %
+                                            </span>
+                                        </TableCell>
+                                        <TableCell className="text-center">
+                                            <span className="font-mono font-bold text-primary">
+                                                {parseFloat(String(company.warehouse_ops_rate)).toFixed(2)}
+                                            </span>
                                         </TableCell>
                                         <TableCell className="font-mono text-sm">
                                             {company.contact_email || company.contact_phone ? (
