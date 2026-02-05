@@ -70,6 +70,37 @@ export interface TransportRateLookup {
 }
 
 // ============================================================
+// Vehicle Types (Entity)
+// ============================================================
+
+export interface VehicleTypeEntity {
+    id: string;
+    platform_id: string;
+    name: string;
+    vehicle_size: string;
+    display_order: number;
+    description: string | null;
+    is_active: boolean;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface CreateVehicleTypeRequest {
+    name: string;
+    vehicle_size: string;
+    display_order?: number;
+    description?: string;
+}
+
+export interface UpdateVehicleTypeRequest {
+    name?: string;
+    vehicle_size?: string;
+    display_order?: number;
+    description?: string;
+    isActive?: boolean;
+}
+
+// ============================================================
 // Service Types
 // ============================================================
 

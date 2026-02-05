@@ -97,11 +97,11 @@ const navigation: NavItem[] = [
         href: "/system-pricing",
         icon: DollarSign,
         items: [
-            { title: "City", url: "/cities" },
             { title: "Country", url: "/countries" },
+            { title: "City", url: "/cities" },
             { title: "Service Types", url: "/service-types" },
             { title: "Transport Rates", url: "/transport-rates" },
-            { title: "Vehicle Type", url: "/vehicle-type" },
+            { title: "Vehicle Type", url: "/vehicle-types" },
             { title: "Warehouse Opt Rates", url: "/warehouse-opt-rates" },
         ],
     },
