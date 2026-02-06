@@ -6,6 +6,7 @@ import { mapCamelToSnake } from "@/lib/utils/helper";
 import type {
     CreateVehicleTypeRequest,
     UpdateVehicleTypeRequest,
+    VehicleType,
 } from "@/types/hybrid-pricing";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -24,7 +25,7 @@ export function useListVehicleTypes(filters: Record<string, any> = {}) {
 
     return useQuery({
         queryKey: vehicleTypesKeys.list(filters),
-        queryFn: async () => {
+        queryFn: async () : Promise<{data: VehicleType[]}> => {
             try {
                 const response = await apiClient.get(
                     `/operations/v1/pricing/vehicle-types?${queryParams}`

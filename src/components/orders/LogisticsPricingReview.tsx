@@ -8,9 +8,8 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { DollarSign, Plus, Send } from "lucide-react";
+import { DollarSign, Plus } from "lucide-react";
 import { OrderLineItemsList } from "./OrderLineItemsList";
 import { AddCatalogLineItemModal } from "./AddCatalogLineItemModal";
 import { VehicleUpgradeSelector } from "./VehicleUpgradeSelector";
@@ -29,22 +28,6 @@ export function LogisticsPricingReview({ orderId, order, onSubmitSuccess }: Logi
     const [addCatalogOpen, setAddCatalogOpen] = useState(false);
 
     const pricing = order?.order_pricing as OrderPricing | undefined;
-
-    const handleVehicleChange = (vehicle: VehicleType, reason: string) => {
-        // Vehicle update is handled by VehicleUpgradeSelector via API call
-        // This callback is optional, used for any additional UI updates if needed
-    };
-
-    const handleSubmit = async () => {
-        try {
-            await submitForApproval.mutateAsync(orderId);
-            toast.success("Order submitted to Admin for approval!");
-            onSubmitSuccess?.();
-        } catch (error: any) {
-            toast.error(error.message || "Failed to submit order");
-        }
-    };
-
     const hasRebrandRequests = order?.items?.some((item: any) => item.isReskinRequest);
 
     return (
@@ -143,12 +126,7 @@ export function LogisticsPricingReview({ orderId, order, onSubmitSuccess }: Logi
                 <CardContent>
                     <VehicleUpgradeSelector
                         orderId={orderId}
-                        currentVehicle={
-                            order?.transportVehicleType ||
-                            order?.transport_vehicle_type ||
-                            "STANDARD"
-                        }
-                        onVehicleChange={handleVehicleChange}
+                        currentVehicle={order?.vehicle_type_id}
                         onSuccess={onSubmitSuccess}
                     />
                 </CardContent>

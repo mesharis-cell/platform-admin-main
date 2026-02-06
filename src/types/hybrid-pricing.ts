@@ -26,7 +26,18 @@ export interface SetPricingConfigRequest {
 // ============================================================
 
 export type TripType = "ONE_WAY" | "ROUND_TRIP";
-export type VehicleType = "STANDARD" | "7_TON" | "10_TON";
+export interface VehicleType {
+    id: string;
+    name: string;
+    vehicle_size: string;
+    platform_id: string;
+    is_default: boolean;
+    is_active: boolean;
+    display_order: number;
+    description: string;
+    created_at: string;
+    updated_at: string;
+}
 
 export interface TransportRate {
     id: string;
