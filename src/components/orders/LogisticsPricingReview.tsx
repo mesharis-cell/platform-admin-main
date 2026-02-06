@@ -137,7 +137,7 @@ export function LogisticsPricingReview({ orderId, order, onSubmitSuccess }: Logi
                 <CardHeader>
                     <div className="flex items-center justify-between">
                         <CardTitle>Service Line Items</CardTitle>
-                        {canManageLineItems(order?.orderStatus || order?.order_status) && (
+                        {canManageLineItems(order?.order_status) && (
                             <Button size="sm" onClick={() => setAddCatalogOpen(true)}>
                                 <Plus className="h-3 w-3 mr-1" />
                                 Add Service

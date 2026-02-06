@@ -95,6 +95,7 @@ export interface VehicleTypeEntity {
     display_order: number;
     description: string | null;
     is_active: boolean;
+    is_default: boolean;
     created_at: string;
     updated_at: string;
 }

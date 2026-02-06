@@ -17,6 +17,7 @@ import type {
 } from "@/types/order";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { invoiceKeys } from "./use-invoices";
+import { TruckDetailsData } from "@/components/orders/TruckDetailsModal";
 
 // ============================================================
 // Order Submission
@@ -687,6 +688,52 @@ export function useUpdateOrderVehicle() {
                     vehicle_type_id: vehicleType,
                     reason,
                 });
+                return response.data;
+            } catch (error) {
+                throwApiError(error);
+            }
+        },
+        onSuccess: (_, variables) => {
+            queryClient.invalidateQueries({
+                queryKey: ["orders", "admin-detail", variables.orderId],
+            });
+            queryClient.invalidateQueries({ queryKey: ["orders", "pricing-review"] });
+        },
+    });
+}
+
+/**
+ * Update order vehicle type (Logistics)
+ */
+export function useAddTruckDetails() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({
+            orderId,
+            truckType,
+            payload
+        }: {
+            orderId: string;
+            truckType: "DELIVERY" | "PICKUP";
+            payload: TruckDetailsData;
+        }) => {
+            try {
+                const details = {
+                    truck_plate: payload.truckPlate,
+                    driver_name: payload.driverName,
+                    driver_contact: payload.driverContact,
+                    truck_size: payload.truckSize,
+                    tailgate_required: payload.tailgateRequired,
+                    manpower: payload.manpower,
+                    notes: payload.notes,
+                };
+
+                const requestBody = truckType === "DELIVERY"
+                    ? { delivery_truck_details: details }
+                    : { pickup_truck_details: details };
+
+                const response = await apiClient.patch(`/client/v1/order/${orderId}/truck-details`, requestBody);
                 return response.data;
             } catch (error) {
                 throwApiError(error);
