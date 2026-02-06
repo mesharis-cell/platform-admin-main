@@ -69,7 +69,7 @@ export function useCreateCatalogLineItem(targetId: string, purposeType: "ORDER" 
             }
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: orderLineItemsKeys.list(targetId) });
+            queryClient.invalidateQueries({ queryKey: lineItemsKeys.list(targetId, purposeType) });
             queryClient.invalidateQueries({ queryKey: ["orders"] });
             queryClient.invalidateQueries({ queryKey: ["inbound-requests"] });
         },
@@ -98,7 +98,7 @@ export function useCreateCustomLineItem(targetId: string, purposeType: "ORDER" |
             }
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: orderLineItemsKeys.list(targetId) });
+            queryClient.invalidateQueries({ queryKey: lineItemsKeys.list(targetId, purposeType) });
             queryClient.invalidateQueries({ queryKey: ["orders"] });
             queryClient.invalidateQueries({ queryKey: ["inbound-requests"] });
         },

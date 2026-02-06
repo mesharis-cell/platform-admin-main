@@ -122,7 +122,11 @@ export function AddCustomLineItemModal({
                 </div>
 
                 <DialogFooter>
-                    <Button variant="outline" onClick={() => onOpenChange(false)}>
+                    <Button
+                        variant="outline"
+                        onClick={() => onOpenChange(false)}
+                        disabled={createLineItem.isPending}
+                    >
                         Cancel
                     </Button>
                     <Button onClick={handleAdd} disabled={createLineItem.isPending}>
