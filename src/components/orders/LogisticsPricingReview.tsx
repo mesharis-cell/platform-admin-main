@@ -8,12 +8,10 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
 import { DollarSign, Plus } from "lucide-react";
 import { OrderLineItemsList } from "./OrderLineItemsList";
 import { AddCatalogLineItemModal } from "./AddCatalogLineItemModal";
 import { VehicleUpgradeSelector } from "./VehicleUpgradeSelector";
-import { useSubmitForApproval } from "@/hooks/use-orders";
 import { canManageLineItems } from "@/lib/order-helpers";
 import type { OrderPricing, VehicleType } from "@/types/hybrid-pricing";
 
@@ -24,7 +22,6 @@ interface LogisticsPricingReviewProps {
 }
 
 export function LogisticsPricingReview({ orderId, order, onSubmitSuccess }: LogisticsPricingReviewProps) {
-    const submitForApproval = useSubmitForApproval();
     const [addCatalogOpen, setAddCatalogOpen] = useState(false);
 
     const pricing = order?.order_pricing as OrderPricing | undefined;
@@ -85,7 +82,7 @@ export function LogisticsPricingReview({ orderId, order, onSubmitSuccess }: Logi
                             <div className="flex justify-between p-2 bg-muted/30 rounded">
                                 <span className="text-muted-foreground">
                                     Transport ({order?.venue_city},{" "}
-                                    {order?.transport_trip_type === "ROUND_TRIP"
+                                    {order?.trip_type === "ROUND_TRIP"
                                         ? "Round-trip"
                                         : "One-way"}
                                     )
@@ -146,7 +143,7 @@ export function LogisticsPricingReview({ orderId, order, onSubmitSuccess }: Logi
                     </div>
                 </CardHeader>
                 <CardContent>
-                    <OrderLineItemsList orderId={orderId} canManage={canManageLineItems(order?.orderStatus || order?.order_status)} />
+                    <OrderLineItemsList targetId={orderId} canManage={canManageLineItems(order?.orderStatus || order?.order_status)} />
                     <p className="text-xs text-muted-foreground mt-3">
                         Add services like assembly, equipment rental, etc. Custom charges will be
                         handled by Admin.

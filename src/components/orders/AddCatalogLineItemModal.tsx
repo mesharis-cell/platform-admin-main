@@ -142,10 +142,19 @@ export function AddCatalogLineItemModal({
                 </div>
 
                 <DialogFooter>
-                    <Button variant="outline" onClick={() => onOpenChange(false)}>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => onOpenChange(false)}
+                        disabled={createLineItem.isPending}
+                    >
                         Cancel
                     </Button>
-                    <Button onClick={handleAdd} disabled={createLineItem.isPending}>
+                    <Button
+                        type="button"
+                        onClick={handleAdd}
+                        disabled={createLineItem.isPending}
+                    >
                         {createLineItem.isPending ? "Adding..." : "Add Line Item"}
                     </Button>
                 </DialogFooter>

@@ -49,6 +49,7 @@ export function ReturnToLogisticsModal({
       onOpenChange(false);
       setReturnReason("");
       onSuccess?.();
+      window.location.reload();
     } catch (error: any) {
       toast.error(error.message || "Failed to return order");
     }

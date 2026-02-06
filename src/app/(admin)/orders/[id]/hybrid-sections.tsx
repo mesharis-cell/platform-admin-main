@@ -18,7 +18,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { useAdminApproveQuote, useReturnToLogistics } from "@/hooks/use-orders";
+import { useAdminApproveQuote } from "@/hooks/use-orders";
 import { canManageLineItems } from "@/lib/order-helpers";
 import { getOrderPrice } from "@/lib/utils/helper";
 import { DollarSign, Package, Plus } from "lucide-react";
@@ -115,7 +115,7 @@ export function PendingApprovalSection({ order, orderId, onRefresh }: HybridPric
                     </div>
                 </CardHeader>
                 <CardContent>
-                    <OrderLineItemsList orderId={orderId} canManage={canManageLineItems(order.order_status)} />
+                    <OrderLineItemsList targetId={orderId} canManage={canManageLineItems(order.order_status)} />
                 </CardContent>
             </Card>
 
