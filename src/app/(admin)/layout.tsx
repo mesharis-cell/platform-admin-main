@@ -35,6 +35,7 @@ import {
     Lock,
     Calendar,
     ChevronRight,
+    Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -91,19 +92,6 @@ const navigation: NavItem[] = [
         name: "Pricing Review",
         href: "/orders/pricing-review",
         icon: DollarSign,
-    },
-    {
-        name: "System Pricing",
-        href: "/system-pricing",
-        icon: DollarSign,
-        items: [
-            { title: "Country", url: "/countries" },
-            { title: "City", url: "/cities" },
-            { title: "Service Types", url: "/service-types" },
-            { title: "Vehicle Type", url: "/vehicle-types" },
-            { title: "Transport Rates", url: "/transport-rates" },
-            { title: "Warehouse Opt Rates", url: "/warehouse-opt-rates" },
-        ],
     },
     {
         name: "Pending Approval",
@@ -169,6 +157,24 @@ const navigation: NavItem[] = [
         name: "Collections",
         href: "/collections",
         icon: Layers,
+    },
+    {
+        name: "Inbound Request",
+        href: "/inbound-request",
+        icon: Package,
+    },
+    {
+        name: "System Settings",
+        href: "/system-settings",
+        icon: Settings,
+        items: [
+            { title: "Country", url: "/countries" },
+            { title: "City", url: "/cities" },
+            { title: "Service Types", url: "/service-types" },
+            { title: "Vehicle Type", url: "/vehicle-types" },
+            { title: "Transport Rates", url: "/transport-rates" },
+            { title: "Warehouse Opt Rates", url: "/warehouse-opt-rates" },
+        ],
     },
     {
         name: "Reset Password",
