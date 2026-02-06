@@ -12,26 +12,39 @@ import type {
 } from "@/types/hybrid-pricing";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-export const orderLineItemsKeys = {
-    list: (orderId: string) => ["order-line-items", orderId] as const,
+export const lineItemsKeys = {
+    list: (targetId: string, purposeType: "ORDER" | "INBOUND_REQUEST") => ["line-items", purposeType, targetId] as const,
 };
 
-// List order line items
-export function useListOrderLineItems(orderId: string | null) {
+// For backward compatibility
+export const orderLineItemsKeys = {
+    list: (orderId: string) => lineItemsKeys.list(orderId, "ORDER"),
+};
+
+// List line items (works for both orders and inbound requests)
+export function useListLineItems(targetId: string | null, purposeType: "ORDER" | "INBOUND_REQUEST" = "ORDER") {
     return useQuery({
-        queryKey: orderId ? orderLineItemsKeys.list(orderId) : ["order-line-items", "none"],
+        queryKey: targetId ? lineItemsKeys.list(targetId, purposeType) : ["line-items", "none"],
         queryFn: async (): Promise<OrderLineItem[]> => {
-            if (!orderId) return Promise.reject("No order ID");
+            if (!targetId) return Promise.reject("No target ID");
             try {
-                const response = await apiClient.get(`/client/v1/order/${orderId}/line-items`);
+                const queryParam = purposeType === "ORDER" 
+                    ? `order_id=${targetId}` 
+                    : `inbound_request_id=${targetId}`;
+                const response = await apiClient.get(`/operations/v1/line-item?${queryParam}`);
                 // Map snake_case API response to camelCase for UI components
                 return mapArraySnakeToCamel(response.data.data) as unknown as OrderLineItem[];
             } catch (error) {
                 throwApiError(error);
             }
         },
-        enabled: !!orderId,
+        enabled: !!targetId,
     });
+}
+
+// Backward compatible alias for orders
+export function useListOrderLineItems(orderId: string | null) {
+    return useListLineItems(orderId, "ORDER");
 }
 
 // Create catalog line item
@@ -47,7 +60,7 @@ export function useCreateCatalogLineItem(targetId: string, purposeType: "ORDER" 
                     ...(purposeType === "ORDER" ? { order_id: targetId } : { inbound_request_id: targetId }),
                 };
                 const response = await apiClient.post(
-                    `/client/v1/order/${targetId}/line-items/catalog`,
+                    `/operations/v1/line-item/catalog`,
                     payload
                 );
                 return response.data.data;
@@ -76,7 +89,7 @@ export function useCreateCustomLineItem(targetId: string, purposeType: "ORDER" |
                     ...(purposeType === "ORDER" ? { order_id: targetId } : { inbound_request_id: targetId }),
                 };
                 const response = await apiClient.post(
-                    `/client/v1/order/${targetId}/line-items/custom`,
+                    `/operations/v1/line-item/custom`,
                     payload
                 );
                 return response.data.data;
@@ -102,7 +115,7 @@ export function useUpdateLineItem(orderId: string) {
                 // Transform camelCase to snake_case for API
                 const apiData = mapCamelToSnake(data);
                 const response = await apiClient.put(
-                    `/client/v1/order/${orderId}/line-items/${itemId}`,
+                    `/operations/v1/line-item/${itemId}`,
                     apiData
                 );
                 return response.data.data;
@@ -127,7 +140,7 @@ export function useVoidLineItem(orderId: string) {
                 // Transform camelCase to snake_case for API
                 const apiData = mapCamelToSnake(data);
                 const response = await apiClient.delete(
-                    `/client/v1/order/${orderId}/line-items/${itemId}`,
+                    `/operations/v1/line-item/${itemId}`,
                     {
                         data: apiData,
                     }

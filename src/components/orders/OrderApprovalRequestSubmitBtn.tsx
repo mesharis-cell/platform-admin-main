@@ -28,6 +28,7 @@ export function OrderApprovalRequestSubmitBtn({
       await submitForApproval.mutateAsync(orderId);
       toast.success("Order submitted to Admin for approval!");
       onSubmitSuccess?.();
+      window.location.reload();
     } catch (error: any) {
       toast.error(error.message || "Failed to submit order");
     }
