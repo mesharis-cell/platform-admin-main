@@ -26,6 +26,7 @@ import {
     CancelOrderButton,
 } from "./hybrid-sections";
 import { ProcessReskinModal } from "@/components/orders/ProcessReskinModal";
+import { OrderApprovalRequestSubmitBtn } from "@/components/orders/OrderApprovalRequestSubmitBtn";
 import { OrderItemCard } from "@/components/orders/OrderItemCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -72,6 +73,7 @@ import { DateTimePicker } from "@/components/ui/datetime-picker";
 import { apiClient } from "@/lib/api/api-client";
 import { getOrderPrice, removeUnderScore } from "@/lib/utils/helper";
 import { addDays, endOfDay, isAfter, isBefore, startOfDay, subDays } from "date-fns";
+import { LogisticsPricingReview } from "@/components/orders/LogisticsPricingReview";
 
 const FINANCIAL_STATUS = {
     PENDING_QUOTE: {
@@ -438,6 +440,8 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
             isBefore(date, startOfDay(addDays(eventEndDate, 1))) ||
             isAfter(date, endOfDay(addDays(eventEndDate, 3)))
         : undefined
+
+
 
     return (
         <div className="min-h-screen bg-background">
@@ -1083,7 +1087,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                         {["AWAITING_FABRICATION", "CONFIRMED", "IN_PREPARATION", "READY_FOR_DELIVERY"].includes(
                             order?.data?.order_status
                         ) && (
-                                <Card className="border-2">
+                                <Card>
                                     <CardHeader>
                                         <div className="flex items-center justify-between">
                                             <CardTitle className="font-mono text-sm flex items-center gap-2">
@@ -1303,7 +1307,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
 
 
                         {/* Truck details */}
-                        <Card className="border-2">
+                        <Card>
                             <CardHeader>
                                 <CardTitle className="font-mono text-sm flex items-center gap-2">
                                     <Truck className="h-4 w-4 text-primary" />
@@ -1314,9 +1318,9 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                 {/* Delivery Truck Section */}
                                 <div
                                     className={`border-2 rounded-lg p-4 transition-all ${order.data.order_status === "IN_PREPARATION" ||
-                                            order.data.order_status === "READY_FOR_DELIVERY"
-                                            ? "border-primary/30 bg-primary/5 cursor-pointer hover:border-primary/50"
-                                            : "border-muted bg-muted/20 opacity-60 cursor-not-allowed"
+                                        order.data.order_status === "READY_FOR_DELIVERY"
+                                        ? "border-primary/30 bg-primary/5 cursor-pointer hover:border-primary/50"
+                                        : "border-muted bg-muted/20 opacity-60 cursor-not-allowed"
                                         }`}
                                 >
                                     <Dialog
@@ -1352,9 +1356,9 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                                 </div>
                                                 <PlusCircle
                                                     className={`h-6 w-6 ${order.data.order_status === "IN_PREPARATION" ||
-                                                            order.data.order_status === "READY_FOR_DELIVERY"
-                                                            ? "text-primary"
-                                                            : "text-muted-foreground"
+                                                        order.data.order_status === "READY_FOR_DELIVERY"
+                                                        ? "text-primary"
+                                                        : "text-muted-foreground"
                                                         }`}
                                                 />
                                             </button>
@@ -1532,9 +1536,9 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                 {/* Pickup Truck Section */}
                                 <div
                                     className={`border-2 rounded-lg p-4 transition-all ${order.data.order_status === "IN_USE" ||
-                                            order.data.order_status === "AWAITING_RETURN"
-                                            ? "border-primary/30 bg-primary/5 cursor-pointer hover:border-primary/50"
-                                            : "border-muted bg-muted/20 opacity-60 cursor-not-allowed"
+                                        order.data.order_status === "AWAITING_RETURN"
+                                        ? "border-primary/30 bg-primary/5 cursor-pointer hover:border-primary/50"
+                                        : "border-muted bg-muted/20 opacity-60 cursor-not-allowed"
                                         }`}
                                 >
                                     <Dialog
@@ -1570,9 +1574,9 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                                 </div>
                                                 <PlusCircle
                                                     className={`h-6 w-6 ${order.data.order_status === "IN_USE" ||
-                                                            order.data.order_status === "AWAITING_RETURN"
-                                                            ? "text-primary"
-                                                            : "text-muted-foreground"
+                                                        order.data.order_status === "AWAITING_RETURN"
+                                                        ? "text-primary"
+                                                        : "text-muted-foreground"
                                                         }`}
                                                 />
                                             </button>
@@ -1749,7 +1753,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
 
 
                         {/* Event & Venue */}
-                        <Card className="border-2">
+                        <Card>
                             <CardHeader>
                                 <CardTitle className="font-mono text-sm flex items-center gap-2">
                                     <Calendar className="h-4 w-4 text-primary" />
@@ -1808,7 +1812,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                         </Card>
 
                         {/* Contact */}
-                        <Card className="border-2">
+                        <Card>
                             <CardHeader>
                                 <CardTitle className="font-mono text-sm flex items-center gap-2">
                                     <User className="h-4 w-4 text-primary" />
@@ -1829,7 +1833,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                         </Card>
 
                         {/* Order Items */}
-                        <Card className="border-2">
+                        <Card>
                             <CardHeader>
                                 <CardTitle className="font-mono text-sm flex items-center gap-2">
                                     <Boxes className="h-4 w-4 text-primary" />
@@ -1867,7 +1871,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                             "CLOSED",
                             "PRICING_REVIEW",
                         ].includes(order?.data?.order_status) && (
-                                <Card className="border-2">
+                                <Card>
                                     <CardHeader>
                                         <CardTitle className="font-mono text-sm flex items-center gap-2">
                                             <ScanLine className="h-4 w-4 text-primary" />
@@ -1879,9 +1883,15 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                     </CardContent>
                                 </Card>
                             )}
+
+                        {/* Submit order for the review */}
+                        <OrderApprovalRequestSubmitBtn
+                            orderId={order.data.id}
+                            onSubmitSuccess={refetch}
+                        />
                     </div>
 
-                    {/* Status History Timeline */}
+                    {/* Right: Status History Timeline */}
                     <div className="lg:col-span-1">
                         <Card className="border-2 sticky top-24">
                             <CardHeader>

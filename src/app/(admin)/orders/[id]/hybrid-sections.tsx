@@ -267,14 +267,14 @@ export function PendingApprovalSection({ order, orderId, onRefresh }: HybridPric
 export function PricingReviewSection({ order, orderId, onRefresh }: HybridPricingSectionProps) {
     return (
         <div className="space-y-6">
-            <Card className="border-yellow-500 bg-yellow-50 dark:bg-yellow-950/20">
+            <Card className="border-2 border-primary/20 bg-primary/5">
                 <CardHeader>
-                    <CardTitle className="text-yellow-900 dark:text-yellow-100">
+                    <CardTitle className="">
                         📋 Pricing Review
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                    <p className="text-sm text-gray-500">
                         Review the order details, add service line items if needed, and submit to Admin
                         for approval.
                     </p>

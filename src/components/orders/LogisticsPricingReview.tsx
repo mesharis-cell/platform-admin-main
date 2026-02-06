@@ -176,24 +176,6 @@ export function LogisticsPricingReview({ orderId, order, onSubmitSuccess }: Logi
                 </CardContent>
             </Card>
 
-            {/* Submit Button */}
-            <div className="flex justify-end">
-                <Button
-                    onClick={handleSubmit}
-                    disabled={submitForApproval.isPending}
-                    size="lg"
-                    className="gap-2"
-                >
-                    <Send className="h-5 w-5" />
-                    {submitForApproval.isPending ? "Submitting..." : "Submit for Admin Approval"}
-                </Button>
-            </div>
-
-            <p className="text-xs text-center text-muted-foreground">
-                After submission, Admin will review pricing, process any rebrand requests, and send
-                the final quote to the client.
-            </p>
-
             {/* Modals */}
             <AddCatalogLineItemModal
                 open={addCatalogOpen}
