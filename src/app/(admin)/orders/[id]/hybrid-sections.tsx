@@ -5,24 +5,25 @@
  * Sections to be integrated into main order detail page
  */
 
-import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
-import { toast } from "sonner";
-import { Plus, DollarSign, Package } from "lucide-react";
-import { ReskinRequestsList } from "@/components/orders/ReskinRequestsList";
-import { OrderLineItemsList } from "@/components/orders/OrderLineItemsList";
 import { AddCatalogLineItemModal } from "@/components/orders/AddCatalogLineItemModal";
 import { AddCustomLineItemModal } from "@/components/orders/AddCustomLineItemModal";
 import { CancelOrderModal } from "@/components/orders/CancelOrderModal";
 import { LogisticsPricingReview } from "@/components/orders/LogisticsPricingReview";
+import { OrderLineItemsList } from "@/components/orders/OrderLineItemsList";
+import { ReskinRequestsList } from "@/components/orders/ReskinRequestsList";
+import { ReturnToLogisticsModal } from "@/components/orders/ReturnToLogisticsModal";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { useAdminApproveQuote, useReturnToLogistics } from "@/hooks/use-orders";
 import { canManageLineItems } from "@/lib/order-helpers";
 import { getOrderPrice } from "@/lib/utils/helper";
+import { DollarSign, Package, Plus } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 
 interface HybridPricingSectionProps {
     order: any;
@@ -35,13 +36,13 @@ interface HybridPricingSectionProps {
  */
 export function PendingApprovalSection({ order, orderId, onRefresh }: HybridPricingSectionProps) {
     const adminApproveQuote = useAdminApproveQuote();
-    const returnToLogistics = useReturnToLogistics();
 
     const [addCatalogOpen, setAddCatalogOpen] = useState(false);
     const [addCustomOpen, setAddCustomOpen] = useState(false);
     const [marginOverride, setMarginOverride] = useState(false);
     const [marginPercent, setMarginPercent] = useState(order?.company?.platform_margin_percent);
     const [marginReason, setMarginReason] = useState("");
+    const [returnToLogisticsOpen, setReturnToLogisticsOpen] = useState(false);
 
     const { total, marginAmount } = getOrderPrice(order?.order_pricing)
 
@@ -70,21 +71,7 @@ export function PendingApprovalSection({ order, orderId, onRefresh }: HybridPric
         }
     };
 
-    const handleReturnToLogistics = async () => {
-        const reason = prompt("Reason for returning to Logistics (min 10 characters):");
-        if (!reason || reason.trim().length < 10) {
-            toast.error("Please provide a reason (min 10 characters)");
-            return;
-        }
 
-        try {
-            await returnToLogistics.mutateAsync({ orderId, reason: reason.trim() });
-            toast.success("Order returned to Logistics for revision");
-            onRefresh?.();
-        } catch (error: any) {
-            toast.error(error.message || "Failed to return order");
-        }
-    };
 
     return (
         <div className="space-y-6">
@@ -236,8 +223,7 @@ export function PendingApprovalSection({ order, orderId, onRefresh }: HybridPric
                             </Button>
                             <Button
                                 variant="outline"
-                                onClick={handleReturnToLogistics}
-                                disabled={returnToLogistics.isPending}
+                                onClick={() => setReturnToLogisticsOpen(true)}
                             >
                                 Return to Logistics
                             </Button>
@@ -257,6 +243,14 @@ export function PendingApprovalSection({ order, orderId, onRefresh }: HybridPric
                 onOpenChange={setAddCustomOpen}
                 orderId={orderId}
             />
+
+            {/* Return to Logistics Modal */}
+            <ReturnToLogisticsModal
+                open={returnToLogisticsOpen}
+                onOpenChange={setReturnToLogisticsOpen}
+                onSuccess={onRefresh}
+                orderId={orderId}
+            />
         </div>
     );
 }
@@ -267,14 +261,14 @@ export function PendingApprovalSection({ order, orderId, onRefresh }: HybridPric
 export function PricingReviewSection({ order, orderId, onRefresh }: HybridPricingSectionProps) {
     return (
         <div className="space-y-6">
-            <Card className="border-yellow-500 bg-yellow-50 dark:bg-yellow-950/20">
+            <Card className="border-2 border-primary/20 bg-primary/5">
                 <CardHeader>
-                    <CardTitle className="text-yellow-900 dark:text-yellow-100">
+                    <CardTitle className="">
                         📋 Pricing Review
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                    <p className="text-sm text-gray-500">
                         Review the order details, add service line items if needed, and submit to Admin
                         for approval.
                     </p>

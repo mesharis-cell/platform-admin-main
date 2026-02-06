@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useUpdateOrderVehicle } from "@/hooks/use-orders";
 import type { VehicleType } from "@/types/hybrid-pricing";
+import { Card, CardContent } from "../ui/card";
 
 interface VehicleUpgradeSelectorProps {
     orderId: string;
@@ -114,25 +115,30 @@ export function VehicleUpgradeSelector({
                         </p>
                     </div>
 
-                    {selectedVehicle !== currentVehicle && reason.trim().length >= 10 && (
-                        <Button
-                            onClick={handleSaveVehicleChange}
-                            disabled={updateVehicle.isPending}
-                            className="w-full"
-                        >
-                            {updateVehicle.isPending
-                                ? "Updating..."
-                                : "Update Vehicle & Recalculate Rate"}
-                        </Button>
-                    )}
+                    <Button
+                        onClick={handleSaveVehicleChange}
+                        disabled={
+                            updateVehicle.isPending ||
+                            selectedVehicle === currentVehicle ||
+                            reason.trim().length < 10
+                        }
+                        className="w-full"
+
+                    >
+                        {updateVehicle.isPending
+                            ? "Updating..."
+                            : "Update Vehicle & Recalculate Rate"}
+                    </Button>
 
                     {selectedVehicle !== currentVehicle && (
-                        <div className="bg-blue-50 border border-blue-300 rounded-md p-3">
-                            <p className="text-xs text-blue-500">
-                                ℹ️ System will automatically look up the new transport rate for
-                                upgraded vehicle type.
-                            </p>
-                        </div>
+                        <Card className="border-2 border-primary/20 bg-primary/5">
+                            <CardContent className="pt-6">
+                                <p className="text-xs">
+                                    ℹ️ System will automatically look up the new transport rate for
+                                    upgraded vehicle type.
+                                </p>
+                            </CardContent>
+                        </Card>
                     )}
                 </div>
             )}

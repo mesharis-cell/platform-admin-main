@@ -347,7 +347,7 @@ export default function TransportRates() {
                       <SelectContent>
                         {vehicleTypes.map((type) => (
                           <SelectItem key={type.id} value={type.id} className="font-mono">
-                            {type.name}
+                            {type.name} ({removeUnderScore(type.vehicle_size)})
                           </SelectItem>
                         ))}
                       </SelectContent>
