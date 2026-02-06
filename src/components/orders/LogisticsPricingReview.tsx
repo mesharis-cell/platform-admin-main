@@ -143,7 +143,10 @@ export function LogisticsPricingReview({ orderId, order, onSubmitSuccess }: Logi
                     </div>
                 </CardHeader>
                 <CardContent>
-                    <OrderLineItemsList targetId={orderId} canManage={canManageLineItems(order?.orderStatus || order?.order_status)} />
+                    <OrderLineItemsList
+                        targetId={orderId}
+                        canManage={canManageLineItems(order?.orderStatus || order?.order_status)}
+                    />
                     <p className="text-xs text-muted-foreground mt-3">
                         Add services like assembly, equipment rental, etc. Custom charges will be
                         handled by Admin.

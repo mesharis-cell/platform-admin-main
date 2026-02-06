@@ -71,8 +71,6 @@ export function PendingApprovalSection({ order, orderId, onRefresh }: HybridPric
         }
     };
 
-
-
     return (
         <div className="space-y-6">
             {/* Reskin Requests */}
@@ -147,7 +145,7 @@ export function PendingApprovalSection({ order, orderId, onRefresh }: HybridPric
                                 </span>
                             </div>
                             <div className="flex justify-between">
-                                <span className="text-muted-foreground">Custom (Reskin) Services</span>
+                                <span className="text-muted-foreground">Custom (Include Reskin) Services</span>
                                 <span className="font-mono">
                                     {Number(order?.order_pricing?.line_items?.custom_total).toFixed(2)} AED
                                 </span>

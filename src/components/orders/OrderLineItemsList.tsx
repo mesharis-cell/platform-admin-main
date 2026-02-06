@@ -22,7 +22,6 @@ export function OrderLineItemsList({ targetId, canManage = false, purposeType = 
     const [voidDialogOpen, setVoidDialogOpen] = useState(false);
     const [selectedItem, setSelectedItem] = useState<OrderLineItem | null>(null);
 
-
     const openVoidDialog = (item: OrderLineItem) => {
         setSelectedItem(item);
         setVoidDialogOpen(true);
