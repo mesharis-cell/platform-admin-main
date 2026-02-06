@@ -29,6 +29,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { formatDate } from "date-fns";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { removeUnderScore } from "@/lib/utils/helper";
 
 export default function VehicleTypesPage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -371,9 +372,6 @@ export default function VehicleTypesPage() {
                     DISPLAY ORDER
                   </TableHead>
                   <TableHead className="font-mono text-xs font-bold">
-                    DESCRIPTION
-                  </TableHead>
-                  <TableHead className="font-mono text-xs font-bold">
                     CREATED AT
                   </TableHead>
                   <TableHead className="w-12"></TableHead>
@@ -390,17 +388,17 @@ export default function VehicleTypesPage() {
                   >
                     <TableCell className="font-mono">
                       <div className="flex flex-col">
-                        <span className="font-semibold text-sm">{vehicleType.name}</span>
+                        <span className="font-medium text-sm">{vehicleType.name}</span>
+                        <span className="text-xs text-muted-foreground max-w-[200px] truncate">
+                          {vehicleType.description}
+                        </span>
                       </div>
                     </TableCell>
-                    <TableCell className="font-mono text-xs font-medium">
-                      {vehicleType.vehicle_size}
+                    <TableCell className="font-mono text-xs font-semibold">
+                      {removeUnderScore(vehicleType.vehicle_size)}
                     </TableCell>
                     <TableCell className="font-mono text-xs">
                       {vehicleType.display_order}
-                    </TableCell>
-                    <TableCell className="font-mono text-xs text-muted-foreground max-w-[200px] truncate">
-                      {vehicleType.description || "-"}
                     </TableCell>
                     <TableCell className="font-mono text-xs text-muted-foreground">
                       {formatDate(vehicleType.created_at, "dd/MM/yyyy")}
