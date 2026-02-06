@@ -5,21 +5,23 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { useListOrderLineItems, useVoidLineItem } from "@/hooks/use-order-line-items";
+import { useListLineItems, useVoidLineItem } from "@/hooks/use-order-line-items";
 import { VoidLineItemDialog } from "./VoidLineItemDialog";
 import type { OrderLineItem } from "@/types/hybrid-pricing";
 
 interface OrderLineItemsListProps {
-    orderId: string;
+    targetId: string;
     canManage?: boolean;
+    purposeType?: "ORDER" | "INBOUND_REQUEST";
 }
 
-export function OrderLineItemsList({ orderId, canManage = false }: OrderLineItemsListProps) {
-    const { data: lineItems, isLoading } = useListOrderLineItems(orderId);
-    const voidLineItem = useVoidLineItem(orderId);
+export function OrderLineItemsList({ targetId, canManage = false, purposeType = "ORDER" }: OrderLineItemsListProps) {
+    const { data: lineItems, isLoading } = useListLineItems(targetId, purposeType);
+    const voidLineItem = useVoidLineItem(targetId);
 
     const [voidDialogOpen, setVoidDialogOpen] = useState(false);
     const [selectedItem, setSelectedItem] = useState<OrderLineItem | null>(null);
+
 
     const openVoidDialog = (item: OrderLineItem) => {
         setSelectedItem(item);

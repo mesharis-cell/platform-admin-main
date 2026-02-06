@@ -151,7 +151,7 @@ export default function AssetsInboundPage() {
                   </TableCell>
                   <TableCell>
                     <Link href={`/inbound-request/${request.id}`}>
-                      <Button variant="secondary">
+                      <Button variant="default">
                         Details
                       </Button>
                     </Link>

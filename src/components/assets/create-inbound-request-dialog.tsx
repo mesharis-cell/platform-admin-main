@@ -49,6 +49,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import type { InboundRequestItem, CreateInboundRequestPayload, TrackingMethod } from "@/types/inbound-request";
 import { useToken } from "@/lib/auth/use-token";
+import { useCompanies } from "@/hooks/use-companies";
 
 const STEPS = [
   { id: "request", label: "Request Info", icon: FileText },
@@ -68,6 +69,7 @@ const DEFAULT_CATEGORIES = ["Furniture", "Glassware", "Installation", "Decor"];
 interface FormData {
   note: string;
   incoming_at: string;
+  company_id: string;
   items: Partial<InboundRequestItem>[];
 }
 
@@ -96,11 +98,14 @@ export function CreateInboundRequestDialog({
   onOpenChange,
   onSuccess,
 }: CreateInboundRequestDialogProps) {
+  const { data: companiesData } = useCompanies({ limit: "100" });
+  const companies = companiesData?.data || [];
   const [currentStep, setCurrentStep] = useState(0);
   const [currentItemIndex, setCurrentItemIndex] = useState(0);
   const [formData, setFormData] = useState<FormData>({
     note: "",
     incoming_at: "",
+    company_id: "",
     items: [createEmptyItem()],
   });
 
@@ -110,11 +115,7 @@ export function CreateInboundRequestDialog({
 
   // Fetch reference data
   const { user } = useToken();
-  const { data: brandsData } = useBrands(
-    user?.company_id ? { company_id: user.company_id } : undefined
-  );
 
-  const brands = brandsData?.data || [];
 
   // Mutations
   const createMutation = useCreateInboundRequest();
@@ -277,11 +278,6 @@ export function CreateInboundRequestDialog({
   }
 
   async function handleSubmit() {
-    if (!user?.company_id) {
-      toast.error("Company ID not available");
-      return;
-    }
-
     try {
       // Collect all files from all items for batch upload
       const allFiles: File[] = [];
@@ -317,8 +313,8 @@ export function CreateInboundRequestDialog({
 
       // Build payload with uploaded image URLs
       const payload: CreateInboundRequestPayload = {
-        company_id: user.company_id,
         note: formData.note || undefined,
+        company_id: formData.company_id,
         incoming_at: formData.incoming_at,
         items: formData.items.map((item, index) => {
           const uploadedImages = uploadedImagesPerItem.get(index) || [];
@@ -359,6 +355,7 @@ export function CreateInboundRequestDialog({
     setFormData({
       note: "",
       incoming_at: "",
+      company_id: "",
       items: [createEmptyItem()],
     });
     setCurrentStep(0);
@@ -367,8 +364,12 @@ export function CreateInboundRequestDialog({
 
   function canProceedToNext(): boolean {
     switch (currentStep) {
-      case 0: // Request Info
-        return !!formData.incoming_at;
+      case 0: { // Request Info
+        if (!formData.incoming_at) return false;
+        // Require company_id if user doesn't have one (admin mode)
+        const today = new Date().toISOString().split("T")[0];
+        return formData.incoming_at >= today;
+      }
       case 1: // Add Items
         return formData.items.every(
           (item) =>
@@ -471,6 +472,7 @@ export function CreateInboundRequestDialog({
                     <Input
                       type="date"
                       value={formData.incoming_at}
+                      min={new Date().toISOString().split("T")[0]}
                       onChange={(e) =>
                         setFormData({
                           ...formData,
@@ -538,206 +540,19 @@ export function CreateInboundRequestDialog({
 
               {/* Current item form */}
               {currentItem && (
-                <div className="space-y-4 p-4 border border-border rounded-lg">
-                  <div className="space-y-2">
-                    <Label className="font-mono text-xs">Item Name *</Label>
-                    <Input
-                      placeholder="e.g., Premium Bar Counter"
-                      value={currentItem.name || ""}
-                      onChange={(e) =>
-                        updateItem(currentItemIndex, {
-                          name: e.target.value,
-                        })
-                      }
-                      className="font-mono"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label className="font-mono text-xs">Category *</Label>
-                      <Select
-                        value={currentItem.category}
-                        onValueChange={(value) =>
-                          updateItem(currentItemIndex, {
-                            category: value,
-                          })
-                        }
-                      >
-                        <SelectTrigger className="font-mono">
-                          <SelectValue placeholder="Select category" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {DEFAULT_CATEGORIES.map((cat) => (
-                            <SelectItem key={cat} value={cat}>
-                              {cat}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label className="font-mono text-xs">
-                        Brand (Optional)
-                      </Label>
-                      <Select
-                        value={currentItem.brand_id}
-                        onValueChange={(value) =>
-                          updateItem(currentItemIndex, {
-                            brand_id: value,
-                          })
-                        }
-                        disabled={!user?.company_id}
-                      >
-                        <SelectTrigger className="font-mono">
-                          <SelectValue placeholder="Select brand" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {brands.map((brand) => (
-                            <SelectItem key={brand.id} value={brand.id}>
-                              {brand.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label className="font-mono text-xs">
-                        Tracking Method *
-                      </Label>
-                      <Select
-                        value={currentItem.tracking_method}
-                        onValueChange={(value) =>
-                          updateItem(currentItemIndex, {
-                            tracking_method: value as TrackingMethod,
-                          })
-                        }
-                      >
-                        <SelectTrigger className="font-mono">
-                          <SelectValue placeholder="Select tracking method" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {TRACKING_METHODS.map((method) => (
-                            <SelectItem
-                              key={method.value}
-                              value={method.value}
-                            >
-                              {method.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label className="font-mono text-xs">Quantity *</Label>
-                      <Input
-                        type="number"
-                        min="1"
-                        value={currentItem.quantity || 1}
-                        onChange={(e) =>
-                          updateItem(currentItemIndex, {
-                            quantity: parseInt(e.target.value) || 1,
-                          })
-                        }
-                        className="font-mono"
-                      />
-                    </div>
-                  </div>
-
-                  {currentItem.tracking_method === "BATCH" && (
-                    <div className="space-y-2">
-                      <Label className="font-mono text-xs">
-                        Packaging Description
-                      </Label>
-                      <Input
-                        placeholder="e.g., Box of 50, Crate, Set of 8"
-                        value={currentItem.packaging || ""}
-                        onChange={(e) =>
-                          updateItem(currentItemIndex, {
-                            packaging: e.target.value,
-                          })
-                        }
-                        className="font-mono"
-                      />
-                    </div>
-                  )}
-
-                  <div className="space-y-2">
-                    <Label className="font-mono text-xs">
-                      Description (Optional)
-                    </Label>
-                    <Textarea
-                      placeholder="Item description..."
-                      value={currentItem.description || ""}
-                      onChange={(e) =>
-                        updateItem(currentItemIndex, {
-                          description: e.target.value,
-                        })
-                      }
-                      className="font-mono text-sm"
-                      rows={2}
-                    />
-                  </div>
-
-                  {/* Image Upload */}
-                  <div className="space-y-2">
-                    <Label className="font-mono text-xs">
-                      Item Photos (Optional)
-                    </Label>
-                    <div className="border-2 border-dashed border-border rounded-lg p-4 hover:border-primary/50 transition-colors">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        multiple
-                        onChange={(e) => handleImageSelect(currentItemIndex, e)}
-                        className="hidden"
-                        id={`item-image-upload-${currentItemIndex}`}
-                      />
-                      <label
-                        htmlFor={`item-image-upload-${currentItemIndex}`}
-                        className="flex flex-col items-center justify-center cursor-pointer"
-                      >
-                        <Upload className="w-6 h-6 text-muted-foreground mb-2" />
-                        <span className="text-xs font-mono text-muted-foreground">
-                          Click to select images
-                        </span>
-                        <span className="text-xs font-mono text-muted-foreground mt-1">
-                          JPG, PNG, WEBP up to 5MB
-                        </span>
-                      </label>
-                    </div>
-                  </div>
-
-                  {/* Image preview grid */}
-                  {getItemPreviewUrls(currentItemIndex).length > 0 && (
-                    <div className="grid grid-cols-4 gap-2">
-                      {getItemPreviewUrls(currentItemIndex).map((url, imgIndex) => (
-                        <div
-                          key={imgIndex}
-                          className="relative group aspect-square rounded-lg overflow-hidden border border-border"
-                        >
-                          <img
-                            src={url}
-                            alt={`Preview ${imgIndex + 1}`}
-                            className="w-full h-full object-cover"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => removeImage(currentItemIndex, imgIndex)}
-                            className="absolute top-1 right-1 p-1 bg-destructive text-destructive-foreground rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                <InboundRequestItemForm
+                  item={currentItem}
+                  index={currentItemIndex}
+                  user={user}
+                  companies={companies}
+                  selectedCompanyId={formData.company_id}
+                  setCompanyId={(id) => setFormData({ ...formData, company_id: id })}
+                  updateItem={updateItem}
+                  removeItem={removeItem}
+                  handleImageSelect={handleImageSelect}
+                  removeImage={removeImage}
+                  getItemPreviewUrls={getItemPreviewUrls}
+                />
               )}
             </div>
           )}
@@ -775,7 +590,7 @@ export function CreateInboundRequestDialog({
                       </Label>
                       <Input
                         type="number"
-                        step="0.01"
+                        step="1"
                         placeholder="0.00"
                         value={currentItem.dimensions?.length || ""}
                         onChange={(e) =>
@@ -792,7 +607,7 @@ export function CreateInboundRequestDialog({
                       <Label className="font-mono text-xs">Width (cm)</Label>
                       <Input
                         type="number"
-                        step="0.01"
+                        step="1"
                         placeholder="0.00"
                         value={currentItem.dimensions?.width || ""}
                         onChange={(e) =>
@@ -811,7 +626,7 @@ export function CreateInboundRequestDialog({
                       </Label>
                       <Input
                         type="number"
-                        step="0.01"
+                        step="1"
                         placeholder="0.00"
                         value={currentItem.dimensions?.height || ""}
                         onChange={(e) =>
@@ -833,9 +648,8 @@ export function CreateInboundRequestDialog({
                       </Label>
                       <Input
                         type="number"
-                        step="0.01"
+                        step="1"
                         min="0"
-                        placeholder="0.00"
                         value={currentItem.weight_per_unit || ""}
                         onChange={(e) =>
                           updateItem(currentItemIndex, {
@@ -852,7 +666,7 @@ export function CreateInboundRequestDialog({
                       </Label>
                       <Input
                         type="number"
-                        step="0.001"
+                        step="1"
                         min="0"
                         placeholder="0.000"
                         value={currentItem.volume_per_unit || ""}
@@ -1014,5 +828,275 @@ export function CreateInboundRequestDialog({
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+interface InboundRequestItemFormProps {
+  item: Partial<InboundRequestItem>;
+  index: number;
+  user: any;
+  companies: any[];
+  selectedCompanyId: string;
+  setCompanyId: (id: string) => void;
+  updateItem: (index: number, updates: Partial<InboundRequestItem>) => void;
+  removeItem: (index: number) => void;
+  handleImageSelect: (index: number, e: React.ChangeEvent<HTMLInputElement>) => void;
+  removeImage: (index: number, imageIndex: number) => void;
+  getItemPreviewUrls: (index: number) => string[];
+}
+
+function InboundRequestItemForm({
+  item,
+  index,
+  user,
+  companies,
+  selectedCompanyId,
+  setCompanyId,
+  updateItem,
+  handleImageSelect,
+  removeImage,
+  getItemPreviewUrls,
+}: InboundRequestItemFormProps) {
+  const { data: brandsData } = useBrands(
+    selectedCompanyId ? { company_id: selectedCompanyId } : (user?.company_id ? { company_id: user.company_id } : undefined)
+  );
+  const brands = brandsData?.data || [];
+
+  return (
+    <div className="space-y-4 p-4 border border-border rounded-lg">
+      <div className="space-y-2">
+        <Label className="font-mono text-xs">Item Name *</Label>
+        <Input
+          placeholder="e.g., Premium Bar Counter"
+          value={item.name || ""}
+          onChange={(e) =>
+            updateItem(index, {
+              name: e.target.value,
+            })
+          }
+          className="font-mono"
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label className="font-mono text-xs">Category *</Label>
+          <Select
+            value={item.category}
+            onValueChange={(value) =>
+              updateItem(index, {
+                category: value,
+              })
+            }
+          >
+            <SelectTrigger className="font-mono">
+              <SelectValue placeholder="Select category" />
+            </SelectTrigger>
+            <SelectContent>
+              {DEFAULT_CATEGORIES.map((cat) => (
+                <SelectItem key={cat} value={cat}>
+                  {cat}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Company Selection */}
+        <div className="space-y-2">
+          <Label
+            htmlFor="company"
+            className="font-mono text-xs flex items-center gap-2"
+          >
+            COMPANY *
+          </Label>
+          <Select
+            value={selectedCompanyId}
+            onValueChange={(value) => {
+              setCompanyId(value);
+              // Reset brand if company changes
+              updateItem(index, { brand_id: null });
+            }}
+            required
+            disabled={!!user?.company_id}
+          >
+            <SelectTrigger className="font-mono">
+              <SelectValue placeholder="Select company" />
+            </SelectTrigger>
+            <SelectContent>
+              {companies.map((co) => (
+                <SelectItem
+                  key={co.id}
+                  value={co.id}
+                  className="font-mono"
+                >
+                  {co.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label className="font-mono text-xs">
+            Brand (Optional)
+          </Label>
+          <Select
+            value={item.brand_id || ""}
+            onValueChange={(value) =>
+              updateItem(index, {
+                brand_id: value,
+              })
+            }
+            disabled={!selectedCompanyId && !user?.company_id}
+          >
+            <SelectTrigger className="font-mono">
+              <SelectValue placeholder="Select brand" />
+            </SelectTrigger>
+            <SelectContent>
+              {brands.map((brand) => (
+                <SelectItem key={brand.id} value={brand.id}>
+                  {brand.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label className="font-mono text-xs">
+            Tracking Method *
+          </Label>
+          <Select
+            value={item.tracking_method}
+            onValueChange={(value) =>
+              updateItem(index, {
+                tracking_method: value as TrackingMethod,
+              })
+            }
+          >
+            <SelectTrigger className="font-mono">
+              <SelectValue placeholder="Select tracking method" />
+            </SelectTrigger>
+            <SelectContent>
+              {TRACKING_METHODS.map((method) => (
+                <SelectItem
+                  key={method.value}
+                  value={method.value}
+                >
+                  {method.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label className="font-mono text-xs">Quantity *</Label>
+          <Input
+            type="number"
+            min="1"
+            value={item.quantity || 1}
+            onChange={(e) =>
+              updateItem(index, {
+                quantity: parseInt(e.target.value) || 1,
+              })
+            }
+            className="font-mono"
+          />
+        </div>
+      </div>
+
+      {item.tracking_method === "BATCH" && (
+        <div className="space-y-2">
+          <Label className="font-mono text-xs">
+            Packaging Description
+          </Label>
+          <Input
+            placeholder="e.g., Box of 50, Crate, Set of 8"
+            value={item.packaging || ""}
+            onChange={(e) =>
+              updateItem(index, {
+                packaging: e.target.value,
+              })
+            }
+            className="font-mono"
+          />
+        </div>
+      )}
+
+      <div className="space-y-2">
+        <Label className="font-mono text-xs">
+          Description (Optional)
+        </Label>
+        <Textarea
+          placeholder="Item description..."
+          value={item.description || ""}
+          onChange={(e) =>
+            updateItem(index, {
+              description: e.target.value,
+            })
+          }
+          className="font-mono text-sm"
+          rows={2}
+        />
+      </div>
+
+      {/* Image Upload */}
+      <div className="space-y-2">
+        <Label className="font-mono text-xs">
+          Item Photos (Optional)
+        </Label>
+        <div className="border-2 border-dashed border-border rounded-lg p-4 hover:border-primary/50 transition-colors">
+          <input
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={(e) => handleImageSelect(index, e)}
+            className="hidden"
+            id={`item-image-upload-${index}`}
+          />
+          <label
+            htmlFor={`item-image-upload-${index}`}
+            className="flex flex-col items-center justify-center cursor-pointer"
+          >
+            <Upload className="w-6 h-6 text-muted-foreground mb-2" />
+            <span className="text-xs font-mono text-muted-foreground">
+              Click to select images
+            </span>
+            <span className="text-xs font-mono text-muted-foreground mt-1">
+              JPG, PNG, WEBP up to 5MB
+            </span>
+          </label>
+        </div>
+      </div>
+
+      {/* Image preview grid */}
+      {getItemPreviewUrls(index).length > 0 && (
+        <div className="grid grid-cols-4 gap-2">
+          {getItemPreviewUrls(index).map((url, imgIndex) => (
+            <div
+              key={imgIndex}
+              className="relative group aspect-square rounded-lg overflow-hidden border border-border"
+            >
+              <img
+                src={url}
+                alt={`Preview ${imgIndex + 1}`}
+                className="w-full h-full object-cover"
+              />
+              <button
+                type="button"
+                onClick={() => removeImage(index, imgIndex)}
+                className="absolute top-1 right-1 p-1 bg-destructive text-destructive-foreground rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

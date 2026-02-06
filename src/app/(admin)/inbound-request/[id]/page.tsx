@@ -154,7 +154,7 @@ export default function InboundRequestDetailsPage({
                 </div>
               </CardHeader>
               <CardContent>
-                <OrderLineItemsList orderId={request.id} canManage />
+                <OrderLineItemsList targetId={request.id} canManage purposeType="INBOUND_REQUEST" />
               </CardContent>
             </Card>
           </div>
