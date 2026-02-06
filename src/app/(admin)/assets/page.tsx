@@ -115,7 +115,7 @@ export default function AssetsPage() {
                             variant="outline"
                             size="lg"
                             className="font-mono"
-                            onClick={() => router.push("/admin/assets/bulk-upload")}
+                            onClick={() => router.push("/assets/bulk-upload")}
                         >
                             <Upload className="w-4 h-4 mr-2" />
                             Bulk Upload

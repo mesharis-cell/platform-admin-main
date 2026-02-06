@@ -23,7 +23,7 @@ import {
 import { useMemo, useState } from "react";
 import { AdminHeader } from "@/components/admin-header";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { TransportRate, TripType, VehicleType, CreateTransportRateRequest } from "@/types/hybrid-pricing";
+import { TransportRate, TripType, CreateTransportRateRequest } from "@/types/hybrid-pricing";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatDate } from "date-fns";
@@ -40,7 +40,6 @@ import { removeUnderScore } from "@/lib/utils/helper";
 import { useListVehicleTypes } from "@/hooks/use-vehicle-types";
 
 const TRIP_TYPES: TripType[] = ["ONE_WAY", "ROUND_TRIP"];
-const VEHICLE_TYPES: VehicleType[] = ["STANDARD", "7_TON", "10_TON"];
 
 export default function TransportRates() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -432,7 +431,7 @@ export default function TransportRates() {
               <SelectItem value="all" className="font-mono text-xs">ALL TRIPS</SelectItem>
               {TRIP_TYPES.map((type) => (
                 <SelectItem key={type} value={type} className="font-mono text-xs">
-                  {type.replace("_", " ")}
+                  {removeUnderScore(type)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -445,9 +444,9 @@ export default function TransportRates() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all" className="font-mono text-xs">ALL VEHICLES</SelectItem>
-              {VEHICLE_TYPES.map((type) => (
-                <SelectItem key={type} value={type} className="font-mono text-xs">
-                  {type.replace("_", " ")}
+              {vehicleTypes?.map((type) => (
+                <SelectItem key={type.id} value={type.id} className="font-mono text-xs">
+                  {type.name} ({removeUnderScore(type.vehicle_size)})
                 </SelectItem>
               ))}
             </SelectContent>

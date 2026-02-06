@@ -684,7 +684,7 @@ export function useUpdateOrderVehicle() {
         }) => {
             try {
                 const response = await apiClient.patch(`/client/v1/order/${orderId}/vehicle`, {
-                    vehicle_type: vehicleType,
+                    vehicle_type_id: vehicleType,
                     reason,
                 });
                 return response.data;
