@@ -236,12 +236,12 @@ export function PendingApprovalSection({ order, orderId, onRefresh }: HybridPric
             <AddCatalogLineItemModal
                 open={addCatalogOpen}
                 onOpenChange={setAddCatalogOpen}
-                orderId={orderId}
+                targetId={orderId}
             />
             <AddCustomLineItemModal
                 open={addCustomOpen}
                 onOpenChange={setAddCustomOpen}
-                orderId={orderId}
+                targetId={orderId}
             />
 
             {/* Return to Logistics Modal */}
@@ -274,7 +274,6 @@ export function PricingReviewSection({ order, orderId, onRefresh }: HybridPricin
                     </p>
                 </CardContent>
             </Card>
-
             <LogisticsPricingReview orderId={orderId} order={order} onSubmitSuccess={onRefresh} />
         </div>
     );

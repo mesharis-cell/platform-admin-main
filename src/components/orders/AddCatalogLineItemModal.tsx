@@ -26,61 +26,47 @@ import { useCreateCatalogLineItem } from "@/hooks/use-order-line-items";
 interface AddCatalogLineItemModalProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    orderId?: string;
-    purposeType?: "ORDER" | "INBOUND_REQUEST"
-    inboundRequestId?: string;
+    targetId: string;
+    purposeType?: "ORDER" | "INBOUND_REQUEST";
 }
 
 export function AddCatalogLineItemModal({
     open,
     onOpenChange,
+    targetId,
     purposeType = "ORDER",
-    orderId,
-    inboundRequestId
 }: AddCatalogLineItemModalProps) {
     const { data: serviceTypes } = useListServiceTypes({});
-    const createLineItem = useCreateCatalogLineItem(orderId);
+    const createLineItem = useCreateCatalogLineItem(targetId, purposeType);
 
     const [serviceTypeId, setServiceTypeId] = useState("");
     const [quantity, setQuantity] = useState("");
-    const [unitRate, setUnitRate] = useState("");
     const [notes, setNotes] = useState("");
 
     const selectedService = serviceTypes?.data?.find((s: any) => s.id === serviceTypeId);
-    const calculatedTotal = quantity && unitRate ? parseFloat(quantity) * parseFloat(unitRate) : 0;
 
     const handleServiceChange = (id: string) => {
         setServiceTypeId(id);
-        const service = serviceTypes?.data?.find((s: any) => s.id === id);
-        if (service?.defaultRate) {
-            setUnitRate(service.defaultRate.toString());
-        }
     };
 
     const handleAdd = async () => {
         const qtyNum = parseFloat(quantity);
-        const rateNum = parseFloat(unitRate);
 
-        if (!serviceTypeId || isNaN(qtyNum) || qtyNum <= 0 || isNaN(rateNum) || rateNum < 0) {
-            toast.error("Please fill all required fields with valid values");
+        if (!serviceTypeId || isNaN(qtyNum) || qtyNum <= 0) {
+            toast.error("Please select a service and enter a valid quantity");
             return;
         }
 
         try {
             await createLineItem.mutateAsync({
-                purpose_type: purposeType,
-                order_id: orderId,
-                inbound_request_id: inboundRequestId,
                 service_type_id: serviceTypeId,
                 quantity: qtyNum,
-                unit_rate: rateNum,
                 notes: notes || undefined,
             });
             toast.success("Service line item added");
             onOpenChange(false);
             setServiceTypeId("");
             setQuantity("");
-            setUnitRate("");
             setNotes("");
         } catch (error: any) {
             toast.error(error.message || "Failed to add line item");
@@ -136,38 +122,13 @@ export function AddCatalogLineItemModal({
                         </Label>
                         <Input
                             type="number"
-                            step="1"
+                            step="0.01"
                             min="0"
                             value={quantity}
                             onChange={(e) => setQuantity(e.target.value)}
                             placeholder="4"
                         />
                     </div>
-
-                    <div>
-                        <Label>
-                            Unit Rate (AED) <span className="text-destructive">*</span>
-                        </Label>
-                        <Input
-                            type="number"
-                            step="1"
-                            min="0"
-                            value={unitRate}
-                            onChange={(e) => setUnitRate(e.target.value)}
-                            placeholder="18.00"
-                        />
-                    </div>
-
-                    {calculatedTotal > 0 && (
-                        <div className="p-3 bg-primary/5 border border-primary/20 rounded-md">
-                            <p className="text-sm">
-                                <span className="text-muted-foreground">Calculated Total:</span>{" "}
-                                <span className="font-bold font-mono text-lg">
-                                    {calculatedTotal.toFixed(2)} AED
-                                </span>
-                            </p>
-                        </div>
-                    )}
 
                     <div>
                         <Label>Notes (Optional)</Label>

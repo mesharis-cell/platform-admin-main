@@ -159,6 +159,7 @@ export interface UpdateServiceTypeRequest {
 // ============================================================
 
 export type LineItemType = "CATALOG" | "CUSTOM";
+export type PurposeType = "ORDER" | "INBOUND_REQUEST";
 
 export interface OrderLineItem {
     id: string;
@@ -185,21 +186,23 @@ export interface OrderLineItem {
 }
 
 export interface CreateCatalogLineItemRequest {
-    purpose_type: "ORDER" | "INBOUND_REQUEST"
-    order_id: string;
-    inbound_request_id: string;
+    order_id?: string;
+    inbound_request_id?: string;
+    purpose_type: PurposeType;
     service_type_id: string;
     quantity: number;
-    unit_rate: number;
     notes?: string;
 }
 
 export interface CreateCustomLineItemRequest {
+    order_id?: string;
+    inbound_request_id?: string;
+    purpose_type: PurposeType;
     description: string;
     category: ServiceCategory;
     total: number;
     notes?: string;
-    reskinRequestId?: string;
+    reskin_request_id?: string;
 }
 
 export interface UpdateLineItemRequest {
