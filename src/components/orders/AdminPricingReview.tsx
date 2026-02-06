@@ -302,7 +302,7 @@ export function AdminPricingReview({ orderId, order }: AdminPricingReviewProps) 
                     </div>
 
                     {/* Actions */}
-                    <div className="flex gap-3 pt-4">
+                    {/* <div className="flex gap-3 pt-4">
                         <Button
                             onClick={handleApprove}
                             disabled={adminApproveQuote.isPending}
@@ -320,7 +320,7 @@ export function AdminPricingReview({ orderId, order }: AdminPricingReviewProps) 
                         >
                             Return to Logistics
                         </Button>
-                    </div>
+                    </div> */}
                 </CardContent>
             </Card>
 

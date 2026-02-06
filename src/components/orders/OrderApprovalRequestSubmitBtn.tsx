@@ -13,11 +13,13 @@ import { toast } from "sonner";
 interface OrderApprovalRequestSubmitBtnProps {
   orderId: string;
   onSubmitSuccess?: () => void;
+  isVisible?: boolean;
 }
 
 export function OrderApprovalRequestSubmitBtn({
   orderId,
-  onSubmitSuccess
+  onSubmitSuccess,
+  isVisible
 }: OrderApprovalRequestSubmitBtnProps) {
   const submitForApproval = useSubmitForApproval();
 
@@ -32,7 +34,7 @@ export function OrderApprovalRequestSubmitBtn({
   };
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className={`flex flex-col gap-2 ${isVisible ? "block" : "hidden"}`}>
       <Button
         onClick={handleSubmit}
         disabled={submitForApproval.isPending}

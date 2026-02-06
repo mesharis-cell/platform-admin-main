@@ -629,17 +629,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                             </Card>
                         )}
 
-                        {/* NEW: PRICING_REVIEW - Logistics Review Section */}
-                        {order.data.order_status === "PRICING_REVIEW" ? (
-                            <PricingReviewSection order={order.data} orderId={order.data.id} onRefresh={refetch} />
-                        ) : (
-                            <PendingApprovalSection order={order.data} orderId={order.data.id} onRefresh={refetch} />
-                        )}
 
-                        {/* NEW: PENDING_APPROVAL - Admin Review Section */}
-                        {/* {order.data.order_status === "PENDING_APPROVAL" && ( */}
-                        {/* <PendingApprovalSection order={order.data} orderId={order.data.id} onRefresh={refetch} /> */}
-                        {/* )} */}
 
                         {/* Feedback #3: Refurb Items Banner - Show for PRICING_REVIEW and PENDING_APPROVAL */}
                         {(order.data.order_status === "PRICING_REVIEW" ||
@@ -1884,10 +1874,18 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                 </Card>
                             )}
 
+                        {/* NEW: PRICING_REVIEW - Logistics Review Section */}
+                        {order.data.order_status === "PRICING_REVIEW" ? (
+                            <PricingReviewSection order={order.data} orderId={order.data.id} onRefresh={refetch} />
+                        ) : (
+                            <PendingApprovalSection order={order.data} orderId={order.data.id} onRefresh={refetch} />
+                        )}
+
                         {/* Submit order for the review */}
                         <OrderApprovalRequestSubmitBtn
                             orderId={order.data.id}
                             onSubmitSuccess={refetch}
+                            isVisible={false}
                         />
                     </div>
 
