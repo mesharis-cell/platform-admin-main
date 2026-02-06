@@ -41,7 +41,10 @@ export interface TransportRate {
     };
     area: string | null;
     trip_type: TripType;
-    vehicle_type: VehicleType;
+    vehicle_type: {
+        id: string;
+        name: string;
+    };
     rate: number;
     is_active: boolean;
     created_at: string;
@@ -53,7 +56,7 @@ export interface CreateTransportRateRequest {
     city_id: string;
     area?: string | null;
     trip_type: TripType;
-    vehicle_type: VehicleType;
+    vehicle_type_id: string;
     rate: number;
 }
 

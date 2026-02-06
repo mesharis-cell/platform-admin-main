@@ -32,7 +32,6 @@ export default function Countries() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingCountry, setEditingCountry] = useState<Country | null>(null);
-  const [includeDeleted, setIncludeDeleted] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<Country | null>(null);
   const [formData, setFormData] = useState({ name: "" });
   const createCountry = useCreateCountry();
@@ -46,9 +45,8 @@ export default function Countries() {
       offset: "0",
     };
     if (searchQuery) params.search_term = searchQuery;
-    if (includeDeleted) params.include_inactive = "true";
     return params;
-  }, [searchQuery, includeDeleted]);
+  }, [searchQuery]);
 
   const { data, isLoading, error } = useCountries(queryParams);
   const countries = data?.data || [];
@@ -181,6 +179,7 @@ export default function Countries() {
                       setEditingCountry(null);
                       resetForm();
                     }}
+                    disabled={createCountry.isPending || updateCountry.isPending}
                     className="font-mono"
                   >
                     CANCEL
@@ -215,15 +214,6 @@ export default function Countries() {
               className="pl-10 font-mono text-sm"
             />
           </div>
-          <Button
-            variant={includeDeleted ? "default" : "outline"}
-            size="sm"
-            onClick={() => setIncludeDeleted(!includeDeleted)}
-            className="gap-2 font-mono text-xs"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-            {includeDeleted ? "HIDE DELETED" : "SHOW DELETED"}
-          </Button>
         </div>
       </div>
 

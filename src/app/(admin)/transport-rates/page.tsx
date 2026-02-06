@@ -37,6 +37,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { removeUnderScore } from "@/lib/utils/helper";
+import { useListVehicleTypes } from "@/hooks/use-vehicle-types";
 
 const TRIP_TYPES: TripType[] = ["ONE_WAY", "ROUND_TRIP"];
 const VEHICLE_TYPES: VehicleType[] = ["STANDARD", "7_TON", "10_TON"];
@@ -59,9 +60,12 @@ export default function TransportRates() {
     city_id: "",
     area: "",
     trip_type: "ONE_WAY",
-    vehicle_type: "STANDARD",
+    vehicle_type_id: "",
     rate: 0,
   });
+
+  const { data: vehicleTypesData } = useListVehicleTypes({ limit: "100" });
+  const vehicleTypes = vehicleTypesData?.data || [];
 
   const createRate = useCreateTransportRate();
   const updateRate = useUpdateTransportRate();
@@ -96,7 +100,7 @@ export default function TransportRates() {
       city_id: "",
       area: "",
       trip_type: "ONE_WAY",
-      vehicle_type: "STANDARD",
+      vehicle_type_id: "",
       rate: 0,
     });
   };
@@ -108,7 +112,7 @@ export default function TransportRates() {
       city_id: rate?.city?.id, // This will be the city ID based on requirement "emirate means city id"
       area: rate?.area || "",
       trip_type: rate?.trip_type,
-      vehicle_type: rate?.vehicle_type,
+      vehicle_type_id: rate?.vehicle_type.id,
       rate: rate?.rate,
     });
     setIsCreateOpen(true);
@@ -117,7 +121,7 @@ export default function TransportRates() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    if (!formData.city_id || !formData.trip_type || !formData.vehicle_type || formData.rate === undefined) {
+    if (!formData.city_id || !formData.trip_type || !formData.vehicle_type_id || formData.rate === undefined) {
       toast.error("Please fill in all required fields");
       return;
     }
@@ -127,7 +131,7 @@ export default function TransportRates() {
       city_id: formData.city_id,
       area: formData.area || null,
       trip_type: formData.trip_type,
-      vehicle_type: formData.vehicle_type,
+      vehicle_type_id: formData.vehicle_type_id,
       rate: Number(formData.rate),
     };
 
@@ -328,11 +332,11 @@ export default function TransportRates() {
                       VEHICLE TYPE *
                     </Label>
                     <Select
-                      value={formData.vehicle_type}
+                      value={formData.vehicle_type_id}
                       onValueChange={(value) =>
                         setFormData({
                           ...formData,
-                          vehicle_type: value as VehicleType,
+                          vehicle_type_id: value,
                         })
                       }
                       disabled={!!editingRate}
@@ -341,9 +345,9 @@ export default function TransportRates() {
                         <SelectValue placeholder="Select Vehicle" />
                       </SelectTrigger>
                       <SelectContent>
-                        {VEHICLE_TYPES.map((type) => (
-                          <SelectItem key={type} value={type} className="font-mono">
-                            {type.replace("_", " ")}
+                        {vehicleTypes.map((type) => (
+                          <SelectItem key={type.id} value={type.id} className="font-mono">
+                            {type.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -379,6 +383,7 @@ export default function TransportRates() {
                     variant="outline"
                     onClick={resetForm}
                     className="font-mono"
+                    disabled={createRate.isPending || updateRate.isPending}
                   >
                     CANCEL
                   </Button>
@@ -554,7 +559,7 @@ export default function TransportRates() {
                     </TableCell>
                     <TableCell className="font-mono">
                       <span className="font-mono font-medium w-fit">
-                        {removeUnderScore(rate.vehicle_type)}
+                        {removeUnderScore(rate.vehicle_type.name)}
                       </span>
                     </TableCell>
                     <TableCell className="font-mono text-sm font-bold">

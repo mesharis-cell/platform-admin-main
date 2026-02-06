@@ -228,6 +228,7 @@ export default function Cities() {
                       setEditingCity(null);
                       resetForm();
                     }}
+                    disabled={createCity.isPending || updateCity.isPending}
                     className="font-mono"
                   >
                     CANCEL

@@ -354,6 +354,7 @@ export default function ServiceTypes() {
                     variant="outline"
                     onClick={resetForm}
                     className="font-mono"
+                    disabled={createService.isPending || updateService.isPending}
                   >
                     CANCEL
                   </Button>
