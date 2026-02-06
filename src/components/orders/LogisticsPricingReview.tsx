@@ -158,7 +158,7 @@ export function LogisticsPricingReview({ orderId, order, onSubmitSuccess }: Logi
             <AddCatalogLineItemModal
                 open={addCatalogOpen}
                 onOpenChange={setAddCatalogOpen}
-                orderId={orderId}
+                targetId={orderId}
             />
         </div>
     );

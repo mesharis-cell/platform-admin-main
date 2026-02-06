@@ -19,15 +19,17 @@ import type { ServiceCategory } from "@/types/hybrid-pricing";
 interface AddCustomLineItemModalProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    orderId: string;
+    targetId: string;
+    purposeType?: "ORDER" | "INBOUND_REQUEST";
 }
 
 export function AddCustomLineItemModal({
     open,
     onOpenChange,
-    orderId,
+    targetId,
+    purposeType = "ORDER",
 }: AddCustomLineItemModalProps) {
-    const createLineItem = useCreateCustomLineItem(orderId);
+    const createLineItem = useCreateCustomLineItem(targetId, purposeType);
 
     const [description, setDescription] = useState("");
     const [category, setCategory] = useState<ServiceCategory>("OTHER");

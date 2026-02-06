@@ -35,17 +35,20 @@ export function useListOrderLineItems(orderId: string | null) {
 }
 
 // Create catalog line item
-export function useCreateCatalogLineItem(orderId: string) {
+export function useCreateCatalogLineItem(targetId: string, purposeType: "ORDER" | "INBOUND_REQUEST" = "ORDER") {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async (data: CreateCatalogLineItemRequest) => {
+        mutationFn: async (data: Omit<CreateCatalogLineItemRequest, "order_id" | "inbound_request_id" | "purpose_type">) => {
             try {
-                // Transform camelCase to snake_case for API
-                const apiData = mapCamelToSnake(data);
+                const payload: CreateCatalogLineItemRequest = {
+                    ...data,
+                    purpose_type: purposeType,
+                    ...(purposeType === "ORDER" ? { order_id: targetId } : { inbound_request_id: targetId }),
+                };
                 const response = await apiClient.post(
-                    `/client/v1/order/${orderId}/line-items/catalog`,
-                    apiData
+                    `/client/v1/order/${targetId}/line-items/catalog`,
+                    payload
                 );
                 return response.data.data;
             } catch (error) {
@@ -53,24 +56,28 @@ export function useCreateCatalogLineItem(orderId: string) {
             }
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: orderLineItemsKeys.list(orderId) });
+            queryClient.invalidateQueries({ queryKey: orderLineItemsKeys.list(targetId) });
             queryClient.invalidateQueries({ queryKey: ["orders"] });
+            queryClient.invalidateQueries({ queryKey: ["inbound-requests"] });
         },
     });
 }
 
 // Create custom line item
-export function useCreateCustomLineItem(orderId: string) {
+export function useCreateCustomLineItem(targetId: string, purposeType: "ORDER" | "INBOUND_REQUEST" = "ORDER") {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async (data: CreateCustomLineItemRequest) => {
+        mutationFn: async (data: Omit<CreateCustomLineItemRequest, "order_id" | "inbound_request_id" | "purpose_type">) => {
             try {
-                // Transform camelCase to snake_case for API
-                const apiData = mapCamelToSnake(data);
+                const payload: CreateCustomLineItemRequest = {
+                    ...data,
+                    purpose_type: purposeType,
+                    ...(purposeType === "ORDER" ? { order_id: targetId } : { inbound_request_id: targetId }),
+                };
                 const response = await apiClient.post(
-                    `/client/v1/order/${orderId}/line-items/custom`,
-                    apiData
+                    `/client/v1/order/${targetId}/line-items/custom`,
+                    payload
                 );
                 return response.data.data;
             } catch (error) {
@@ -78,8 +85,9 @@ export function useCreateCustomLineItem(orderId: string) {
             }
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: orderLineItemsKeys.list(orderId) });
+            queryClient.invalidateQueries({ queryKey: orderLineItemsKeys.list(targetId) });
             queryClient.invalidateQueries({ queryKey: ["orders"] });
+            queryClient.invalidateQueries({ queryKey: ["inbound-requests"] });
         },
     });
 }
