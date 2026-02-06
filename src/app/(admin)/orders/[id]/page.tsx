@@ -1335,9 +1335,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                         open={deliveryTruckDialogOpen}
                                         onOpenChange={setDeliveryTruckDialogOpen}
                                         type="delivery"
-                                        onSave={() => {
-                                            toast.success("Delivery truck details saved (static demo)");
-                                        }}
+                                        orderId={id}
                                     />
                                 </div>
 
@@ -1388,9 +1386,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                         open={pickupTruckDialogOpen}
                                         onOpenChange={setPickupTruckDialogOpen}
                                         type="pickup"
-                                        onSave={() => {
-                                            toast.success("Pickup truck details saved (static demo)");
-                                        }}
+                                        orderId={id}
                                     />
                                 </div>
                             </CardContent>

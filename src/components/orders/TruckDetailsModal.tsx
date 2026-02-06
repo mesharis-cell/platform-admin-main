@@ -20,6 +20,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
+import { useAddTruckDetails } from "@/hooks/use-orders";
 
 export interface TruckDetailsData {
   truckPlate: string;
@@ -35,8 +36,9 @@ interface TruckDetailsModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   type: "delivery" | "pickup";
+  orderId: string;
   initialData?: Partial<TruckDetailsData>;
-  onSave: (data: TruckDetailsData) => void;
+  onSave?: (data: TruckDetailsData) => void;
 }
 
 const DEFAULT_DATA: TruckDetailsData = {
@@ -53,16 +55,16 @@ export function TruckDetailsModal({
   open,
   onOpenChange,
   type,
+  orderId,
   onSave,
 }: TruckDetailsModalProps) {
   const [formData, setFormData] = useState<TruckDetailsData>(DEFAULT_DATA);
+  const addTruckDetails = useAddTruckDetails();
 
-  // Reset form when modal opens or initialData changes
+  // Reset form when modal opens
   useEffect(() => {
     if (open) {
-      setFormData({
-        ...DEFAULT_DATA,
-      });
+      setFormData(DEFAULT_DATA);
     }
   }, [open]);
 
@@ -73,11 +75,25 @@ export function TruckDetailsModal({
     }));
   };
 
-  const handleSave = () => {
-    onSave(formData);
-    onOpenChange(false);
+  const handleSave = async () => {
+    try {
+      if (!orderId) {
+        toast.error("Missing Order ID");
+        return;
+      }
 
-    // api should be called. 
+      await addTruckDetails.mutateAsync({
+        orderId,
+        truckType: type === "delivery" ? "DELIVERY" : "PICKUP",
+        payload: formData,
+      });
+
+      toast.success(`${type === "delivery" ? "Delivery" : "Pickup"} truck details saved`);
+      onOpenChange(false);
+      onSave?.(formData);
+    } catch (error: any) {
+      toast.error(error.message || "Failed to save truck details");
+    }
   };
 
   const titlePrefix = type === "delivery" ? "DELIVERY" : "PICKUP";
@@ -187,6 +203,7 @@ export function TruckDetailsModal({
             variant="outline"
             onClick={() => onOpenChange(false)}
             className="font-mono text-xs"
+            disabled={addTruckDetails.isPending}
           >
             CANCEL
           </Button>
@@ -195,11 +212,12 @@ export function TruckDetailsModal({
             disabled={
               !formData.truckPlate ||
               !formData.driverName ||
-              !formData.driverContact
+              !formData.driverContact ||
+              addTruckDetails.isPending
             }
             className="font-mono text-xs"
           >
-            SAVE DETAILS
+            {addTruckDetails.isPending ? "SAVING..." : "SAVE DETAILS"}
           </Button>
         </DialogFooter>
       </DialogContent>

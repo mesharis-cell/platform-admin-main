@@ -711,16 +711,29 @@ export function useAddTruckDetails() {
     return useMutation({
         mutationFn: async ({
             orderId,
+            truckType,
             payload
         }: {
             orderId: string;
+            truckType: "DELIVERY" | "PICKUP";
             payload: TruckDetailsData;
         }) => {
             try {
-                const response = await apiClient.patch(`/client/v1/order/${orderId}/vehicle`, {
-                    vehicle_type: vehicleType,
-                    reason,
-                });
+                const details = {
+                    truck_plate: payload.truckPlate,
+                    driver_name: payload.driverName,
+                    driver_contact: payload.driverContact,
+                    truck_size: payload.truckSize,
+                    tailgate_required: payload.tailgateRequired,
+                    manpower: payload.manpower,
+                    notes: payload.notes,
+                };
+
+                const requestBody = truckType === "DELIVERY"
+                    ? { delivery_truck_details: details }
+                    : { pickup_truck_details: details };
+
+                const response = await apiClient.patch(`/client/v1/order/${orderId}/truck-details`, requestBody);
                 return response.data;
             } catch (error) {
                 throwApiError(error);
