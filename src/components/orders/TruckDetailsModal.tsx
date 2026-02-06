@@ -23,16 +23,7 @@ import { toast } from "sonner";
 import { useAddTruckDetails } from "@/hooks/use-orders";
 import { useListVehicleTypes } from "@/hooks/use-vehicle-types";
 import { removeUnderScore } from "@/lib/utils/helper";
-
-export interface TruckDetailsData {
-  truckPlate: string;
-  driverName: string;
-  driverContact: string;
-  truckSize: string;
-  tailgateRequired: boolean;
-  manpower: number;
-  notes: string;
-}
+import { TruckDetailsData } from "@/types";
 
 interface TruckDetailsModalProps {
   open: boolean;

@@ -1340,7 +1340,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                                         Delivery Truck
                                                     </p>
                                                     <p className="font-mono text-xs text-muted-foreground">
-                                                        Add truck information for delivery
+                                                        Click to add pickup truck details
                                                     </p>
                                                 </div>
                                             </div>

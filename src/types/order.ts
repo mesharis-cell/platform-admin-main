@@ -580,3 +580,17 @@ export interface APIOrdersResponse {
     meta: any;
     success: boolean;
 }
+
+
+// ============================================================
+// Truck details types
+// ============================================================
+export interface TruckDetailsData {
+    truckPlate: string;
+    driverName: string;
+    driverContact: string;
+    truckSize: string;
+    tailgateRequired: boolean;
+    manpower: number;
+    notes: string;
+}
