@@ -67,6 +67,7 @@ import {
     CheckCircle,
     Loader2,
     PlusCircle,
+    Pencil,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
@@ -75,6 +76,19 @@ import { apiClient } from "@/lib/api/api-client";
 import { getOrderPrice, removeUnderScore } from "@/lib/utils/helper";
 import { addDays, endOfDay, isAfter, isBefore, startOfDay, subDays } from "date-fns";
 import { LogisticsPricingReview } from "@/components/orders/LogisticsPricingReview";
+
+const getTruckDetailsInitialData = (details: any) => {
+    if (!details) return undefined;
+    return {
+        truckPlate: details.truck_plate || "",
+        driverName: details.driver_name || "",
+        driverContact: details.driver_contact || "",
+        truckSize: details.truck_size || "",
+        tailgateRequired: details.tailgate_required || false,
+        manpower: details.manpower || 0,
+        notes: details.notes || "",
+    };
+};
 
 const FINANCIAL_STATUS = {
     PENDING_QUOTE: {
@@ -1289,106 +1303,159 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 {/* Delivery Truck Section */}
-                                <div
-                                    className={`border-2 rounded-lg p-4 transition-all ${order.data.order_status === "CONFIRMED" ||
-                                        order.data.order_status === "IN_PREPARATION" ||
-                                        order.data.order_status === "READY_FOR_DELIVERY"
-                                        ? "border-primary/30 bg-primary/5 cursor-pointer hover:border-primary/50"
-                                        : "border-muted bg-muted/20 opacity-60 cursor-not-allowed"
-                                        }`}
-                                >
-                                    <button
-                                        className="w-full flex items-center justify-between disabled:cursor-not-allowed cursor-pointer"
-                                        disabled={
-                                            order.data.order_status !== "CONFIRMED" &&
-                                            order.data.order_status !== "IN_PREPARATION" &&
-                                            order.data.order_status !== "READY_FOR_DELIVERY"
-                                        }
-                                        onClick={() => setDeliveryTruckDialogOpen(true)}
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            <div className="p-2 rounded-lg bg-blue-500/10">
-                                                <Truck className="h-5 w-5 text-blue-600" />
+                                {order.data.delivery_truck_details && Object.keys(order.data.delivery_truck_details).length > 0 ? (
+                                    <div className="border-2 rounded-lg p-4 border-blue-200 bg-blue-50/50">
+                                        <div className="flex justify-between items-start">
+                                            <div className="flex gap-3">
+                                                <div>
+                                                    <p className="font-mono text-sm font-bold text-blue-900">
+                                                        Delivery Truck Assigned
+                                                    </p>
+                                                    <div className="mt-2 space-y-1 text-xs text-blue-800 font-mono">
+                                                        <p>Plate: {order.data.delivery_truck_details.truck_plate}</p>
+                                                        <p>Driver: {order.data.delivery_truck_details.driver_name}</p>
+                                                        <p>Contact: {order.data.delivery_truck_details.driver_contact}</p>
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <div className="text-left">
-                                                <p className="font-mono text-sm font-bold">
-                                                    Delivery Truck
-                                                </p>
-                                                <p className="font-mono text-xs text-muted-foreground">
-                                                    {order.data.order_status === "IN_PREPARATION" ||
-                                                        order.data.order_status === "READY_FOR_DELIVERY"
-                                                        ? "Click to add delivery truck details"
-                                                        : "Available when order is IN_PREPARATION or READY_FOR_DELIVERY"}
-                                                </p>
-                                            </div>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-100"
+                                                onClick={() => setDeliveryTruckDialogOpen(true)}
+                                            >
+                                                <Pencil className="h-4 w-4" />
+                                            </Button>
                                         </div>
-                                        <PlusCircle
-                                            className={`h-6 w-6 ${order.data.order_status === "IN_PREPARATION" ||
-                                                order.data.order_status === "READY_FOR_DELIVERY"
-                                                ? "text-primary"
-                                                : "text-muted-foreground"
-                                                }`}
-                                        />
-                                    </button>
+                                    </div>
+                                ) : (
+                                    <div
+                                        className={`border-2 rounded-lg p-4 transition-all ${order.data.order_status === "CONFIRMED" ||
+                                            order.data.order_status === "IN_PREPARATION" ||
+                                            order.data.order_status === "READY_FOR_DELIVERY"
+                                            ? "border-primary/30 bg-primary/5 cursor-pointer hover:border-primary/50"
+                                            : "border-muted bg-muted/20 opacity-60 cursor-not-allowed"
+                                            }`}
+                                    >
+                                        <button
+                                            className="w-full flex items-center justify-between disabled:cursor-not-allowed cursor-pointer"
+                                            disabled={
+                                                order.data.order_status !== "CONFIRMED" &&
+                                                order.data.order_status !== "IN_PREPARATION" &&
+                                                order.data.order_status !== "READY_FOR_DELIVERY"
+                                            }
+                                            onClick={() => setDeliveryTruckDialogOpen(true)}
+                                        >
+                                            <div className="flex items-center gap-3">
 
-                                    <TruckDetailsModal
-                                        open={deliveryTruckDialogOpen}
-                                        onOpenChange={setDeliveryTruckDialogOpen}
-                                        type="delivery"
-                                        orderId={id}
-                                    />
-                                </div>
+                                                <div className="text-left">
+                                                    <p className="font-mono text-sm font-bold">
+                                                        Delivery Truck
+                                                    </p>
+                                                    <p className="font-mono text-xs text-muted-foreground">
+                                                        {order.data.order_status === "IN_PREPARATION" ||
+                                                            order.data.order_status === "READY_FOR_DELIVERY"
+                                                            ? "Click to add delivery truck details"
+                                                            : "Available when order is IN_PREPARATION or READY_FOR_DELIVERY"}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <PlusCircle
+                                                className={`h-6 w-6 ${order.data.order_status === "IN_PREPARATION" ||
+                                                    order.data.order_status === "READY_FOR_DELIVERY"
+                                                    ? "text-primary"
+                                                    : "text-muted-foreground"
+                                                    }`}
+                                            />
+                                        </button>
+                                    </div>
+                                )}
+
+                                <TruckDetailsModal
+                                    open={deliveryTruckDialogOpen}
+                                    onOpenChange={setDeliveryTruckDialogOpen}
+                                    type="delivery"
+                                    orderId={id}
+                                    initialData={getTruckDetailsInitialData(order.data.delivery_truck_details)}
+                                />
 
                                 <Separator />
 
                                 {/* Pickup Truck Section */}
-                                <div
-                                    className={`border-2 rounded-lg p-4 transition-all ${order.data.order_status === "IN_USE" ||
-                                        order.data.order_status === "AWAITING_RETURN"
-                                        ? "border-primary/30 bg-primary/5 cursor-pointer hover:border-primary/50"
-                                        : "border-muted bg-muted/20 opacity-60 cursor-not-allowed"
-                                        }`}
-                                >
-                                    <button
-                                        className="w-full flex items-center justify-between disabled:cursor-not-allowed"
-                                        disabled={
-                                            order.data.order_status !== "IN_USE" &&
-                                            order.data.order_status !== "AWAITING_RETURN"
-                                        }
-                                        onClick={() => setPickupTruckDialogOpen(true)}
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            <div className="p-2 rounded-lg bg-rose-500/10">
-                                                <Truck className="h-5 w-5 text-rose-600" />
-                                            </div>
-                                            <div className="text-left">
-                                                <p className="font-mono text-sm font-bold">
-                                                    Pickup Truck
-                                                </p>
-                                                <p className="font-mono text-xs text-muted-foreground">
-                                                    {order.data.order_status === "IN_USE" ||
-                                                        order.data.order_status === "AWAITING_RETURN"
-                                                        ? "Click to add pickup truck details"
-                                                        : "Available when order is IN_USE or AWAITING_RETURN"}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <PlusCircle
-                                            className={`h-6 w-6 ${order.data.order_status === "IN_USE" ||
-                                                order.data.order_status === "AWAITING_RETURN"
-                                                ? "text-primary"
-                                                : "text-muted-foreground"
-                                                }`}
-                                        />
-                                    </button>
+                                {order.data.pickup_truck_details && Object.keys(order.data.pickup_truck_details).length > 0 ? (
+                                    <div className="border-2 rounded-lg p-4 border-rose-200 bg-rose-50/50">
+                                        <div className="flex justify-between items-start">
+                                            <div className="flex gap-3">
 
-                                    <TruckDetailsModal
-                                        open={pickupTruckDialogOpen}
-                                        onOpenChange={setPickupTruckDialogOpen}
-                                        type="pickup"
-                                        orderId={id}
-                                    />
-                                </div>
+                                                <div>
+                                                    <p className="font-mono text-sm font-bold text-rose-900">
+                                                        Pickup Truck
+                                                    </p>
+                                                    <div className="mt-2 space-y-1 text-xs text-rose-800 font-mono">
+                                                        <p>Plate: {order.data.pickup_truck_details.truck_plate}</p>
+                                                        <p>Driver: {order.data.pickup_truck_details.driver_name}</p>
+                                                        <p>Contact: {order.data.pickup_truck_details.driver_contact}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-8 w-8 text-rose-600 hover:text-rose-700 hover:bg-rose-100"
+                                                onClick={() => setPickupTruckDialogOpen(true)}
+                                            >
+                                                <Pencil className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div
+                                        className={`border-2 rounded-lg p-4 transition-all ${order.data.order_status === "IN_USE" ||
+                                            order.data.order_status === "AWAITING_RETURN"
+                                            ? "border-primary/30 bg-primary/5 cursor-pointer hover:border-primary/50"
+                                            : "border-muted bg-muted/20 opacity-60 cursor-not-allowed"
+                                            }`}
+                                    >
+                                        <button
+                                            className="w-full flex items-center justify-between disabled:cursor-not-allowed"
+                                            disabled={
+                                                order.data.order_status !== "IN_USE" &&
+                                                order.data.order_status !== "AWAITING_RETURN"
+                                            }
+                                            onClick={() => setPickupTruckDialogOpen(true)}
+                                        >
+                                            <div className="flex items-center gap-3">
+
+                                                <div className="text-left">
+                                                    <p className="font-mono text-sm font-bold">
+                                                        Pickup Truck
+                                                    </p>
+                                                    <p className="font-mono text-xs text-muted-foreground">
+                                                        {order.data.order_status === "IN_USE" ||
+                                                            order.data.order_status === "AWAITING_RETURN"
+                                                            ? "Click to add pickup truck details"
+                                                            : "Available when order is IN_USE or AWAITING_RETURN"}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <PlusCircle
+                                                className={`h-6 w-6 ${order.data.order_status === "IN_USE" ||
+                                                    order.data.order_status === "AWAITING_RETURN"
+                                                    ? "text-primary"
+                                                    : "text-muted-foreground"
+                                                    }`}
+                                            />
+                                        </button>
+                                    </div>
+                                )}
+
+                                <TruckDetailsModal
+                                    open={pickupTruckDialogOpen}
+                                    onOpenChange={setPickupTruckDialogOpen}
+                                    type="pickup"
+                                    orderId={id}
+                                    initialData={getTruckDetailsInitialData(order.data.pickup_truck_details)}
+                                />
                             </CardContent>
                         </Card>
 
@@ -1619,17 +1686,19 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                 </div>
             </div>
 
-            {selectedReskinData && (
-                <ProcessReskinModal
-                    open={processModalOpen}
-                    onOpenChange={setProcessModalOpen}
-                    orderId={order?.data?.id}
-                    orderItemId={selectedReskinData.orderItemId}
-                    originalAssetName={selectedReskinData.originalAssetName}
-                    targetBrandName={selectedReskinData.targetBrandName}
-                    clientNotes={selectedReskinData.clientNotes}
-                />
-            )}
-        </div>
+            {
+                selectedReskinData && (
+                    <ProcessReskinModal
+                        open={processModalOpen}
+                        onOpenChange={setProcessModalOpen}
+                        orderId={order?.data?.id}
+                        orderItemId={selectedReskinData.orderItemId}
+                        originalAssetName={selectedReskinData.originalAssetName}
+                        targetBrandName={selectedReskinData.targetBrandName}
+                        clientNotes={selectedReskinData.clientNotes}
+                    />
+                )
+            }
+        </div >
     );
 }

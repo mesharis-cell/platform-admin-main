@@ -56,6 +56,7 @@ export function TruckDetailsModal({
   onOpenChange,
   type,
   orderId,
+  initialData,
   onSave,
 }: TruckDetailsModalProps) {
   const [formData, setFormData] = useState<TruckDetailsData>(DEFAULT_DATA);
@@ -64,9 +65,16 @@ export function TruckDetailsModal({
   // Reset form when modal opens
   useEffect(() => {
     if (open) {
-      setFormData(DEFAULT_DATA);
+      if (initialData) {
+        setFormData({
+          ...DEFAULT_DATA,
+          ...initialData,
+        });
+      } else {
+        setFormData(DEFAULT_DATA);
+      }
     }
-  }, [open]);
+  }, [open, initialData]);
 
   const handleChange = (field: keyof TruckDetailsData, value: any) => {
     setFormData((prev) => ({
