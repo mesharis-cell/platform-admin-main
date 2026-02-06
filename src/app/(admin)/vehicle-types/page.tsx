@@ -11,6 +11,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -388,7 +389,14 @@ export default function VehicleTypesPage() {
                   >
                     <TableCell className="font-mono">
                       <div className="flex flex-col">
-                        <span className="font-medium text-sm">{vehicleType.name}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-sm">{vehicleType.name}</span>
+                          {vehicleType.is_default && (
+                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5">
+                              Default
+                            </Badge>
+                          )}
+                        </div>
                         <span className="text-xs text-muted-foreground max-w-[200px] truncate">
                           {vehicleType.description}
                         </span>

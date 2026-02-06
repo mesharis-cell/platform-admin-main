@@ -1356,7 +1356,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                                         {order.data.order_status === "IN_PREPARATION" ||
                                                             order.data.order_status === "READY_FOR_DELIVERY"
                                                             ? "Click to add delivery truck details"
-                                                            : "Available when order is IN_PREPARATION or READY_FOR_DELIVERY"}
+                                                            : "Available when order is CONFIRMED, IN_PREPARATION or READY_FOR_DELIVERY"}
                                                     </p>
                                                 </div>
                                             </div>

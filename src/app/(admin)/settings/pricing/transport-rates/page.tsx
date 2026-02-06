@@ -286,7 +286,7 @@ export default function TransportRatesPage() {
                             </Label>
                             <Input
                                 type="number"
-                                step="0.01"
+                                step="1"
                                 min="0"
                                 value={formData.rate}
                                 onChange={(e) => setFormData({ ...formData, rate: e.target.value })}
@@ -329,7 +329,7 @@ export default function TransportRatesPage() {
                             </Label>
                             <Input
                                 type="number"
-                                step="0.01"
+                                step="1"
                                 min="0"
                                 value={formData.rate}
                                 onChange={(e) => setFormData({ ...formData, rate: e.target.value })}

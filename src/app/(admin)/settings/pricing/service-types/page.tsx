@@ -292,7 +292,7 @@ export default function ServiceTypesPage() {
                             <Label>Default Rate (AED)</Label>
                             <Input
                                 type="number"
-                                step="0.01"
+                                step="1"
                                 min="0"
                                 value={formData.defaultRate}
                                 onChange={(e) =>

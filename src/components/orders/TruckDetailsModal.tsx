@@ -21,6 +21,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { useAddTruckDetails } from "@/hooks/use-orders";
+import { useListVehicleTypes } from "@/hooks/use-vehicle-types";
+import { removeUnderScore } from "@/lib/utils/helper";
 
 export interface TruckDetailsData {
   truckPlate: string;
@@ -59,8 +61,10 @@ export function TruckDetailsModal({
   initialData,
   onSave,
 }: TruckDetailsModalProps) {
+
   const [formData, setFormData] = useState<TruckDetailsData>(DEFAULT_DATA);
   const addTruckDetails = useAddTruckDetails();
+  const { data: vehicleTypes } = useListVehicleTypes();
 
   // Reset form when modal opens
   useEffect(() => {
@@ -157,10 +161,11 @@ export function TruckDetailsModal({
               onChange={(e) => handleChange("truckSize", e.target.value)}
             >
               <option value="">Select truck size...</option>
-              <option value="Small">Small</option>
-              <option value="Medium">Medium</option>
-              <option value="Large">Large</option>
-              <option value="Extra Large">Extra Large</option>
+              {vehicleTypes?.data?.map((vehicleType) => (
+                <option key={vehicleType.id} value={vehicleType.vehicle_size}>
+                  {vehicleType.name} ({removeUnderScore(vehicleType.vehicle_size)})
+                </option>
+              ))}
             </select>
           </div>
 
