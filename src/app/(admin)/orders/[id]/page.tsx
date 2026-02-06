@@ -1309,7 +1309,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                             <div className="flex gap-3">
                                                 <div>
                                                     <p className="font-mono text-sm font-bold text-blue-900">
-                                                        Delivery Truck Assigned
+                                                        Delivery Truck
                                                     </p>
                                                     <div className="mt-2 space-y-1 text-xs text-blue-800 font-mono">
                                                         <p>Plate: {order.data.delivery_truck_details.truck_plate}</p>
@@ -1329,44 +1329,22 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                         </div>
                                     </div>
                                 ) : (
-                                    <div
-                                        className={`border-2 rounded-lg p-4 transition-all ${order.data.order_status === "CONFIRMED" ||
-                                            order.data.order_status === "IN_PREPARATION" ||
-                                            order.data.order_status === "READY_FOR_DELIVERY"
-                                            ? "border-primary/30 bg-primary/5 cursor-pointer hover:border-primary/50"
-                                            : "border-muted bg-muted/20 opacity-60 cursor-not-allowed"
-                                            }`}
-                                    >
+                                    <div className="border-2 rounded-lg p-4 transition-all border-primary/30 bg-primary/5 cursor-pointer hover:border-primary/50">
                                         <button
-                                            className="w-full flex items-center justify-between disabled:cursor-not-allowed cursor-pointer"
-                                            disabled={
-                                                order.data.order_status !== "CONFIRMED" &&
-                                                order.data.order_status !== "IN_PREPARATION" &&
-                                                order.data.order_status !== "READY_FOR_DELIVERY"
-                                            }
+                                            className="w-full flex items-center justify-between cursor-pointer"
                                             onClick={() => setDeliveryTruckDialogOpen(true)}
                                         >
                                             <div className="flex items-center gap-3">
-
                                                 <div className="text-left">
                                                     <p className="font-mono text-sm font-bold">
                                                         Delivery Truck
                                                     </p>
                                                     <p className="font-mono text-xs text-muted-foreground">
-                                                        {order.data.order_status === "IN_PREPARATION" ||
-                                                            order.data.order_status === "READY_FOR_DELIVERY"
-                                                            ? "Click to add delivery truck details"
-                                                            : "Available when order is CONFIRMED, IN_PREPARATION or READY_FOR_DELIVERY"}
+                                                        Add truck information for delivery
                                                     </p>
                                                 </div>
                                             </div>
-                                            <PlusCircle
-                                                className={`h-6 w-6 ${order.data.order_status === "IN_PREPARATION" ||
-                                                    order.data.order_status === "READY_FOR_DELIVERY"
-                                                    ? "text-primary"
-                                                    : "text-muted-foreground"
-                                                    }`}
-                                            />
+                                            <PlusCircle className="h-6 w-6 text-primary" />
                                         </button>
                                     </div>
                                 )}
@@ -1409,42 +1387,22 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                         </div>
                                     </div>
                                 ) : (
-                                    <div
-                                        className={`border-2 rounded-lg p-4 transition-all ${order.data.order_status === "IN_USE" ||
-                                            order.data.order_status === "AWAITING_RETURN"
-                                            ? "border-primary/30 bg-primary/5 cursor-pointer hover:border-primary/50"
-                                            : "border-muted bg-muted/20 opacity-60 cursor-not-allowed"
-                                            }`}
-                                    >
+                                    <div className="border-2 rounded-lg p-4 transition-all border-primary/30 bg-primary/5 cursor-pointer hover:border-primary/50">
                                         <button
-                                            className="w-full flex items-center justify-between disabled:cursor-not-allowed"
-                                            disabled={
-                                                order.data.order_status !== "IN_USE" &&
-                                                order.data.order_status !== "AWAITING_RETURN"
-                                            }
+                                            className="w-full flex items-center justify-between cursor-pointer"
                                             onClick={() => setPickupTruckDialogOpen(true)}
                                         >
                                             <div className="flex items-center gap-3">
-
                                                 <div className="text-left">
                                                     <p className="font-mono text-sm font-bold">
                                                         Pickup Truck
                                                     </p>
                                                     <p className="font-mono text-xs text-muted-foreground">
-                                                        {order.data.order_status === "IN_USE" ||
-                                                            order.data.order_status === "AWAITING_RETURN"
-                                                            ? "Click to add pickup truck details"
-                                                            : "Available when order is IN_USE or AWAITING_RETURN"}
+                                                        Click to add pickup truck details
                                                     </p>
                                                 </div>
                                             </div>
-                                            <PlusCircle
-                                                className={`h-6 w-6 ${order.data.order_status === "IN_USE" ||
-                                                    order.data.order_status === "AWAITING_RETURN"
-                                                    ? "text-primary"
-                                                    : "text-muted-foreground"
-                                                    }`}
-                                            />
+                                            <PlusCircle className="h-6 w-6 text-primary" />
                                         </button>
                                     </div>
                                 )}
