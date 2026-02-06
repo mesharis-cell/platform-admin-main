@@ -5,18 +5,21 @@
  * Displays full details of a single inbound request with items
  */
 
-import { use } from "react";
+import { use, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useInboundRequest, inboundRequestKeys } from "@/hooks/use-inbound-requests";
 import { useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, ArrowLeft } from "lucide-react";
+import { AlertCircle, ArrowLeft, DollarSign, Plus } from "lucide-react";
 import { RequestHeader } from "@/components/inbound-request/request-header";
 import { RequestInfoCard } from "@/components/inbound-request/request-info-card";
 import { RequestItemsList } from "@/components/inbound-request/request-items-list";
 import { RequestPricingCard } from "@/components/inbound-request/request-pricing-card";
+import { OrderLineItemsList } from "@/components/orders/OrderLineItemsList";
+import { AddCatalogLineItemModal } from "@/components/orders/AddCatalogLineItemModal";
+import { AddCustomLineItemModal } from "@/components/orders/AddCustomLineItemModal";
 import type { InboundRequestStatus } from "@/types/inbound-request";
 
 export default function InboundRequestDetailsPage({
@@ -30,6 +33,8 @@ export default function InboundRequestDetailsPage({
   const { data, isLoading } = useInboundRequest(id);
 
   const request = data?.data;
+  const [addCatalogOpen, setAddCatalogOpen] = useState(false);
+  const [addCustomOpen, setAddCustomOpen] = useState(false);
 
   function handleRefresh() {
     queryClient.invalidateQueries({ queryKey: inboundRequestKeys.detail(id) });
@@ -121,8 +126,37 @@ export default function InboundRequestDetailsPage({
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column - Items */}
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-2 space-y-6">
             <RequestItemsList items={request.items} />
+
+            {/* Service Line Items */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <DollarSign className="h-5 w-5" />
+                    Service Line Items
+                  </CardTitle>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setAddCatalogOpen(true)}
+                    >
+                      <Plus className="h-4 w-4 mr-1" />
+                      Catalog Service
+                    </Button>
+                    <Button size="sm" onClick={() => setAddCustomOpen(true)}>
+                      <Plus className="h-4 w-4 mr-1" />
+                      Custom Charge
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <OrderLineItemsList orderId={request.id} canManage />
+              </CardContent>
+            </Card>
           </div>
 
           {/* Right Column - Request Info */}
@@ -137,6 +171,20 @@ export default function InboundRequestDetailsPage({
             />
           </div>
         </div>
+
+        {/* Modals */}
+        <AddCatalogLineItemModal
+          open={addCatalogOpen}
+          onOpenChange={setAddCatalogOpen}
+          targetId={request.id}
+          purposeType="INBOUND_REQUEST"
+        />
+        <AddCustomLineItemModal
+          open={addCustomOpen}
+          onOpenChange={setAddCustomOpen}
+          targetId={request.id}
+          purposeType="INBOUND_REQUEST"
+        />
       </div>
     </div>
   );

@@ -362,7 +362,7 @@ export default function TransportRates() {
                     id="rate"
                     type="number"
                     min="0"
-                    step="0.01"
+                    step="1"
                     value={formData.rate}
                     onChange={(e) =>
                       setFormData({
