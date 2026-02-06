@@ -1885,7 +1885,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                         <OrderApprovalRequestSubmitBtn
                             orderId={order.data.id}
                             onSubmitSuccess={refetch}
-                            isVisible={false}
+                            isVisible={order?.data?.order_status === "PRICING_REVIEW"}
                         />
                     </div>
 
