@@ -14,10 +14,10 @@ import type {
     OrderWithDetails,
     SubmitOrderRequest,
     SubmitOrderResponse,
+    TruckDetailsData,
 } from "@/types/order";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { invoiceKeys } from "./use-invoices";
-import { TruckDetailsData } from "@/components/orders/TruckDetailsModal";
 
 // ============================================================
 // Order Submission

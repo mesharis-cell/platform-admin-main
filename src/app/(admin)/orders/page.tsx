@@ -506,12 +506,12 @@ export default function AdminOrdersPage() {
                                                                     </p>
                                                                     {order.item_preview.length >
                                                                         0 && (
-                                                                        <p className="text-xs text-slate-500 line-clamp-1">
-                                                                            {order.item_preview.join(
-                                                                                ", "
-                                                                            )}
-                                                                        </p>
-                                                                    )}
+                                                                            <p className="text-xs text-slate-500 line-clamp-1">
+                                                                                {order.item_preview.join(
+                                                                                    ", "
+                                                                                )}
+                                                                            </p>
+                                                                        )}
                                                                 </div>
                                                             </TableCell>
                                                             <TableCell>
