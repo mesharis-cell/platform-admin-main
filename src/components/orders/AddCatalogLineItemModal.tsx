@@ -26,13 +26,17 @@ import { useCreateCatalogLineItem } from "@/hooks/use-order-line-items";
 interface AddCatalogLineItemModalProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    orderId: string;
+    orderId?: string;
+    purposeType?: "ORDER" | "INBOUND_REQUEST"
+    inboundRequestId?: string;
 }
 
 export function AddCatalogLineItemModal({
     open,
     onOpenChange,
+    purposeType = "ORDER",
     orderId,
+    inboundRequestId
 }: AddCatalogLineItemModalProps) {
     const { data: serviceTypes } = useListServiceTypes({});
     const createLineItem = useCreateCatalogLineItem(orderId);
@@ -64,6 +68,9 @@ export function AddCatalogLineItemModal({
 
         try {
             await createLineItem.mutateAsync({
+                purpose_type: purposeType,
+                order_id: orderId,
+                inbound_request_id: inboundRequestId,
                 service_type_id: serviceTypeId,
                 quantity: qtyNum,
                 unit_rate: rateNum,
@@ -129,7 +136,7 @@ export function AddCatalogLineItemModal({
                         </Label>
                         <Input
                             type="number"
-                            step="0.01"
+                            step="1"
                             min="0"
                             value={quantity}
                             onChange={(e) => setQuantity(e.target.value)}
@@ -143,7 +150,7 @@ export function AddCatalogLineItemModal({
                         </Label>
                         <Input
                             type="number"
-                            step="0.01"
+                            step="1"
                             min="0"
                             value={unitRate}
                             onChange={(e) => setUnitRate(e.target.value)}

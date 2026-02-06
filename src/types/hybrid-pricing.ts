@@ -173,6 +173,9 @@ export interface OrderLineItem {
 }
 
 export interface CreateCatalogLineItemRequest {
+    purpose_type: "ORDER" | "INBOUND_REQUEST"
+    order_id: string;
+    inbound_request_id: string;
     service_type_id: string;
     quantity: number;
     unit_rate: number;

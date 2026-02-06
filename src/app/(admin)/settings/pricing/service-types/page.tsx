@@ -84,7 +84,7 @@ export default function ServiceTypesPage() {
                 name: formData.name,
                 category: formData.category,
                 unit: formData.unit,
-                defaultRate: rateNum,
+                default_rate: rateNum,
                 description: formData.description || undefined,
             });
             toast.success("Service type created successfully");
@@ -139,7 +139,7 @@ export default function ServiceTypesPage() {
             name: service.name,
             category: service.category,
             unit: service.unit,
-            defaultRate: service.defaultRate?.toString() || "",
+            defaultRate: service.default_rate?.toString() || "",
             description: service.description || "",
         });
         setEditDialogOpen(true);
@@ -190,14 +190,14 @@ export default function ServiceTypesPage() {
                                                     {service.name}
                                                 </span>
                                                 <Badge variant="outline">{service.category}</Badge>
-                                                {!service.isActive && (
+                                                {!service.is_active && (
                                                     <Badge variant="destructive">Inactive</Badge>
                                                 )}
                                             </div>
                                             <p className="text-sm text-muted-foreground mt-1">
                                                 Unit: {service.unit}
-                                                {service.defaultRate &&
-                                                    ` · Default rate: ${service.defaultRate.toFixed(2)} AED`}
+                                                {service.default_rate &&
+                                                    ` · Default rate: ${service.default_rate.toFixed(2)} AED`}
                                             </p>
                                             {service.description && (
                                                 <p className="text-xs text-muted-foreground mt-1">
@@ -331,8 +331,8 @@ export default function ServiceTypesPage() {
                             {createService.isPending || updateService.isPending
                                 ? "Saving..."
                                 : selectedService
-                                  ? "Update"
-                                  : "Create"}
+                                    ? "Update"
+                                    : "Create"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

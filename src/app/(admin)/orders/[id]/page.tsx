@@ -28,6 +28,7 @@ import {
 import { ProcessReskinModal } from "@/components/orders/ProcessReskinModal";
 import { OrderApprovalRequestSubmitBtn } from "@/components/orders/OrderApprovalRequestSubmitBtn";
 import { OrderItemCard } from "@/components/orders/OrderItemCard";
+import { TruckDetailsModal } from "@/components/orders/TruckDetailsModal";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -252,24 +253,6 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
     // Truck details modal states
     const [deliveryTruckDialogOpen, setDeliveryTruckDialogOpen] = useState(false);
     const [pickupTruckDialogOpen, setPickupTruckDialogOpen] = useState(false);
-    const [deliveryTruckDetails, setDeliveryTruckDetails] = useState({
-        truckPlate: "",
-        driverName: "",
-        driverContact: "",
-        truckSize: "",
-        tailgateRequired: false,
-        manpower: 0,
-        notes: "",
-    });
-    const [pickupTruckDetails, setPickupTruckDetails] = useState({
-        truckPlate: "",
-        driverName: "",
-        driverContact: "",
-        truckSize: "",
-        tailgateRequired: false,
-        manpower: 0,
-        notes: "",
-    });
 
     // Initialize states when order loads
     if (order) {
@@ -1307,218 +1290,55 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                             <CardContent className="space-y-4">
                                 {/* Delivery Truck Section */}
                                 <div
-                                    className={`border-2 rounded-lg p-4 transition-all ${order.data.order_status === "IN_PREPARATION" ||
+                                    className={`border-2 rounded-lg p-4 transition-all ${order.data.order_status === "CONFIRMED" ||
+                                        order.data.order_status === "IN_PREPARATION" ||
                                         order.data.order_status === "READY_FOR_DELIVERY"
                                         ? "border-primary/30 bg-primary/5 cursor-pointer hover:border-primary/50"
                                         : "border-muted bg-muted/20 opacity-60 cursor-not-allowed"
                                         }`}
                                 >
-                                    <Dialog
-                                        open={deliveryTruckDialogOpen}
-                                        onOpenChange={setDeliveryTruckDialogOpen}
-                                    >
-                                        <DialogTrigger asChild disabled={
+                                    <button
+                                        className="w-full flex items-center justify-between disabled:cursor-not-allowed cursor-pointer"
+                                        disabled={
+                                            order.data.order_status !== "CONFIRMED" &&
                                             order.data.order_status !== "IN_PREPARATION" &&
                                             order.data.order_status !== "READY_FOR_DELIVERY"
-                                        }>
-                                            <button
-                                                className="w-full flex items-center justify-between disabled:cursor-not-allowed"
-                                                disabled={
-                                                    order.data.order_status !== "IN_PREPARATION" &&
-                                                    order.data.order_status !== "READY_FOR_DELIVERY"
-                                                }
-                                            >
-                                                <div className="flex items-center gap-3">
-                                                    <div className="p-2 rounded-lg bg-blue-500/10">
-                                                        <Truck className="h-5 w-5 text-blue-600" />
-                                                    </div>
-                                                    <div className="text-left">
-                                                        <p className="font-mono text-sm font-bold">
-                                                            Delivery Truck
-                                                        </p>
-                                                        <p className="font-mono text-xs text-muted-foreground">
-                                                            {order.data.order_status === "IN_PREPARATION" ||
-                                                                order.data.order_status === "READY_FOR_DELIVERY"
-                                                                ? "Click to add delivery truck details"
-                                                                : "Available when order is IN_PREPARATION or READY_FOR_DELIVERY"}
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                                <PlusCircle
-                                                    className={`h-6 w-6 ${order.data.order_status === "IN_PREPARATION" ||
-                                                        order.data.order_status === "READY_FOR_DELIVERY"
-                                                        ? "text-primary"
-                                                        : "text-muted-foreground"
-                                                        }`}
-                                                />
-                                            </button>
-                                        </DialogTrigger>
-                                        <DialogContent className="sm:max-w-md">
-                                            <DialogHeader>
-                                                <DialogTitle className="font-mono">
-                                                    DELIVERY TRUCK DETAILS
-                                                </DialogTitle>
-                                                <DialogDescription className="font-mono text-xs">
-                                                    Enter the delivery truck and driver information
-                                                </DialogDescription>
-                                            </DialogHeader>
-
-                                            <div className="space-y-4 py-4">
-                                                <div className="space-y-2">
-                                                    <Label className="font-mono text-xs">
-                                                        TRUCK PLATE *
-                                                    </Label>
-                                                    <Input
-                                                        placeholder="Enter truck plate number"
-                                                        value={deliveryTruckDetails.truckPlate}
-                                                        onChange={(e) =>
-                                                            setDeliveryTruckDetails((prev) => ({
-                                                                ...prev,
-                                                                truckPlate: e.target.value,
-                                                            }))
-                                                        }
-                                                        className="font-mono text-sm"
-                                                    />
-                                                </div>
-
-                                                <div className="space-y-2">
-                                                    <Label className="font-mono text-xs">
-                                                        DRIVER NAME *
-                                                    </Label>
-                                                    <Input
-                                                        placeholder="Enter driver name"
-                                                        value={deliveryTruckDetails.driverName}
-                                                        onChange={(e) =>
-                                                            setDeliveryTruckDetails((prev) => ({
-                                                                ...prev,
-                                                                driverName: e.target.value,
-                                                            }))
-                                                        }
-                                                        className="font-mono text-sm"
-                                                    />
-                                                </div>
-
-                                                <div className="space-y-2">
-                                                    <Label className="font-mono text-xs">
-                                                        DRIVER CONTACT *
-                                                    </Label>
-                                                    <Input
-                                                        placeholder="Enter driver phone number"
-                                                        value={deliveryTruckDetails.driverContact}
-                                                        onChange={(e) =>
-                                                            setDeliveryTruckDetails((prev) => ({
-                                                                ...prev,
-                                                                driverContact: e.target.value,
-                                                            }))
-                                                        }
-                                                        className="font-mono text-sm"
-                                                    />
-                                                </div>
-
-                                                <div className="space-y-2">
-                                                    <Label className="font-mono text-xs">
-                                                        TRUCK SIZE
-                                                    </Label>
-                                                    <select
-                                                        className="w-full border rounded px-3 py-2 bg-background font-mono text-sm"
-                                                        value={deliveryTruckDetails.truckSize}
-                                                        onChange={(e) =>
-                                                            setDeliveryTruckDetails((prev) => ({
-                                                                ...prev,
-                                                                truckSize: e.target.value,
-                                                            }))
-                                                        }
-                                                    >
-                                                        <option value="">Select truck size...</option>
-                                                        <option value="Small">Small</option>
-                                                        <option value="Medium">Medium</option>
-                                                        <option value="Large">Large</option>
-                                                        <option value="Extra Large">Extra Large</option>
-                                                    </select>
-                                                </div>
-
-                                                <div className="flex items-center space-x-2">
-                                                    <Checkbox
-                                                        id="delivery-tailgate"
-                                                        checked={deliveryTruckDetails.tailgateRequired}
-                                                        onCheckedChange={(checked) =>
-                                                            setDeliveryTruckDetails((prev) => ({
-                                                                ...prev,
-                                                                tailgateRequired: !!checked,
-                                                            }))
-                                                        }
-                                                    />
-                                                    <Label
-                                                        htmlFor="delivery-tailgate"
-                                                        className="font-mono text-xs cursor-pointer"
-                                                    >
-                                                        TAILGATE REQUIRED
-                                                    </Label>
-                                                </div>
-
-                                                <div className="space-y-2">
-                                                    <Label className="font-mono text-xs">
-                                                        MANPOWER
-                                                    </Label>
-                                                    <Input
-                                                        type="number"
-                                                        min="0"
-                                                        placeholder="Number of workers"
-                                                        value={deliveryTruckDetails.manpower || ""}
-                                                        onChange={(e) =>
-                                                            setDeliveryTruckDetails((prev) => ({
-                                                                ...prev,
-                                                                manpower: parseInt(e.target.value) || 0,
-                                                            }))
-                                                        }
-                                                        className="font-mono text-sm"
-                                                    />
-                                                </div>
-
-                                                <div className="space-y-2">
-                                                    <Label className="font-mono text-xs">
-                                                        NOTES
-                                                    </Label>
-                                                    <Textarea
-                                                        placeholder="Additional notes..."
-                                                        value={deliveryTruckDetails.notes}
-                                                        onChange={(e) =>
-                                                            setDeliveryTruckDetails((prev) => ({
-                                                                ...prev,
-                                                                notes: e.target.value,
-                                                            }))
-                                                        }
-                                                        className="font-mono text-sm"
-                                                        rows={3}
-                                                    />
-                                                </div>
+                                        }
+                                        onClick={() => setDeliveryTruckDialogOpen(true)}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-2 rounded-lg bg-blue-500/10">
+                                                <Truck className="h-5 w-5 text-blue-600" />
                                             </div>
+                                            <div className="text-left">
+                                                <p className="font-mono text-sm font-bold">
+                                                    Delivery Truck
+                                                </p>
+                                                <p className="font-mono text-xs text-muted-foreground">
+                                                    {order.data.order_status === "IN_PREPARATION" ||
+                                                        order.data.order_status === "READY_FOR_DELIVERY"
+                                                        ? "Click to add delivery truck details"
+                                                        : "Available when order is IN_PREPARATION or READY_FOR_DELIVERY"}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <PlusCircle
+                                            className={`h-6 w-6 ${order.data.order_status === "IN_PREPARATION" ||
+                                                order.data.order_status === "READY_FOR_DELIVERY"
+                                                ? "text-primary"
+                                                : "text-muted-foreground"
+                                                }`}
+                                        />
+                                    </button>
 
-                                            <DialogFooter>
-                                                <Button
-                                                    variant="outline"
-                                                    onClick={() => setDeliveryTruckDialogOpen(false)}
-                                                    className="font-mono text-xs"
-                                                >
-                                                    CANCEL
-                                                </Button>
-                                                <Button
-                                                    onClick={() => {
-                                                        toast.success("Delivery truck details saved (static demo)");
-                                                        setDeliveryTruckDialogOpen(false);
-                                                    }}
-                                                    disabled={
-                                                        !deliveryTruckDetails.truckPlate ||
-                                                        !deliveryTruckDetails.driverName ||
-                                                        !deliveryTruckDetails.driverContact
-                                                    }
-                                                    className="font-mono text-xs"
-                                                >
-                                                    SAVE DETAILS
-                                                </Button>
-                                            </DialogFooter>
-                                        </DialogContent>
-                                    </Dialog>
+                                    <TruckDetailsModal
+                                        open={deliveryTruckDialogOpen}
+                                        onOpenChange={setDeliveryTruckDialogOpen}
+                                        type="delivery"
+                                        onSave={() => {
+                                            toast.success("Delivery truck details saved (static demo)");
+                                        }}
+                                    />
                                 </div>
 
                                 <Separator />
@@ -1531,212 +1351,47 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                         : "border-muted bg-muted/20 opacity-60 cursor-not-allowed"
                                         }`}
                                 >
-                                    <Dialog
-                                        open={pickupTruckDialogOpen}
-                                        onOpenChange={setPickupTruckDialogOpen}
-                                    >
-                                        <DialogTrigger asChild disabled={
+                                    <button
+                                        className="w-full flex items-center justify-between disabled:cursor-not-allowed"
+                                        disabled={
                                             order.data.order_status !== "IN_USE" &&
                                             order.data.order_status !== "AWAITING_RETURN"
-                                        }>
-                                            <button
-                                                className="w-full flex items-center justify-between disabled:cursor-not-allowed"
-                                                disabled={
-                                                    order.data.order_status !== "IN_USE" &&
-                                                    order.data.order_status !== "AWAITING_RETURN"
-                                                }
-                                            >
-                                                <div className="flex items-center gap-3">
-                                                    <div className="p-2 rounded-lg bg-rose-500/10">
-                                                        <Truck className="h-5 w-5 text-rose-600" />
-                                                    </div>
-                                                    <div className="text-left">
-                                                        <p className="font-mono text-sm font-bold">
-                                                            Pickup Truck
-                                                        </p>
-                                                        <p className="font-mono text-xs text-muted-foreground">
-                                                            {order.data.order_status === "IN_USE" ||
-                                                                order.data.order_status === "AWAITING_RETURN"
-                                                                ? "Click to add pickup truck details"
-                                                                : "Available when order is IN_USE or AWAITING_RETURN"}
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                                <PlusCircle
-                                                    className={`h-6 w-6 ${order.data.order_status === "IN_USE" ||
-                                                        order.data.order_status === "AWAITING_RETURN"
-                                                        ? "text-primary"
-                                                        : "text-muted-foreground"
-                                                        }`}
-                                                />
-                                            </button>
-                                        </DialogTrigger>
-                                        <DialogContent className="sm:max-w-md">
-                                            <DialogHeader>
-                                                <DialogTitle className="font-mono">
-                                                    PICKUP TRUCK DETAILS
-                                                </DialogTitle>
-                                                <DialogDescription className="font-mono text-xs">
-                                                    Enter the pickup truck and driver information
-                                                </DialogDescription>
-                                            </DialogHeader>
-
-                                            <div className="space-y-4 py-4">
-                                                <div className="space-y-2">
-                                                    <Label className="font-mono text-xs">
-                                                        TRUCK PLATE *
-                                                    </Label>
-                                                    <Input
-                                                        placeholder="Enter truck plate number"
-                                                        value={pickupTruckDetails.truckPlate}
-                                                        onChange={(e) =>
-                                                            setPickupTruckDetails((prev) => ({
-                                                                ...prev,
-                                                                truckPlate: e.target.value,
-                                                            }))
-                                                        }
-                                                        className="font-mono text-sm"
-                                                    />
-                                                </div>
-
-                                                <div className="space-y-2">
-                                                    <Label className="font-mono text-xs">
-                                                        DRIVER NAME *
-                                                    </Label>
-                                                    <Input
-                                                        placeholder="Enter driver name"
-                                                        value={pickupTruckDetails.driverName}
-                                                        onChange={(e) =>
-                                                            setPickupTruckDetails((prev) => ({
-                                                                ...prev,
-                                                                driverName: e.target.value,
-                                                            }))
-                                                        }
-                                                        className="font-mono text-sm"
-                                                    />
-                                                </div>
-
-                                                <div className="space-y-2">
-                                                    <Label className="font-mono text-xs">
-                                                        DRIVER CONTACT *
-                                                    </Label>
-                                                    <Input
-                                                        placeholder="Enter driver phone number"
-                                                        value={pickupTruckDetails.driverContact}
-                                                        onChange={(e) =>
-                                                            setPickupTruckDetails((prev) => ({
-                                                                ...prev,
-                                                                driverContact: e.target.value,
-                                                            }))
-                                                        }
-                                                        className="font-mono text-sm"
-                                                    />
-                                                </div>
-
-                                                <div className="space-y-2">
-                                                    <Label className="font-mono text-xs">
-                                                        TRUCK SIZE
-                                                    </Label>
-                                                    <select
-                                                        className="w-full border rounded px-3 py-2 bg-background font-mono text-sm"
-                                                        value={pickupTruckDetails.truckSize}
-                                                        onChange={(e) =>
-                                                            setPickupTruckDetails((prev) => ({
-                                                                ...prev,
-                                                                truckSize: e.target.value,
-                                                            }))
-                                                        }
-                                                    >
-                                                        <option value="">Select truck size...</option>
-                                                        <option value="Small">Small</option>
-                                                        <option value="Medium">Medium</option>
-                                                        <option value="Large">Large</option>
-                                                        <option value="Extra Large">Extra Large</option>
-                                                    </select>
-                                                </div>
-
-                                                <div className="flex items-center space-x-2">
-                                                    <Checkbox
-                                                        id="pickup-tailgate"
-                                                        checked={pickupTruckDetails.tailgateRequired}
-                                                        onCheckedChange={(checked) =>
-                                                            setPickupTruckDetails((prev) => ({
-                                                                ...prev,
-                                                                tailgateRequired: !!checked,
-                                                            }))
-                                                        }
-                                                    />
-                                                    <Label
-                                                        htmlFor="pickup-tailgate"
-                                                        className="font-mono text-xs cursor-pointer"
-                                                    >
-                                                        TAILGATE REQUIRED
-                                                    </Label>
-                                                </div>
-
-                                                <div className="space-y-2">
-                                                    <Label className="font-mono text-xs">
-                                                        MANPOWER
-                                                    </Label>
-                                                    <Input
-                                                        type="number"
-                                                        min="0"
-                                                        placeholder="Number of workers"
-                                                        value={pickupTruckDetails.manpower || ""}
-                                                        onChange={(e) =>
-                                                            setPickupTruckDetails((prev) => ({
-                                                                ...prev,
-                                                                manpower: parseInt(e.target.value) || 0,
-                                                            }))
-                                                        }
-                                                        className="font-mono text-sm"
-                                                    />
-                                                </div>
-
-                                                <div className="space-y-2">
-                                                    <Label className="font-mono text-xs">
-                                                        NOTES
-                                                    </Label>
-                                                    <Textarea
-                                                        placeholder="Additional notes..."
-                                                        value={pickupTruckDetails.notes}
-                                                        onChange={(e) =>
-                                                            setPickupTruckDetails((prev) => ({
-                                                                ...prev,
-                                                                notes: e.target.value,
-                                                            }))
-                                                        }
-                                                        className="font-mono text-sm"
-                                                        rows={3}
-                                                    />
-                                                </div>
+                                        }
+                                        onClick={() => setPickupTruckDialogOpen(true)}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-2 rounded-lg bg-rose-500/10">
+                                                <Truck className="h-5 w-5 text-rose-600" />
                                             </div>
+                                            <div className="text-left">
+                                                <p className="font-mono text-sm font-bold">
+                                                    Pickup Truck
+                                                </p>
+                                                <p className="font-mono text-xs text-muted-foreground">
+                                                    {order.data.order_status === "IN_USE" ||
+                                                        order.data.order_status === "AWAITING_RETURN"
+                                                        ? "Click to add pickup truck details"
+                                                        : "Available when order is IN_USE or AWAITING_RETURN"}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <PlusCircle
+                                            className={`h-6 w-6 ${order.data.order_status === "IN_USE" ||
+                                                order.data.order_status === "AWAITING_RETURN"
+                                                ? "text-primary"
+                                                : "text-muted-foreground"
+                                                }`}
+                                        />
+                                    </button>
 
-                                            <DialogFooter>
-                                                <Button
-                                                    variant="outline"
-                                                    onClick={() => setPickupTruckDialogOpen(false)}
-                                                    className="font-mono text-xs"
-                                                >
-                                                    CANCEL
-                                                </Button>
-                                                <Button
-                                                    onClick={() => {
-                                                        toast.success("Pickup truck details saved (static demo)");
-                                                        setPickupTruckDialogOpen(false);
-                                                    }}
-                                                    disabled={
-                                                        !pickupTruckDetails.truckPlate ||
-                                                        !pickupTruckDetails.driverName ||
-                                                        !pickupTruckDetails.driverContact
-                                                    }
-                                                    className="font-mono text-xs"
-                                                >
-                                                    SAVE DETAILS
-                                                </Button>
-                                            </DialogFooter>
-                                        </DialogContent>
-                                    </Dialog>
+                                    <TruckDetailsModal
+                                        open={pickupTruckDialogOpen}
+                                        onOpenChange={setPickupTruckDialogOpen}
+                                        type="pickup"
+                                        onSave={() => {
+                                            toast.success("Pickup truck details saved (static demo)");
+                                        }}
+                                    />
                                 </div>
                             </CardContent>
                         </Card>
@@ -1891,7 +1546,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
 
                     {/* Right: Status History Timeline */}
                     <div className="lg:col-span-1">
-                        <Card className="border-2 sticky top-24">
+                        <Card className="sticky top-24">
                             <CardHeader>
                                 <CardTitle className="font-mono text-sm flex items-center gap-2">
                                     <Clock className="h-4 w-4 text-primary" />

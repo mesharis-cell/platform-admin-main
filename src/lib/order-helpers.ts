@@ -33,7 +33,8 @@ export function canManageLineItems(status: OrderStatus): boolean {
         "SUBMITTED",
         "PRICING_REVIEW",
         "PENDING_APPROVAL",
-        // "QUOTED",
+        "QUOTED",
+        "CONFIRMED",
         // "DECLINED",
     ];
     return MANAGEABLE_STATUSES.includes(status);
