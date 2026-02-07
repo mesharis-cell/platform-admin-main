@@ -13,6 +13,7 @@ import { AddCatalogLineItemModal } from "@/components/orders/AddCatalogLineItemM
 import { AddCustomLineItemModal } from "@/components/orders/AddCustomLineItemModal";
 import { OrderApprovalRequestSubmitBtn } from "@/components/orders/OrderApprovalRequestSubmitBtn";
 import { OrderLineItemsList } from "@/components/orders/OrderLineItemsList";
+import { PendingApprovalSection } from "@/components/inbound-request/pending-approval-section";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -131,100 +132,113 @@ export default function InboundRequestDetailsPage({
           <div className="lg:col-span-2 space-y-6">
             <RequestItemsList items={request.items} />
 
-            {/* Service Line Items */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2">
-                    <DollarSign className="h-5 w-5" />
-                    Service Line Items
-                  </CardTitle>
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setAddCatalogOpen(true)}
-                    >
-                      <Plus className="h-4 w-4 mr-1" />
-                      Catalog Service
-                    </Button>
-                    <Button size="sm" onClick={() => setAddCustomOpen(true)}>
-                      <Plus className="h-4 w-4 mr-1" />
-                      Custom Charge
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <OrderLineItemsList targetId={request.id} canManage purposeType="INBOUND_REQUEST" />
-              </CardContent>
+            {request.request_status === "PENDING_APPROVAL" ? (
+              <PendingApprovalSection
+                request={request}
+                requestId={request.id}
+                onRefresh={handleRefresh}
+              />
+            ) : (
+              <>
+                {/* Service Line Items */}
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center gap-2">
+                        <DollarSign className="h-5 w-5" />
+                        Service Line Items
+                      </CardTitle>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setAddCatalogOpen(true)}
+                        >
+                          <Plus className="h-4 w-4 mr-1" />
+                          Catalog Service
+                        </Button>
+                        <Button size="sm" onClick={() => setAddCustomOpen(true)}>
+                          <Plus className="h-4 w-4 mr-1" />
+                          Custom Charge
+                        </Button>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <OrderLineItemsList
+                      targetId={request.id}
+                      canManage
+                      purposeType="INBOUND_REQUEST"
+                    />
+                  </CardContent>
+                </Card>
 
-            </Card>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <DollarSign className="h-5 w-5" />
+                      Pricing Overview
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {!pricing && (
+                      <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-md">
+                        <p className="text-sm font-semibold text-destructive mb-2">
+                          ⚠️ Pricing calculation failed
+                        </p>
+                        <p className="text-xs text-muted-foreground mb-3">
+                          This order may be missing required configuration (e.g., transport
+                          rate for the emirate, trip type, or vehicle type).
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Please contact your Platform Admin to add the missing transport
+                          rate configuration.
+                        </p>
+                      </div>
+                    )}
+                    {pricing && (
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between p-2 bg-muted/30 rounded">
+                          <span className="text-muted-foreground">Base Operations</span>
+                          <span className="font-mono">
+                            {pricing.base_ops_total || 0} AED
+                          </span>
+                        </div>
+                        {pricing.line_items?.catalog_total ? (
+                          <div className="flex justify-between p-2 bg-muted/30 rounded">
+                            <span className="text-muted-foreground">
+                              Service Line Item
+                            </span>
+                            <span className="font-mono">
+                              {pricing.line_items?.catalog_total?.toFixed(2) || 0} AED
+                            </span>
+                          </div>
+                        ) : null}
+                        <div className="border-t border-border my-2"></div>
+                        <div className="flex justify-between font-semibold">
+                          <span>Estimated Subtotal</span>
+                          <span className="font-mono">
+                            {pricing.logistics_sub_total || 0} AED
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <DollarSign className="h-5 w-5" />
-                  Pricing Overview
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {!pricing && (
-                  <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-md">
-                    <p className="text-sm font-semibold text-destructive mb-2">
-                      ⚠️ Pricing calculation failed
-                    </p>
-                    <p className="text-xs text-muted-foreground mb-3">
-                      This order may be missing required configuration (e.g., transport rate
-                      for the emirate, trip type, or vehicle type).
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Please contact your Platform Admin to add the missing transport rate
-                      configuration.
-                    </p>
+                {request.request_status === "PRICING_REVIEW" && (
+                  <div className="mt-4">
+                    <OrderApprovalRequestSubmitBtn
+                      orderId={request.id}
+                      type="INBOUND_REQUEST"
+                      isVisible={true}
+                      onSubmitSuccess={() => {
+                        handleRefresh();
+                      }}
+                    />
                   </div>
                 )}
-                {pricing && (
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between p-2 bg-muted/30 rounded">
-                      <span className="text-muted-foreground">
-                        Base Operations
-                      </span>
-                      <span className="font-mono">
-                        {pricing.base_ops_total || 0} AED
-                      </span>
-                    </div>
-                    {pricing.line_items?.catalog_total ? <div className="flex justify-between p-2 bg-muted/30 rounded">
-                      <span className="text-muted-foreground">
-                        Service Line Item
-                      </span>
-                      <span className="font-mono">
-                        {pricing.line_items?.catalog_total?.toFixed(2) || 0} AED
-                      </span>
-                    </div> : null}
-                    <div className="border-t border-border my-2"></div>
-                    <div className="flex justify-between font-semibold">
-                      <span>Estimated Subtotal</span>
-                      <span className="font-mono">
-                        {pricing.logistics_sub_total || 0} AED
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {request.request_status === "PRICING_REVIEW" && (
-              <div className="mt-4">
-                <OrderApprovalRequestSubmitBtn
-                  orderId={request.id}
-                  type="INBOUND_REQUEST"
-                  isVisible={true}
-                  onSubmitSuccess={() => {
-                    handleRefresh();
-                  }}
-                />
-              </div>
+              </>
             )}
           </div>
 

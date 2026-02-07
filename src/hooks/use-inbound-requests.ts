@@ -95,6 +95,46 @@ async function submitInboundRequestForApproval(id: string): Promise<InboundReque
     }
 }
 
+// Admin approve inbound request
+async function adminApproveInboundRequest({
+    id,
+    marginOverridePercent,
+    marginOverrideReason,
+}: {
+    id: string;
+    marginOverridePercent?: number;
+    marginOverrideReason?: string;
+}): Promise<InboundRequestList> {
+    try {
+        const payload: any = {};
+        if (marginOverridePercent !== undefined) payload.margin_override_percent = marginOverridePercent;
+        if (marginOverrideReason !== undefined) payload.margin_override_reason = marginOverrideReason;
+
+        const response = await apiClient.post(`/client/v1/inbound-request/${id}/approve-request`, payload);
+        return response.data;
+    } catch (error) {
+        throwApiError(error);
+    }
+}
+
+// Return inbound request to logistics
+async function returnInboundRequestToLogistics({
+    id,
+    reason,
+}: {
+    id: string;
+    reason: string;
+}): Promise<InboundRequestList> {
+    try {
+        const response = await apiClient.post(`/client/v1/inbound-request/${id}/return-to-logistics`, {
+            reason,
+        });
+        return response.data;
+    } catch (error) {
+        throwApiError(error);
+    }
+}
+
 // Hooks
 export function useInboundRequests(params?: Record<string, string>) {
     return useQuery({
@@ -167,6 +207,30 @@ export function useSubmitInboundRequestForApproval() {
 
     return useMutation({
         mutationFn: submitInboundRequestForApproval,
+        onSuccess: (data) => {
+            queryClient.invalidateQueries({ queryKey: inboundRequestKeys.lists() });
+            queryClient.invalidateQueries({ queryKey: inboundRequestKeys.detail(data.id) });
+        },
+    });
+}
+
+export function useAdminApproveInboundRequest() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: adminApproveInboundRequest,
+        onSuccess: (data) => {
+            queryClient.invalidateQueries({ queryKey: inboundRequestKeys.lists() });
+            queryClient.invalidateQueries({ queryKey: inboundRequestKeys.detail(data.id) });
+        },
+    });
+}
+
+export function useReturnInboundRequestToLogistics() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: returnInboundRequestToLogistics,
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: inboundRequestKeys.lists() });
             queryClient.invalidateQueries({ queryKey: inboundRequestKeys.detail(data.id) });
