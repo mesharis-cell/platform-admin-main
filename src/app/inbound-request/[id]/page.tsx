@@ -11,6 +11,7 @@ import { RequestItemsList } from "@/components/inbound-request/request-items-lis
 import { RequestPricingCard } from "@/components/inbound-request/request-pricing-card";
 import { AddCatalogLineItemModal } from "@/components/orders/AddCatalogLineItemModal";
 import { AddCustomLineItemModal } from "@/components/orders/AddCustomLineItemModal";
+import { OrderApprovalRequestSubmitBtn } from "@/components/orders/OrderApprovalRequestSubmitBtn";
 import { OrderLineItemsList } from "@/components/orders/OrderLineItemsList";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -212,6 +213,19 @@ export default function InboundRequestDetailsPage({
                 )}
               </CardContent>
             </Card>
+
+            {request.request_status === "PRICING_REVIEW" && (
+              <div className="mt-4">
+                <OrderApprovalRequestSubmitBtn
+                  orderId={request.id}
+                  type="INBOUND_REQUEST"
+                  isVisible={true}
+                  onSubmitSuccess={() => {
+                    handleRefresh();
+                  }}
+                />
+              </div>
+            )}
           </div>
 
           {/* Right Column - Request Info */}

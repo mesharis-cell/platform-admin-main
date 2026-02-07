@@ -5,7 +5,7 @@
 export type TrackingMethod = "INDIVIDUAL" | "BATCH";
 
 // Inbound Request Status
-export type InboundRequestStatus = "PENDING" | "APPROVED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
+export type InboundRequestStatus = "PRICING_REVIEW" | "PENDING_APPROVAL" | "QUOTED" | "CONFIRMED" | "DECLINED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
 
 // Inbound Request Item
 export interface InboundRequestItem {

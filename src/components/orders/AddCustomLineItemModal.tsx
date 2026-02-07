@@ -96,7 +96,7 @@ export function AddCustomLineItemModal({
                             min="0"
                             value={total}
                             onChange={(e) => setTotal(e.target.value)}
-                            placeholder="200.00"
+                            placeholder="200"
                         />
                         <p className="text-xs text-muted-foreground mt-1">
                             Enter final amount (custom items are not subject to margin)

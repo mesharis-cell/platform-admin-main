@@ -85,6 +85,16 @@ async function cancelInboundRequest({ id, note }: { id: string; note: string }):
     }
 }
 
+// Submit inbound request for approval
+async function submitInboundRequestForApproval(id: string): Promise<InboundRequestList> {
+    try {
+        const response = await apiClient.post(`/client/v1/inbound-request/${id}/submit-for-approval`);
+        return response.data;
+    } catch (error) {
+        throwApiError(error);
+    }
+}
+
 // Hooks
 export function useInboundRequests(params?: Record<string, string>) {
     return useQuery({
@@ -149,3 +159,17 @@ export function useDeleteInboundRequest() {
 }
 
 
+
+// Submit inbound request for approval
+
+export function useSubmitInboundRequestForApproval() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: submitInboundRequestForApproval,
+        onSuccess: (data) => {
+            queryClient.invalidateQueries({ queryKey: inboundRequestKeys.lists() });
+            queryClient.invalidateQueries({ queryKey: inboundRequestKeys.detail(data.id) });
+        },
+    });
+}
