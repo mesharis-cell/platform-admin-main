@@ -84,7 +84,7 @@ export default function InboundRequestDetailsPage({
             has been removed.
           </p>
           <Button
-            onClick={() => router.push("/assets-inbound")}
+            onClick={() => router.push("/inbound-request")}
             variant="outline"
             className="gap-2 font-mono"
           >

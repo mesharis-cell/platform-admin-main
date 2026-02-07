@@ -88,7 +88,7 @@ export function RequestHeader({
         className="flex items-center justify-between mb-8"
       >
         <Link
-          href="/assets-inbound"
+          href="/inbound-request"
           className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1 font-mono"
         >
           <ArrowLeft className="w-4 h-4" />
