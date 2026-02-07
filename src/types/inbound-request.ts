@@ -22,6 +22,7 @@ export interface InboundRequestItem {
         available_quantity: number;
     }
     asset_id: string | null;
+    item_id?: string | null;
     inbound_request_id: string;
     brand_id: string | null;
     name: string;

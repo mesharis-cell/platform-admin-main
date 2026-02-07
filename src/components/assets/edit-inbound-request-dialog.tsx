@@ -164,6 +164,7 @@ export function EditInboundRequestDialog({
         incoming_at: request.incoming_at?.split("T")[0] || "",
         items: request.items.map((item) => ({
           ...item,
+          item_id: item.id,
           dimensions: item.dimensions || { length: 0, width: 0, height: 0 },
         })),
       });
@@ -484,6 +485,7 @@ export function EditInboundRequestDialog({
           const existing = existingImagesPerItem.get(index) || [];
           const newlyUploaded = uploadedImagesPerItem.get(index) || [];
           return {
+            item_id: item.item_id || undefined,
             asset_id: item.asset_id || undefined,
             brand_id: item.brand_id || undefined,
             name: item.name || "",
@@ -493,9 +495,9 @@ export function EditInboundRequestDialog({
             tracking_method: item.tracking_method || "INDIVIDUAL",
             quantity: item.quantity || 1,
             packaging: item.packaging || undefined,
-            weight_per_unit: item.weight_per_unit || 0,
+            weight_per_unit: Number(item.weight_per_unit) || 0,
             dimensions: item.dimensions,
-            volume_per_unit: item.volume_per_unit || 0,
+            volume_per_unit: Number(item.volume_per_unit) || 0,
             handling_tags: item.handling_tags || [],
           };
         }),
@@ -1069,7 +1071,7 @@ export function EditInboundRequestDialog({
                         type="number"
                         step="1"
                         placeholder="0.00"
-                        value={Number(currentItem.dimensions?.length).toFixed(2) || ""}
+                        value={Number(currentItem.dimensions?.length) || ""}
                         onChange={(e) =>
                           updateDimension(
                             currentItemIndex,
@@ -1087,7 +1089,7 @@ export function EditInboundRequestDialog({
                         type="number"
                         step="1"
                         placeholder="0.00"
-                        value={Number(currentItem.dimensions?.width).toFixed(2) || ""}
+                        value={Number(currentItem.dimensions?.width) || ""}
                         onChange={(e) =>
                           updateDimension(
                             currentItemIndex,
@@ -1107,7 +1109,7 @@ export function EditInboundRequestDialog({
                         type="number"
                         step="1"
                         placeholder="0.00"
-                        value={Number(currentItem.dimensions?.height).toFixed(2) || ""}
+                        value={Number(currentItem.dimensions?.height) || ""}
                         onChange={(e) =>
                           updateDimension(
                             currentItemIndex,
@@ -1131,7 +1133,7 @@ export function EditInboundRequestDialog({
                         step="1"
                         min="0"
                         placeholder="0.00"
-                        value={Number(currentItem.weight_per_unit).toFixed(2) || ""}
+                        value={Number(currentItem.weight_per_unit) || ""}
                         onChange={(e) =>
                           updateItem(currentItemIndex, {
                             weight_per_unit:
@@ -1151,7 +1153,7 @@ export function EditInboundRequestDialog({
                         step="1"
                         min="0"
                         placeholder="0.000"
-                        value={Number(currentItem.volume_per_unit).toFixed(2) || ""}
+                        value={Number(currentItem.volume_per_unit) || ""}
                         onChange={(e) =>
                           updateItem(currentItemIndex, {
                             volume_per_unit:
