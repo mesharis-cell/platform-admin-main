@@ -10,6 +10,7 @@ export type InboundRequestStatus = "PENDING" | "APPROVED" | "IN_PROGRESS" | "COM
 // Inbound Request Item
 export interface InboundRequestItem {
     id: string;
+    asset_id: string | null;
     inbound_request_id: string;
     brand_id: string | null;
     name: string;
