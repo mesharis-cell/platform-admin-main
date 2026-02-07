@@ -156,8 +156,7 @@ export function RequestHeader({
                   {status.replace(/_/g, " ")}
                 </Badge>
                 <span className="text-xs text-muted-foreground font-mono flex items-center gap-1">
-                  <Clock className="w-3 h-3" />
-                  Submitted {new Date(createdAt).toLocaleDateString()}
+                  Inbound request ID: {request.inbound_request_id}
                 </span>
               </div>
               <h1 className="text-4xl font-bold mb-2">
@@ -210,6 +209,9 @@ export function RequestHeader({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="font-mono">Cancel Request?</AlertDialogTitle>
+            <span className="text-xs text-muted-foreground font-mono flex items-center gap-1">
+              You can not revert a request once it's cancelled.
+            </span>
             <div className="py-4">
               <div className="space-y-2">
                 <Label htmlFor="cancel-note">
@@ -223,18 +225,6 @@ export function RequestHeader({
                   className="resize-none"
                 />
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label className="font-mono text-xs">
-                Description (Optional)
-              </Label>
-              <Textarea
-                placeholder="Detailed description of the asset..."
-                value={cancelNote}
-                onChange={(e) => setCancelNote(e.target.value)}
-                className="font-mono text-sm"
-                rows={3}
-              />
             </div>
           </AlertDialogHeader>
           <AlertDialogFooter>

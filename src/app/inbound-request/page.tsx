@@ -35,8 +35,11 @@ import Link from "next/link";
 import { format } from "date-fns";
 
 const STATUS_COLORS: Record<InboundRequestStatus, string> = {
-  PENDING: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
-  APPROVED: "bg-blue-500/10 text-blue-500 border-blue-500/20",
+  PRICING_REVIEW: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
+  PENDING_APPROVAL: "bg-blue-500/10 text-blue-500 border-blue-500/20",
+  QUOTED: "bg-purple-500/10 text-purple-500 border-purple-500/20",
+  CONFIRMED: "bg-indigo-500/10 text-indigo-500 border-indigo-500/20",
+  DECLINED: "bg-rose-500/10 text-rose-500 border-rose-500/20",
   IN_PROGRESS: "bg-purple-500/10 text-purple-500 border-purple-500/20",
   COMPLETED: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
   CANCELLED: "bg-red-500/10 text-red-500 border-red-500/20",
@@ -88,6 +91,7 @@ export default function AssetsInboundPage() {
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
+              <TableHead className="font-mono font-semibold">Inbound ID</TableHead>
               <TableHead className="font-mono font-semibold">Company</TableHead>
               <TableHead className="font-mono font-semibold">Incoming at</TableHead>
               <TableHead className="font-mono font-semibold">Status</TableHead>
@@ -130,6 +134,9 @@ export default function AssetsInboundPage() {
             ) : (
               data?.data.map((request) => (
                 <TableRow key={request.id} className="hover:bg-muted/30">
+                  <TableCell className="font-mono">
+                    {request.inbound_request_id}
+                  </TableCell>
                   <TableCell className="font-mono">
                     {request.company?.name || "-"}
                   </TableCell>
