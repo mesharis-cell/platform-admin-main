@@ -5,6 +5,9 @@
  * Displays full details of a single inbound request with items
  */
 
+import { AssetsFromInbound } from "@/components/inbound-request/assets-from-inbound";
+import { CompleteInboundDialog } from "@/components/inbound-request/complete-inbound-dialog";
+import { PendingApprovalSection } from "@/components/inbound-request/pending-approval-section";
 import { RequestHeader } from "@/components/inbound-request/request-header";
 import { RequestInfoCard } from "@/components/inbound-request/request-info-card";
 import { RequestItemsList } from "@/components/inbound-request/request-items-list";
@@ -13,15 +16,13 @@ import { AddCatalogLineItemModal } from "@/components/orders/AddCatalogLineItemM
 import { AddCustomLineItemModal } from "@/components/orders/AddCustomLineItemModal";
 import { OrderApprovalRequestSubmitBtn } from "@/components/orders/OrderApprovalRequestSubmitBtn";
 import { OrderLineItemsList } from "@/components/orders/OrderLineItemsList";
-import { PendingApprovalSection } from "@/components/inbound-request/pending-approval-section";
-import { CompleteInboundDialog } from "@/components/inbound-request/complete-inbound-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { inboundRequestKeys, useInboundRequest } from "@/hooks/use-inbound-requests";
 import type { InboundRequestStatus } from "@/types/inbound-request";
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertCircle, ArrowLeft, DollarSign, Plus, CheckCircle2 } from "lucide-react";
+import { AlertCircle, ArrowLeft, CheckCircle2, DollarSign, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { use, useState } from "react";
 
@@ -152,6 +153,7 @@ export default function InboundRequestDetailsPage({
             )}
 
             <RequestItemsList items={request.items} />
+            {request.request_status === "COMPLETED" && <AssetsFromInbound items={request.items} />}
 
             {request.request_status === "PENDING_APPROVAL" ? (
               <PendingApprovalSection

@@ -10,6 +10,17 @@ export type InboundRequestStatus = "PRICING_REVIEW" | "PENDING_APPROVAL" | "QUOT
 // Inbound Request Item
 export interface InboundRequestItem {
     id: string;
+    asset?: {
+        id: string;
+        name: string;
+        images: string[];
+        qr_code: string;
+        tracking_method: TrackingMethod;
+        category: string;
+        status: string;
+        total_quantity: number;
+        available_quantity: number;
+    }
     asset_id: string | null;
     inbound_request_id: string;
     brand_id: string | null;
