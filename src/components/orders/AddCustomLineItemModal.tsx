@@ -92,7 +92,7 @@ export function AddCustomLineItemModal({
                         </Label>
                         <Input
                             type="number"
-                            step="0.01"
+                            step="1"
                             min="0"
                             value={total}
                             onChange={(e) => setTotal(e.target.value)}

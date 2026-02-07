@@ -114,7 +114,22 @@ export interface InboundRequestDetails {
         email: string;
     },
     request_pricing: {
+        warehouse_ops_rate: string;
+        base_ops_total: string;
+        logistics_sub_total: string;
         final_total: string;
+        line_items: {
+            custom_total: number;
+            catalog_total: number;
+        };
+        margin: {
+            amount: number;
+            percent: string;
+            is_override: boolean;
+            override_reason: string | null;
+        };
+        calculated_by: string;
+        calculated_at: string;
     },
     items: InboundRequestItem[];
     created_at: string;

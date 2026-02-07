@@ -5,22 +5,22 @@
  * Displays full details of a single inbound request with items
  */
 
-import { use, useState } from "react";
-import { useRouter } from "next/navigation";
-import { useInboundRequest, inboundRequestKeys } from "@/hooks/use-inbound-requests";
-import { useQueryClient } from "@tanstack/react-query";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { AlertCircle, ArrowLeft, DollarSign, Plus } from "lucide-react";
 import { RequestHeader } from "@/components/inbound-request/request-header";
 import { RequestInfoCard } from "@/components/inbound-request/request-info-card";
 import { RequestItemsList } from "@/components/inbound-request/request-items-list";
 import { RequestPricingCard } from "@/components/inbound-request/request-pricing-card";
-import { OrderLineItemsList } from "@/components/orders/OrderLineItemsList";
 import { AddCatalogLineItemModal } from "@/components/orders/AddCatalogLineItemModal";
 import { AddCustomLineItemModal } from "@/components/orders/AddCustomLineItemModal";
+import { OrderLineItemsList } from "@/components/orders/OrderLineItemsList";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { inboundRequestKeys, useInboundRequest } from "@/hooks/use-inbound-requests";
 import type { InboundRequestStatus } from "@/types/inbound-request";
+import { useQueryClient } from "@tanstack/react-query";
+import { AlertCircle, ArrowLeft, DollarSign, Plus } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { use, useState } from "react";
 
 export default function InboundRequestDetailsPage({
   params,
@@ -33,6 +33,7 @@ export default function InboundRequestDetailsPage({
   const { data, isLoading } = useInboundRequest(id);
 
   const request = data?.data;
+  const pricing = request?.request_pricing;
   const [addCatalogOpen, setAddCatalogOpen] = useState(false);
   const [addCustomOpen, setAddCustomOpen] = useState(false);
 
@@ -155,6 +156,60 @@ export default function InboundRequestDetailsPage({
               </CardHeader>
               <CardContent>
                 <OrderLineItemsList targetId={request.id} canManage purposeType="INBOUND_REQUEST" />
+              </CardContent>
+
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <DollarSign className="h-5 w-5" />
+                  Pricing Overview
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {!pricing && (
+                  <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-md">
+                    <p className="text-sm font-semibold text-destructive mb-2">
+                      ⚠️ Pricing calculation failed
+                    </p>
+                    <p className="text-xs text-muted-foreground mb-3">
+                      This order may be missing required configuration (e.g., transport rate
+                      for the emirate, trip type, or vehicle type).
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Please contact your Platform Admin to add the missing transport rate
+                      configuration.
+                    </p>
+                  </div>
+                )}
+                {pricing && (
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between p-2 bg-muted/30 rounded">
+                      <span className="text-muted-foreground">
+                        Base Operations
+                      </span>
+                      <span className="font-mono">
+                        {pricing.base_ops_total || 0} AED
+                      </span>
+                    </div>
+                    {pricing.line_items?.catalog_total ? <div className="flex justify-between p-2 bg-muted/30 rounded">
+                      <span className="text-muted-foreground">
+                        Service Line Item
+                      </span>
+                      <span className="font-mono">
+                        {pricing.line_items?.catalog_total?.toFixed(2) || 0} AED
+                      </span>
+                    </div> : null}
+                    <div className="border-t border-border my-2"></div>
+                    <div className="flex justify-between font-semibold">
+                      <span>Estimated Subtotal</span>
+                      <span className="font-mono">
+                        {pricing.logistics_sub_total || 0} AED
+                      </span>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
