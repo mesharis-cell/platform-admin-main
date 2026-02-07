@@ -75,11 +75,33 @@ async function deleteInboundRequest(id: string): Promise<void> {
     }
 }
 
+// Cancel inbound request
+async function cancelInboundRequest({ id, note }: { id: string; note: string }): Promise<InboundRequestList> {
+    try {
+        const response = await apiClient.post(`/client/v1/inbound-request/${id}/cancel`, { note });
+        return response.data;
+    } catch (error) {
+        throwApiError(error);
+    }
+}
+
 // Hooks
 export function useInboundRequests(params?: Record<string, string>) {
     return useQuery({
         queryKey: inboundRequestKeys.list(params),
         queryFn: () => fetchInboundRequests(params),
+    });
+}
+//...
+export function useCancelInboundRequest() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: cancelInboundRequest,
+        onSuccess: (data) => {
+            queryClient.invalidateQueries({ queryKey: inboundRequestKeys.lists() });
+            queryClient.invalidateQueries({ queryKey: inboundRequestKeys.detail(data.id) });
+        },
     });
 }
 
@@ -125,3 +147,5 @@ export function useDeleteInboundRequest() {
         },
     });
 }
+
+
