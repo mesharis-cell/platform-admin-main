@@ -5,22 +5,26 @@
  * Displays full details of a single inbound request with items
  */
 
-import { use, useState } from "react";
-import { useRouter } from "next/navigation";
-import { useInboundRequest, inboundRequestKeys } from "@/hooks/use-inbound-requests";
-import { useQueryClient } from "@tanstack/react-query";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { AlertCircle, ArrowLeft, DollarSign, Plus } from "lucide-react";
+import { AssetsFromInbound } from "@/components/inbound-request/assets-from-inbound";
+import { CompleteInboundDialog } from "@/components/inbound-request/complete-inbound-dialog";
+import { PendingApprovalSection } from "@/components/inbound-request/pending-approval-section";
 import { RequestHeader } from "@/components/inbound-request/request-header";
 import { RequestInfoCard } from "@/components/inbound-request/request-info-card";
 import { RequestItemsList } from "@/components/inbound-request/request-items-list";
 import { RequestPricingCard } from "@/components/inbound-request/request-pricing-card";
-import { OrderLineItemsList } from "@/components/orders/OrderLineItemsList";
 import { AddCatalogLineItemModal } from "@/components/orders/AddCatalogLineItemModal";
 import { AddCustomLineItemModal } from "@/components/orders/AddCustomLineItemModal";
+import { OrderApprovalRequestSubmitBtn } from "@/components/orders/OrderApprovalRequestSubmitBtn";
+import { OrderLineItemsList } from "@/components/orders/OrderLineItemsList";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { inboundRequestKeys, useInboundRequest } from "@/hooks/use-inbound-requests";
 import type { InboundRequestStatus } from "@/types/inbound-request";
+import { useQueryClient } from "@tanstack/react-query";
+import { AlertCircle, ArrowLeft, CheckCircle2, DollarSign, Plus } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { use, useState } from "react";
 
 export default function InboundRequestDetailsPage({
   params,
@@ -33,8 +37,10 @@ export default function InboundRequestDetailsPage({
   const { data, isLoading } = useInboundRequest(id);
 
   const request = data?.data;
+  const pricing = request?.request_pricing;
   const [addCatalogOpen, setAddCatalogOpen] = useState(false);
   const [addCustomOpen, setAddCustomOpen] = useState(false);
+  const [completeDialogOpen, setCompleteDialogOpen] = useState(false);
 
   function handleRefresh() {
     queryClient.invalidateQueries({ queryKey: inboundRequestKeys.detail(id) });
@@ -84,7 +90,7 @@ export default function InboundRequestDetailsPage({
             has been removed.
           </p>
           <Button
-            onClick={() => router.push("/assets-inbound")}
+            onClick={() => router.push("/inbound-request")}
             variant="outline"
             className="gap-2 font-mono"
           >
@@ -127,36 +133,136 @@ export default function InboundRequestDetailsPage({
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column - Items */}
           <div className="lg:col-span-2 space-y-6">
-            <RequestItemsList items={request.items} />
 
-            {/* Service Line Items */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2">
-                    <DollarSign className="h-5 w-5" />
-                    Service Line Items
-                  </CardTitle>
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setAddCatalogOpen(true)}
-                    >
-                      <Plus className="h-4 w-4 mr-1" />
-                      Catalog Service
-                    </Button>
-                    <Button size="sm" onClick={() => setAddCustomOpen(true)}>
-                      <Plus className="h-4 w-4 mr-1" />
-                      Custom Charge
-                    </Button>
+            {/* Completion Banner */}
+            {request.request_status === "CONFIRMED" && (
+              <div className="bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-lg flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                    <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-emerald-700 dark:text-emerald-400">Mark inbound request completed</h3>
+                    <p className="text-sm text-muted-foreground">Create assets for each item and generate invoice</p>
                   </div>
                 </div>
-              </CardHeader>
-              <CardContent>
-                <OrderLineItemsList targetId={request.id} canManage purposeType="INBOUND_REQUEST" />
-              </CardContent>
-            </Card>
+                <Button onClick={() => setCompleteDialogOpen(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+                  Mark as Completed
+                </Button>
+              </div>
+            )}
+
+            <RequestItemsList items={request.items} />
+            {request.request_status === "COMPLETED" && <AssetsFromInbound items={request.items} />}
+
+            {request.request_status === "PENDING_APPROVAL" ? (
+              <PendingApprovalSection
+                request={request}
+                requestId={request.id}
+                onRefresh={handleRefresh}
+              />
+            ) : (
+              <>
+                {/* Service Line Items */}
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center gap-2">
+                        <DollarSign className="h-5 w-5" />
+                        Service Line Items
+                      </CardTitle>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setAddCatalogOpen(true)}
+                        >
+                          <Plus className="h-4 w-4 mr-1" />
+                          Catalog Service
+                        </Button>
+                        <Button size="sm" onClick={() => setAddCustomOpen(true)}>
+                          <Plus className="h-4 w-4 mr-1" />
+                          Custom Charge
+                        </Button>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <OrderLineItemsList
+                      targetId={request.id}
+                      canManage
+                      purposeType="INBOUND_REQUEST"
+                    />
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <DollarSign className="h-5 w-5" />
+                      Pricing Overview
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {!pricing && (
+                      <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-md">
+                        <p className="text-sm font-semibold text-destructive mb-2">
+                          ⚠️ Pricing calculation failed
+                        </p>
+                        <p className="text-xs text-muted-foreground mb-3">
+                          This order may be missing required configuration (e.g., transport
+                          rate for the emirate, trip type, or vehicle type).
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Please contact your Platform Admin to add the missing transport
+                          rate configuration.
+                        </p>
+                      </div>
+                    )}
+                    {pricing && (
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between p-2 bg-muted/30 rounded">
+                          <span className="text-muted-foreground">Base Operations</span>
+                          <span className="font-mono">
+                            {pricing.base_ops_total || 0} AED
+                          </span>
+                        </div>
+                        {pricing.line_items?.catalog_total ? (
+                          <div className="flex justify-between p-2 bg-muted/30 rounded">
+                            <span className="text-muted-foreground">
+                              Service Line Item
+                            </span>
+                            <span className="font-mono">
+                              {pricing.line_items?.catalog_total?.toFixed(2) || 0} AED
+                            </span>
+                          </div>
+                        ) : null}
+                        <div className="border-t border-border my-2"></div>
+                        <div className="flex justify-between font-semibold">
+                          <span>Estimated Subtotal</span>
+                          <span className="font-mono">
+                            {pricing.logistics_sub_total || 0} AED
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {request.request_status === "PRICING_REVIEW" && (
+                  <div className="mt-4">
+                    <OrderApprovalRequestSubmitBtn
+                      orderId={request.id}
+                      type="INBOUND_REQUEST"
+                      isVisible={true}
+                      onSubmitSuccess={() => {
+                        handleRefresh();
+                      }}
+                    />
+                  </div>
+                )}
+              </>
+            )}
           </div>
 
           {/* Right Column - Request Info */}
@@ -184,6 +290,14 @@ export default function InboundRequestDetailsPage({
           onOpenChange={setAddCustomOpen}
           targetId={request.id}
           purposeType="INBOUND_REQUEST"
+        />
+        <CompleteInboundDialog
+          open={completeDialogOpen}
+          onOpenChange={setCompleteDialogOpen}
+          requestId={request.id}
+          companyId={request.company.id}
+          platformId={request.platform_id}
+          onSuccess={handleRefresh}
         />
       </div>
     </div>

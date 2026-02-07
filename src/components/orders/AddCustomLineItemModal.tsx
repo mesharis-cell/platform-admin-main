@@ -92,11 +92,11 @@ export function AddCustomLineItemModal({
                         </Label>
                         <Input
                             type="number"
-                            step="0.01"
+                            step="1"
                             min="0"
                             value={total}
                             onChange={(e) => setTotal(e.target.value)}
-                            placeholder="200.00"
+                            placeholder="200"
                         />
                         <p className="text-xs text-muted-foreground mt-1">
                             Enter final amount (custom items are not subject to margin)

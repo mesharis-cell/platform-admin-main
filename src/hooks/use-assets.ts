@@ -117,6 +117,20 @@ export function useAssets(params?: Record<string, string>) {
     });
 }
 
+// Search assets hook with enabled control for debounced searching
+export function useSearchAssets(searchTerm: string, companyId?: string) {
+    const params: Record<string, string> = {};
+    if (searchTerm) params.search_term = searchTerm;
+    if (companyId) params.company_id = companyId;
+
+    return useQuery({
+        queryKey: [...assetKeys.lists(), "search", searchTerm, companyId] as const,
+        queryFn: () => fetchAssets(params),
+        enabled: !!searchTerm && searchTerm.length >= 2 && !!companyId,
+        staleTime: 30000, // Cache for 30 seconds
+    });
+}
+
 export function useAsset(id: string) {
     return useQuery({
         queryKey: assetKeys.detail(id),

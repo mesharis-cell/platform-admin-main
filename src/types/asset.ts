@@ -43,7 +43,9 @@ export interface Asset {
         updated_by: string;
         timestamp: string;
     }[];
+    brand_id: string | null;
     name: string;
+    weight_per_unit: number;
     description?: string;
     category: AssetCategory;
     images: string[];

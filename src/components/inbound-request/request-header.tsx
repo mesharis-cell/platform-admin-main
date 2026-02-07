@@ -19,6 +19,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { OrderApprovalRequestSubmitBtn } from "@/components/orders/OrderApprovalRequestSubmitBtn";
 import { useCancelInboundRequest } from "@/hooks/use-inbound-requests";
 import type { InboundRequestDetails, InboundRequestStatus } from "@/types/inbound-request";
 import { motion } from "framer-motion";
@@ -29,24 +30,33 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 const STATUS_COLORS: Record<InboundRequestStatus, string> = {
-  PENDING: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
-  APPROVED: "bg-blue-500/10 text-blue-500 border-blue-500/20",
+  PRICING_REVIEW: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
+  PENDING_APPROVAL: "bg-blue-500/10 text-blue-500 border-blue-500/20",
+  QUOTED: "bg-purple-500/10 text-purple-500 border-purple-500/20",
+  CONFIRMED: "bg-indigo-500/10 text-indigo-500 border-indigo-500/20",
+  DECLINED: "bg-rose-500/10 text-rose-500 border-rose-500/20",
   IN_PROGRESS: "bg-purple-500/10 text-purple-500 border-purple-500/20",
   COMPLETED: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
   CANCELLED: "bg-red-500/10 text-red-500 border-red-500/20",
 };
 
 const STATUS_LABELS: Record<InboundRequestStatus, string> = {
-  PENDING: "Pending Review",
-  APPROVED: "Approved",
+  PRICING_REVIEW: "Pricing Review",
+  PENDING_APPROVAL: "Pending Approval",
+  QUOTED: "Quoted",
+  CONFIRMED: "Confirmed",
+  DECLINED: "Declined",
   IN_PROGRESS: "In Progress",
   COMPLETED: "Completed",
   CANCELLED: "Cancelled",
 };
 
 const STATUS_DESCRIPTIONS: Record<InboundRequestStatus, string> = {
-  PENDING: "Your request is awaiting review by our team.",
-  APPROVED: "Request has been approved and will be processed.",
+  PRICING_REVIEW: "We are reviewing the pricing for your request.",
+  PENDING_APPROVAL: "Waiting for final approval.",
+  QUOTED: "Quote has been sent and is awaiting confirmation.",
+  CONFIRMED: "Order has been confirmed.",
+  DECLINED: "Order has been declined.",
   IN_PROGRESS: "Items are currently being processed.",
   COMPLETED: "All items have been successfully processed.",
   CANCELLED: "This request has been cancelled.",
@@ -146,8 +156,7 @@ export function RequestHeader({
                   {status.replace(/_/g, " ")}
                 </Badge>
                 <span className="text-xs text-muted-foreground font-mono flex items-center gap-1">
-                  <Clock className="w-3 h-3" />
-                  Submitted {new Date(createdAt).toLocaleDateString()}
+                  Inbound request ID: {request.inbound_request_id}
                 </span>
               </div>
               <h1 className="text-4xl font-bold mb-2">
@@ -163,11 +172,19 @@ export function RequestHeader({
                 ? "bg-emerald-500"
                 : status === "CANCELLED"
                   ? "bg-destructive"
-                  : status === "APPROVED"
-                    ? "bg-blue-500"
-                    : status === "IN_PROGRESS"
-                      ? "bg-purple-500"
-                      : "bg-yellow-500"
+                  : status === "DECLINED"
+                    ? "bg-rose-500"
+                    : status === "CONFIRMED"
+                      ? "bg-indigo-500"
+                      : status === "QUOTED"
+                        ? "bg-purple-500"
+                        : status === "PENDING_APPROVAL"
+                          ? "bg-blue-500"
+                          : status === "IN_PROGRESS"
+                            ? "bg-purple-500"
+                            : status === "PRICING_REVIEW"
+                              ? "bg-yellow-500"
+                              : "bg-gray-500"
                 }`}
             >
               <Package className="w-10 h-10 text-white" />
@@ -192,6 +209,9 @@ export function RequestHeader({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="font-mono">Cancel Request?</AlertDialogTitle>
+            <span className="text-xs text-muted-foreground font-mono flex items-center gap-1">
+              You can not revert a request once it's cancelled.
+            </span>
             <div className="py-4">
               <div className="space-y-2">
                 <Label htmlFor="cancel-note">
@@ -205,18 +225,6 @@ export function RequestHeader({
                   className="resize-none"
                 />
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label className="font-mono text-xs">
-                Description (Optional)
-              </Label>
-              <Textarea
-                placeholder="Detailed description of the asset..."
-                value={cancelNote}
-                onChange={(e) => setCancelNote(e.target.value)}
-                className="font-mono text-sm"
-                rows={3}
-              />
             </div>
           </AlertDialogHeader>
           <AlertDialogFooter>

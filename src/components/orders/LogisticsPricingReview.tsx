@@ -44,6 +44,47 @@ export function LogisticsPricingReview({ orderId, order, onSubmitSuccess }: Logi
                 </Card>
             )}
 
+
+
+            {/* Vehicle Type (Optional Upgrade) */}
+            <Card>
+                <CardHeader>
+                    <CardTitle>Transport Vehicle</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <VehicleUpgradeSelector
+                        orderId={orderId}
+                        currentVehicle={order?.vehicle_type_id}
+                        onSuccess={onSubmitSuccess}
+                    />
+                </CardContent>
+            </Card>
+
+            {/* Service Line Items */}
+            <Card>
+                <CardHeader>
+                    <div className="flex items-center justify-between">
+                        <CardTitle>Service Line Items</CardTitle>
+                        {canManageLineItems(order?.order_status) && (
+                            <Button size="sm" onClick={() => setAddCatalogOpen(true)}>
+                                <Plus className="h-3 w-3 mr-1" />
+                                Add Service
+                            </Button>
+                        )}
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    <OrderLineItemsList
+                        targetId={orderId}
+                        canManage={canManageLineItems(order?.orderStatus || order?.order_status)}
+                    />
+                    <p className="text-xs text-muted-foreground mt-3">
+                        Add services like assembly, equipment rental, etc. Custom charges will be
+                        handled by Admin.
+                    </p>
+                </CardContent>
+            </Card>
+
             {/* Pricing Breakdown (Read-only for Logistics) */}
             <Card>
                 <CardHeader>
@@ -112,45 +153,6 @@ export function LogisticsPricingReview({ orderId, order, onSubmitSuccess }: Logi
                             </p> */}
                         </div>
                     )}
-                </CardContent>
-            </Card>
-
-            {/* Vehicle Type (Optional Upgrade) */}
-            <Card>
-                <CardHeader>
-                    <CardTitle>Transport Vehicle</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <VehicleUpgradeSelector
-                        orderId={orderId}
-                        currentVehicle={order?.vehicle_type_id}
-                        onSuccess={onSubmitSuccess}
-                    />
-                </CardContent>
-            </Card>
-
-            {/* Service Line Items */}
-            <Card>
-                <CardHeader>
-                    <div className="flex items-center justify-between">
-                        <CardTitle>Service Line Items</CardTitle>
-                        {canManageLineItems(order?.order_status) && (
-                            <Button size="sm" onClick={() => setAddCatalogOpen(true)}>
-                                <Plus className="h-3 w-3 mr-1" />
-                                Add Service
-                            </Button>
-                        )}
-                    </div>
-                </CardHeader>
-                <CardContent>
-                    <OrderLineItemsList
-                        targetId={orderId}
-                        canManage={canManageLineItems(order?.orderStatus || order?.order_status)}
-                    />
-                    <p className="text-xs text-muted-foreground mt-3">
-                        Add services like assembly, equipment rental, etc. Custom charges will be
-                        handled by Admin.
-                    </p>
                 </CardContent>
             </Card>
 

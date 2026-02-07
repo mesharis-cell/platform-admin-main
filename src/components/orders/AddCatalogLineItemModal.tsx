@@ -40,7 +40,7 @@ export function AddCatalogLineItemModal({
     const createLineItem = useCreateCatalogLineItem(targetId, purposeType);
 
     const [serviceTypeId, setServiceTypeId] = useState("");
-    const [quantity, setQuantity] = useState(1);
+    const [quantity, setQuantity] = useState<number | string>(1);
     const [notes, setNotes] = useState("");
 
 
@@ -52,8 +52,9 @@ export function AddCatalogLineItemModal({
     };
 
     const handleAdd = async () => {
+        const qty = Number(quantity);
 
-        if (!serviceTypeId || isNaN(quantity) || quantity <= 0) {
+        if (!serviceTypeId || isNaN(qty) || qty <= 0) {
             toast.error("Please select a service and enter a valid quantity");
             return;
         }
@@ -61,7 +62,7 @@ export function AddCatalogLineItemModal({
         try {
             await createLineItem.mutateAsync({
                 service_type_id: serviceTypeId,
-                quantity: quantity,
+                quantity: qty,
                 notes: notes || undefined,
             });
             toast.success("Service line item added");
@@ -106,15 +107,9 @@ export function AddCatalogLineItemModal({
                                 <strong>Category:</strong> {selectedService.category}
                             </p>
                             <p>
-                                <strong>Unit:</strong> {selectedService.unit} ({selectedService.default_rate}) <br />
+                                <strong>Unit:</strong> {selectedService.unit} ({selectedService.default_rate} AED)<br />
                                 <strong>Total Price:</strong> {selectedService.default_rate * Number(quantity)}
                             </p>
-                            {selectedService.default_rate && (
-                                <p>
-                                    <strong>Default Rate:</strong>{" "}
-                                    {selectedService.default_rate.toFixed(2)} AED
-                                </p>
-                            )}
                         </div>
                     )}
 
@@ -125,9 +120,16 @@ export function AddCatalogLineItemModal({
                         <Input
                             type="number"
                             step="1"
-                            min="1"
+                            // min="1
                             value={quantity}
-                            onChange={(e) => setQuantity(Number(e.target.value))}
+                            onChange={(e) => {
+                                const val = e.target.value;
+                                if (val === "") {
+                                    setQuantity("");
+                                } else {
+                                    setQuantity(Number(val));
+                                }
+                            }}
                             placeholder="4"
                         />
                     </div>
