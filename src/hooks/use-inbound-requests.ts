@@ -6,6 +6,7 @@ import type {
     CreateInboundRequestPayload,
     UpdateInboundRequestPayload,
     InboundRequestDetailsResponse,
+    CompleteInboundRequestPayload,
 } from "@/types/inbound-request";
 import { apiClient } from "@/lib/api/api-client";
 import { throwApiError } from "@/lib/utils/throw-api-error";
@@ -135,6 +136,16 @@ async function returnInboundRequestToLogistics({
     }
 }
 
+// Complete inbound request
+async function completeInboundRequest(id: string, payload: CompleteInboundRequestPayload): Promise<InboundRequestDetails> {
+    try {
+        const response = await apiClient.post(`/client/v1/inbound-request/${id}/complete`, payload);
+        return response.data;
+    } catch (error) {
+        throwApiError(error);
+    }
+}
+
 // Hooks
 export function useInboundRequests(params?: Record<string, string>) {
     return useQuery({
@@ -231,6 +242,19 @@ export function useReturnInboundRequestToLogistics() {
 
     return useMutation({
         mutationFn: returnInboundRequestToLogistics,
+        onSuccess: (data) => {
+            queryClient.invalidateQueries({ queryKey: inboundRequestKeys.lists() });
+            queryClient.invalidateQueries({ queryKey: inboundRequestKeys.detail(data.id) });
+        },
+    });
+}
+
+export function useCompleteInboundRequest() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({ id, payload }: { id: string; payload: CompleteInboundRequestPayload }) =>
+            completeInboundRequest(id, payload),
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: inboundRequestKeys.lists() });
             queryClient.invalidateQueries({ queryKey: inboundRequestKeys.detail(data.id) });

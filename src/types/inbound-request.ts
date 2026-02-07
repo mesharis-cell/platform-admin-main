@@ -55,6 +55,12 @@ export interface UpdateInboundRequestPayload {
     status?: InboundRequestStatus;
 }
 
+// Complete Inbound Request Payload
+export interface CompleteInboundRequestPayload {
+    warehouse_id: string;
+    zone_id: string;
+}
+
 // List Response
 export interface InboundRequestListResponse {
     success: true;

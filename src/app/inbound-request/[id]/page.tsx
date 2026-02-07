@@ -14,13 +14,14 @@ import { AddCustomLineItemModal } from "@/components/orders/AddCustomLineItemMod
 import { OrderApprovalRequestSubmitBtn } from "@/components/orders/OrderApprovalRequestSubmitBtn";
 import { OrderLineItemsList } from "@/components/orders/OrderLineItemsList";
 import { PendingApprovalSection } from "@/components/inbound-request/pending-approval-section";
+import { CompleteInboundDialog } from "@/components/inbound-request/complete-inbound-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { inboundRequestKeys, useInboundRequest } from "@/hooks/use-inbound-requests";
 import type { InboundRequestStatus } from "@/types/inbound-request";
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertCircle, ArrowLeft, DollarSign, Plus } from "lucide-react";
+import { AlertCircle, ArrowLeft, DollarSign, Plus, CheckCircle2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { use, useState } from "react";
 
@@ -38,6 +39,7 @@ export default function InboundRequestDetailsPage({
   const pricing = request?.request_pricing;
   const [addCatalogOpen, setAddCatalogOpen] = useState(false);
   const [addCustomOpen, setAddCustomOpen] = useState(false);
+  const [completeDialogOpen, setCompleteDialogOpen] = useState(false);
 
   function handleRefresh() {
     queryClient.invalidateQueries({ queryKey: inboundRequestKeys.detail(id) });
@@ -130,6 +132,25 @@ export default function InboundRequestDetailsPage({
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column - Items */}
           <div className="lg:col-span-2 space-y-6">
+
+            {/* Completion Banner */}
+            {request.request_status === "CONFIRMED" && (
+              <div className="bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-lg flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                    <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-emerald-700 dark:text-emerald-400">Mark inbound request completed</h3>
+                    <p className="text-sm text-muted-foreground">Create assets for each item and generate invoice</p>
+                  </div>
+                </div>
+                <Button onClick={() => setCompleteDialogOpen(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+                  Mark as Completed
+                </Button>
+              </div>
+            )}
+
             <RequestItemsList items={request.items} />
 
             {request.request_status === "PENDING_APPROVAL" ? (
@@ -267,6 +288,14 @@ export default function InboundRequestDetailsPage({
           onOpenChange={setAddCustomOpen}
           targetId={request.id}
           purposeType="INBOUND_REQUEST"
+        />
+        <CompleteInboundDialog
+          open={completeDialogOpen}
+          onOpenChange={setCompleteDialogOpen}
+          requestId={request.id}
+          companyId={request.company.id}
+          platformId={request.platform_id}
+          onSuccess={handleRefresh}
         />
       </div>
     </div>
