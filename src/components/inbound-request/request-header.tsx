@@ -1,11 +1,11 @@
+
+
 "use client";
 
-import { useState } from "react";
-import { motion } from "framer-motion";
-import { ArrowLeft, Package, Clock, Pencil, XCircle, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+
+import { EditInboundRequestDialog } from "@/components/assets/edit-inbound-request-dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,10 +16,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { useCancelInboundRequest } from "@/hooks/use-inbound-requests";
+import type { InboundRequestDetails, InboundRequestStatus } from "@/types/inbound-request";
+import { motion } from "framer-motion";
+import { ArrowLeft, Clock, Loader2, Package, Pencil, XCircle } from "lucide-react";
 import Link from "next/link";
-import type { InboundRequestStatus, InboundRequestDetails } from "@/types/inbound-request";
-import { EditInboundRequestDialog } from "@/components/assets/edit-inbound-request-dialog";
-import { useUpdateInboundRequest } from "@/hooks/use-inbound-requests";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { toast } from "sonner";
 
 const STATUS_COLORS: Record<InboundRequestStatus, string> = {
@@ -63,16 +69,22 @@ export function RequestHeader({
 }: RequestHeaderProps) {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
-  const updateMutation = useUpdateInboundRequest();
+  const cancelMutation = useCancelInboundRequest();
+  const router = useRouter();
+
+  const [cancelNote, setCancelNote] = useState("");
 
   async function handleCancel() {
+    if (!cancelNote.trim()) {
+      toast.error("Please provide a reason for cancellation");
+      return;
+    }
+
     try {
-      await updateMutation.mutateAsync({
-        id: requestId,
-        data: { status: "CANCELLED" },
-      });
+      await cancelMutation.mutateAsync({ id: requestId, note: cancelNote });
       toast.success("Request cancelled successfully");
       onRefresh();
+      router.push("/inbound-request");
       setCancelDialogOpen(false);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to cancel request");
@@ -88,7 +100,7 @@ export function RequestHeader({
         className="flex items-center justify-between mb-8"
       >
         <Link
-          href="/assets-inbound"
+          href="/inbound-request"
           className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1 font-mono"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -180,18 +192,46 @@ export function RequestHeader({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="font-mono">Cancel Request?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to cancel this inbound request? This action cannot be undone.
-            </AlertDialogDescription>
+            <div className="py-4">
+              <div className="space-y-2">
+                <Label htmlFor="cancel-note">
+                  Note <span className="text-destructive">*</span>
+                </Label>
+                <Textarea
+                  id="cancel-note"
+                  placeholder="Reason for cancellation..."
+                  value={cancelNote}
+                  onChange={(e) => setCancelNote(e.target.value)}
+                  className="resize-none"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label className="font-mono text-xs">
+                Description (Optional)
+              </Label>
+              <Textarea
+                placeholder="Detailed description of the asset..."
+                value={cancelNote}
+                onChange={(e) => setCancelNote(e.target.value)}
+                className="font-mono text-sm"
+                rows={3}
+              />
+            </div>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="font-mono">Keep Request</AlertDialogCancel>
+            <AlertDialogCancel className="font-mono" onClick={() => setCancelNote("")}>
+              Keep Request
+            </AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleCancel}
-              disabled={updateMutation.isPending}
+              onClick={(e) => {
+                e.preventDefault();
+                handleCancel();
+              }}
+              disabled={cancelMutation.isPending || !cancelNote.trim()}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90 font-mono"
             >
-              {updateMutation.isPending ? (
+              {cancelMutation.isPending ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   Cancelling...
