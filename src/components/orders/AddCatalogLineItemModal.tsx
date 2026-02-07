@@ -40,19 +40,20 @@ export function AddCatalogLineItemModal({
     const createLineItem = useCreateCatalogLineItem(targetId, purposeType);
 
     const [serviceTypeId, setServiceTypeId] = useState("");
-    const [quantity, setQuantity] = useState("");
+    const [quantity, setQuantity] = useState(1);
     const [notes, setNotes] = useState("");
+
 
     const selectedService = serviceTypes?.data?.find((s: any) => s.id === serviceTypeId);
 
     const handleServiceChange = (id: string) => {
         setServiceTypeId(id);
+        setQuantity(1);
     };
 
     const handleAdd = async () => {
-        const qtyNum = parseFloat(quantity);
 
-        if (!serviceTypeId || isNaN(qtyNum) || qtyNum <= 0) {
+        if (!serviceTypeId || isNaN(quantity) || quantity <= 0) {
             toast.error("Please select a service and enter a valid quantity");
             return;
         }
@@ -60,13 +61,13 @@ export function AddCatalogLineItemModal({
         try {
             await createLineItem.mutateAsync({
                 service_type_id: serviceTypeId,
-                quantity: qtyNum,
+                quantity: quantity,
                 notes: notes || undefined,
             });
             toast.success("Service line item added");
             onOpenChange(false);
             setServiceTypeId("");
-            setQuantity("");
+            setQuantity(1);
             setNotes("");
         } catch (error: any) {
             toast.error(error.message || "Failed to add line item");
@@ -105,12 +106,13 @@ export function AddCatalogLineItemModal({
                                 <strong>Category:</strong> {selectedService.category}
                             </p>
                             <p>
-                                <strong>Unit:</strong> {selectedService.unit}
+                                <strong>Unit:</strong> {selectedService.unit} ({selectedService.default_rate}) <br />
+                                <strong>Total Price:</strong> {selectedService.default_rate * Number(quantity)}
                             </p>
-                            {selectedService.defaultRate && (
+                            {selectedService.default_rate && (
                                 <p>
                                     <strong>Default Rate:</strong>{" "}
-                                    {selectedService.defaultRate.toFixed(2)} AED
+                                    {selectedService.default_rate.toFixed(2)} AED
                                 </p>
                             )}
                         </div>
@@ -122,10 +124,10 @@ export function AddCatalogLineItemModal({
                         </Label>
                         <Input
                             type="number"
-                            step="0.01"
-                            min="0"
+                            step="1"
+                            min="1"
                             value={quantity}
-                            onChange={(e) => setQuantity(e.target.value)}
+                            onChange={(e) => setQuantity(Number(e.target.value))}
                             placeholder="4"
                         />
                     </div>
