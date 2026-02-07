@@ -30,6 +30,7 @@ import {
   Calendar,
   ChevronRight,
   Settings,
+  Flag,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -154,6 +155,11 @@ const navigation: NavItem[] = [
     name: "Inbound Request",
     href: "/inbound-request",
     icon: Package,
+  },
+  {
+    name: "Feature Flags",
+    href: "/feature-flags",
+    icon: Flag,
   },
   {
     name: "System Settings",

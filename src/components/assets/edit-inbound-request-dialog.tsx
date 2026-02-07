@@ -50,7 +50,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import type { InboundRequestDetails, InboundRequestItem, UpdateInboundRequestPayload, TrackingMethod } from "@/types/inbound-request";
-import { useToken } from "@/lib/auth/use-token";
+
 import { useCompanies } from "@/hooks/use-companies";
 
 const STEPS = [
@@ -125,13 +125,13 @@ export function EditInboundRequestDialog({
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Fetch reference data
-  const { user } = useToken();
+
 
   // Asset search - uses debounced search query for current item
   const currentSearchQuery = searchQueriesPerItem.get(currentItemIndex) || "";
   const { data: searchResults, isLoading: isSearching } = useSearchAssets(
     currentSearchQuery,
-    user?.company_id
+    formData.company_id
   );
   const searchedAssets = searchResults?.data || [];
 
@@ -438,7 +438,7 @@ export function EditInboundRequestDialog({
 
   async function handleSubmit() {
     if (!request) return;
-    if (!user?.company_id) {
+    if (!formData.company_id) {
       toast.error("Company ID not available");
       return;
     }
@@ -463,7 +463,7 @@ export function EditInboundRequestDialog({
       let allUploadedUrls: string[] = [];
       if (allFiles.length > 0) {
         const uploadFormData = new FormData();
-        uploadFormData.append("companyId", user.company_id);
+        uploadFormData.append("companyId", formData.company_id);
         allFiles.forEach((file) => uploadFormData.append("files", file));
 
         const uploadResult = await uploadMutation.mutateAsync(uploadFormData);
@@ -529,6 +529,7 @@ export function EditInboundRequestDialog({
             item.name.trim() !== "" &&
             item.category &&
             item.category.trim() !== "" &&
+            item.quantity > 0 &&
             item.tracking_method
         );
       case 2: // Specifications
@@ -642,6 +643,7 @@ export function EditInboundRequestDialog({
                     Company ID *
                   </Label>
                   <Select
+                    disabled
                     value={formData.company_id}
                     onValueChange={(value) =>
                       setFormData({
@@ -864,7 +866,7 @@ export function EditInboundRequestDialog({
                             brand_id: value,
                           })
                         }
-                        disabled={!user?.company_id || isAssetSelected(currentItemIndex)}
+                        disabled={!formData.company_id || isAssetSelected(currentItemIndex)}
                       >
                         <SelectTrigger className="font-mono">
                           <SelectValue placeholder="Select brand" />
@@ -914,11 +916,10 @@ export function EditInboundRequestDialog({
                       <Label className="font-mono text-xs">Quantity *</Label>
                       <Input
                         type="number"
-                        min="1"
-                        value={currentItem.quantity || 1}
+                        value={currentItem.quantity}
                         onChange={(e) =>
                           updateItem(currentItemIndex, {
-                            quantity: parseInt(e.target.value) || 1,
+                            quantity: parseInt(e.target.value),
                           })
                         }
                         className="font-mono"

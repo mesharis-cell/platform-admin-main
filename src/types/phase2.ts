@@ -42,6 +42,9 @@ export interface Company {
             updated_at: Date;
         },
     ];
+    features: {
+        [key: string]: boolean;
+    };
 }
 
 export interface CreateCompanyRequest {
