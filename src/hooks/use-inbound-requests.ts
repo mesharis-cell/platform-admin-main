@@ -2,10 +2,11 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
-    InboundRequestList,
+    InboundRequestDetails,
     CreateInboundRequestPayload,
     UpdateInboundRequestPayload,
     InboundRequestDetailsResponse,
+    CompleteInboundRequestPayload,
 } from "@/types/inbound-request";
 import { apiClient } from "@/lib/api/api-client";
 import { throwApiError } from "@/lib/utils/throw-api-error";
@@ -22,7 +23,7 @@ export const inboundRequestKeys = {
 // Fetch inbound requests list
 async function fetchInboundRequests(
     params?: Record<string, string>
-): Promise<{ data: InboundRequestList[]; meta: { total: number; limit: number; page: number } }> {
+): Promise<{ data: InboundRequestDetails[]; meta: { total: number; limit: number; page: number } }> {
     try {
         const searchParams = new URLSearchParams(params);
         const response = await apiClient.get(`/client/v1/inbound-request?${searchParams}`);
@@ -43,7 +44,7 @@ async function fetchInboundRequest(id: string): Promise<InboundRequestDetailsRes
 }
 
 // Create inbound request
-async function createInboundRequest(data: CreateInboundRequestPayload): Promise<InboundRequestList> {
+async function createInboundRequest(data: CreateInboundRequestPayload): Promise<InboundRequestDetails> {
     try {
         const response = await apiClient.post(`/client/v1/inbound-request`, data);
         return response.data;
@@ -56,7 +57,7 @@ async function createInboundRequest(data: CreateInboundRequestPayload): Promise<
 async function updateInboundRequest(
     id: string,
     data: UpdateInboundRequestPayload
-): Promise<InboundRequestList> {
+): Promise<InboundRequestDetails> {
     try {
         const response = await apiClient.patch(`/client/v1/inbound-request/${id}`, data);
         return response.data;
@@ -76,9 +77,69 @@ async function deleteInboundRequest(id: string): Promise<void> {
 }
 
 // Cancel inbound request
-async function cancelInboundRequest({ id, note }: { id: string; note: string }): Promise<InboundRequestList> {
+async function cancelInboundRequest({ id, note }: { id: string; note: string }): Promise<InboundRequestDetails> {
     try {
         const response = await apiClient.post(`/client/v1/inbound-request/${id}/cancel`, { note });
+        return response.data;
+    } catch (error) {
+        throwApiError(error);
+    }
+}
+
+// Submit inbound request for approval
+async function submitInboundRequestForApproval(id: string): Promise<InboundRequestDetails> {
+    try {
+        const response = await apiClient.post(`/client/v1/inbound-request/${id}/submit-for-approval`);
+        return response.data;
+    } catch (error) {
+        throwApiError(error);
+    }
+}
+
+// Admin approve inbound request
+async function adminApproveInboundRequest({
+    id,
+    marginOverridePercent,
+    marginOverrideReason,
+}: {
+    id: string;
+    marginOverridePercent?: number;
+    marginOverrideReason?: string;
+}): Promise<InboundRequestDetails> {
+    try {
+        const payload: any = {};
+        if (marginOverridePercent !== undefined) payload.margin_override_percent = marginOverridePercent;
+        if (marginOverrideReason !== undefined) payload.margin_override_reason = marginOverrideReason;
+
+        const response = await apiClient.post(`/client/v1/inbound-request/${id}/approve-request`, payload);
+        return response.data;
+    } catch (error) {
+        throwApiError(error);
+    }
+}
+
+// Return inbound request to logistics
+async function returnInboundRequestToLogistics({
+    id,
+    reason,
+}: {
+    id: string;
+    reason: string;
+}): Promise<InboundRequestDetails> {
+    try {
+        const response = await apiClient.post(`/client/v1/inbound-request/${id}/return-to-logistics`, {
+            reason,
+        });
+        return response.data;
+    } catch (error) {
+        throwApiError(error);
+    }
+}
+
+// Complete inbound request
+async function completeInboundRequest(id: string, payload: CompleteInboundRequestPayload): Promise<InboundRequestDetails> {
+    try {
+        const response = await apiClient.post(`/client/v1/inbound-request/${id}/complete`, payload);
         return response.data;
     } catch (error) {
         throwApiError(error);
@@ -149,3 +210,54 @@ export function useDeleteInboundRequest() {
 }
 
 
+
+// Submit inbound request for approval
+
+export function useSubmitInboundRequestForApproval() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: submitInboundRequestForApproval,
+        onSuccess: (data) => {
+            queryClient.invalidateQueries({ queryKey: inboundRequestKeys.lists() });
+            queryClient.invalidateQueries({ queryKey: inboundRequestKeys.detail(data.id) });
+        },
+    });
+}
+
+export function useAdminApproveInboundRequest() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: adminApproveInboundRequest,
+        onSuccess: (data) => {
+            queryClient.invalidateQueries({ queryKey: inboundRequestKeys.lists() });
+            queryClient.invalidateQueries({ queryKey: inboundRequestKeys.detail(data.id) });
+        },
+    });
+}
+
+export function useReturnInboundRequestToLogistics() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: returnInboundRequestToLogistics,
+        onSuccess: (data) => {
+            queryClient.invalidateQueries({ queryKey: inboundRequestKeys.lists() });
+            queryClient.invalidateQueries({ queryKey: inboundRequestKeys.detail(data.id) });
+        },
+    });
+}
+
+export function useCompleteInboundRequest() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({ id, payload }: { id: string; payload: CompleteInboundRequestPayload }) =>
+            completeInboundRequest(id, payload),
+        onSuccess: (data) => {
+            queryClient.invalidateQueries({ queryKey: inboundRequestKeys.lists() });
+            queryClient.invalidateQueries({ queryKey: inboundRequestKeys.detail(data.id) });
+        },
+    });
+}

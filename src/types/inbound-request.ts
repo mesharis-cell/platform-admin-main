@@ -5,11 +5,22 @@
 export type TrackingMethod = "INDIVIDUAL" | "BATCH";
 
 // Inbound Request Status
-export type InboundRequestStatus = "PENDING" | "APPROVED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
+export type InboundRequestStatus = "PRICING_REVIEW" | "PENDING_APPROVAL" | "QUOTED" | "CONFIRMED" | "DECLINED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
 
 // Inbound Request Item
 export interface InboundRequestItem {
     id: string;
+    asset?: {
+        id: string;
+        name: string;
+        images: string[];
+        qr_code: string;
+        tracking_method: TrackingMethod;
+        category: string;
+        status: string;
+        total_quantity: number;
+        available_quantity: number;
+    }
     asset_id: string | null;
     item_id?: string | null;
     inbound_request_id: string;
@@ -34,29 +45,7 @@ export interface InboundRequestItem {
     updated_at: string;
 }
 
-// Full Inbound Request Entity (from API response)
-export interface InboundRequestList {
-    id: string;
-    platform_id: string;
-    incoming_at: string;
-    note: string | null;
-    request_status: string;
-    financial_status: string;
-    company: {
-        id: string;
-        name: string;
-    },
-    requester: {
-        id: string;
-        name: string;
-        email: string;
-    },
-    request_pricing: {
-        final_total: string;
-    },
-    created_at: string;
-    updated_at: string;
-}
+
 
 // Create Inbound Request Item (client-provided fields only)
 export type CreateInboundRequestItem = Omit<InboundRequestItem, "id" | "inbound_request_id" | "created_asset_id" | "created_at" | "updated_at">;
@@ -78,10 +67,16 @@ export interface UpdateInboundRequestPayload {
     status?: InboundRequestStatus;
 }
 
+// Complete Inbound Request Payload
+export interface CompleteInboundRequestPayload {
+    warehouse_id: string;
+    zone_id: string;
+}
+
 // List Response
 export interface InboundRequestListResponse {
     success: true;
-    data: InboundRequestList[];
+    data: InboundRequestDetails[];
     total: number;
     limit: number;
     offset: number;
@@ -90,7 +85,7 @@ export interface InboundRequestListResponse {
 // Single Response
 export interface InboundRequestResponse {
     success: true;
-    data: InboundRequestList;
+    data: InboundRequestDetails;
 }
 
 export interface InboundRequestDetailsResponse {
@@ -100,6 +95,7 @@ export interface InboundRequestDetailsResponse {
 
 export interface InboundRequestDetails {
     id: string;
+    inbound_request_id: string;
     platform_id: string;
     incoming_at: string;
     note: string | null;
@@ -115,7 +111,22 @@ export interface InboundRequestDetails {
         email: string;
     },
     request_pricing: {
+        warehouse_ops_rate: string;
+        base_ops_total: string;
+        logistics_sub_total: string;
         final_total: string;
+        line_items: {
+            custom_total: number;
+            catalog_total: number;
+        };
+        margin: {
+            amount: number;
+            percent: string;
+            is_override: boolean;
+            override_reason: string | null;
+        };
+        calculated_by: string;
+        calculated_at: string;
     },
     items: InboundRequestItem[];
     created_at: string;
