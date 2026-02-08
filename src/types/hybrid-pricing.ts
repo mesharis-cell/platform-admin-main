@@ -105,6 +105,7 @@ export interface CreateVehicleTypeRequest {
     vehicle_size: number;
     display_order?: number;
     description?: string;
+    isDefault?: boolean;
 }
 
 export interface UpdateVehicleTypeRequest {
@@ -113,6 +114,7 @@ export interface UpdateVehicleTypeRequest {
     display_order?: number;
     description?: string;
     isActive?: boolean;
+    isDefault?: boolean;
 }
 
 // ============================================================

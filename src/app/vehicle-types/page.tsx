@@ -7,6 +7,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   Table,
   TableBody,
@@ -17,7 +18,7 @@ import {
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { useCreateVehicleType, useListVehicleTypes, useUpdateVehicleType } from "@/hooks/use-vehicle-types";
-import { CreateVehicleTypeRequest, VehicleTypeEntity } from "@/types/hybrid-pricing";
+import { CreateVehicleTypeRequest, UpdateVehicleTypeRequest, VehicleTypeEntity } from "@/types/hybrid-pricing";
 import { formatDate } from "date-fns";
 import {
   Car,
@@ -44,6 +45,7 @@ export default function VehicleTypesPage() {
     vehicle_size: 0,
     display_order: 1,
     description: "",
+    isDefault: false,
   });
 
   const createVehicleType = useCreateVehicleType();
@@ -68,6 +70,7 @@ export default function VehicleTypesPage() {
       vehicle_size: 0,
       display_order: 1,
       description: "",
+      isDefault: false,
     });
   };
 
@@ -78,6 +81,7 @@ export default function VehicleTypesPage() {
       vehicle_size: vehicleType.vehicle_size,
       display_order: vehicleType.display_order,
       description: vehicleType.description || "",
+      isDefault: vehicleType.is_default,
     });
     setIsCreateOpen(true);
   };
@@ -101,19 +105,46 @@ export default function VehicleTypesPage() {
     }
 
     const payload: CreateVehicleTypeRequest = {
-      name: formData.name,
+      name: formData.name!,
       vehicle_size: Number(formData.vehicle_size),
       display_order: Number(formData.display_order) || 1,
       description: formData.description,
+      isDefault: formData.isDefault,
     };
 
     try {
       if (editingVehicleType) {
-        await updateVehicleType.mutateAsync({
-          id: editingVehicleType.id,
-          data: payload,
-        });
-        toast.success("Vehicle type updated successfully");
+        const updatePayload: UpdateVehicleTypeRequest = {};
+        if (formData.name && formData.name !== editingVehicleType.name) {
+          updatePayload.name = formData.name;
+        }
+
+        if (payload.vehicle_size !== editingVehicleType.vehicle_size) {
+          updatePayload.vehicle_size = payload.vehicle_size;
+        }
+
+        if (payload.display_order !== editingVehicleType.display_order) {
+          updatePayload.display_order = payload.display_order;
+        }
+
+        const description = formData.description || "";
+        if (description !== (editingVehicleType.description || "")) {
+          updatePayload.description = description;
+        }
+
+        if (formData.isDefault !== editingVehicleType.is_default) {
+          updatePayload.isDefault = formData.isDefault;
+        }
+
+        if (Object.keys(updatePayload).length > 0) {
+          await updateVehicleType.mutateAsync({
+            id: editingVehicleType.id,
+            data: updatePayload,
+          });
+          toast.success("Vehicle type updated successfully");
+        } else {
+          toast.info("No changes detected");
+        }
         resetForm();
       } else {
         await createVehicleType.mutateAsync(payload);
@@ -235,24 +266,40 @@ export default function VehicleTypesPage() {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="display_order" className="font-mono text-xs">
-                    DISPLAY ORDER
-                  </Label>
-                  <Input
-                    id="display_order"
-                    type="number"
-                    min="1"
-                    value={formData.display_order}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        display_order: parseInt(e.target.value) || 1,
-                      })
-                    }
-                    placeholder="1"
-                    className="font-mono"
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="display_order" className="font-mono text-xs">
+                      DISPLAY ORDER
+                    </Label>
+                    <Input
+                      id="display_order"
+                      type="number"
+                      min="1"
+                      value={formData.display_order}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          display_order: parseInt(e.target.value) || 1,
+                        })
+                      }
+                      placeholder="1"
+                      className="font-mono"
+                    />
+                  </div>
+                  <div className="flex flex-col justify-end pb-2">
+                    <div className="flex items-center gap-3">
+                      <Switch
+                        id="default-toggle"
+                        checked={formData.isDefault}
+                        onCheckedChange={(checked) =>
+                          setFormData({ ...formData, isDefault: checked })
+                        }
+                      />
+                      <Label htmlFor="default-toggle" className="font-mono text-xs cursor-pointer">
+                        {formData.isDefault ? "DEFAULT VEHICLE" : "SET AS DEFAULT"}
+                      </Label>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="space-y-2">
