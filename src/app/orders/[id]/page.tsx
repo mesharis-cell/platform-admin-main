@@ -180,7 +180,7 @@ const STATUS_CONFIG: Record<
     AWAITING_FABRICATION: {
         label: "AWAITING FABRICATION",
         color: "bg-cyan-500/10 text-cyan-700 border-cyan-500/20",
-        nextStates: ["READY_FOR_DELIVERY"],
+        nextStates: ["IN_PREPARATION"],
     },
     IN_PREPARATION: {
         label: "IN PREP",
@@ -415,6 +415,8 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
         );
     }
 
+    console.log(order);
+
     const { total } = getOrderPrice(order?.data?.pricing);
     const currentStatusConfig = STATUS_CONFIG[order.data.order_status] || STATUS_CONFIG.DRAFT;
     const allowedNextStates = currentStatusConfig.nextStates || [];
@@ -490,7 +492,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                             disabled={
                                                 progressLoading ||
                                                 order.data.order_status === "PENDING_APPROVAL" ||
-                                                order.data.order_status === "AWAITING_FABRICATION" ||
+                                                // order.data.order_status === "AWAITING_FABRICATION" ||
                                                 order.data.order_status === "PRICING_REVIEW" ||
                                                 order.data.order_status === "IN_PREPARATION" ||
                                                 order.data.order_status === "AWAITING_RETURN" ||
@@ -1521,6 +1523,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                             // TODO: Implement reject and contact client logic
                                             console.log("Reject reskin for order item:", orderItemId);
                                         }}
+                                        onRefresh={refetch}
                                     />
                                 ))}
                             </CardContent>

@@ -2,13 +2,19 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useCompleteMaintenance, useSendToMaintenance } from "@/hooks/use-assets";
 import { useListReskinRequests } from "@/hooks/use-reskin-requests";
+import { Condition } from "@/types";
+import { toast } from "sonner";
 
 interface OrderItemCardProps {
   item: {
     id: string;
     asset?: {
+      id: string;
       name?: string;
+      condition: Condition;
+      status: string;
       refurbishment_days_estimate?: number;
     };
     order_item?: {
@@ -32,6 +38,7 @@ interface OrderItemCardProps {
     clientNotes: string;
   }) => void;
   onRejectReskin?: (orderItemId: string) => void;
+  onRefresh?: () => void;
 }
 
 export function OrderItemCard({
@@ -40,8 +47,11 @@ export function OrderItemCard({
   orderStatus,
   onProcessReskin,
   onRejectReskin,
+  onRefresh,
 }: OrderItemCardProps) {
   const { data: reskinRequests } = useListReskinRequests(orderId || "");
+  const sendToMaintenance = useSendToMaintenance();
+  const completeMaintenance = useCompleteMaintenance();
 
   const reskinRequest = reskinRequests?.find(
     (request: any) => request?.orderItemId === item?.order_item?.id
@@ -63,6 +73,34 @@ export function OrderItemCard({
       onRejectReskin(item.order_item.id);
     }
   };
+
+  const handleSendToMaintenance = async () => {
+    try {
+      if (item?.asset?.id) {
+        await sendToMaintenance.mutateAsync({ id: item.asset.id, orderId });
+        if (onRefresh) onRefresh();
+      }
+      toast.success("Asset sent to maintenance");
+    } catch (error: any) {
+      console.error("Error sending asset to maintenance:", error);
+      toast.error(error.message || "Failed to send asset to maintenance")
+    }
+  };
+
+  const handleCompleteMaintenance = async () => {
+    try {
+      if (item?.asset?.id) {
+        await completeMaintenance.mutateAsync({ id: item.asset.id, orderId });
+        if (onRefresh) onRefresh();
+      }
+      toast.success("Asset completed maintenance");
+    } catch (error: any) {
+      console.error("Error completing asset maintenance:", error);
+      toast.error(error.message || "Failed to complete asset maintenance")
+    }
+  };
+
+  console.log(item.asset.status)
 
   return (
     <div className="bg-muted/30 rounded border border-border p-3">
@@ -94,9 +132,37 @@ export function OrderItemCard({
           </div>
         )}
 
+        {["PRICING_REVIEW", "PENDING_APPROVAL", "QUOTED", "CONFIRMED", "AWAITING_FABRICATION"].includes(orderStatus) && item.asset.condition !== "GREEN" && (
+          <div className="bg-red-500/10 p-2 rounded border border-red-500/20 mt-4 font-mono text-xs text-red-500">
+            <p>This asset is damaged. Maintenance is required to restore proper operation. Refurbishment estimate {item?.asset?.refurbishment_days_estimate} days.</p>
+          </div>
+        )}
+
+        {["AWAITING_FABRICATION", "CONFIRMED"].includes(orderStatus) && item.asset.condition !== "GREEN" && item.asset.status !== "MAINTENANCE" && (
+          <Button
+            variant="default"
+            className="text-xs font-mono mt-2"
+            onClick={handleSendToMaintenance}
+            disabled={sendToMaintenance.isPending}
+          >
+            {sendToMaintenance.isPending ? "Sending..." : "Send to Maintenance"}
+          </Button>
+        )}
+
+        {["AWAITING_FABRICATION", "CONFIRMED"].includes(orderStatus) && item.asset.condition !== "GREEN" && item.asset.status === "MAINTENANCE" && (
+          <Button
+            variant="default"
+            className="text-xs font-mono mt-2"
+            onClick={handleCompleteMaintenance}
+            disabled={completeMaintenance.isPending}
+          >
+            {completeMaintenance.isPending ? "Completing..." : "Complete Maintenance"}
+          </Button>
+        )}
+
         {/* Reskin Request for PRICING_REVIEW status */}
         {orderStatus === "PRICING_REVIEW" && item?.order_item?.is_reskin_request && (
-          <div className="bg-primary/10 p-2 rounded border border-primary/20 mt-4 font-mono text-xs text-muted-foreground">
+          <div className="bg-primary/10 p-2 rounded border border-primary/20 mt-4 font-mono text-xs text-primary">
             <p>Target brand: {item?.order_item?.reskin_target_brand_name}</p>
             <p className="mt-2">Client instructions: {item?.order_item?.reskin_notes}</p>
             <p className="mt-2">Status: ⏳ Pending Admin Action</p>

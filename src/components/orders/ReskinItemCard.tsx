@@ -53,6 +53,12 @@ export function ReskinItemCard({
           <p className="text-sm">{reskin.clientNotes}</p>
         </div>
 
+        {disabled && (
+          <div className="text-sm text-red-500">
+            Set delivery schedule before fabricating items and starting preparation
+          </div>
+        )}
+
         {showActionButton && !disabled && <div className="flex gap-2">
           <Button
             size="sm"
