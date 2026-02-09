@@ -154,7 +154,7 @@ export function TruckDetailsModal({
               <option value="">Select truck size...</option>
               {vehicleTypes?.data?.map((vehicleType) => (
                 <option key={vehicleType.id} value={vehicleType.vehicle_size}>
-                  {vehicleType.name} ({removeUnderScore(vehicleType.vehicle_size)})
+                  {vehicleType.name} ({vehicleType.vehicle_size})
                 </option>
               ))}
             </select>

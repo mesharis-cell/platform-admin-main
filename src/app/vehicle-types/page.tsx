@@ -1,17 +1,13 @@
 "use client";
 
-import { useListVehicleTypes, useCreateVehicleType, useUpdateVehicleType, useDeleteVehicleType } from "@/hooks/use-vehicle-types";
-import {
-  Plus,
-  Car,
-  Edit,
-  Search,
-  Power,
-  PowerOff,
-  Trash2,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { AdminHeader } from "@/components/admin-header";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   Table,
   TableBody,
@@ -20,17 +16,21 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useMemo, useState } from "react";
-import { AdminHeader } from "@/components/admin-header";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { VehicleTypeEntity, CreateVehicleTypeRequest } from "@/types/hybrid-pricing";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { useCreateVehicleType, useListVehicleTypes, useUpdateVehicleType } from "@/hooks/use-vehicle-types";
+import { CreateVehicleTypeRequest, UpdateVehicleTypeRequest, VehicleTypeEntity } from "@/types/hybrid-pricing";
 import { formatDate } from "date-fns";
+import {
+  Car,
+  Edit,
+  Plus,
+  Power,
+  PowerOff,
+  Search,
+  Trash2,
+} from "lucide-react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { removeUnderScore } from "@/lib/utils/helper";
 
 export default function VehicleTypesPage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -42,9 +42,10 @@ export default function VehicleTypesPage() {
   // Form state
   const [formData, setFormData] = useState<Partial<CreateVehicleTypeRequest>>({
     name: "",
-    vehicle_size: "",
+    vehicle_size: 0,
     display_order: 1,
     description: "",
+    isDefault: false,
   });
 
   const createVehicleType = useCreateVehicleType();
@@ -66,9 +67,10 @@ export default function VehicleTypesPage() {
     setIsCreateOpen(false);
     setFormData({
       name: "",
-      vehicle_size: "",
+      vehicle_size: 0,
       display_order: 1,
       description: "",
+      isDefault: false,
     });
   };
 
@@ -79,6 +81,7 @@ export default function VehicleTypesPage() {
       vehicle_size: vehicleType.vehicle_size,
       display_order: vehicleType.display_order,
       description: vehicleType.description || "",
+      isDefault: vehicleType.is_default,
     });
     setIsCreateOpen(true);
   };
@@ -101,30 +104,47 @@ export default function VehicleTypesPage() {
       return;
     }
 
-    // Validate vehicle_size length
-    if (formData.vehicle_size.length < 2) {
-      toast.error("Vehicle size must be at least 2 characters long");
-      return;
-    }
-    if (formData.vehicle_size.length > 100) {
-      toast.error("Vehicle size cannot exceed 100 characters");
-      return;
-    }
-
     const payload: CreateVehicleTypeRequest = {
-      name: formData.name,
-      vehicle_size: formData.vehicle_size,
-      display_order: formData.display_order || 1,
+      name: formData.name!,
+      vehicle_size: Number(formData.vehicle_size),
+      display_order: Number(formData.display_order) || 1,
       description: formData.description,
+      isDefault: formData.isDefault,
     };
 
     try {
       if (editingVehicleType) {
-        await updateVehicleType.mutateAsync({
-          id: editingVehicleType.id,
-          data: payload,
-        });
-        toast.success("Vehicle type updated successfully");
+        const updatePayload: UpdateVehicleTypeRequest = {};
+        if (formData.name && formData.name !== editingVehicleType.name) {
+          updatePayload.name = formData.name;
+        }
+
+        if (payload.vehicle_size !== editingVehicleType.vehicle_size) {
+          updatePayload.vehicle_size = payload.vehicle_size;
+        }
+
+        if (payload.display_order !== editingVehicleType.display_order) {
+          updatePayload.display_order = payload.display_order;
+        }
+
+        const description = formData.description || "";
+        if (description !== (editingVehicleType.description || "")) {
+          updatePayload.description = description;
+        }
+
+        if (formData.isDefault !== editingVehicleType.is_default) {
+          updatePayload.isDefault = formData.isDefault;
+        }
+
+        if (Object.keys(updatePayload).length > 0) {
+          await updateVehicleType.mutateAsync({
+            id: editingVehicleType.id,
+            data: updatePayload,
+          });
+          toast.success("Vehicle type updated successfully");
+        } else {
+          toast.info("No changes detected");
+        }
         resetForm();
       } else {
         await createVehicleType.mutateAsync(payload);
@@ -218,7 +238,7 @@ export default function VehicleTypesPage() {
                           name: e.target.value,
                         })
                       }
-                      placeholder="e.g., Standard Truck"
+                      placeholder="Standard Truck"
                       required
                       minLength={2}
                       maxLength={100}
@@ -227,44 +247,59 @@ export default function VehicleTypesPage() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="vehicle_size" className="font-mono text-xs">
-                      VEHICLE SIZE *
+                      VEHICLE MAX CAPACITY (m³)*
                     </Label>
                     <Input
                       id="vehicle_size"
+                      type="number"
                       value={formData.vehicle_size}
                       onChange={(e) =>
                         setFormData({
                           ...formData,
-                          vehicle_size: e.target.value,
+                          vehicle_size: Number(e.target.value),
                         })
                       }
-                      placeholder="e.g., STANDARD, 7 TON"
+                      placeholder="20"
                       required
-                      minLength={2}
-                      maxLength={100}
                       className="font-mono"
                     />
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="display_order" className="font-mono text-xs">
-                    DISPLAY ORDER
-                  </Label>
-                  <Input
-                    id="display_order"
-                    type="number"
-                    min="1"
-                    value={formData.display_order}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        display_order: parseInt(e.target.value) || 1,
-                      })
-                    }
-                    placeholder="1"
-                    className="font-mono"
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="display_order" className="font-mono text-xs">
+                      DISPLAY ORDER
+                    </Label>
+                    <Input
+                      id="display_order"
+                      type="number"
+                      min="1"
+                      value={formData.display_order}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          display_order: parseInt(e.target.value) || 1,
+                        })
+                      }
+                      placeholder="1"
+                      className="font-mono"
+                    />
+                  </div>
+                  <div className="flex flex-col justify-end pb-2">
+                    <div className="flex items-center gap-3">
+                      <Switch
+                        id="default-toggle"
+                        checked={formData.isDefault}
+                        onCheckedChange={(checked) =>
+                          setFormData({ ...formData, isDefault: checked })
+                        }
+                      />
+                      <Label htmlFor="default-toggle" className="font-mono text-xs cursor-pointer">
+                        {formData.isDefault ? "DEFAULT VEHICLE" : "SET AS DEFAULT"}
+                      </Label>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="space-y-2">
@@ -403,7 +438,7 @@ export default function VehicleTypesPage() {
                       </div>
                     </TableCell>
                     <TableCell className="font-mono text-xs font-semibold">
-                      {removeUnderScore(vehicleType.vehicle_size)}
+                      {vehicleType.vehicle_size}
                     </TableCell>
                     <TableCell className="font-mono text-xs">
                       {vehicleType.display_order}

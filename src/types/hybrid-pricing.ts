@@ -29,7 +29,7 @@ export type TripType = "ONE_WAY" | "ROUND_TRIP";
 export interface VehicleType {
     id: string;
     name: string;
-    vehicle_size: string;
+    vehicle_size: number;
     platform_id: string;
     is_default: boolean;
     is_active: boolean;
@@ -91,7 +91,7 @@ export interface VehicleTypeEntity {
     id: string;
     platform_id: string;
     name: string;
-    vehicle_size: string;
+    vehicle_size: number;
     display_order: number;
     description: string | null;
     is_active: boolean;
@@ -102,17 +102,19 @@ export interface VehicleTypeEntity {
 
 export interface CreateVehicleTypeRequest {
     name: string;
-    vehicle_size: string;
+    vehicle_size: number;
     display_order?: number;
     description?: string;
+    isDefault?: boolean;
 }
 
 export interface UpdateVehicleTypeRequest {
     name?: string;
-    vehicle_size?: string;
+    vehicle_size?: number;
     display_order?: number;
     description?: string;
     isActive?: boolean;
+    isDefault?: boolean;
 }
 
 // ============================================================
