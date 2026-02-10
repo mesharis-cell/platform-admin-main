@@ -42,7 +42,7 @@ export default function VehicleTypesPage() {
   // Form state
   const [formData, setFormData] = useState<Partial<CreateVehicleTypeRequest>>({
     name: "",
-    vehicle_size: 0,
+    vehicle_size: null,
     display_order: 1,
     description: "",
     isDefault: false,
@@ -67,7 +67,7 @@ export default function VehicleTypesPage() {
     setIsCreateOpen(false);
     setFormData({
       name: "",
-      vehicle_size: 0,
+      vehicle_size: null,
       display_order: 1,
       description: "",
       isDefault: false,
@@ -256,13 +256,16 @@ export default function VehicleTypesPage() {
                       onChange={(e) =>
                         setFormData({
                           ...formData,
-                          vehicle_size: Number(e.target.value),
+                          vehicle_size: parseInt(e.target.value),
                         })
                       }
                       placeholder="20"
                       required
                       className="font-mono"
                     />
+                    <p className="text-xs text-muted-foreground font-mono">
+                      Maximum capacity of the vehicle in cubic meters (m³) (Min 1 m³).
+                    </p>
                   </div>
                 </div>
 

@@ -17,7 +17,6 @@ import { toast } from "sonner";
 import { useUpdateOrderVehicle } from "@/hooks/use-orders";
 import { Card, CardContent } from "../ui/card";
 import { useListVehicleTypes } from "@/hooks/use-vehicle-types";
-import { removeUnderScore } from "@/lib/utils/helper";
 
 interface VehicleUpgradeSelectorProps {
     orderId: string;
@@ -94,7 +93,7 @@ export function VehicleUpgradeSelector({
                             <SelectContent>
                                 {vehicleTypes?.data?.map((vehicleType) => (
                                     <SelectItem key={vehicleType.id} value={vehicleType.id}>
-                                        {vehicleType.name} ({removeUnderScore(vehicleType.vehicle_size)})
+                                        {vehicleType.name} ({vehicleType.vehicle_size} m³)
                                     </SelectItem>
                                 ))}
                             </SelectContent>

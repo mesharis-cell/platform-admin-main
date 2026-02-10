@@ -45,7 +45,6 @@ export type FinancialStatus =
 export interface Order {
     id: string;
     orderId: string; // Human-readable order ID (e.g., "ORD-20241109-001")
-    company: string;
     companyName?: string; // Populated via join
     brand?: string | null;
     brandName?: string | null; // Populated via join
@@ -56,6 +55,11 @@ export interface Order {
     contactName?: string | null;
     contactEmail?: string | null;
     contactPhone?: string | null;
+    trip_type: "ONE_WAY" | "ROUND_TRIP";
+    company: {
+        id: string;
+        name: string;
+    }
     // Event details
     eventStartDate?: Date | null;
     eventEndDate?: Date | null;
@@ -63,6 +67,8 @@ export interface Order {
     venueName?: string | null;
     venueCountry?: string | null;
     venueCity?: string | null;
+    venue_city_id: string;
+    vehicle_type_id: string;
     venueAddress?: string | null;
     venueAccessNotes?: string | null;
     // Special instructions
@@ -72,6 +78,7 @@ export interface Order {
     calculatedWeight: string; // decimal as string
     // Pricing tier reference
     pricingTier?: string | null;
+    order_pricing_id: string;
     // Pricing fields (Phase 8)
     a2BasePrice?: string | null;
     a2AdjustedPrice?: string | null;

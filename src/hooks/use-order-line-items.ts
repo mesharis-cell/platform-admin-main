@@ -11,6 +11,7 @@ import type {
     VoidLineItemRequest,
 } from "@/types/hybrid-pricing";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { inboundRequestKeys } from "@/hooks/use-inbound-requests";
 
 export const lineItemsKeys = {
     list: (targetId: string, purposeType: "ORDER" | "INBOUND_REQUEST") => ["line-items", purposeType, targetId] as const,
@@ -70,8 +71,13 @@ export function useCreateCatalogLineItem(targetId: string, purposeType: "ORDER" 
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: lineItemsKeys.list(targetId, purposeType) });
-            queryClient.invalidateQueries({ queryKey: ["orders"] });
-            queryClient.invalidateQueries({ queryKey: ["inbound-requests"] });
+            
+            if (purposeType === "ORDER") {
+                queryClient.invalidateQueries({ queryKey: ["orders"] });
+            } else {
+                queryClient.invalidateQueries({ queryKey: ["inbound-requests"] });
+                queryClient.invalidateQueries({ queryKey: inboundRequestKeys.detail(targetId) });
+            }
         },
     });
 }
@@ -99,14 +105,19 @@ export function useCreateCustomLineItem(targetId: string, purposeType: "ORDER" |
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: lineItemsKeys.list(targetId, purposeType) });
-            queryClient.invalidateQueries({ queryKey: ["orders"] });
-            queryClient.invalidateQueries({ queryKey: ["inbound-requests"] });
+            
+            if (purposeType === "ORDER") {
+                queryClient.invalidateQueries({ queryKey: ["orders"] });
+            } else {
+                queryClient.invalidateQueries({ queryKey: ["inbound-requests"] });
+                queryClient.invalidateQueries({ queryKey: inboundRequestKeys.detail(targetId) });
+            }
         },
     });
 }
 
 // Update line item
-export function useUpdateLineItem(orderId: string) {
+export function useUpdateLineItem(targetId: string, purposeType: "ORDER" | "INBOUND_REQUEST" = "ORDER") {
     const queryClient = useQueryClient();
 
     return useMutation({
@@ -124,14 +135,20 @@ export function useUpdateLineItem(orderId: string) {
             }
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: orderLineItemsKeys.list(orderId) });
-            queryClient.invalidateQueries({ queryKey: ["orders"] });
+            queryClient.invalidateQueries({ queryKey: lineItemsKeys.list(targetId, purposeType) });
+            
+            if (purposeType === "ORDER") {
+                queryClient.invalidateQueries({ queryKey: ["orders"] });
+            } else {
+                queryClient.invalidateQueries({ queryKey: ["inbound-requests"] });
+                queryClient.invalidateQueries({ queryKey: inboundRequestKeys.detail(targetId) });
+            }
         },
     });
 }
 
 // Void line item
-export function useVoidLineItem(orderId: string) {
+export function useVoidLineItem(targetId: string, purposeType: "ORDER" | "INBOUND_REQUEST" = "ORDER") {
     const queryClient = useQueryClient();
 
     return useMutation({
@@ -151,8 +168,14 @@ export function useVoidLineItem(orderId: string) {
             }
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: orderLineItemsKeys.list(orderId) });
-            queryClient.invalidateQueries({ queryKey: ["orders"] });
+            queryClient.invalidateQueries({ queryKey: lineItemsKeys.list(targetId, purposeType) });
+            
+            if (purposeType === "ORDER") {
+                queryClient.invalidateQueries({ queryKey: ["orders"] });
+            } else {
+                queryClient.invalidateQueries({ queryKey: ["inbound-requests"] });
+                queryClient.invalidateQueries({ queryKey: inboundRequestKeys.detail(targetId) });
+            }
         },
     });
 }

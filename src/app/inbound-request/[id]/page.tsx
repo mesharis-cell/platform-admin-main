@@ -102,6 +102,9 @@ export default function InboundRequestDetailsPage({
     );
   }
 
+  const showCatalogButton = ["PRICING_REVIEW", "PENDING_APPROVAL", "QUOTED"].includes(request.request_status);
+  const showCustomButton = ["PENDING_APPROVAL", "QUOTED"].includes(request.request_status);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-muted/10 to-background relative">
       {/* Subtle grid pattern */}
@@ -172,18 +175,18 @@ export default function InboundRequestDetailsPage({
                         Service Line Items
                       </CardTitle>
                       <div className="flex gap-2">
-                        <Button
+                        {showCatalogButton && <Button
                           size="sm"
                           variant="outline"
                           onClick={() => setAddCatalogOpen(true)}
                         >
                           <Plus className="h-4 w-4 mr-1" />
                           Catalog Service
-                        </Button>
-                        <Button size="sm" onClick={() => setAddCustomOpen(true)}>
+                        </Button>}
+                        {showCustomButton && <Button size="sm" onClick={() => setAddCustomOpen(true)}>
                           <Plus className="h-4 w-4 mr-1" />
                           Custom Charge
-                        </Button>
+                        </Button>}
                       </div>
                     </div>
                   </CardHeader>

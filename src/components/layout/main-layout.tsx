@@ -171,7 +171,7 @@ const navigation: NavItem[] = [
       { title: "Service Types", url: "/service-types" },
       { title: "Vehicle Type", url: "/vehicle-types" },
       { title: "Transport Rates", url: "/transport-rates" },
-      { title: "Warehouse Opt Rates", url: "/warehouse-opt-rates" },
+      { title: "Warehouse Ops Rates", url: "/warehouse-opt-rates" },
     ],
   },
   {
