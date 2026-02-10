@@ -9,22 +9,15 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     FileText,
-    DollarSign,
     CheckCircle2,
     Clock,
-    Download,
     Filter,
-    Search,
-    Calendar,
-    Building2,
     AlertCircle,
     TrendingUp,
     Receipt,
-    Send,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -50,6 +43,7 @@ import { AdminHeader } from "@/components/admin-header";
 import { usePlatform } from "@/contexts/platform-context";
 import { useSendInvoice } from "@/hooks/use-orders";
 import { InvoiceCard } from "@/components/invoices/InvoiceCard";
+import { InboundRequestInvoice } from "@/components/invoices/InboundRequestInvoice";
 
 export default function InvoicesPage() {
     // Filters
@@ -72,12 +66,14 @@ export default function InvoicesPage() {
     const [paymentReference, setPaymentReference] = useState("");
     const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split("T")[0]);
     const [paymentNotes, setPaymentNotes] = useState("");
+    const [invoiceType, setInvoiceType] = useState("all");
 
     // Hooks
     const { data: companies } = useCompanies({});
     const { data: invoicesData, isLoading } = useInvoices({
         ...filters,
         company: selectedCompany || undefined,
+        type: invoiceType || undefined,
         isPaid: paymentStatus,
     });
     const confirmPayment = useConfirmPayment();
@@ -283,7 +279,7 @@ export default function InvoicesPage() {
                             <h3 className="text-lg font-bold font-mono">FILTERS</h3>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                             <div>
                                 <Label className="font-mono text-xs mb-2">COMPANY</Label>
                                 <Select value={selectedCompany} onValueChange={setSelectedCompany}>
@@ -297,6 +293,20 @@ export default function InvoicesPage() {
                                                 {company.name}
                                             </SelectItem>
                                         ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div>
+                                <Label className="font-mono text-xs mb-2">INVOICE TYPE</Label>
+                                <Select value={invoiceType} onValueChange={setInvoiceType}>
+                                    <SelectTrigger className="font-mono">
+                                        <SelectValue placeholder="All Invoice Types" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">All</SelectItem>
+                                        <SelectItem value="INBOUND_REQUEST">Inbound Request</SelectItem>
+                                        <SelectItem value="ORDER">Order</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -356,7 +366,7 @@ export default function InvoicesPage() {
                                         transition={{ delay: index * 0.05 }}
                                         layout
                                     >
-                                        <InvoiceCard
+                                        {invoice?.order && (<InvoiceCard
                                             invoice={invoice}
                                             onDownload={() =>
                                                 handleDownloadInvoice(invoice.id)
@@ -370,7 +380,23 @@ export default function InvoicesPage() {
                                             }
                                             isDownloading={downloadInvoice.isPending}
                                             isSending={isSendingInvoice}
-                                        />
+                                        />)}
+
+                                        {invoice?.inbound_request && (<InboundRequestInvoice
+                                            invoice={invoice}
+                                            onDownload={() =>
+                                                handleDownloadInvoice(invoice.id)
+                                            }
+                                            onSendInvoice={(inv) => {
+                                                setSelectedInvoice(inv);
+                                                setSentInvoice(true);
+                                            }}
+                                            onConfirmPayment={(inv) =>
+                                                handleOpenConfirmPayment(inv)
+                                            }
+                                            isDownloading={downloadInvoice.isPending}
+                                            isSending={isSendingInvoice}
+                                        />)}
                                     </motion.div>
                                 ))}
                             </AnimatePresence>

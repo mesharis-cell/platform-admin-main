@@ -356,9 +356,32 @@ export interface InvoiceListParams {
     dateTo?: string; // ISO date
     page?: number;
     limit?: number;
+    type?: string;
     sortBy?: "created_at" | "updated_at" | "invoice_id";
     sortOrder?: "asc" | "desc";
 }
+
+export interface OrderPricing {
+            warehouse_ops_rate: number,
+            base_ops_total: number,
+            logistics_sub_total: number,
+            transport: {
+                final_rate: number,
+                system_rate: number
+            },
+            line_items: {
+                custom_total: number,
+                catalog_total: number
+            },
+            margin: {
+                amount: number,
+                percent: number,
+                is_override: boolean,
+                override_reason: string | null
+            },
+            final_total: number,
+            calculated_at: string
+        }
 
 // Invoice list item
 export interface InvoiceListItem {
@@ -380,28 +403,16 @@ export interface InvoiceListItem {
             total_price: number;
             quote_sent_at: string;
         };
-        order_pricing: {
-            warehouse_ops_rate: number,
-            base_ops_total: number,
-            logistics_sub_total: number,
-            transport: {
-                final_rate: number,
-                system_rate: number
-            },
-            line_items: {
-                custom_total: number,
-                catalog_total: number
-            },
-            margin: {
-                amount: number,
-                percent: number,
-                is_override: boolean,
-                override_reason: string | null
-            },
-            final_total: number,
-            calculated_at: string
-        }
+        order_pricing: OrderPricing
     };
+     inbound_request:{
+        id: string,
+        inbound_request_id: string,
+        request_status: string,
+        financial_status: string,
+        incoming_at: string,
+        pricing: OrderPricing,
+    }
     company: {
         id: string;
         name: string;
