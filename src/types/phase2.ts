@@ -207,7 +207,7 @@ export interface Brand {
     company: Company;
     name: string;
     description?: string | null;
-    logoUrl?: string | null;
+    logo_url?: string | null;
     is_active?: boolean;
     createdAt: Date;
     updatedAt: Date;
@@ -219,13 +219,13 @@ export interface CreateBrandRequest {
     company_id: string;
     name: string;
     description?: string;
-    logoUrl?: string;
+    logo_url?: string;
 }
 
 export interface UpdateBrandRequest {
     name?: string;
     description?: string;
-    logoUrl?: string;
+    logo_url?: string;
     // company cannot be changed
 }
 

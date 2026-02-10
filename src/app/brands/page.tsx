@@ -69,7 +69,7 @@ export default function BrandsPage() {
         company_id: "",
         name: "",
         description: "",
-        logoUrl: "",
+        logo_url: "",
     });
 
     // Fetch companies for reference
@@ -151,7 +151,7 @@ export default function BrandsPage() {
             company_id: "",
             name: "",
             description: "",
-            logoUrl: "",
+            logo_url: "",
         });
     };
 
@@ -161,7 +161,7 @@ export default function BrandsPage() {
             company_id: brand.company.id, // Note: cannot be changed
             name: brand.name,
             description: brand.description || "",
-            logoUrl: brand.logoUrl || "",
+            logo_url: brand.logo_url || "",
         });
         setIsCreateOpen(true);
     };
@@ -294,11 +294,11 @@ export default function BrandsPage() {
                                     <Input
                                         id="logoUrl"
                                         type="url"
-                                        value={formData.logoUrl}
+                                        value={formData.logo_url}
                                         onChange={(e) =>
                                             setFormData({
                                                 ...formData,
-                                                logoUrl: e.target.value,
+                                                logo_url: e.target.value,
                                             })
                                         }
                                         placeholder="https://cdn.example.com/brands/absolut.png"
@@ -335,8 +335,8 @@ export default function BrandsPage() {
                                         {createMutation.isPending || updateMutation.isPending
                                             ? "PROCESSING..."
                                             : editingBrand
-                                              ? "UPDATE"
-                                              : "CREATE"}
+                                                ? "UPDATE"
+                                                : "CREATE"}
                                     </Button>
                                 </div>
                             </form>
@@ -442,9 +442,9 @@ export default function BrandsPage() {
                                         <TableCell className="font-mono font-medium">
                                             <div className="flex items-center gap-3">
                                                 <div className="h-10 w-10 rounded-md border-2 border-primary/20 flex items-center justify-center overflow-hidden bg-linear-gradient-to-br from-primary/5 to-primary/10">
-                                                    {brand.logoUrl ? (
+                                                    {brand.logo_url ? (
                                                         <img
-                                                            src={brand.logoUrl}
+                                                            src={brand.logo_url}
                                                             alt={brand.name}
                                                             className="h-full w-full object-contain"
                                                         />
@@ -475,9 +475,9 @@ export default function BrandsPage() {
                                             {brand.description || "—"}
                                         </TableCell>
                                         <TableCell className="font-mono text-xs">
-                                            {brand.logoUrl ? (
+                                            {brand.logo_url ? (
                                                 <a
-                                                    href={brand.logoUrl}
+                                                    href={brand.logo_url}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                     className="text-primary hover:underline flex items-center gap-1"

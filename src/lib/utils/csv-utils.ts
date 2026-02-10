@@ -9,25 +9,23 @@ import Papa from "papaparse";
 import type { CSVAssetRow, ParsedCSVRow, RowValidationError } from "@/types/bulk-upload";
 
 const REQUIRED_COLUMNS = [
-    "company",
-    "warehouse",
-    "zone",
+    "platform_id",
+    "company_id",
+    "warehouse_id",
+    "zone_id",
     "name",
     "category",
-    "trackingMethod",
-    "weight",
-    "dimensionLength",
-    "dimensionWidth",
-    "dimensionHeight",
-    "volume",
-    "totalQuantity",
+    "tracking_method",
+    "weight_per_unit",
+    "dimensions",
+    "volume_per_unit",
 ];
 
 const OPTIONAL_COLUMNS = [
     "packaging",
-    "brand",
+    "brand_id",
     "description",
-    "handlingTags",
+    "handling_tags",
     "images",
     "condition",
 ];

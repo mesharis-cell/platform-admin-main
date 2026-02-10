@@ -7,7 +7,7 @@ export type TrackingMethod = "INDIVIDUAL" | "BATCH";
 export type Condition = "GREEN" | "ORANGE" | "RED";
 
 // Asset Status
-export type AssetStatus = "AVAILABLE" | "BOOKED" | "OUT" | "IN_MAINTENANCE";
+export type AssetStatus = "AVAILABLE" | "BOOKED" | "OUT" | "MAINTENANCE";
 
 // Handling Tags
 export type HandlingTag = "Fragile" | "HighValue" | "HeavyLift" | "AssemblyRequired";

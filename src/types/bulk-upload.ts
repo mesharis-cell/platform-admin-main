@@ -3,23 +3,28 @@
  * Types for CSV-based mass asset import
  */
 
+
 export interface CSVAssetRow {
+    id?: string;
     company: string;
     warehouse: string;
     zone: string;
     name: string;
     category: string;
-    trackingMethod: string;
+    tracking_method: string;
     weight: string;
-    dimensionLength: string;
-    dimensionWidth: string;
-    dimensionHeight: string;
+    dimensions: {
+        length: string;
+        width: string;
+        height: string;
+    }
+    qr_code?: string;
     volume: string;
     packaging?: string;
-    totalQuantity: string;
+    total_quantity: string;
     brand?: string;
     description?: string;
-    handlingTags?: string;
+    handling_tags?: string;
     images?: string;
     condition?: string;
 }

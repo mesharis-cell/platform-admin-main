@@ -60,7 +60,7 @@ import { useToken } from "@/lib/auth/use-token";
 
 export default function UsersManagementPage() {
     const [searchQuery, setSearchQuery] = useState("");
-    const [filterTemplate, setFilterTemplate] = useState<string>("all");
+    const [role, setRole] = useState<string>("all");
     const [filterActive, setFilterActive] = useState<string>("all");
     const { user: AuthUser } = useToken();
 
@@ -90,11 +90,12 @@ export default function UsersManagementPage() {
     // Build query params
     const queryParams = useMemo(() => {
         const params: Record<string, string> = {};
-        if (filterTemplate !== "all") params.permission_template = filterTemplate;
+        params.limit = "100";
+        if (role !== "all") params.role = role;
         if (filterActive !== "all") params.is_active = filterActive === "active" ? "true" : "false";
         if (searchQuery) params.search_term = searchQuery;
         return params;
-    }, [filterTemplate, filterActive, searchQuery]);
+    }, [role, filterActive, searchQuery]);
 
     // Fetch data
     const { data: usersData, isLoading: loading } = useUsers(queryParams);
@@ -302,11 +303,11 @@ export default function UsersManagementPage() {
             !user.permission_template ||
             !PERMISSION_TEMPLATES[user.permission_template as PermissionTemplate] ||
             JSON.stringify(user.permissions.sort()) !==
-                JSON.stringify(
-                    PERMISSION_TEMPLATES[
-                        user.permission_template as PermissionTemplate
-                    ].permissions.sort()
-                );
+            JSON.stringify(
+                PERMISSION_TEMPLATES[
+                    user.permission_template as PermissionTemplate
+                ].permissions.sort()
+            );
 
         setEditFormData({
             name: user.name,
@@ -354,8 +355,8 @@ export default function UsersManagementPage() {
                     newUser.userType === "admin"
                         ? "ADMIN"
                         : newUser.userType === "logistic"
-                          ? "LOGISTICS"
-                          : "CLIENT",
+                            ? "LOGISTICS"
+                            : "CLIENT",
                 is_active: true,
             };
 
@@ -488,15 +489,15 @@ export default function UsersManagementPage() {
 
                     {/* Filters */}
                     <div className="flex gap-2">
-                        <Select value={filterTemplate} onValueChange={setFilterTemplate}>
+                        <Select value={role} onValueChange={setRole}>
                             <SelectTrigger className="w-[180px] font-mono">
-                                <SelectValue placeholder="Filter by template" />
+                                <SelectValue placeholder="Filter by role" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="all">All Templates</SelectItem>
-                                <SelectItem value="PLATFORM_ADMIN">Platform Admin</SelectItem>
-                                <SelectItem value="LOGISTICS_STAFF">Logistics Staff</SelectItem>
-                                <SelectItem value="CLIENT_USER">Client User</SelectItem>
+                                <SelectItem value="all">All Roles</SelectItem>
+                                <SelectItem value="ADMIN">Admin</SelectItem>
+                                <SelectItem value="LOGISTICS">Logistics</SelectItem>
+                                <SelectItem value="CLIENT">Client</SelectItem>
                             </SelectContent>
                         </Select>
 
@@ -705,230 +706,230 @@ export default function UsersManagementPage() {
                                             {/* Permission Configuration Section - Only for ADMIN and LOGISTICS */}
                                             {(newUser.userType === "admin" ||
                                                 newUser.userType === "logistic") && (
-                                                <div className="space-y-4">
-                                                    <h3 className="font-semibold text-sm font-mono uppercase flex items-center gap-2">
-                                                        <Filter className="h-4 w-4" />
-                                                        Permission Configuration
-                                                    </h3>
+                                                    <div className="space-y-4">
+                                                        <h3 className="font-semibold text-sm font-mono uppercase flex items-center gap-2">
+                                                            <Filter className="h-4 w-4" />
+                                                            Permission Configuration
+                                                        </h3>
 
-                                                    <div>
-                                                        <Label
-                                                            htmlFor="template"
-                                                            className="font-mono uppercase text-xs"
-                                                        >
-                                                            Permission Template *
-                                                        </Label>
-                                                        <Select
-                                                            key={newUser.userType}
-                                                            value={newUser.permissionTemplate}
-                                                            onValueChange={handleTemplateChange}
-                                                        >
-                                                            <SelectTrigger className="font-mono">
-                                                                <SelectValue placeholder="Select template or custom" />
-                                                            </SelectTrigger>
-                                                            <SelectContent>
-                                                                {newUser.userType === "admin" && (
-                                                                    <SelectItem value="PLATFORM_ADMIN">
-                                                                        Admin Template (Full Access
-                                                                        with ★)
+                                                        <div>
+                                                            <Label
+                                                                htmlFor="template"
+                                                                className="font-mono uppercase text-xs"
+                                                            >
+                                                                Permission Template *
+                                                            </Label>
+                                                            <Select
+                                                                key={newUser.userType}
+                                                                value={newUser.permissionTemplate}
+                                                                onValueChange={handleTemplateChange}
+                                                            >
+                                                                <SelectTrigger className="font-mono">
+                                                                    <SelectValue placeholder="Select template or custom" />
+                                                                </SelectTrigger>
+                                                                <SelectContent>
+                                                                    {newUser.userType === "admin" && (
+                                                                        <SelectItem value="PLATFORM_ADMIN">
+                                                                            Admin Template (Full Access
+                                                                            with ★)
+                                                                        </SelectItem>
+                                                                    )}
+                                                                    {newUser.userType ===
+                                                                        "logistic" && (
+                                                                            <SelectItem value="LOGISTICS_STAFF">
+                                                                                Logistics Template
+                                                                                (Operations Access with ★)
+                                                                            </SelectItem>
+                                                                        )}
+                                                                    <SelectItem value="CUSTOM">
+                                                                        Custom (Select Individual
+                                                                        Permissions)
                                                                     </SelectItem>
-                                                                )}
-                                                                {newUser.userType ===
-                                                                    "logistic" && (
-                                                                    <SelectItem value="LOGISTICS_STAFF">
-                                                                        Logistics Template
-                                                                        (Operations Access with ★)
-                                                                    </SelectItem>
-                                                                )}
-                                                                <SelectItem value="CUSTOM">
-                                                                    Custom (Select Individual
-                                                                    Permissions)
-                                                                </SelectItem>
-                                                            </SelectContent>
-                                                        </Select>
-                                                    </div>
+                                                                </SelectContent>
+                                                            </Select>
+                                                        </div>
 
-                                                    {/* Custom Permissions Selector - Only show for CUSTOM */}
-                                                    {newUser.permissionTemplate === "CUSTOM" && (
-                                                        <div className="space-y-4 border border-border rounded-lg p-4 bg-muted/30">
-                                                            <div className="flex items-center justify-between">
-                                                                <Label className="font-mono uppercase text-xs">
-                                                                    Select Permissions by Module
-                                                                </Label>
-                                                                <Badge
-                                                                    variant="outline"
-                                                                    className="font-mono text-xs"
-                                                                >
-                                                                    {
-                                                                        newUser.customPermissions
-                                                                            .length
-                                                                    }{" "}
-                                                                    selected
-                                                                </Badge>
-                                                            </div>
+                                                        {/* Custom Permissions Selector - Only show for CUSTOM */}
+                                                        {newUser.permissionTemplate === "CUSTOM" && (
+                                                            <div className="space-y-4 border border-border rounded-lg p-4 bg-muted/30">
+                                                                <div className="flex items-center justify-between">
+                                                                    <Label className="font-mono uppercase text-xs">
+                                                                        Select Permissions by Module
+                                                                    </Label>
+                                                                    <Badge
+                                                                        variant="outline"
+                                                                        className="font-mono text-xs"
+                                                                    >
+                                                                        {
+                                                                            newUser.customPermissions
+                                                                                .length
+                                                                        }{" "}
+                                                                        selected
+                                                                    </Badge>
+                                                                </div>
 
-                                                            <ScrollArea className="h-[300px] pr-4">
-                                                                <div className="space-y-4">
-                                                                    {Object.entries(
-                                                                        getPermissionGroupsForRole(
-                                                                            newUser.userType
-                                                                        )
-                                                                    ).map(
-                                                                        ([
-                                                                            moduleName,
-                                                                            permissions,
-                                                                        ]) => {
-                                                                            const nonWildcard =
-                                                                                getNonWildcardPermissions(
-                                                                                    permissions
-                                                                                );
-                                                                            const isAllSelected =
-                                                                                isModuleAllSelected(
-                                                                                    moduleName,
-                                                                                    permissions,
-                                                                                    newUser.customPermissions
-                                                                                );
-                                                                            const wildcardPerm =
-                                                                                permissions.find(
-                                                                                    (p) =>
-                                                                                        p.endsWith(
-                                                                                            ":*"
-                                                                                        )
-                                                                                );
+                                                                <ScrollArea className="h-[300px] pr-4">
+                                                                    <div className="space-y-4">
+                                                                        {Object.entries(
+                                                                            getPermissionGroupsForRole(
+                                                                                newUser.userType
+                                                                            )
+                                                                        ).map(
+                                                                            ([
+                                                                                moduleName,
+                                                                                permissions,
+                                                                            ]) => {
+                                                                                const nonWildcard =
+                                                                                    getNonWildcardPermissions(
+                                                                                        permissions
+                                                                                    );
+                                                                                const isAllSelected =
+                                                                                    isModuleAllSelected(
+                                                                                        moduleName,
+                                                                                        permissions,
+                                                                                        newUser.customPermissions
+                                                                                    );
+                                                                                const wildcardPerm =
+                                                                                    permissions.find(
+                                                                                        (p) =>
+                                                                                            p.endsWith(
+                                                                                                ":*"
+                                                                                            )
+                                                                                    );
 
-                                                                            return (
-                                                                                <div
-                                                                                    key={moduleName}
-                                                                                    className="space-y-2 border-b border-border pb-3 last:border-0"
-                                                                                >
-                                                                                    {/* Module header with "All" checkbox */}
-                                                                                    <div className="flex items-center justify-between">
-                                                                                        <h4 className="font-mono text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                                                                                            {
-                                                                                                moduleName
-                                                                                            }
-                                                                                            {isAllSelected &&
-                                                                                                wildcardPerm && (
-                                                                                                    <span className="text-primary">
-                                                                                                        ★
-                                                                                                    </span>
-                                                                                                )}
-                                                                                        </h4>
-                                                                                        <div className="flex items-center gap-2">
-                                                                                            <Checkbox
-                                                                                                id={`all-${moduleName}`}
-                                                                                                checked={
-                                                                                                    isAllSelected
+                                                                                return (
+                                                                                    <div
+                                                                                        key={moduleName}
+                                                                                        className="space-y-2 border-b border-border pb-3 last:border-0"
+                                                                                    >
+                                                                                        {/* Module header with "All" checkbox */}
+                                                                                        <div className="flex items-center justify-between">
+                                                                                            <h4 className="font-mono text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                                                                                                {
+                                                                                                    moduleName
                                                                                                 }
-                                                                                                onCheckedChange={() =>
-                                                                                                    toggleModuleAll(
-                                                                                                        moduleName,
-                                                                                                        permissions,
+                                                                                                {isAllSelected &&
+                                                                                                    wildcardPerm && (
+                                                                                                        <span className="text-primary">
+                                                                                                            ★
+                                                                                                        </span>
+                                                                                                    )}
+                                                                                            </h4>
+                                                                                            <div className="flex items-center gap-2">
+                                                                                                <Checkbox
+                                                                                                    id={`all-${moduleName}`}
+                                                                                                    checked={
                                                                                                         isAllSelected
-                                                                                                    )
-                                                                                                }
-                                                                                            />
-                                                                                            <Label
-                                                                                                htmlFor={`all-${moduleName}`}
-                                                                                                className="text-xs font-mono cursor-pointer text-primary"
-                                                                                            >
-                                                                                                All
-                                                                                            </Label>
-                                                                                        </div>
-                                                                                    </div>
-                                                                                    {/* Individual permissions */}
-                                                                                    <div className="grid grid-cols-2 gap-2 ml-2">
-                                                                                        {nonWildcard.map(
-                                                                                            (
-                                                                                                permission
-                                                                                            ) => (
-                                                                                                <div
-                                                                                                    key={
-                                                                                                        permission
                                                                                                     }
-                                                                                                    className="flex items-center space-x-2"
+                                                                                                    onCheckedChange={() =>
+                                                                                                        toggleModuleAll(
+                                                                                                            moduleName,
+                                                                                                            permissions,
+                                                                                                            isAllSelected
+                                                                                                        )
+                                                                                                    }
+                                                                                                />
+                                                                                                <Label
+                                                                                                    htmlFor={`all-${moduleName}`}
+                                                                                                    className="text-xs font-mono cursor-pointer text-primary"
                                                                                                 >
-                                                                                                    <Checkbox
-                                                                                                        id={
+                                                                                                    All
+                                                                                                </Label>
+                                                                                            </div>
+                                                                                        </div>
+                                                                                        {/* Individual permissions */}
+                                                                                        <div className="grid grid-cols-2 gap-2 ml-2">
+                                                                                            {nonWildcard.map(
+                                                                                                (
+                                                                                                    permission
+                                                                                                ) => (
+                                                                                                    <div
+                                                                                                        key={
                                                                                                             permission
                                                                                                         }
-                                                                                                        checked={
-                                                                                                            newUser.customPermissions.includes(
+                                                                                                        className="flex items-center space-x-2"
+                                                                                                    >
+                                                                                                        <Checkbox
+                                                                                                            id={
                                                                                                                 permission
-                                                                                                            ) ||
-                                                                                                            (wildcardPerm &&
+                                                                                                            }
+                                                                                                            checked={
+                                                                                                                newUser.customPermissions.includes(
+                                                                                                                    permission
+                                                                                                                ) ||
+                                                                                                                (wildcardPerm &&
+                                                                                                                    newUser.customPermissions.includes(
+                                                                                                                        wildcardPerm
+                                                                                                                    ))
+                                                                                                            }
+                                                                                                            onCheckedChange={() =>
+                                                                                                                togglePermission(
+                                                                                                                    permission
+                                                                                                                )
+                                                                                                            }
+                                                                                                            disabled={
+                                                                                                                wildcardPerm &&
                                                                                                                 newUser.customPermissions.includes(
                                                                                                                     wildcardPerm
-                                                                                                                ))
-                                                                                                        }
-                                                                                                        onCheckedChange={() =>
-                                                                                                            togglePermission(
+                                                                                                                )
+                                                                                                            }
+                                                                                                        />
+                                                                                                        <Label
+                                                                                                            htmlFor={
                                                                                                                 permission
-                                                                                                            )
-                                                                                                        }
-                                                                                                        disabled={
-                                                                                                            wildcardPerm &&
-                                                                                                            newUser.customPermissions.includes(
-                                                                                                                wildcardPerm
-                                                                                                            )
-                                                                                                        }
-                                                                                                    />
-                                                                                                    <Label
-                                                                                                        htmlFor={
-                                                                                                            permission
-                                                                                                        }
-                                                                                                        className={cn(
-                                                                                                            "text-xs font-mono cursor-pointer",
-                                                                                                            wildcardPerm &&
+                                                                                                            }
+                                                                                                            className={cn(
+                                                                                                                "text-xs font-mono cursor-pointer",
+                                                                                                                wildcardPerm &&
                                                                                                                 newUser.customPermissions.includes(
                                                                                                                     wildcardPerm
                                                                                                                 ) &&
                                                                                                                 "text-muted-foreground"
-                                                                                                        )}
-                                                                                                    >
-                                                                                                        {removeUnderScore(
-                                                                                                            permission.split(
-                                                                                                                ":"
-                                                                                                            )[1]
-                                                                                                        )}
-                                                                                                    </Label>
-                                                                                                </div>
-                                                                                            )
-                                                                                        )}
+                                                                                                            )}
+                                                                                                        >
+                                                                                                            {removeUnderScore(
+                                                                                                                permission.split(
+                                                                                                                    ":"
+                                                                                                                )[1]
+                                                                                                            )}
+                                                                                                        </Label>
+                                                                                                    </div>
+                                                                                                )
+                                                                                            )}
+                                                                                        </div>
                                                                                     </div>
-                                                                                </div>
-                                                                            );
-                                                                        }
+                                                                                );
+                                                                            }
+                                                                        )}
+                                                                    </div>
+                                                                </ScrollArea>
+
+                                                                {newUser.customPermissions.length ===
+                                                                    0 && (
+                                                                        <div className="flex items-center gap-2 text-amber-600 text-xs font-mono">
+                                                                            <AlertCircle className="h-4 w-4" />
+                                                                            No permissions selected - user
+                                                                            won't be able to access anything
+                                                                        </div>
                                                                     )}
-                                                                </div>
-                                                            </ScrollArea>
-
-                                                            {newUser.customPermissions.length ===
-                                                                0 && (
-                                                                <div className="flex items-center gap-2 text-amber-600 text-xs font-mono">
-                                                                    <AlertCircle className="h-4 w-4" />
-                                                                    No permissions selected - user
-                                                                    won't be able to access anything
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    )}
-
-                                                    {/* Template Preview - for non-custom */}
-                                                    {newUser.permissionTemplate &&
-                                                        newUser.permissionTemplate !== "CUSTOM" && (
-                                                            <div className="bg-muted/50 rounded-lg p-3 border border-border">
-                                                                <p className="text-xs font-mono text-muted-foreground">
-                                                                    <span className="text-primary">
-                                                                        ★
-                                                                    </span>{" "}
-                                                                    Template includes full access
-                                                                    (wildcard) for all modules
-                                                                </p>
                                                             </div>
                                                         )}
-                                                </div>
-                                            )}
+
+                                                        {/* Template Preview - for non-custom */}
+                                                        {newUser.permissionTemplate &&
+                                                            newUser.permissionTemplate !== "CUSTOM" && (
+                                                                <div className="bg-muted/50 rounded-lg p-3 border border-border">
+                                                                    <p className="text-xs font-mono text-muted-foreground">
+                                                                        <span className="text-primary">
+                                                                            ★
+                                                                        </span>{" "}
+                                                                        Template includes full access
+                                                                        (wildcard) for all modules
+                                                                    </p>
+                                                                </div>
+                                                            )}
+                                                    </div>
+                                                )}
 
                                             {/* CLIENT user - No permissions needed */}
                                             {newUser.userType === "client" && (
@@ -957,7 +958,7 @@ export default function UsersManagementPage() {
                                                 </h3>
 
                                                 {newUser.userType === "admin" ||
-                                                newUser.userType === "logistic" ? (
+                                                    newUser.userType === "logistic" ? (
                                                     <>
                                                         <div className="flex items-center space-x-2">
                                                             <Checkbox
@@ -1080,11 +1081,11 @@ export default function UsersManagementPage() {
                                                             </span>
                                                             <span className="font-semibold">
                                                                 {newUser.permissionTemplate ===
-                                                                "CUSTOM"
+                                                                    "CUSTOM"
                                                                     ? `${newUser.customPermissions.length} custom`
                                                                     : newUser.permissionTemplate
-                                                                      ? `${PERMISSION_TEMPLATES[newUser.permissionTemplate as PermissionTemplate]?.permissions.length} from template`
-                                                                      : "0"}
+                                                                        ? `${PERMISSION_TEMPLATES[newUser.permissionTemplate as PermissionTemplate]?.permissions.length} from template`
+                                                                        : "0"}
                                                             </span>
                                                         </div>
                                                     )}
@@ -1095,15 +1096,15 @@ export default function UsersManagementPage() {
                                                         </span>
                                                         <span className="font-semibold">
                                                             {newUser.userType === "admin" ||
-                                                            newUser.userType === "logistic"
+                                                                newUser.userType === "logistic"
                                                                 ? "All Companies (*)"
                                                                 : newUser.selectedCompany
-                                                                  ? companies.find(
+                                                                    ? companies.find(
                                                                         (c) =>
                                                                             c.id ===
                                                                             newUser.selectedCompany
                                                                     )?.name || "Unknown"
-                                                                  : "None"}
+                                                                    : "None"}
                                                         </span>
                                                     </div>
                                                 </div>
@@ -1196,207 +1197,207 @@ export default function UsersManagementPage() {
                                     {/* Permission Template - Only for ADMIN/LOGISTICS */}
                                     {(editingUser?.role === "ADMIN" ||
                                         editingUser?.role === "LOGISTICS") && (
-                                        <div className="space-y-4">
-                                            <h3 className="font-semibold text-sm font-mono uppercase flex items-center gap-2">
-                                                <Filter className="h-4 w-4" />
-                                                Permission Configuration
-                                            </h3>
+                                            <div className="space-y-4">
+                                                <h3 className="font-semibold text-sm font-mono uppercase flex items-center gap-2">
+                                                    <Filter className="h-4 w-4" />
+                                                    Permission Configuration
+                                                </h3>
 
-                                            <div>
-                                                <Label
-                                                    htmlFor="edit-template"
-                                                    className="font-mono uppercase text-xs"
-                                                >
-                                                    Permission Template *
-                                                </Label>
-                                                <Select
-                                                    value={editFormData.permissionTemplate}
-                                                    onValueChange={handleTemplateChangeEdit}
-                                                >
-                                                    <SelectTrigger className="font-mono">
-                                                        <SelectValue placeholder="Select template or custom" />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        {editingUser?.role === "ADMIN" && (
-                                                            <SelectItem value="PLATFORM_ADMIN">
-                                                                Admin Template (Full Access with ★)
+                                                <div>
+                                                    <Label
+                                                        htmlFor="edit-template"
+                                                        className="font-mono uppercase text-xs"
+                                                    >
+                                                        Permission Template *
+                                                    </Label>
+                                                    <Select
+                                                        value={editFormData.permissionTemplate}
+                                                        onValueChange={handleTemplateChangeEdit}
+                                                    >
+                                                        <SelectTrigger className="font-mono">
+                                                            <SelectValue placeholder="Select template or custom" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {editingUser?.role === "ADMIN" && (
+                                                                <SelectItem value="PLATFORM_ADMIN">
+                                                                    Admin Template (Full Access with ★)
+                                                                </SelectItem>
+                                                            )}
+                                                            {editingUser?.role === "LOGISTICS" && (
+                                                                <SelectItem value="LOGISTICS_STAFF">
+                                                                    Logistics Template (Operations
+                                                                    Access with ★)
+                                                                </SelectItem>
+                                                            )}
+                                                            <SelectItem value="CUSTOM">
+                                                                Custom (Select Individual Permissions)
                                                             </SelectItem>
-                                                        )}
-                                                        {editingUser?.role === "LOGISTICS" && (
-                                                            <SelectItem value="LOGISTICS_STAFF">
-                                                                Logistics Template (Operations
-                                                                Access with ★)
-                                                            </SelectItem>
-                                                        )}
-                                                        <SelectItem value="CUSTOM">
-                                                            Custom (Select Individual Permissions)
-                                                        </SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
 
-                                            {/* Custom Permissions Selector */}
-                                            {editFormData.permissionTemplate === "CUSTOM" && (
-                                                <div className="space-y-4 border border-border rounded-lg p-4 bg-muted/30">
-                                                    <div className="flex items-center justify-between">
-                                                        <Label className="font-mono uppercase text-xs">
-                                                            Select Permissions by Module
-                                                        </Label>
-                                                        <Badge
-                                                            variant="outline"
-                                                            className="font-mono text-xs"
-                                                        >
-                                                            {editFormData.customPermissions.length}{" "}
-                                                            selected
-                                                        </Badge>
-                                                    </div>
+                                                {/* Custom Permissions Selector */}
+                                                {editFormData.permissionTemplate === "CUSTOM" && (
+                                                    <div className="space-y-4 border border-border rounded-lg p-4 bg-muted/30">
+                                                        <div className="flex items-center justify-between">
+                                                            <Label className="font-mono uppercase text-xs">
+                                                                Select Permissions by Module
+                                                            </Label>
+                                                            <Badge
+                                                                variant="outline"
+                                                                className="font-mono text-xs"
+                                                            >
+                                                                {editFormData.customPermissions.length}{" "}
+                                                                selected
+                                                            </Badge>
+                                                        </div>
 
-                                                    <ScrollArea className="h-[300px] pr-4">
-                                                        <div className="space-y-4">
-                                                            {Object.entries(
-                                                                getPermissionGroupsForRole(
-                                                                    editingUser?.role === "ADMIN"
-                                                                        ? "admin"
-                                                                        : "logistic"
-                                                                )
-                                                            ).map(([moduleName, permissions]) => {
-                                                                const nonWildcard =
-                                                                    getNonWildcardPermissions(
-                                                                        permissions
-                                                                    );
-                                                                const isAllSelected =
-                                                                    isModuleAllSelected(
-                                                                        moduleName,
-                                                                        permissions,
-                                                                        editFormData.customPermissions
-                                                                    );
-                                                                const wildcardPerm =
-                                                                    permissions.find((p) =>
-                                                                        p.endsWith(":*")
-                                                                    );
+                                                        <ScrollArea className="h-[300px] pr-4">
+                                                            <div className="space-y-4">
+                                                                {Object.entries(
+                                                                    getPermissionGroupsForRole(
+                                                                        editingUser?.role === "ADMIN"
+                                                                            ? "admin"
+                                                                            : "logistic"
+                                                                    )
+                                                                ).map(([moduleName, permissions]) => {
+                                                                    const nonWildcard =
+                                                                        getNonWildcardPermissions(
+                                                                            permissions
+                                                                        );
+                                                                    const isAllSelected =
+                                                                        isModuleAllSelected(
+                                                                            moduleName,
+                                                                            permissions,
+                                                                            editFormData.customPermissions
+                                                                        );
+                                                                    const wildcardPerm =
+                                                                        permissions.find((p) =>
+                                                                            p.endsWith(":*")
+                                                                        );
 
-                                                                return (
-                                                                    <div
-                                                                        key={moduleName}
-                                                                        className="space-y-2 border-b border-border pb-3 last:border-0"
-                                                                    >
-                                                                        {/* Module header with "All" checkbox */}
-                                                                        <div className="flex items-center justify-between">
-                                                                            <h4 className="font-mono text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                                                                                {moduleName}
-                                                                                {isAllSelected &&
-                                                                                    wildcardPerm && (
-                                                                                        <span className="text-primary">
-                                                                                            ★
-                                                                                        </span>
-                                                                                    )}
-                                                                            </h4>
-                                                                            <div className="flex items-center gap-2">
-                                                                                <Checkbox
-                                                                                    id={`edit-all-${moduleName}`}
-                                                                                    checked={
-                                                                                        isAllSelected
-                                                                                    }
-                                                                                    onCheckedChange={() =>
-                                                                                        toggleModuleAllEdit(
-                                                                                            moduleName,
-                                                                                            permissions,
+                                                                    return (
+                                                                        <div
+                                                                            key={moduleName}
+                                                                            className="space-y-2 border-b border-border pb-3 last:border-0"
+                                                                        >
+                                                                            {/* Module header with "All" checkbox */}
+                                                                            <div className="flex items-center justify-between">
+                                                                                <h4 className="font-mono text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                                                                                    {moduleName}
+                                                                                    {isAllSelected &&
+                                                                                        wildcardPerm && (
+                                                                                            <span className="text-primary">
+                                                                                                ★
+                                                                                            </span>
+                                                                                        )}
+                                                                                </h4>
+                                                                                <div className="flex items-center gap-2">
+                                                                                    <Checkbox
+                                                                                        id={`edit-all-${moduleName}`}
+                                                                                        checked={
                                                                                             isAllSelected
-                                                                                        )
-                                                                                    }
-                                                                                />
-                                                                                <Label
-                                                                                    htmlFor={`edit-all-${moduleName}`}
-                                                                                    className="text-xs font-mono cursor-pointer text-primary"
-                                                                                >
-                                                                                    All
-                                                                                </Label>
-                                                                            </div>
-                                                                        </div>
-                                                                        {/* Individual permissions */}
-                                                                        <div className="grid grid-cols-2 gap-2 ml-2">
-                                                                            {nonWildcard.map(
-                                                                                (permission) => (
-                                                                                    <div
-                                                                                        key={
-                                                                                            permission
                                                                                         }
-                                                                                        className="flex items-center space-x-2"
+                                                                                        onCheckedChange={() =>
+                                                                                            toggleModuleAllEdit(
+                                                                                                moduleName,
+                                                                                                permissions,
+                                                                                                isAllSelected
+                                                                                            )
+                                                                                        }
+                                                                                    />
+                                                                                    <Label
+                                                                                        htmlFor={`edit-all-${moduleName}`}
+                                                                                        className="text-xs font-mono cursor-pointer text-primary"
                                                                                     >
-                                                                                        <Checkbox
-                                                                                            id={`edit-${permission}`}
-                                                                                            checked={
-                                                                                                editFormData.customPermissions.includes(
-                                                                                                    permission
-                                                                                                ) ||
-                                                                                                (wildcardPerm &&
+                                                                                        All
+                                                                                    </Label>
+                                                                                </div>
+                                                                            </div>
+                                                                            {/* Individual permissions */}
+                                                                            <div className="grid grid-cols-2 gap-2 ml-2">
+                                                                                {nonWildcard.map(
+                                                                                    (permission) => (
+                                                                                        <div
+                                                                                            key={
+                                                                                                permission
+                                                                                            }
+                                                                                            className="flex items-center space-x-2"
+                                                                                        >
+                                                                                            <Checkbox
+                                                                                                id={`edit-${permission}`}
+                                                                                                checked={
+                                                                                                    editFormData.customPermissions.includes(
+                                                                                                        permission
+                                                                                                    ) ||
+                                                                                                    (wildcardPerm &&
+                                                                                                        editFormData.customPermissions.includes(
+                                                                                                            wildcardPerm
+                                                                                                        ))
+                                                                                                }
+                                                                                                onCheckedChange={() =>
+                                                                                                    togglePermissionEdit(
+                                                                                                        permission
+                                                                                                    )
+                                                                                                }
+                                                                                                disabled={
+                                                                                                    wildcardPerm &&
                                                                                                     editFormData.customPermissions.includes(
                                                                                                         wildcardPerm
-                                                                                                    ))
-                                                                                            }
-                                                                                            onCheckedChange={() =>
-                                                                                                togglePermissionEdit(
-                                                                                                    permission
-                                                                                                )
-                                                                                            }
-                                                                                            disabled={
-                                                                                                wildcardPerm &&
-                                                                                                editFormData.customPermissions.includes(
-                                                                                                    wildcardPerm
-                                                                                                )
-                                                                                            }
-                                                                                        />
-                                                                                        <Label
-                                                                                            htmlFor={`edit-${permission}`}
-                                                                                            className={cn(
-                                                                                                "text-xs font-mono cursor-pointer",
-                                                                                                wildcardPerm &&
+                                                                                                    )
+                                                                                                }
+                                                                                            />
+                                                                                            <Label
+                                                                                                htmlFor={`edit-${permission}`}
+                                                                                                className={cn(
+                                                                                                    "text-xs font-mono cursor-pointer",
+                                                                                                    wildcardPerm &&
                                                                                                     editFormData.customPermissions.includes(
                                                                                                         wildcardPerm
                                                                                                     ) &&
                                                                                                     "text-muted-foreground"
-                                                                                            )}
-                                                                                        >
-                                                                                            {removeUnderScore(
-                                                                                                permission.split(
-                                                                                                    ":"
-                                                                                                )[1]
-                                                                                            )}
-                                                                                        </Label>
-                                                                                    </div>
-                                                                                )
-                                                                            )}
+                                                                                                )}
+                                                                                            >
+                                                                                                {removeUnderScore(
+                                                                                                    permission.split(
+                                                                                                        ":"
+                                                                                                    )[1]
+                                                                                                )}
+                                                                                            </Label>
+                                                                                        </div>
+                                                                                    )
+                                                                                )}
+                                                                            </div>
                                                                         </div>
-                                                                    </div>
-                                                                );
-                                                            })}
-                                                        </div>
-                                                    </ScrollArea>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        </ScrollArea>
 
-                                                    {editFormData.customPermissions.length ===
-                                                        0 && (
-                                                        <div className="flex items-center gap-2 text-amber-600 text-xs font-mono">
-                                                            <AlertCircle className="h-4 w-4" />
-                                                            No permissions selected - user won't be
-                                                            able to access anything
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            )}
-
-                                            {/* Template Preview - for non-custom */}
-                                            {editFormData.permissionTemplate &&
-                                                editFormData.permissionTemplate !== "CUSTOM" && (
-                                                    <div className="bg-muted/50 rounded-lg p-3 border border-border">
-                                                        <p className="text-xs font-mono text-muted-foreground">
-                                                            <span className="text-primary">★</span>{" "}
-                                                            Template includes full access (wildcard)
-                                                            for all modules
-                                                        </p>
+                                                        {editFormData.customPermissions.length ===
+                                                            0 && (
+                                                                <div className="flex items-center gap-2 text-amber-600 text-xs font-mono">
+                                                                    <AlertCircle className="h-4 w-4" />
+                                                                    No permissions selected - user won't be
+                                                                    able to access anything
+                                                                </div>
+                                                            )}
                                                     </div>
                                                 )}
-                                        </div>
-                                    )}
+
+                                                {/* Template Preview - for non-custom */}
+                                                {editFormData.permissionTemplate &&
+                                                    editFormData.permissionTemplate !== "CUSTOM" && (
+                                                        <div className="bg-muted/50 rounded-lg p-3 border border-border">
+                                                            <p className="text-xs font-mono text-muted-foreground">
+                                                                <span className="text-primary">★</span>{" "}
+                                                                Template includes full access (wildcard)
+                                                                for all modules
+                                                            </p>
+                                                        </div>
+                                                    )}
+                                            </div>
+                                        )}
 
                                     {/* CLIENT user - No permissions needed */}
                                     {editingUser?.role === "CLIENT" && (
@@ -1417,7 +1418,7 @@ export default function UsersManagementPage() {
 
                                     {/* Company Access */}
                                     {editFormData.userType === "ADMIN" ||
-                                    editFormData.userType === "LOGISTICS" ? (
+                                        editFormData.userType === "LOGISTICS" ? (
                                         <>
                                             <div className="flex items-center space-x-2">
                                                 <Checkbox
@@ -1529,8 +1530,8 @@ export default function UsersManagementPage() {
                                                     {editFormData.permissionTemplate === "CUSTOM"
                                                         ? `${editFormData.customPermissions.length} custom`
                                                         : editFormData.permissionTemplate
-                                                          ? `${PERMISSION_TEMPLATES[editFormData.permissionTemplate as PermissionTemplate]?.permissions.length} from template`
-                                                          : "0"}
+                                                            ? `${PERMISSION_TEMPLATES[editFormData.permissionTemplate as PermissionTemplate]?.permissions.length} from template`
+                                                            : "0"}
                                                 </span>
                                             </div>
                                             <div className="flex justify-between">
@@ -1540,10 +1541,10 @@ export default function UsersManagementPage() {
                                                 <span className="font-semibold">
                                                     {editFormData.selectedCompany
                                                         ? companies.find(
-                                                              (c) =>
-                                                                  c.id ===
-                                                                  editFormData.selectedCompany
-                                                          )?.name || "Unknown"
+                                                            (c) =>
+                                                                c.id ===
+                                                                editFormData.selectedCompany
+                                                        )?.name || "Unknown"
                                                         : "All Companies (*)"}
                                                 </span>
                                             </div>
@@ -1674,8 +1675,8 @@ export default function UsersManagementPage() {
                                             <span className="text-xs text-muted-foreground font-mono">
                                                 {user.last_login_at
                                                     ? new Date(
-                                                          user.last_login_at
-                                                      ).toLocaleDateString()
+                                                        user.last_login_at
+                                                    ).toLocaleDateString()
                                                     : "Never"}
                                             </span>
                                         </TableCell>

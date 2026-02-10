@@ -33,7 +33,8 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { parseCSVFile } from "@/lib/utils/csv-utils";
 import { downloadCSVTemplate } from "@/lib/utils/csv-utils";
-import type { ParsedCSVRow, RowValidationError, BulkUploadResponse } from "@/types/bulk-upload";
+import type { ParsedCSVRow, RowValidationError, BulkUploadResponse, CSVAssetRow } from "@/types/bulk-upload";
+import { apiClient } from "@/lib/api/api-client";
 
 type UploadState = "idle" | "parsing" | "validating" | "uploading" | "success" | "error";
 
@@ -44,10 +45,7 @@ export default function BulkUploadPage() {
     const [parsedRows, setParsedRows] = useState<ParsedCSVRow[]>([]);
     const [parseErrors, setParseErrors] = useState<string[]>([]);
     const [validationErrors, setValidationErrors] = useState<RowValidationError[]>([]);
-    const [uploadResult, setUploadResult] = useState<{
-        created: number;
-        assets: Array<{ id: string; name: string; qrCode: string }>;
-    } | null>(null);
+    const [uploadResult, setUploadResult] = useState<CSVAssetRow[] | null>(null);
 
     const handleFileSelect = async (selectedFile: File) => {
         if (!selectedFile.name.endsWith(".csv")) {
@@ -89,14 +87,15 @@ export default function BulkUploadPage() {
             const formData = new FormData();
             formData.append("file", file);
 
-            const response = await fetch("/api/assets/bulk-upload", {
-                method: "POST",
-                body: formData,
+            const response = await apiClient.post("/operations/v1/asset/bulk-upload", formData, {
+                headers: {
+                    "Content-Type": "multipart/form-data",
+                },
             });
 
-            const data: BulkUploadResponse = await response.json();
+            const data = await response.data;
 
-            if (response.ok && data.success && data.data) {
+            if (data.success && data.data) {
                 setUploadResult(data.data);
                 setState("success");
                 toast.success(`Successfully created ${data.data.created} assets!`);
@@ -178,15 +177,14 @@ export default function BulkUploadPage() {
                             {/* Status Indicator */}
                             <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-muted/50 border border-border">
                                 <div
-                                    className={`h-2 w-2 rounded-full ${
-                                        state === "success"
-                                            ? "bg-emerald-500 animate-pulse"
-                                            : state === "error"
-                                              ? "bg-red-500"
-                                              : state === "uploading"
+                                    className={`h-2 w-2 rounded-full ${state === "success"
+                                        ? "bg-emerald-500 animate-pulse"
+                                        : state === "error"
+                                            ? "bg-red-500"
+                                            : state === "uploading"
                                                 ? "bg-primary animate-pulse"
                                                 : "bg-muted-foreground/30"
-                                    }`}
+                                        }`}
                                 />
                                 <span className="text-xs font-mono uppercase tracking-wider">
                                     {state === "idle" && "READY"}
@@ -455,7 +453,7 @@ export default function BulkUploadPage() {
                                                                                 Tracking
                                                                             </th>
                                                                             <th className="px-3 py-2 text-left font-bold uppercase">
-                                                                                Qty
+                                                                                Total Qty
                                                                             </th>
                                                                         </tr>
                                                                     </thead>
@@ -468,32 +466,24 @@ export default function BulkUploadPage() {
                                                                                     className="border-t border-border hover:bg-muted/20"
                                                                                 >
                                                                                     <td className="px-3 py-2 text-muted-foreground">
-                                                                                        {
-                                                                                            row.rowNumber
-                                                                                        }
+                                                                                        {row.rowNumber}
                                                                                     </td>
                                                                                     <td className="px-3 py-2">
                                                                                         {row.name}
                                                                                     </td>
                                                                                     <td className="px-3 py-2 text-muted-foreground">
-                                                                                        {
-                                                                                            row.category
-                                                                                        }
+                                                                                        {row.category}
                                                                                     </td>
                                                                                     <td className="px-3 py-2">
                                                                                         <Badge
                                                                                             variant="outline"
                                                                                             className="text-[10px]"
                                                                                         >
-                                                                                            {
-                                                                                                row.trackingMethod
-                                                                                            }
+                                                                                            {row.tracking_method}
                                                                                         </Badge>
                                                                                     </td>
                                                                                     <td className="px-3 py-2 text-muted-foreground">
-                                                                                        {
-                                                                                            row.totalQuantity
-                                                                                        }
+                                                                                        {row.total_quantity}
                                                                                     </td>
                                                                                 </tr>
                                                                             ))}
@@ -626,20 +616,11 @@ export default function BulkUploadPage() {
                                             </h2>
                                         </div>
 
-                                        <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-lg p-4">
-                                            <p className="text-2xl font-mono font-bold text-emerald-600">
-                                                {uploadResult.created}
-                                            </p>
-                                            <p className="text-xs font-mono text-muted-foreground mt-1">
-                                                assets created successfully
-                                            </p>
-                                        </div>
-
                                         <div className="space-y-2 max-h-[400px] overflow-y-auto">
                                             <p className="text-xs font-mono font-bold uppercase tracking-wider text-muted-foreground mb-2">
                                                 QR CODES GENERATED
                                             </p>
-                                            {uploadResult.assets.slice(0, 5).map((asset) => (
+                                            {uploadResult.slice(0, 5).map((asset) => (
                                                 <div
                                                     key={asset.id}
                                                     className="flex items-center justify-between p-2 bg-muted/20 rounded border border-border"
@@ -648,13 +629,13 @@ export default function BulkUploadPage() {
                                                         {asset.name}
                                                     </span>
                                                     <span className="text-xs font-mono text-primary">
-                                                        {asset.qrCode}
+                                                        {asset.qr_code}
                                                     </span>
                                                 </div>
                                             ))}
-                                            {uploadResult.assets.length > 5 && (
+                                            {uploadResult.length > 5 && (
                                                 <p className="text-xs font-mono text-muted-foreground text-center py-2">
-                                                    + {uploadResult.assets.length - 5} more
+                                                    + {uploadResult.length - 5} more
                                                 </p>
                                             )}
                                         </div>
@@ -668,7 +649,7 @@ export default function BulkUploadPage() {
                                                 IMPORT MORE
                                             </Button>
                                             <Button
-                                                onClick={() => router.push("/admin/assets")}
+                                                onClick={() => router.push("/assets")}
                                                 className="flex-1 font-mono text-xs"
                                             >
                                                 VIEW ASSETS
