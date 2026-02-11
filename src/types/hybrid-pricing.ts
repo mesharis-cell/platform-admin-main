@@ -102,7 +102,7 @@ export interface VehicleTypeEntity {
 
 export interface CreateVehicleTypeRequest {
     name: string;
-    vehicle_size: number;
+    vehicle_size: number | null;
     display_order?: number;
     description?: string;
     isDefault?: boolean;

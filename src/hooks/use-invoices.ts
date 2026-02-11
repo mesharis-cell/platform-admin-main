@@ -66,6 +66,9 @@ export function useInvoices(params: InvoiceListParams = {}) {
     if (params.isPaid && params.isPaid !== "all") {
         queryParams.set("paid_status", params.isPaid);
     }
+    if (params.type && params.type !== "all") {
+        queryParams.set("type", params.type);
+    }
     if (params.dateFrom) queryParams.set("date_from", params.dateFrom);
     if (params.dateTo) queryParams.set("date_to", params.dateTo);
     if (params.page) queryParams.set("page", params.page.toString());

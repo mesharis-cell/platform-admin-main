@@ -7,6 +7,7 @@
 
 import { AddCatalogLineItemModal } from "@/components/orders/AddCatalogLineItemModal";
 import { AddCustomLineItemModal } from "@/components/orders/AddCustomLineItemModal";
+import { AddMissingTransportRate } from "@/components/orders/AddMissingTransportRate";
 import { CancelOrderModal } from "@/components/orders/CancelOrderModal";
 import { LogisticsPricingReview } from "@/components/orders/LogisticsPricingReview";
 import { OrderLineItemsList } from "@/components/orders/OrderLineItemsList";
@@ -45,7 +46,7 @@ export function PendingApprovalSection({ order, orderId, onRefresh }: HybridPric
     const [returnToLogisticsOpen, setReturnToLogisticsOpen] = useState(false);
 
     const { total, marginAmount } = getOrderPrice(order?.order_pricing)
-
+    const showMissingTransport = ["PENDING_APPROVAL", "QUOTED", "DECLINED"].includes(order.order_status) && !order?.order_pricing?.transport?.final_rate
 
     const handleApprove = async () => {
         if (marginOverride && marginAmount === Number(marginPercent)) {
@@ -85,6 +86,9 @@ export function PendingApprovalSection({ order, orderId, onRefresh }: HybridPric
                     <ReskinRequestsList orderId={orderId} order={order} orderStatus={order.order_status} />
                 </CardContent>
             </Card>
+
+            {/* Add missing transport rate */}
+            {showMissingTransport && <AddMissingTransportRate order={order} />}
 
             {/* Service Line Items */}
             <Card>

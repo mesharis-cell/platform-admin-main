@@ -42,6 +42,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { CreateAssetDialog } from "@/components/assets/create-asset-dialog";
 import { AdminHeader } from "@/components/admin-header";
 import { useCompanies } from "@/hooks/use-companies";
+import { removeUnderScore } from "@/lib/utils/helper";
 
 export default function AssetsPage() {
     const router = useRouter();
@@ -60,6 +61,7 @@ export default function AssetsPage() {
     // Build query params
     const queryParams = useMemo(() => {
         const params: Record<string, string> = {};
+        params.limit = "100";
         if (searchQuery) params.search_term = searchQuery;
         if (filters.category && filters.category !== "all") params.category = filters.category;
         if (filters.condition && filters.condition !== "all") params.condition = filters.condition;
@@ -296,11 +298,6 @@ export default function AssetsPage() {
                                             </div>
                                         )}
 
-                                        {/* QR indicator overlay */}
-                                        <div className="absolute top-2 right-2 p-1.5 bg-background/90 backdrop-blur-sm rounded-md border border-border">
-                                            <QrCode className="w-4 h-4 text-primary" />
-                                        </div>
-
                                         {/* Condition indicator */}
                                         <div className="absolute bottom-2 left-2">
                                             <Badge
@@ -329,7 +326,7 @@ export default function AssetsPage() {
                                                 variant="outline"
                                                 className={`${getStatusColor(asset.status)} text-[10px]`}
                                             >
-                                                {asset.status.replace("_", " ")}
+                                                {removeUnderScore(asset.status)}
                                             </Badge>
                                             <span
                                                 className="text-muted-foreground"

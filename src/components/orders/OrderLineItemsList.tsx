@@ -17,7 +17,7 @@ interface OrderLineItemsListProps {
 
 export function OrderLineItemsList({ targetId, canManage = false, purposeType = "ORDER" }: OrderLineItemsListProps) {
     const { data: lineItems, isLoading } = useListLineItems(targetId, purposeType);
-    const voidLineItem = useVoidLineItem(targetId);
+    const voidLineItem = useVoidLineItem(targetId, purposeType);
 
     const [voidDialogOpen, setVoidDialogOpen] = useState(false);
     const [selectedItem, setSelectedItem] = useState<OrderLineItem | null>(null);

@@ -48,7 +48,7 @@ const STATUS_COLORS: Record<InboundRequestStatus, string> = {
 export default function AssetsInboundPage() {
   const [search, setSearch] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const { data, isLoading, refetch } = useInboundRequests({ search_term: search });
+  const { data, isLoading, refetch } = useInboundRequests({ limit: "100", search_term: search });
 
   return (
     <div className="container mx-auto py-8 px-4 space-y-6">

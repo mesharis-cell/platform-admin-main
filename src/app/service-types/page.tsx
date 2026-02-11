@@ -315,7 +315,6 @@ export default function ServiceTypes() {
                       id="defaultRate"
                       type="number"
                       min="0"
-                      step="0.01"
                       value={formData.default_rate === null || formData.default_rate === undefined ? "" : formData.default_rate}
                       onChange={(e) =>
                         setFormData({

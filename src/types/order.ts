@@ -45,7 +45,6 @@ export type FinancialStatus =
 export interface Order {
     id: string;
     orderId: string; // Human-readable order ID (e.g., "ORD-20241109-001")
-    company: string;
     companyName?: string; // Populated via join
     brand?: string | null;
     brandName?: string | null; // Populated via join
@@ -56,6 +55,11 @@ export interface Order {
     contactName?: string | null;
     contactEmail?: string | null;
     contactPhone?: string | null;
+    trip_type: "ONE_WAY" | "ROUND_TRIP";
+    company: {
+        id: string;
+        name: string;
+    }
     // Event details
     eventStartDate?: Date | null;
     eventEndDate?: Date | null;
@@ -63,6 +67,8 @@ export interface Order {
     venueName?: string | null;
     venueCountry?: string | null;
     venueCity?: string | null;
+    venue_city_id: string;
+    vehicle_type_id: string;
     venueAddress?: string | null;
     venueAccessNotes?: string | null;
     // Special instructions
@@ -72,6 +78,7 @@ export interface Order {
     calculatedWeight: string; // decimal as string
     // Pricing tier reference
     pricingTier?: string | null;
+    order_pricing_id: string;
     // Pricing fields (Phase 8)
     a2BasePrice?: string | null;
     a2AdjustedPrice?: string | null;
@@ -349,9 +356,32 @@ export interface InvoiceListParams {
     dateTo?: string; // ISO date
     page?: number;
     limit?: number;
+    type?: string;
     sortBy?: "created_at" | "updated_at" | "invoice_id";
     sortOrder?: "asc" | "desc";
 }
+
+export interface OrderPricing {
+            warehouse_ops_rate: number,
+            base_ops_total: number,
+            logistics_sub_total: number,
+            transport: {
+                final_rate: number,
+                system_rate: number
+            },
+            line_items: {
+                custom_total: number,
+                catalog_total: number
+            },
+            margin: {
+                amount: number,
+                percent: number,
+                is_override: boolean,
+                override_reason: string | null
+            },
+            final_total: number,
+            calculated_at: string
+        }
 
 // Invoice list item
 export interface InvoiceListItem {
@@ -373,28 +403,16 @@ export interface InvoiceListItem {
             total_price: number;
             quote_sent_at: string;
         };
-        order_pricing: {
-            warehouse_ops_rate: number,
-            base_ops_total: number,
-            logistics_sub_total: number,
-            transport: {
-                final_rate: number,
-                system_rate: number
-            },
-            line_items: {
-                custom_total: number,
-                catalog_total: number
-            },
-            margin: {
-                amount: number,
-                percent: number,
-                is_override: boolean,
-                override_reason: string | null
-            },
-            final_total: number,
-            calculated_at: string
-        }
+        order_pricing: OrderPricing
     };
+     inbound_request:{
+        id: string,
+        inbound_request_id: string,
+        request_status: string,
+        financial_status: string,
+        incoming_at: string,
+        pricing: OrderPricing,
+    }
     company: {
         id: string;
         name: string;

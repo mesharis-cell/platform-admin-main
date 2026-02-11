@@ -44,7 +44,8 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import type { AssetsDetails, AssetWithDetails } from "@/types/asset";
+import type { AssetsDetails, AssetStatus } from "@/types/asset";
+import { removeUnderScore } from "@/lib/utils/helper";
 
 const STEPS = [
     { id: "basic", label: "Basic Info", icon: Package },
@@ -54,6 +55,7 @@ const STEPS = [
 
 const HANDLING_TAGS = ["Fragile", "HighValue", "HeavyLift", "AssemblyRequired"];
 const DEFAULT_CATEGORIES = ["Furniture", "Glassware", "Installation", "Decor"];
+const ASSET_STATUSES = ["AVAILABLE", "BOOKED", "OUT", "MAINTENANCE"];
 
 interface EditAssetDialogProps {
     asset: AssetsDetails;
@@ -89,6 +91,7 @@ export function EditAssetDialog({ asset, open, onOpenChange, onSuccess }: EditAs
         condition_notes: asset.condition_notes || "",
         handling_tags: asset.handling_tags,
         packaging: asset.packaging || "",
+        status: asset.status,
     });
 
     const [customCategory, setCustomCategory] = useState("");
@@ -118,6 +121,7 @@ export function EditAssetDialog({ asset, open, onOpenChange, onSuccess }: EditAs
                 condition_notes: asset.condition_notes || "",
                 handling_tags: asset.handling_tags,
                 packaging: asset.packaging || "",
+                status: asset.status,
             });
             setCurrentStep(0);
             setCustomCategory("");
@@ -305,6 +309,7 @@ export function EditAssetDialog({ asset, open, onOpenChange, onSuccess }: EditAs
                     refurb_days_estimate:
                         formData.condition === "GREEN" ? null : formData.refurb_days_estimate,
                     condition_notes: formData.condition_notes || undefined,
+                    status: formData.status,
                 } as any,
             });
 
@@ -381,22 +386,20 @@ export function EditAssetDialog({ asset, open, onOpenChange, onSuccess }: EditAs
                                 <button
                                     onClick={() => setCurrentStep(index)}
                                     disabled={index > currentStep}
-                                    className={`flex items-center gap-2 ${
-                                        isActive
-                                            ? "text-primary"
-                                            : isCompleted
-                                              ? "text-foreground"
-                                              : "text-muted-foreground"
-                                    } disabled:opacity-50 disabled:cursor-not-allowed transition-colors hover:text-primary`}
+                                    className={`flex items-center gap-2 ${isActive
+                                        ? "text-primary"
+                                        : isCompleted
+                                            ? "text-foreground"
+                                            : "text-muted-foreground"
+                                        } disabled:opacity-50 disabled:cursor-not-allowed transition-colors hover:text-primary`}
                                 >
                                     <div
-                                        className={`w-8 h-8 rounded-lg flex items-center justify-center border ${
-                                            isActive
-                                                ? "bg-primary text-primary-foreground border-primary"
-                                                : isCompleted
-                                                  ? "bg-primary/10 border-primary/20 text-primary"
-                                                  : "bg-muted border-border"
-                                        }`}
+                                        className={`w-8 h-8 rounded-lg flex items-center justify-center border ${isActive
+                                            ? "bg-primary text-primary-foreground border-primary"
+                                            : isCompleted
+                                                ? "bg-primary/10 border-primary/20 text-primary"
+                                                : "bg-muted border-border"
+                                            }`}
                                     >
                                         {isCompleted ? (
                                             <Check className="w-4 h-4" />
@@ -477,19 +480,19 @@ export function EditAssetDialog({ asset, open, onOpenChange, onSuccess }: EditAs
                                             !DEFAULT_CATEGORIES.includes(
                                                 formData.category || ""
                                             ))) && (
-                                        <Input
-                                            placeholder="Enter custom category"
-                                            value={customCategory || formData.category}
-                                            onChange={(e) => {
-                                                setCustomCategory(e.target.value);
-                                                setFormData({
-                                                    ...formData,
-                                                    category: e.target.value as any,
-                                                });
-                                            }}
-                                            className="font-mono"
-                                        />
-                                    )}
+                                            <Input
+                                                placeholder="Enter custom category"
+                                                value={customCategory || formData.category}
+                                                onChange={(e) => {
+                                                    setCustomCategory(e.target.value);
+                                                    setFormData({
+                                                        ...formData,
+                                                        category: e.target.value as any,
+                                                    });
+                                                }}
+                                                className="font-mono"
+                                            />
+                                        )}
                                 </div>
                             </div>
 
@@ -553,8 +556,8 @@ export function EditAssetDialog({ asset, open, onOpenChange, onSuccess }: EditAs
                                                     !formData.warehouse_id
                                                         ? "Select warehouse first"
                                                         : zones.length === 0
-                                                          ? "No zones available"
-                                                          : "Select zone"
+                                                            ? "No zones available"
+                                                            : "Select zone"
                                                 }
                                             />
                                         </SelectTrigger>
@@ -593,8 +596,8 @@ export function EditAssetDialog({ asset, open, onOpenChange, onSuccess }: EditAs
                                                 !formData.company
                                                     ? "Select company first"
                                                     : brands.length === 0
-                                                      ? "No brands available"
-                                                      : "Select brand"
+                                                        ? "No brands available"
+                                                        : "Select brand"
                                             }
                                         />
                                     </SelectTrigger>
@@ -713,7 +716,7 @@ export function EditAssetDialog({ asset, open, onOpenChange, onSuccess }: EditAs
                                     <Label className="font-mono text-xs">Length (cm) *</Label>
                                     <Input
                                         type="number"
-                                        step="0.01"
+                                        min={0}
                                         placeholder="0.00"
                                         value={formData.dimensions.length}
                                         onChange={(e) =>
@@ -729,7 +732,7 @@ export function EditAssetDialog({ asset, open, onOpenChange, onSuccess }: EditAs
                                     <Label className="font-mono text-xs">Width (cm) *</Label>
                                     <Input
                                         type="number"
-                                        step="0.01"
+                                        min={0}
                                         placeholder="0.00"
                                         value={formData.dimensions.width}
                                         onChange={(e) =>
@@ -745,7 +748,7 @@ export function EditAssetDialog({ asset, open, onOpenChange, onSuccess }: EditAs
                                     <Label className="font-mono text-xs">Height (cm) *</Label>
                                     <Input
                                         type="number"
-                                        step="0.01"
+                                        min={0}
                                         placeholder="0.00"
                                         value={formData.dimensions.height}
                                         onChange={(e) =>
@@ -764,7 +767,7 @@ export function EditAssetDialog({ asset, open, onOpenChange, onSuccess }: EditAs
                                     <Label className="font-mono text-xs">Weight (kg) *</Label>
                                     <Input
                                         type="number"
-                                        step="0.01"
+                                        min={0}
                                         placeholder="0.00"
                                         value={formData.weight_per_unit}
                                         onChange={(e) =>
@@ -782,7 +785,7 @@ export function EditAssetDialog({ asset, open, onOpenChange, onSuccess }: EditAs
                                     </Label>
                                     <Input
                                         type="number"
-                                        step="0.001"
+                                        min={0}
                                         placeholder="0.000"
                                         value={formData?.volume_per_unit || ""}
                                         onChange={(e) =>
@@ -809,32 +812,30 @@ export function EditAssetDialog({ asset, open, onOpenChange, onSuccess }: EditAs
                                                     condition: cond as any,
                                                 })
                                             }
-                                            className={`flex-1 p-3 rounded-lg border-2 transition-all ${
-                                                formData.condition === cond
-                                                    ? cond === "GREEN"
-                                                        ? "border-emerald-500 bg-emerald-500/10"
-                                                        : cond === "ORANGE"
-                                                          ? "border-amber-500 bg-amber-500/10"
-                                                          : "border-red-500 bg-red-500/10"
-                                                    : "border-border hover:border-muted-foreground"
-                                            }`}
+                                            className={`flex-1 p-3 rounded-lg border-2 transition-all ${formData.condition === cond
+                                                ? cond === "GREEN"
+                                                    ? "border-emerald-500 bg-emerald-500/10"
+                                                    : cond === "ORANGE"
+                                                        ? "border-amber-500 bg-amber-500/10"
+                                                        : "border-red-500 bg-red-500/10"
+                                                : "border-border hover:border-muted-foreground"
+                                                }`}
                                         >
                                             <div className="flex items-center justify-center gap-2">
                                                 <div
-                                                    className={`w-3 h-3 rounded-full ${
-                                                        cond === "GREEN"
-                                                            ? "bg-emerald-500"
-                                                            : cond === "ORANGE"
-                                                              ? "bg-amber-500"
-                                                              : "bg-red-500"
-                                                    }`}
+                                                    className={`w-3 h-3 rounded-full ${cond === "GREEN"
+                                                        ? "bg-emerald-500"
+                                                        : cond === "ORANGE"
+                                                            ? "bg-amber-500"
+                                                            : "bg-red-500"
+                                                        }`}
                                                 />
                                                 <span className="font-mono text-xs font-medium">
                                                     {cond === "GREEN"
                                                         ? "Good"
                                                         : cond === "ORANGE"
-                                                          ? "Minor Issues"
-                                                          : "Damaged"}
+                                                            ? "Minor Issues"
+                                                            : "Damaged"}
                                                 </span>
                                             </div>
                                         </button>
@@ -962,6 +963,30 @@ export function EditAssetDialog({ asset, open, onOpenChange, onSuccess }: EditAs
                                     </Button>
                                 </div>
                             </div>
+
+                            {/* <div className="space-y-2">
+                                <Label className="font-mono text-xs">Status *</Label>
+                                <Select
+                                    value={formData.status}
+                                    onValueChange={(value) =>
+                                        setFormData({
+                                            ...formData,
+                                            status: value as AssetStatus,
+                                        })
+                                    }
+                                >
+                                    <SelectTrigger className="w-full">
+                                        <SelectValue placeholder="Select status" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {ASSET_STATUSES.map((status) => (
+                                            <SelectItem key={status} value={status}>
+                                                {removeUnderScore(status)}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div> */}
                         </div>
                     )}
                 </div>

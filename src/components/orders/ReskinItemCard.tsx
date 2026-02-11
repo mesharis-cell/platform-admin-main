@@ -53,7 +53,7 @@ export function ReskinItemCard({
           <p className="text-sm">{reskin.clientNotes}</p>
         </div>
 
-        {disabled && (
+        {disabled && orderStatus === "AWAITING_FABRICATION" && (
           <div className="text-sm text-red-500">
             Set delivery schedule before fabricating items and starting preparation
           </div>

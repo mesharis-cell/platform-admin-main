@@ -76,6 +76,7 @@ import { apiClient } from "@/lib/api/api-client";
 import { getOrderPrice, removeUnderScore } from "@/lib/utils/helper";
 import { addDays, endOfDay, isAfter, isBefore, startOfDay, subDays } from "date-fns";
 import { LogisticsPricingReview } from "@/components/orders/LogisticsPricingReview";
+import { AddMissingTransportRate } from "@/components/orders/AddMissingTransportRate";
 
 const getTruckDetailsInitialData = (details: any) => {
     if (!details) return undefined;
@@ -415,8 +416,6 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
         );
     }
 
-    console.log(order);
-
     const { total } = getOrderPrice(order?.data?.pricing);
     const currentStatusConfig = STATUS_CONFIG[order.data.order_status] || STATUS_CONFIG.DRAFT;
     const allowedNextStates = currentStatusConfig.nextStates || [];
@@ -439,8 +438,6 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
             isBefore(date, startOfDay(addDays(eventEndDate, 1))) ||
             isAfter(date, endOfDay(addDays(eventEndDate, 3)))
         : undefined
-
-
 
     return (
         <div className="min-h-screen bg-background">
@@ -470,12 +467,9 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                             <Badge
                                 className={`${FINANCIAL_STATUS[order?.data?.financial_status]?.color} border font-mono text-xs px-3 py-1`}
                             >
-                                {removeUnderScore(
-                                    FINANCIAL_STATUS[order?.data?.financial_status]?.label
-                                )}
+                                {removeUnderScore(FINANCIAL_STATUS[order?.data?.financial_status]?.label)}
                             </Badge>
-                            <Badge
-                                className={`${currentStatusConfig.color} border font-mono text-xs px-3 py-1`}
+                            <Badge className={`${currentStatusConfig.color} border font-mono text-xs px-3 py-1`}
                             >
                                 {removeUnderScore(currentStatusConfig.label)}
                             </Badge>
