@@ -14,6 +14,7 @@ import { AddCatalogLineItemModal } from "./AddCatalogLineItemModal";
 import { VehicleUpgradeSelector } from "./VehicleUpgradeSelector";
 import { canManageLineItems } from "@/lib/order-helpers";
 import type { OrderPricing, VehicleType } from "@/types/hybrid-pricing";
+import { AddMissingTransportRate } from "./AddMissingTransportRate";
 
 interface LogisticsPricingReviewProps {
     orderId: string;
@@ -26,6 +27,7 @@ export function LogisticsPricingReview({ orderId, order, onSubmitSuccess }: Logi
 
     const pricing = order?.order_pricing as OrderPricing | undefined;
     const hasRebrandRequests = order?.items?.some((item: any) => item.isReskinRequest);
+    const showMissingTransport = ["PRICING_REVIEW"].includes(order.order_status) && !order?.order_pricing?.transport?.final_rate
 
     return (
         <div className="space-y-6">
@@ -59,6 +61,9 @@ export function LogisticsPricingReview({ orderId, order, onSubmitSuccess }: Logi
                     />
                 </CardContent>
             </Card>
+
+            {/* Add missing transport rate */}
+            {showMissingTransport && <AddMissingTransportRate order={order} />}
 
             {/* Service Line Items */}
             <Card>

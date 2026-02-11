@@ -35,6 +35,12 @@ export const AddMissingTransportRate = ({ order }: { order: Order }) => {
 
   const handleAddTransportRate = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!formData.trip_type || !formData.vehicle_type_id || !formData.rate) {
+      toast.error("Please fill all the required fields");
+      return;
+    }
+
     try {
       const res = await transportRateMutation.mutateAsync({
         ...formData,
@@ -59,7 +65,7 @@ export const AddMissingTransportRate = ({ order }: { order: Order }) => {
     <>
       <Card className="border-2 border-red-500/50 bg-red-500/5">
         <CardHeader>
-          <CardTitle className="text-red-500">Add Missing Transport Rate</CardTitle>
+          <CardTitle className="text-red-500">Transport Rate is Missing</CardTitle>
         </CardHeader>
         <CardContent>
           <Dialog
@@ -69,7 +75,7 @@ export const AddMissingTransportRate = ({ order }: { order: Order }) => {
             <DialogTrigger asChild>
               <Button className="gap-2 font-mono">
                 <Plus className="h-4 w-4" />
-                NEW RATE
+                ADD RATE
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl">
@@ -233,6 +239,9 @@ export const AddMissingTransportRate = ({ order }: { order: Order }) => {
                     className="font-mono"
                     required
                   />
+                  <p className="text-xs text-muted-foreground font-mono">
+                    Min (1) {formData.trip_type} trip
+                  </p>
                 </div>
 
                 <div className="flex justify-end gap-3 pt-4 border-t border-border">
