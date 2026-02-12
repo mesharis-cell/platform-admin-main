@@ -59,7 +59,7 @@ export interface Order {
     company: {
         id: string;
         name: string;
-    }
+    };
     // Event details
     eventStartDate?: Date | null;
     eventEndDate?: Date | null;
@@ -103,11 +103,11 @@ export interface Order {
     delivery_window: {
         start: Date | null;
         end: Date | null;
-    }
+    };
     pickup_window: {
         start: Date | null;
         end: Date | null;
-    }
+    };
     // Truck photos (Phase 11)
     truckPhotos: string[];
     // Job number (Phase 7)
@@ -362,26 +362,26 @@ export interface InvoiceListParams {
 }
 
 export interface OrderPricing {
-            warehouse_ops_rate: number,
-            base_ops_total: number,
-            logistics_sub_total: number,
-            transport: {
-                final_rate: number,
-                system_rate: number
-            },
-            line_items: {
-                custom_total: number,
-                catalog_total: number
-            },
-            margin: {
-                amount: number,
-                percent: number,
-                is_override: boolean,
-                override_reason: string | null
-            },
-            final_total: number,
-            calculated_at: string
-        }
+    warehouse_ops_rate: number;
+    base_ops_total: number;
+    logistics_sub_total: number;
+    transport: {
+        final_rate: number;
+        system_rate: number;
+    };
+    line_items: {
+        custom_total: number;
+        catalog_total: number;
+    };
+    margin: {
+        amount: number;
+        percent: number;
+        is_override: boolean;
+        override_reason: string | null;
+    };
+    final_total: number;
+    calculated_at: string;
+}
 
 // Invoice list item
 export interface InvoiceListItem {
@@ -403,16 +403,16 @@ export interface InvoiceListItem {
             total_price: number;
             quote_sent_at: string;
         };
-        order_pricing: OrderPricing
+        order_pricing: OrderPricing;
     };
-     inbound_request:{
-        id: string,
-        inbound_request_id: string,
-        request_status: string,
-        financial_status: string,
-        incoming_at: string,
-        pricing: OrderPricing,
-    }
+    inbound_request: {
+        id: string;
+        inbound_request_id: string;
+        request_status: string;
+        financial_status: string;
+        incoming_at: string;
+        pricing: OrderPricing;
+    };
     company: {
         id: string;
         name: string;
@@ -598,7 +598,6 @@ export interface APIOrdersResponse {
     meta: any;
     success: boolean;
 }
-
 
 // ============================================================
 // Truck details types

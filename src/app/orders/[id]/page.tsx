@@ -422,22 +422,22 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
 
     const eventStartDate = order?.data?.event_start_date
         ? new Date(order.data.event_start_date)
-        : undefined
+        : undefined;
     const eventEndDate = order?.data?.event_end_date
         ? new Date(order.data.event_end_date)
-        : undefined
+        : undefined;
 
     const deliveryDisabledDays = eventStartDate
         ? (date: Date) =>
-            isBefore(date, startOfDay(subDays(eventStartDate, 5))) ||
-            isAfter(date, endOfDay(subDays(eventStartDate, 1)))
-        : undefined
+              isBefore(date, startOfDay(subDays(eventStartDate, 5))) ||
+              isAfter(date, endOfDay(subDays(eventStartDate, 1)))
+        : undefined;
 
     const pickupDisabledDays = eventEndDate
         ? (date: Date) =>
-            isBefore(date, startOfDay(addDays(eventEndDate, 1))) ||
-            isAfter(date, endOfDay(addDays(eventEndDate, 3)))
-        : undefined
+              isBefore(date, startOfDay(addDays(eventEndDate, 1))) ||
+              isAfter(date, endOfDay(addDays(eventEndDate, 3)))
+        : undefined;
 
     return (
         <div className="min-h-screen bg-background">
@@ -467,9 +467,12 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                             <Badge
                                 className={`${FINANCIAL_STATUS[order?.data?.financial_status]?.color} border font-mono text-xs px-3 py-1`}
                             >
-                                {removeUnderScore(FINANCIAL_STATUS[order?.data?.financial_status]?.label)}
+                                {removeUnderScore(
+                                    FINANCIAL_STATUS[order?.data?.financial_status]?.label
+                                )}
                             </Badge>
-                            <Badge className={`${currentStatusConfig.color} border font-mono text-xs px-3 py-1`}
+                            <Badge
+                                className={`${currentStatusConfig.color} border font-mono text-xs px-3 py-1`}
                             >
                                 {removeUnderScore(currentStatusConfig.label)}
                             </Badge>
@@ -586,7 +589,8 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     {/* Main Content */}
                     <div className="lg:col-span-2 space-y-6">
-                        {(order?.data?.order_status === "CONFIRMED" || order?.data?.order_status === "AWAITING_FABRICATION") &&
+                        {(order?.data?.order_status === "CONFIRMED" ||
+                            order?.data?.order_status === "AWAITING_FABRICATION") &&
                             !order?.data?.delivery_window?.start && (
                                 <Card className="p-4 bg-orange-500/5 border-orange-500/30">
                                     <div className="flex items-start gap-3">
@@ -596,7 +600,8 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                                 Action Required
                                             </p>
                                             <p className="font-mono text-xs text-muted-foreground mt-1">
-                                                Set delivery schedule before fabricating items and starting preparation
+                                                Set delivery schedule before fabricating items and
+                                                starting preparation
                                             </p>
                                         </div>
                                     </div>
@@ -614,15 +619,18 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                         {order.data.order_status === "IN_PREPARATION" && (
                             <Card className="bg-red-500/5 border-red-500/30">
                                 <CardHeader>
-                                    <CardTitle className="text-red-500">Order In Preparation</CardTitle>
+                                    <CardTitle className="text-red-500">
+                                        Order In Preparation
+                                    </CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <p>The order is currently being prepared. Please scan out the items once it&apos;s ready for delivery.</p>
+                                    <p>
+                                        The order is currently being prepared. Please scan out the
+                                        items once it&apos;s ready for delivery.
+                                    </p>
                                 </CardContent>
                             </Card>
                         )}
-
-
 
                         {/* Feedback #3: Refurb Items Banner - Show for PRICING_REVIEW and PENDING_APPROVAL */}
                         {(order.data.order_status === "PRICING_REVIEW" ||
@@ -691,17 +699,19 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                                 {Math.floor(
                                                     (Date.now() -
                                                         new Date(
-                                                            order?.data?.final_pricing?.quote_sent_at
+                                                            order?.data?.final_pricing
+                                                                ?.quote_sent_at
                                                         ).getTime()) /
-                                                    (1000 * 60 * 60 * 24)
+                                                        (1000 * 60 * 60 * 24)
                                                 )}{" "}
                                                 days ago
                                                 {Math.floor(
                                                     (Date.now() -
                                                         new Date(
-                                                            order?.data?.final_pricing?.quote_sent_at
+                                                            order?.data?.final_pricing
+                                                                ?.quote_sent_at
                                                         ).getTime()) /
-                                                    (1000 * 60 * 60 * 24)
+                                                        (1000 * 60 * 60 * 24)
                                                 ) >= 2 && " - Consider following up with client"}
                                             </p>
                                         </div>
@@ -833,18 +843,19 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                             PAYMENT STATUS
                                         </Label>
                                         <Badge
-                                            className={`font-mono text-xs ${order?.data?.financial_status === "PAID"
-                                                ? "bg-green-500/10 text-green-700 border-green-500/30"
-                                                : order?.data?.financial_status === "INVOICED"
-                                                    ? "bg-amber-500/10 text-amber-700 border-amber-500/30"
-                                                    : "bg-slate-500/10 text-slate-600 border-slate-500/20"
-                                                }`}
+                                            className={`font-mono text-xs ${
+                                                order?.data?.financial_status === "PAID"
+                                                    ? "bg-green-500/10 text-green-700 border-green-500/30"
+                                                    : order?.data?.financial_status === "INVOICED"
+                                                      ? "bg-amber-500/10 text-amber-700 border-amber-500/30"
+                                                      : "bg-slate-500/10 text-slate-600 border-slate-500/20"
+                                            }`}
                                         >
                                             {order?.data?.financial_status === "PAID"
                                                 ? "PAID"
                                                 : order?.data?.financial_status === "INVOICED"
-                                                    ? "PENDING"
-                                                    : order?.data?.financial_status || "N/A"}
+                                                  ? "PENDING"
+                                                  : order?.data?.financial_status || "N/A"}
                                         </Badge>
                                     </div>
                                     {order?.data?.invoice?.invoice_paid_at && (
@@ -1067,227 +1078,231 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                         )}
 
                         {/* Delivery Schedule Card - Show for CONFIRMED+ states (Feedback #1: Independent from payment) */}
-                        {["AWAITING_FABRICATION", "CONFIRMED", "IN_PREPARATION", "READY_FOR_DELIVERY"].includes(
-                            order?.data?.order_status
-                        ) && (
-                                <Card>
-                                    <CardHeader>
-                                        <div className="flex items-center justify-between">
-                                            <CardTitle className="font-mono text-sm flex items-center gap-2">
-                                                <Truck className="h-4 w-4 text-secondary" />
-                                                DELIVERY SCHEDULE
-                                            </CardTitle>
-                                            <Dialog
-                                                open={timeWindowsOpen}
-                                                onOpenChange={setTimeWindowsOpen}
-                                            >
-                                                <DialogTrigger asChild>
-                                                    <Button
-                                                        size="sm"
-                                                        variant="outline"
-                                                        className="font-mono text-xs"
-                                                    >
-                                                        <Edit className="h-3 w-3 mr-2" />
-                                                        EDIT
-                                                    </Button>
-                                                </DialogTrigger>
-                                                <DialogContent className='sm:max-w-lg overflow-y-auto'>
-                                                    <DialogHeader>
-                                                        <DialogTitle className='font-mono'>
-                                                            UPDATE DELIVERY SCHEDULE
-                                                        </DialogTitle>
-                                                        <DialogDescription className='font-mono text-xs'>
-                                                            Set time windows for
-                                                            delivery and pickup
-                                                            coordination
-                                                        </DialogDescription>
-                                                    </DialogHeader>
+                        {[
+                            "AWAITING_FABRICATION",
+                            "CONFIRMED",
+                            "IN_PREPARATION",
+                            "READY_FOR_DELIVERY",
+                        ].includes(order?.data?.order_status) && (
+                            <Card>
+                                <CardHeader>
+                                    <div className="flex items-center justify-between">
+                                        <CardTitle className="font-mono text-sm flex items-center gap-2">
+                                            <Truck className="h-4 w-4 text-secondary" />
+                                            DELIVERY SCHEDULE
+                                        </CardTitle>
+                                        <Dialog
+                                            open={timeWindowsOpen}
+                                            onOpenChange={setTimeWindowsOpen}
+                                        >
+                                            <DialogTrigger asChild>
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    className="font-mono text-xs"
+                                                >
+                                                    <Edit className="h-3 w-3 mr-2" />
+                                                    EDIT
+                                                </Button>
+                                            </DialogTrigger>
+                                            <DialogContent className="sm:max-w-lg overflow-y-auto">
+                                                <DialogHeader>
+                                                    <DialogTitle className="font-mono">
+                                                        UPDATE DELIVERY SCHEDULE
+                                                    </DialogTitle>
+                                                    <DialogDescription className="font-mono text-xs">
+                                                        Set time windows for delivery and pickup
+                                                        coordination
+                                                    </DialogDescription>
+                                                </DialogHeader>
 
-                                                    <div className='space-y-6 py-4'>
-                                                        <div className='space-y-3'>
-                                                            <Label className='font-mono text-sm font-bold'>
-                                                                DELIVERY WINDOW
-                                                            </Label>
-                                                            <div className='grid grid-cols-2 gap-4'>
-                                                                <div className='space-y-2'>
-                                                                    <Label className='font-mono text-xs text-muted-foreground'>
-                                                                        START
-                                                                    </Label>
-                                                                    <DateTimePicker
-                                                                        value={timeWindows.deliveryWindowStart}
-                                                                        onChange={date =>
-                                                                            setTimeWindows(
-                                                                                prev => ({
-                                                                                    ...prev,
-                                                                                    deliveryWindowStart:
-                                                                                        date,
-                                                                                })
-                                                                            )
-                                                                        }
-                                                                        placeholder='Select delivery start'
-                                                                        disabledDays={deliveryDisabledDays}
-                                                                    />
-                                                                </div>
-                                                                <div className='space-y-2'>
-                                                                    <Label className='font-mono text-xs text-muted-foreground'>
-                                                                        END
-                                                                    </Label>
-                                                                    <DateTimePicker
-                                                                        value={timeWindows.deliveryWindowEnd}
-                                                                        onChange={date =>
-                                                                            setTimeWindows(
-                                                                                prev => ({
-                                                                                    ...prev,
-                                                                                    deliveryWindowEnd:
-                                                                                        date,
-                                                                                })
-                                                                            )
-                                                                        }
-                                                                        placeholder='Select delivery end'
-                                                                        disabledDays={deliveryDisabledDays}
-                                                                    />
-                                                                </div>
+                                                <div className="space-y-6 py-4">
+                                                    <div className="space-y-3">
+                                                        <Label className="font-mono text-sm font-bold">
+                                                            DELIVERY WINDOW
+                                                        </Label>
+                                                        <div className="grid grid-cols-2 gap-4">
+                                                            <div className="space-y-2">
+                                                                <Label className="font-mono text-xs text-muted-foreground">
+                                                                    START
+                                                                </Label>
+                                                                <DateTimePicker
+                                                                    value={
+                                                                        timeWindows.deliveryWindowStart
+                                                                    }
+                                                                    onChange={(date) =>
+                                                                        setTimeWindows((prev) => ({
+                                                                            ...prev,
+                                                                            deliveryWindowStart:
+                                                                                date,
+                                                                        }))
+                                                                    }
+                                                                    placeholder="Select delivery start"
+                                                                    disabledDays={
+                                                                        deliveryDisabledDays
+                                                                    }
+                                                                />
                                                             </div>
-                                                        </div>
-
-                                                        <Separator />
-
-                                                        <div className='space-y-3'>
-                                                            <Label className='font-mono text-sm font-bold'>
-                                                                PICKUP WINDOW
-                                                            </Label>
-                                                            <div className='grid grid-cols-2 gap-4'>
-                                                                <div className='space-y-2'>
-                                                                    <Label className='font-mono text-xs text-muted-foreground'>
-                                                                        START
-                                                                    </Label>
-                                                                    <DateTimePicker
-                                                                        value={timeWindows.pickupWindowStart}
-                                                                        onChange={date =>
-                                                                            setTimeWindows(
-                                                                                prev => ({
-                                                                                    ...prev,
-                                                                                    pickupWindowStart:
-                                                                                        date,
-                                                                                })
-                                                                            )
-                                                                        }
-                                                                        placeholder='Select pickup start'
-                                                                        disabledDays={pickupDisabledDays}
-                                                                    />
-                                                                </div>
-                                                                <div className='space-y-2'>
-                                                                    <Label className='font-mono text-xs text-muted-foreground'>
-                                                                        END
-                                                                    </Label>
-                                                                    <DateTimePicker
-                                                                        value={timeWindows.pickupWindowEnd}
-                                                                        onChange={date =>
-                                                                            setTimeWindows(
-                                                                                prev => ({
-                                                                                    ...prev,
-                                                                                    pickupWindowEnd:
-                                                                                        date,
-                                                                                })
-                                                                            )
-                                                                        }
-                                                                        placeholder='Select pickup end'
-                                                                        disabledDays={pickupDisabledDays}
-                                                                    />
-                                                                </div>
+                                                            <div className="space-y-2">
+                                                                <Label className="font-mono text-xs text-muted-foreground">
+                                                                    END
+                                                                </Label>
+                                                                <DateTimePicker
+                                                                    value={
+                                                                        timeWindows.deliveryWindowEnd
+                                                                    }
+                                                                    onChange={(date) =>
+                                                                        setTimeWindows((prev) => ({
+                                                                            ...prev,
+                                                                            deliveryWindowEnd: date,
+                                                                        }))
+                                                                    }
+                                                                    placeholder="Select delivery end"
+                                                                    disabledDays={
+                                                                        deliveryDisabledDays
+                                                                    }
+                                                                />
                                                             </div>
                                                         </div>
                                                     </div>
 
-                                                    <DialogFooter>
-                                                        <Button
-                                                            variant='outline'
-                                                            disabled={updateTimeWindowsLoading}
-                                                            onClick={() => setTimeWindowsOpen(false)}
-                                                            className='font-mono text-xs'
-                                                        >
-                                                            CANCEL
-                                                        </Button>
-                                                        <Button
-                                                            onClick={handleTimeWindowsSave}
-                                                            disabled={updateTimeWindowsLoading}
-                                                            className='font-mono text-xs'
-                                                        >
-                                                            {updateTimeWindowsLoading ? (
-                                                                "Saving..."
-                                                            ) : (
-                                                                "SAVE SCHEDULE"
-                                                            )}
-                                                        </Button>
-                                                    </DialogFooter>
-                                                </DialogContent>
-                                            </Dialog>
-                                        </div>
-                                    </CardHeader>
-                                    <CardContent className="space-y-3">
-                                        {order?.data?.delivery_window?.start ? (
-                                            <>
-                                                <div className="p-3 bg-green-500/5 border border-green-500/20 rounded">
-                                                    <Label className="font-mono text-[10px] text-muted-foreground">
-                                                        DELIVERY
-                                                    </Label>
-                                                    <p className="font-mono text-xs mt-1">
-                                                        {new Date(
-                                                            order?.data?.delivery_window?.start
-                                                        ).toLocaleString("en-US", {
-                                                            month: "short",
-                                                            day: "numeric",
-                                                            hour: "2-digit",
-                                                            minute: "2-digit",
-                                                        })}
-                                                        {" → "}
-                                                        {new Date(
-                                                            order?.data?.delivery_window?.end
-                                                        ).toLocaleTimeString("en-US", {
-                                                            month: "short",
-                                                            day: "numeric",
-                                                            hour: "2-digit",
-                                                            minute: "2-digit",
-                                                        })}
-                                                    </p>
+                                                    <Separator />
+
+                                                    <div className="space-y-3">
+                                                        <Label className="font-mono text-sm font-bold">
+                                                            PICKUP WINDOW
+                                                        </Label>
+                                                        <div className="grid grid-cols-2 gap-4">
+                                                            <div className="space-y-2">
+                                                                <Label className="font-mono text-xs text-muted-foreground">
+                                                                    START
+                                                                </Label>
+                                                                <DateTimePicker
+                                                                    value={
+                                                                        timeWindows.pickupWindowStart
+                                                                    }
+                                                                    onChange={(date) =>
+                                                                        setTimeWindows((prev) => ({
+                                                                            ...prev,
+                                                                            pickupWindowStart: date,
+                                                                        }))
+                                                                    }
+                                                                    placeholder="Select pickup start"
+                                                                    disabledDays={
+                                                                        pickupDisabledDays
+                                                                    }
+                                                                />
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <Label className="font-mono text-xs text-muted-foreground">
+                                                                    END
+                                                                </Label>
+                                                                <DateTimePicker
+                                                                    value={
+                                                                        timeWindows.pickupWindowEnd
+                                                                    }
+                                                                    onChange={(date) =>
+                                                                        setTimeWindows((prev) => ({
+                                                                            ...prev,
+                                                                            pickupWindowEnd: date,
+                                                                        }))
+                                                                    }
+                                                                    placeholder="Select pickup end"
+                                                                    disabledDays={
+                                                                        pickupDisabledDays
+                                                                    }
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                                <div className="p-3 bg-orange-500/5 border border-orange-500/20 rounded">
-                                                    <Label className="font-mono text-[10px] text-muted-foreground">
-                                                        PICKUP
-                                                    </Label>
-                                                    <p className="font-mono text-xs mt-1">
-                                                        {new Date(
-                                                            order?.data?.pickup_window?.start
-                                                        ).toLocaleString("en-US", {
-                                                            month: "short",
-                                                            day: "numeric",
-                                                            hour: "2-digit",
-                                                            minute: "2-digit",
-                                                        })}
-                                                        {" → "}
-                                                        {new Date(
-                                                            order?.data?.pickup_window?.end
-                                                        ).toLocaleString("en-US", {
-                                                            month: "short",
-                                                            day: "numeric",
-                                                            hour: "2-digit",
-                                                            minute: "2-digit",
-                                                        })}
-                                                    </p>
-                                                </div>
-                                            </>
-                                        ) : (
-                                            <div className="p-8 text-center bg-muted/20 rounded border-2 border-dashed">
-                                                <Clock className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
-                                                <p className="font-mono text-xs text-muted-foreground">
-                                                    NO SCHEDULE SET
+
+                                                <DialogFooter>
+                                                    <Button
+                                                        variant="outline"
+                                                        disabled={updateTimeWindowsLoading}
+                                                        onClick={() => setTimeWindowsOpen(false)}
+                                                        className="font-mono text-xs"
+                                                    >
+                                                        CANCEL
+                                                    </Button>
+                                                    <Button
+                                                        onClick={handleTimeWindowsSave}
+                                                        disabled={updateTimeWindowsLoading}
+                                                        className="font-mono text-xs"
+                                                    >
+                                                        {updateTimeWindowsLoading
+                                                            ? "Saving..."
+                                                            : "SAVE SCHEDULE"}
+                                                    </Button>
+                                                </DialogFooter>
+                                            </DialogContent>
+                                        </Dialog>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="space-y-3">
+                                    {order?.data?.delivery_window?.start ? (
+                                        <>
+                                            <div className="p-3 bg-green-500/5 border border-green-500/20 rounded">
+                                                <Label className="font-mono text-[10px] text-muted-foreground">
+                                                    DELIVERY
+                                                </Label>
+                                                <p className="font-mono text-xs mt-1">
+                                                    {new Date(
+                                                        order?.data?.delivery_window?.start
+                                                    ).toLocaleString("en-US", {
+                                                        month: "short",
+                                                        day: "numeric",
+                                                        hour: "2-digit",
+                                                        minute: "2-digit",
+                                                    })}
+                                                    {" → "}
+                                                    {new Date(
+                                                        order?.data?.delivery_window?.end
+                                                    ).toLocaleTimeString("en-US", {
+                                                        month: "short",
+                                                        day: "numeric",
+                                                        hour: "2-digit",
+                                                        minute: "2-digit",
+                                                    })}
                                                 </p>
                                             </div>
-                                        )}
-                                    </CardContent>
-                                </Card>
-                            )}
-
+                                            <div className="p-3 bg-orange-500/5 border border-orange-500/20 rounded">
+                                                <Label className="font-mono text-[10px] text-muted-foreground">
+                                                    PICKUP
+                                                </Label>
+                                                <p className="font-mono text-xs mt-1">
+                                                    {new Date(
+                                                        order?.data?.pickup_window?.start
+                                                    ).toLocaleString("en-US", {
+                                                        month: "short",
+                                                        day: "numeric",
+                                                        hour: "2-digit",
+                                                        minute: "2-digit",
+                                                    })}
+                                                    {" → "}
+                                                    {new Date(
+                                                        order?.data?.pickup_window?.end
+                                                    ).toLocaleString("en-US", {
+                                                        month: "short",
+                                                        day: "numeric",
+                                                        hour: "2-digit",
+                                                        minute: "2-digit",
+                                                    })}
+                                                </p>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div className="p-8 text-center bg-muted/20 rounded border-2 border-dashed">
+                                            <Clock className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
+                                            <p className="font-mono text-xs text-muted-foreground">
+                                                NO SCHEDULE SET
+                                            </p>
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
+                        )}
 
                         {/* Truck details */}
                         <Card>
@@ -1299,7 +1314,8 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 {/* Delivery Truck Section */}
-                                {order.data.delivery_truck_details && Object.keys(order.data.delivery_truck_details).length > 0 ? (
+                                {order.data.delivery_truck_details &&
+                                Object.keys(order.data.delivery_truck_details).length > 0 ? (
                                     <div className="border-2 rounded-lg p-4 border-blue-200 bg-blue-50/50">
                                         <div className="flex justify-between items-start">
                                             <div className="flex gap-3">
@@ -1308,9 +1324,27 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                                         Delivery Truck
                                                     </p>
                                                     <div className="mt-2 space-y-1 text-xs text-blue-800 font-mono">
-                                                        <p>Plate: {order.data.delivery_truck_details.truck_plate}</p>
-                                                        <p>Driver: {order.data.delivery_truck_details.driver_name}</p>
-                                                        <p>Contact: {order.data.delivery_truck_details.driver_contact}</p>
+                                                        <p>
+                                                            Plate:{" "}
+                                                            {
+                                                                order.data.delivery_truck_details
+                                                                    .truck_plate
+                                                            }
+                                                        </p>
+                                                        <p>
+                                                            Driver:{" "}
+                                                            {
+                                                                order.data.delivery_truck_details
+                                                                    .driver_name
+                                                            }
+                                                        </p>
+                                                        <p>
+                                                            Contact:{" "}
+                                                            {
+                                                                order.data.delivery_truck_details
+                                                                    .driver_contact
+                                                            }
+                                                        </p>
                                                     </div>
                                                 </div>
                                             </div>
@@ -1350,25 +1384,45 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                     onOpenChange={setDeliveryTruckDialogOpen}
                                     type="delivery"
                                     orderId={id}
-                                    initialData={getTruckDetailsInitialData(order.data.delivery_truck_details)}
+                                    initialData={getTruckDetailsInitialData(
+                                        order.data.delivery_truck_details
+                                    )}
                                 />
 
                                 <Separator />
 
                                 {/* Pickup Truck Section */}
-                                {order.data.pickup_truck_details && Object.keys(order.data.pickup_truck_details).length > 0 ? (
+                                {order.data.pickup_truck_details &&
+                                Object.keys(order.data.pickup_truck_details).length > 0 ? (
                                     <div className="border-2 rounded-lg p-4 border-rose-200 bg-rose-50/50">
                                         <div className="flex justify-between items-start">
                                             <div className="flex gap-3">
-
                                                 <div>
                                                     <p className="font-mono text-sm font-bold text-rose-900">
                                                         Pickup Truck
                                                     </p>
                                                     <div className="mt-2 space-y-1 text-xs text-rose-800 font-mono">
-                                                        <p>Plate: {order.data.pickup_truck_details.truck_plate}</p>
-                                                        <p>Driver: {order.data.pickup_truck_details.driver_name}</p>
-                                                        <p>Contact: {order.data.pickup_truck_details.driver_contact}</p>
+                                                        <p>
+                                                            Plate:{" "}
+                                                            {
+                                                                order.data.pickup_truck_details
+                                                                    .truck_plate
+                                                            }
+                                                        </p>
+                                                        <p>
+                                                            Driver:{" "}
+                                                            {
+                                                                order.data.pickup_truck_details
+                                                                    .driver_name
+                                                            }
+                                                        </p>
+                                                        <p>
+                                                            Contact:{" "}
+                                                            {
+                                                                order.data.pickup_truck_details
+                                                                    .driver_contact
+                                                            }
+                                                        </p>
                                                     </div>
                                                 </div>
                                             </div>
@@ -1408,11 +1462,12 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                     onOpenChange={setPickupTruckDialogOpen}
                                     type="pickup"
                                     orderId={id}
-                                    initialData={getTruckDetailsInitialData(order.data.pickup_truck_details)}
+                                    initialData={getTruckDetailsInitialData(
+                                        order.data.pickup_truck_details
+                                    )}
                                 />
                             </CardContent>
                         </Card>
-
 
                         {/* Event & Venue */}
                         <Card>
@@ -1515,7 +1570,10 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                         }}
                                         onRejectReskin={(orderItemId) => {
                                             // TODO: Implement reject and contact client logic
-                                            console.log("Reject reskin for order item:", orderItemId);
+                                            console.log(
+                                                "Reject reskin for order item:",
+                                                orderItemId
+                                            );
                                         }}
                                         onRefresh={refetch}
                                     />
@@ -1534,24 +1592,32 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                             "CLOSED",
                             "PRICING_REVIEW",
                         ].includes(order?.data?.order_status) && (
-                                <Card>
-                                    <CardHeader>
-                                        <CardTitle className="font-mono text-sm flex items-center gap-2">
-                                            <ScanLine className="h-4 w-4 text-primary" />
-                                            SCANNING ACTIVITY
-                                        </CardTitle>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <ScanActivityTimeline orderId={order?.data?.order_id} />
-                                    </CardContent>
-                                </Card>
-                            )}
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="font-mono text-sm flex items-center gap-2">
+                                        <ScanLine className="h-4 w-4 text-primary" />
+                                        SCANNING ACTIVITY
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <ScanActivityTimeline orderId={order?.data?.order_id} />
+                                </CardContent>
+                            </Card>
+                        )}
 
                         {/* NEW: PRICING_REVIEW - Logistics Review Section */}
                         {order.data.order_status === "PRICING_REVIEW" ? (
-                            <PricingReviewSection order={order.data} orderId={order.data.id} onRefresh={refetch} />
+                            <PricingReviewSection
+                                order={order.data}
+                                orderId={order.data.id}
+                                onRefresh={refetch}
+                            />
                         ) : (
-                            <PendingApprovalSection order={order.data} orderId={order.data.id} onRefresh={refetch} />
+                            <PendingApprovalSection
+                                order={order.data}
+                                orderId={order.data.id}
+                                onRefresh={refetch}
+                            />
                         )}
 
                         {/* Submit order for the review */}
@@ -1594,14 +1660,15 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                                     >
                                                         {index <
                                                             statusHistory?.data?.history?.length -
-                                                            1 && (
-                                                                <div className="absolute left-[7px] top-5 bottom-0 w-px bg-border" />
-                                                            )}
+                                                                1 && (
+                                                            <div className="absolute left-[7px] top-5 bottom-0 w-px bg-border" />
+                                                        )}
                                                         <div
-                                                            className={`absolute left-0 top-0.5 h-4 w-4 rounded-full border-2 ${isLatest
-                                                                ? "bg-primary border-primary"
-                                                                : "bg-muted border-border"
-                                                                }`}
+                                                            className={`absolute left-0 top-0.5 h-4 w-4 rounded-full border-2 ${
+                                                                isLatest
+                                                                    ? "bg-primary border-primary"
+                                                                    : "bg-muted border-border"
+                                                            }`}
                                                         />
                                                         <div>
                                                             <Badge
@@ -1641,19 +1708,17 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                 </div>
             </div>
 
-            {
-                selectedReskinData && (
-                    <ProcessReskinModal
-                        open={processModalOpen}
-                        onOpenChange={setProcessModalOpen}
-                        orderId={order?.data?.id}
-                        orderItemId={selectedReskinData.orderItemId}
-                        originalAssetName={selectedReskinData.originalAssetName}
-                        targetBrandName={selectedReskinData.targetBrandName}
-                        clientNotes={selectedReskinData.clientNotes}
-                    />
-                )
-            }
-        </div >
+            {selectedReskinData && (
+                <ProcessReskinModal
+                    open={processModalOpen}
+                    onOpenChange={setProcessModalOpen}
+                    orderId={order?.data?.id}
+                    orderItemId={selectedReskinData.orderItemId}
+                    originalAssetName={selectedReskinData.originalAssetName}
+                    targetBrandName={selectedReskinData.targetBrandName}
+                    clientNotes={selectedReskinData.clientNotes}
+                />
+            )}
+        </div>
     );
 }

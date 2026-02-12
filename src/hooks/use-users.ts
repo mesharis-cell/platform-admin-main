@@ -14,9 +14,7 @@ export const userKeys = {
 };
 
 // Fetch users list
-async function fetchUsers(
-    params?: Record<string, string>
-): Promise<{
+async function fetchUsers(params?: Record<string, string>): Promise<{
     success: boolean;
     meta: { total: number; page: number; limit: number };
     data: User[];

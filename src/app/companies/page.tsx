@@ -685,11 +685,11 @@ export default function CompaniesPage() {
                                                 className="font-mono"
                                             >
                                                 {createMutation.isPending ||
-                                                    updateMutation.isPending
+                                                updateMutation.isPending
                                                     ? "PROCESSING..."
                                                     : editingCompany
-                                                        ? "UPDATE"
-                                                        : "CREATE"}
+                                                      ? "UPDATE"
+                                                      : "CREATE"}
                                             </Button>
                                         </div>
                                     </form>
@@ -817,13 +817,17 @@ export default function CompaniesPage() {
                                         </TableCell>
                                         <TableCell className="text-center">
                                             <span className="font-mono font-bold text-primary">
-                                                {parseFloat(String(company.platform_margin_percent)).toFixed(2)}
+                                                {parseFloat(
+                                                    String(company.platform_margin_percent)
+                                                ).toFixed(2)}
                                                 %
                                             </span>
                                         </TableCell>
                                         <TableCell className="text-center">
                                             <span className="font-mono font-bold text-primary">
-                                                {parseFloat(String(company.warehouse_ops_rate)).toFixed(2)}
+                                                {parseFloat(
+                                                    String(company.warehouse_ops_rate)
+                                                ).toFixed(2)}
                                             </span>
                                         </TableCell>
                                         <TableCell className="font-mono text-sm">

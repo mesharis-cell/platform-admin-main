@@ -192,7 +192,9 @@ export function useSendToMaintenance() {
     return useMutation({
         mutationFn: async ({ id }: { id: string; orderId?: string }) => {
             try {
-                const response = await apiClient.patch(`/operations/v1/asset/${id}/sent-to-maintenance`);
+                const response = await apiClient.patch(
+                    `/operations/v1/asset/${id}/sent-to-maintenance`
+                );
                 return response.data;
             } catch (error) {
                 throwApiError(error);
@@ -216,7 +218,9 @@ export function useCompleteMaintenance() {
     return useMutation({
         mutationFn: async ({ id }: { id: string; orderId?: string }) => {
             try {
-                const response = await apiClient.patch(`/operations/v1/asset/${id}/complete-maintenance`);
+                const response = await apiClient.patch(
+                    `/operations/v1/asset/${id}/complete-maintenance`
+                );
                 return response.data;
             } catch (error) {
                 throwApiError(error);

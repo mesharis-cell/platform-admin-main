@@ -3,7 +3,6 @@
  * Types for CSV-based mass asset import
  */
 
-
 export interface CSVAssetRow {
     id?: string;
     company: string;
@@ -17,7 +16,7 @@ export interface CSVAssetRow {
         length: string;
         width: string;
         height: string;
-    }
+    };
     qr_code?: string;
     volume: string;
     packaging?: string;

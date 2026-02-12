@@ -3,10 +3,7 @@
 import { apiClient } from "@/lib/api/api-client";
 import { throwApiError } from "@/lib/utils/throw-api-error";
 import { mapCamelToSnake } from "@/lib/utils/helper";
-import type {
-    CreateServiceTypeRequest,
-    UpdateServiceTypeRequest,
-} from "@/types/hybrid-pricing";
+import type { CreateServiceTypeRequest, UpdateServiceTypeRequest } from "@/types/hybrid-pricing";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 export const serviceTypesKeys = {
@@ -64,7 +61,10 @@ export function useCreateServiceType() {
             try {
                 // Transform camelCase to snake_case for API
                 const apiData = mapCamelToSnake(data);
-                const response = await apiClient.post("/operations/v1/pricing/service-types", apiData);
+                const response = await apiClient.post(
+                    "/operations/v1/pricing/service-types",
+                    apiData
+                );
                 return response.data.data;
             } catch (error) {
                 throwApiError(error);
@@ -108,7 +108,9 @@ export function useDeleteServiceType() {
     return useMutation({
         mutationFn: async (id: string) => {
             try {
-                const response = await apiClient.delete(`/operations/v1/pricing/service-types/${id}`);
+                const response = await apiClient.delete(
+                    `/operations/v1/pricing/service-types/${id}`
+                );
                 return response.data;
             } catch (error) {
                 throwApiError(error);

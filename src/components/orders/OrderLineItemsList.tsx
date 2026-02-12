@@ -15,7 +15,11 @@ interface OrderLineItemsListProps {
     purposeType?: "ORDER" | "INBOUND_REQUEST";
 }
 
-export function OrderLineItemsList({ targetId, canManage = false, purposeType = "ORDER" }: OrderLineItemsListProps) {
+export function OrderLineItemsList({
+    targetId,
+    canManage = false,
+    purposeType = "ORDER",
+}: OrderLineItemsListProps) {
     const { data: lineItems, isLoading } = useListLineItems(targetId, purposeType);
     const voidLineItem = useVoidLineItem(targetId, purposeType);
 

@@ -18,7 +18,7 @@
 ## Lint Errors (~35k)
 
 - [x] Formatting rules: quotes/indent/semicolons across many files  
-      (resolved via Prettier + eslint-config-prettier)
+       (resolved via Prettier + eslint-config-prettier)
 
 ## Real Bugs (mark when verified)
 

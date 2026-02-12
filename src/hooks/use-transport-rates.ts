@@ -48,7 +48,9 @@ export function useGetTransportRate(id: string | null) {
         queryFn: async () => {
             if (!id) return Promise.reject("No ID");
             try {
-                const response = await apiClient.get(`/operations/v1/pricing/transport-rates/${id}`);
+                const response = await apiClient.get(
+                    `/operations/v1/pricing/transport-rates/${id}`
+                );
                 return response.data.data;
             } catch (error) {
                 throwApiError(error);
@@ -67,7 +69,10 @@ export function useCreateTransportRate() {
             try {
                 // Transform camelCase to snake_case for API
                 const apiData = mapCamelToSnake(data);
-                const response = await apiClient.post("/operations/v1/pricing/transport-rates", apiData);
+                const response = await apiClient.post(
+                    "/operations/v1/pricing/transport-rates",
+                    apiData
+                );
                 return response.data.data;
             } catch (error) {
                 throwApiError(error);
@@ -111,7 +116,9 @@ export function useDeleteTransportRate() {
     return useMutation({
         mutationFn: async (id: string) => {
             try {
-                const response = await apiClient.delete(`/operations/v1/pricing/transport-rates/${id}`);
+                const response = await apiClient.delete(
+                    `/operations/v1/pricing/transport-rates/${id}`
+                );
                 return response.data;
             } catch (error) {
                 throwApiError(error);

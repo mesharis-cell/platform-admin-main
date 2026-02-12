@@ -103,7 +103,9 @@ export function useRemoveCompanyOverride() {
     return useMutation({
         mutationFn: async (companyId: string) => {
             try {
-                const response = await apiClient.delete(`/operations/v1/pricing/config/${companyId}`);
+                const response = await apiClient.delete(
+                    `/operations/v1/pricing/config/${companyId}`
+                );
                 return response.data;
             } catch (error) {
                 throwApiError(error);

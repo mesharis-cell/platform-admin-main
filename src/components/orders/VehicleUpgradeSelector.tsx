@@ -30,7 +30,7 @@ export function VehicleUpgradeSelector({
     onSuccess,
 }: VehicleUpgradeSelectorProps) {
     const updateVehicle = useUpdateOrderVehicle();
-    const { data: vehicleTypes } = useListVehicleTypes()
+    const { data: vehicleTypes } = useListVehicleTypes();
     const [changeVehicle, setChangeVehicle] = useState(false);
     const [selectedVehicle, setSelectedVehicle] = useState<string>(currentVehicle);
     const [reason, setReason] = useState("");
@@ -123,7 +123,6 @@ export function VehicleUpgradeSelector({
                             reason.trim().length < 10
                         }
                         className="w-full"
-
                     >
                         {updateVehicle.isPending
                             ? "Updating..."

@@ -506,12 +506,12 @@ export default function AdminOrdersPage() {
                                                                     </p>
                                                                     {order.item_preview.length >
                                                                         0 && (
-                                                                            <p className="text-xs text-slate-500 line-clamp-1">
-                                                                                {order.item_preview.join(
-                                                                                    ", "
-                                                                                )}
-                                                                            </p>
-                                                                        )}
+                                                                        <p className="text-xs text-slate-500 line-clamp-1">
+                                                                            {order.item_preview.join(
+                                                                                ", "
+                                                                            )}
+                                                                        </p>
+                                                                    )}
                                                                 </div>
                                                             </TableCell>
                                                             <TableCell>
@@ -545,7 +545,8 @@ export default function AdminOrdersPage() {
                                             <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200 bg-slate-50/30">
                                                 <p className="text-sm text-slate-600">
                                                     Showing {(page - 1) * limit + 1} to{" "}
-                                                    {Math.min(page * limit, totalOrders)} of {totalOrders} orders
+                                                    {Math.min(page * limit, totalOrders)} of{" "}
+                                                    {totalOrders} orders
                                                 </p>
                                                 <div className="flex gap-2">
                                                     <Button
@@ -562,7 +563,9 @@ export default function AdminOrdersPage() {
                                                     </Button>
                                                     <Button
                                                         onClick={() =>
-                                                            setPage((p) => Math.min(totalPages, p + 1))
+                                                            setPage((p) =>
+                                                                Math.min(totalPages, p + 1)
+                                                            )
                                                         }
                                                         disabled={page >= totalPages}
                                                         variant="outline"

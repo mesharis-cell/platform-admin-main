@@ -837,10 +837,11 @@ export default function OutboundScanningPage() {
                         {progressData.assets.map((asset) => (
                             <div
                                 key={asset.asset_id}
-                                className={`p-3 rounded-lg border ${asset.scanned_quantity === asset.required_quantity
-                                    ? "bg-primary/10 border-primary/30"
-                                    : "bg-muted/20 border-border"
-                                    }`}
+                                className={`p-3 rounded-lg border ${
+                                    asset.scanned_quantity === asset.required_quantity
+                                        ? "bg-primary/10 border-primary/30"
+                                        : "bg-muted/20 border-border"
+                                }`}
                             >
                                 <div className="flex items-center justify-between">
                                     <div className="flex-1">

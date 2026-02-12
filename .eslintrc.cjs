@@ -5,12 +5,7 @@ const config = {
         // "project": true,
         project: "./tsconfig.json",
     },
-    ignorePatterns: [
-        "scripts/**",
-        ".next/**",
-        "src/lib/db/seed.ts",
-        "src/lib/db/seed-demo.ts",
-    ],
+    ignorePatterns: ["scripts/**", ".next/**", "src/lib/db/seed.ts", "src/lib/db/seed-demo.ts"],
     plugins: ["@typescript-eslint", "react", "react-hooks", "creatr"],
     globals: {
         React: "readonly",

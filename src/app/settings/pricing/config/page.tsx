@@ -56,7 +56,9 @@ export default function PricingConfigPage() {
     const setPlatformDefault = useSetPlatformDefault();
     const setCompanyOverride = useSetCompanyOverride();
     const removeCompanyOverride = useRemoveCompanyOverride();
-    const { data: companiesData, isLoading: companiesLoading } = useCompanies({ includeArchived: "false" });
+    const { data: companiesData, isLoading: companiesLoading } = useCompanies({
+        includeArchived: "false",
+    });
 
     const [editDialogOpen, setEditDialogOpen] = useState(false);
     const [newRate, setNewRate] = useState<string>("");
@@ -209,7 +211,9 @@ export default function PricingConfigPage() {
                                 {companies.map((company) => {
                                     const config = companyConfigMap[company.id];
                                     const isOverride = config?.companyId === company.id;
-                                    const rate = config?.warehouseOpsRate ?? platformConfig?.warehouseOpsRate;
+                                    const rate =
+                                        config?.warehouseOpsRate ??
+                                        platformConfig?.warehouseOpsRate;
 
                                     return (
                                         <div
@@ -221,7 +225,9 @@ export default function PricingConfigPage() {
                                                     <span className="font-semibold">
                                                         {company.name}
                                                     </span>
-                                                    <Badge variant={isOverride ? "default" : "outline"}>
+                                                    <Badge
+                                                        variant={isOverride ? "default" : "outline"}
+                                                    >
                                                         {isOverride ? "Custom" : "Default"}
                                                     </Badge>
                                                 </div>
@@ -248,7 +254,9 @@ export default function PricingConfigPage() {
                                                             variant="ghost"
                                                             size="sm"
                                                             onClick={() =>
-                                                                handleRemoveCompanyOverride(company.id)
+                                                                handleRemoveCompanyOverride(
+                                                                    company.id
+                                                                )
                                                             }
                                                         >
                                                             Remove

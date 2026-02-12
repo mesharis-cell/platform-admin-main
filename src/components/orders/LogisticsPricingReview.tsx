@@ -22,12 +22,18 @@ interface LogisticsPricingReviewProps {
     onSubmitSuccess?: () => void;
 }
 
-export function LogisticsPricingReview({ orderId, order, onSubmitSuccess }: LogisticsPricingReviewProps) {
+export function LogisticsPricingReview({
+    orderId,
+    order,
+    onSubmitSuccess,
+}: LogisticsPricingReviewProps) {
     const [addCatalogOpen, setAddCatalogOpen] = useState(false);
 
     const pricing = order?.order_pricing as OrderPricing | undefined;
     const hasRebrandRequests = order?.items?.some((item: any) => item.isReskinRequest);
-    const showMissingTransport = ["PRICING_REVIEW"].includes(order.order_status) && !order?.order_pricing?.transport?.final_rate
+    const showMissingTransport =
+        ["PRICING_REVIEW"].includes(order.order_status) &&
+        !order?.order_pricing?.transport?.final_rate;
 
     return (
         <div className="space-y-6">
@@ -45,8 +51,6 @@ export function LogisticsPricingReview({ orderId, order, onSubmitSuccess }: Logi
                     </CardContent>
                 </Card>
             )}
-
-
 
             {/* Vehicle Type (Optional Upgrade) */}
             <Card>
@@ -105,8 +109,8 @@ export function LogisticsPricingReview({ orderId, order, onSubmitSuccess }: Logi
                                 ⚠️ Pricing calculation failed
                             </p>
                             <p className="text-xs text-muted-foreground mb-3">
-                                This order may be missing required configuration (e.g., transport rate
-                                for the emirate, trip type, or vehicle type).
+                                This order may be missing required configuration (e.g., transport
+                                rate for the emirate, trip type, or vehicle type).
                             </p>
                             <p className="text-xs text-muted-foreground">
                                 Please contact your Platform Admin to add the missing transport rate
@@ -118,33 +122,27 @@ export function LogisticsPricingReview({ orderId, order, onSubmitSuccess }: Logi
                         <div className="space-y-2 text-sm">
                             <div className="flex justify-between p-2 bg-muted/30 rounded">
                                 <span className="text-muted-foreground">
-                                    Base Operations (
-                                    {order?.calculated_totals?.volume || 0} m³)
+                                    Base Operations ({order?.calculated_totals?.volume || 0} m³)
                                 </span>
-                                <span className="font-mono">
-                                    {pricing.base_ops_total || 0} AED
-                                </span>
+                                <span className="font-mono">{pricing.base_ops_total || 0} AED</span>
                             </div>
                             <div className="flex justify-between p-2 bg-muted/30 rounded">
                                 <span className="text-muted-foreground">
                                     Transport ({order?.venue_city},{" "}
-                                    {order?.trip_type === "ROUND_TRIP"
-                                        ? "Round-trip"
-                                        : "One-way"}
-                                    )
+                                    {order?.trip_type === "ROUND_TRIP" ? "Round-trip" : "One-way"})
                                 </span>
                                 <span className="font-mono">
                                     {pricing.transport?.final_rate?.toFixed(2) || 0} AED
                                 </span>
                             </div>
-                            {pricing.line_items?.catalog_total ? <div className="flex justify-between p-2 bg-muted/30 rounded">
-                                <span className="text-muted-foreground">
-                                    Service Line Item
-                                </span>
-                                <span className="font-mono">
-                                    {pricing.line_items?.catalog_total?.toFixed(2) || 0} AED
-                                </span>
-                            </div> : null}
+                            {pricing.line_items?.catalog_total ? (
+                                <div className="flex justify-between p-2 bg-muted/30 rounded">
+                                    <span className="text-muted-foreground">Service Line Item</span>
+                                    <span className="font-mono">
+                                        {pricing.line_items?.catalog_total?.toFixed(2) || 0} AED
+                                    </span>
+                                </div>
+                            ) : null}
                             <div className="border-t border-border my-2"></div>
                             <div className="flex justify-between font-semibold">
                                 <span>Estimated Subtotal</span>

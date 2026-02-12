@@ -247,9 +247,11 @@ export const ColorPickerEyeDropper = ({ className, ...props }: ColorPickerEyeDro
 
     const handleEyeDropper = async () => {
         try {
-            const EyeDropperConstructor = (window as Window & {
-                EyeDropper?: new () => { open: () => Promise<{ sRGBHex: string }> };
-            }).EyeDropper;
+            const EyeDropperConstructor = (
+                window as Window & {
+                    EyeDropper?: new () => { open: () => Promise<{ sRGBHex: string }> };
+                }
+            ).EyeDropper;
             if (!EyeDropperConstructor) return;
 
             const eyeDropper = new EyeDropperConstructor();

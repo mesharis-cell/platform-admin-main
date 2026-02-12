@@ -33,7 +33,12 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { parseCSVFile } from "@/lib/utils/csv-utils";
 import { downloadCSVTemplate } from "@/lib/utils/csv-utils";
-import type { ParsedCSVRow, RowValidationError, BulkUploadResponse, CSVAssetRow } from "@/types/bulk-upload";
+import type {
+    ParsedCSVRow,
+    RowValidationError,
+    BulkUploadResponse,
+    CSVAssetRow,
+} from "@/types/bulk-upload";
 import { apiClient } from "@/lib/api/api-client";
 
 type UploadState = "idle" | "parsing" | "validating" | "uploading" | "success" | "error";
@@ -177,14 +182,15 @@ export default function BulkUploadPage() {
                             {/* Status Indicator */}
                             <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-muted/50 border border-border">
                                 <div
-                                    className={`h-2 w-2 rounded-full ${state === "success"
-                                        ? "bg-emerald-500 animate-pulse"
-                                        : state === "error"
-                                            ? "bg-red-500"
-                                            : state === "uploading"
+                                    className={`h-2 w-2 rounded-full ${
+                                        state === "success"
+                                            ? "bg-emerald-500 animate-pulse"
+                                            : state === "error"
+                                              ? "bg-red-500"
+                                              : state === "uploading"
                                                 ? "bg-primary animate-pulse"
                                                 : "bg-muted-foreground/30"
-                                        }`}
+                                    }`}
                                 />
                                 <span className="text-xs font-mono uppercase tracking-wider">
                                     {state === "idle" && "READY"}
@@ -466,24 +472,32 @@ export default function BulkUploadPage() {
                                                                                     className="border-t border-border hover:bg-muted/20"
                                                                                 >
                                                                                     <td className="px-3 py-2 text-muted-foreground">
-                                                                                        {row.rowNumber}
+                                                                                        {
+                                                                                            row.rowNumber
+                                                                                        }
                                                                                     </td>
                                                                                     <td className="px-3 py-2">
                                                                                         {row.name}
                                                                                     </td>
                                                                                     <td className="px-3 py-2 text-muted-foreground">
-                                                                                        {row.category}
+                                                                                        {
+                                                                                            row.category
+                                                                                        }
                                                                                     </td>
                                                                                     <td className="px-3 py-2">
                                                                                         <Badge
                                                                                             variant="outline"
                                                                                             className="text-[10px]"
                                                                                         >
-                                                                                            {row.tracking_method}
+                                                                                            {
+                                                                                                row.tracking_method
+                                                                                            }
                                                                                         </Badge>
                                                                                     </td>
                                                                                     <td className="px-3 py-2 text-muted-foreground">
-                                                                                        {row.total_quantity}
+                                                                                        {
+                                                                                            row.total_quantity
+                                                                                        }
                                                                                     </td>
                                                                                 </tr>
                                                                             ))}

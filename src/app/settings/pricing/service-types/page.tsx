@@ -331,8 +331,8 @@ export default function ServiceTypesPage() {
                             {createService.isPending || updateService.isPending
                                 ? "Saving..."
                                 : selectedService
-                                    ? "Update"
-                                    : "Create"}
+                                  ? "Update"
+                                  : "Create"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

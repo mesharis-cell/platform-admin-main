@@ -43,7 +43,6 @@ export function AddCatalogLineItemModal({
     const [quantity, setQuantity] = useState<number | string>(1);
     const [notes, setNotes] = useState("");
 
-
     const selectedService = serviceTypes?.data?.find((s: any) => s.id === serviceTypeId);
 
     const handleServiceChange = (id: string) => {
@@ -107,8 +106,11 @@ export function AddCatalogLineItemModal({
                                 <strong>Category:</strong> {selectedService.category}
                             </p>
                             <p>
-                                <strong>Unit:</strong> {selectedService.unit} ({selectedService.default_rate} AED)<br />
-                                <strong>Total Price:</strong> {selectedService.default_rate * Number(quantity)}
+                                <strong>Unit:</strong> {selectedService.unit} (
+                                {selectedService.default_rate} AED)
+                                <br />
+                                <strong>Total Price:</strong>{" "}
+                                {selectedService.default_rate * Number(quantity)}
                             </p>
                         </div>
                     )}
@@ -154,11 +156,7 @@ export function AddCatalogLineItemModal({
                     >
                         Cancel
                     </Button>
-                    <Button
-                        type="button"
-                        onClick={handleAdd}
-                        disabled={createLineItem.isPending}
-                    >
+                    <Button type="button" onClick={handleAdd} disabled={createLineItem.isPending}>
                         {createLineItem.isPending ? "Adding..." : "Add Line Item"}
                     </Button>
                 </DialogFooter>

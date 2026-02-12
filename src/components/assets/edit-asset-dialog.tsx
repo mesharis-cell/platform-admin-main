@@ -386,20 +386,22 @@ export function EditAssetDialog({ asset, open, onOpenChange, onSuccess }: EditAs
                                 <button
                                     onClick={() => setCurrentStep(index)}
                                     disabled={index > currentStep}
-                                    className={`flex items-center gap-2 ${isActive
-                                        ? "text-primary"
-                                        : isCompleted
-                                            ? "text-foreground"
-                                            : "text-muted-foreground"
-                                        } disabled:opacity-50 disabled:cursor-not-allowed transition-colors hover:text-primary`}
+                                    className={`flex items-center gap-2 ${
+                                        isActive
+                                            ? "text-primary"
+                                            : isCompleted
+                                              ? "text-foreground"
+                                              : "text-muted-foreground"
+                                    } disabled:opacity-50 disabled:cursor-not-allowed transition-colors hover:text-primary`}
                                 >
                                     <div
-                                        className={`w-8 h-8 rounded-lg flex items-center justify-center border ${isActive
-                                            ? "bg-primary text-primary-foreground border-primary"
-                                            : isCompleted
-                                                ? "bg-primary/10 border-primary/20 text-primary"
-                                                : "bg-muted border-border"
-                                            }`}
+                                        className={`w-8 h-8 rounded-lg flex items-center justify-center border ${
+                                            isActive
+                                                ? "bg-primary text-primary-foreground border-primary"
+                                                : isCompleted
+                                                  ? "bg-primary/10 border-primary/20 text-primary"
+                                                  : "bg-muted border-border"
+                                        }`}
                                     >
                                         {isCompleted ? (
                                             <Check className="w-4 h-4" />
@@ -480,19 +482,19 @@ export function EditAssetDialog({ asset, open, onOpenChange, onSuccess }: EditAs
                                             !DEFAULT_CATEGORIES.includes(
                                                 formData.category || ""
                                             ))) && (
-                                            <Input
-                                                placeholder="Enter custom category"
-                                                value={customCategory || formData.category}
-                                                onChange={(e) => {
-                                                    setCustomCategory(e.target.value);
-                                                    setFormData({
-                                                        ...formData,
-                                                        category: e.target.value as any,
-                                                    });
-                                                }}
-                                                className="font-mono"
-                                            />
-                                        )}
+                                        <Input
+                                            placeholder="Enter custom category"
+                                            value={customCategory || formData.category}
+                                            onChange={(e) => {
+                                                setCustomCategory(e.target.value);
+                                                setFormData({
+                                                    ...formData,
+                                                    category: e.target.value as any,
+                                                });
+                                            }}
+                                            className="font-mono"
+                                        />
+                                    )}
                                 </div>
                             </div>
 
@@ -556,8 +558,8 @@ export function EditAssetDialog({ asset, open, onOpenChange, onSuccess }: EditAs
                                                     !formData.warehouse_id
                                                         ? "Select warehouse first"
                                                         : zones.length === 0
-                                                            ? "No zones available"
-                                                            : "Select zone"
+                                                          ? "No zones available"
+                                                          : "Select zone"
                                                 }
                                             />
                                         </SelectTrigger>
@@ -596,8 +598,8 @@ export function EditAssetDialog({ asset, open, onOpenChange, onSuccess }: EditAs
                                                 !formData.company
                                                     ? "Select company first"
                                                     : brands.length === 0
-                                                        ? "No brands available"
-                                                        : "Select brand"
+                                                      ? "No brands available"
+                                                      : "Select brand"
                                             }
                                         />
                                     </SelectTrigger>
@@ -812,30 +814,32 @@ export function EditAssetDialog({ asset, open, onOpenChange, onSuccess }: EditAs
                                                     condition: cond as any,
                                                 })
                                             }
-                                            className={`flex-1 p-3 rounded-lg border-2 transition-all ${formData.condition === cond
-                                                ? cond === "GREEN"
-                                                    ? "border-emerald-500 bg-emerald-500/10"
-                                                    : cond === "ORANGE"
-                                                        ? "border-amber-500 bg-amber-500/10"
-                                                        : "border-red-500 bg-red-500/10"
-                                                : "border-border hover:border-muted-foreground"
-                                                }`}
+                                            className={`flex-1 p-3 rounded-lg border-2 transition-all ${
+                                                formData.condition === cond
+                                                    ? cond === "GREEN"
+                                                        ? "border-emerald-500 bg-emerald-500/10"
+                                                        : cond === "ORANGE"
+                                                          ? "border-amber-500 bg-amber-500/10"
+                                                          : "border-red-500 bg-red-500/10"
+                                                    : "border-border hover:border-muted-foreground"
+                                            }`}
                                         >
                                             <div className="flex items-center justify-center gap-2">
                                                 <div
-                                                    className={`w-3 h-3 rounded-full ${cond === "GREEN"
-                                                        ? "bg-emerald-500"
-                                                        : cond === "ORANGE"
-                                                            ? "bg-amber-500"
-                                                            : "bg-red-500"
-                                                        }`}
+                                                    className={`w-3 h-3 rounded-full ${
+                                                        cond === "GREEN"
+                                                            ? "bg-emerald-500"
+                                                            : cond === "ORANGE"
+                                                              ? "bg-amber-500"
+                                                              : "bg-red-500"
+                                                    }`}
                                                 />
                                                 <span className="font-mono text-xs font-medium">
                                                     {cond === "GREEN"
                                                         ? "Good"
                                                         : cond === "ORANGE"
-                                                            ? "Minor Issues"
-                                                            : "Damaged"}
+                                                          ? "Minor Issues"
+                                                          : "Damaged"}
                                                 </span>
                                             </div>
                                         </button>

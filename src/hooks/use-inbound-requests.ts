@@ -23,7 +23,10 @@ export const inboundRequestKeys = {
 // Fetch inbound requests list
 async function fetchInboundRequests(
     params?: Record<string, string>
-): Promise<{ data: InboundRequestDetails[]; meta: { total: number; limit: number; page: number } }> {
+): Promise<{
+    data: InboundRequestDetails[];
+    meta: { total: number; limit: number; page: number };
+}> {
     try {
         const searchParams = new URLSearchParams(params);
         const response = await apiClient.get(`/client/v1/inbound-request?${searchParams}`);
@@ -44,7 +47,9 @@ async function fetchInboundRequest(id: string): Promise<InboundRequestDetailsRes
 }
 
 // Create inbound request
-async function createInboundRequest(data: CreateInboundRequestPayload): Promise<InboundRequestDetails> {
+async function createInboundRequest(
+    data: CreateInboundRequestPayload
+): Promise<InboundRequestDetails> {
     try {
         const response = await apiClient.post(`/client/v1/inbound-request`, data);
         return response.data;
@@ -77,7 +82,13 @@ async function deleteInboundRequest(id: string): Promise<void> {
 }
 
 // Cancel inbound request
-async function cancelInboundRequest({ id, note }: { id: string; note: string }): Promise<InboundRequestDetails> {
+async function cancelInboundRequest({
+    id,
+    note,
+}: {
+    id: string;
+    note: string;
+}): Promise<InboundRequestDetails> {
     try {
         const response = await apiClient.post(`/client/v1/inbound-request/${id}/cancel`, { note });
         return response.data;
@@ -89,7 +100,9 @@ async function cancelInboundRequest({ id, note }: { id: string; note: string }):
 // Submit inbound request for approval
 async function submitInboundRequestForApproval(id: string): Promise<InboundRequestDetails> {
     try {
-        const response = await apiClient.post(`/client/v1/inbound-request/${id}/submit-for-approval`);
+        const response = await apiClient.post(
+            `/client/v1/inbound-request/${id}/submit-for-approval`
+        );
         return response.data;
     } catch (error) {
         throwApiError(error);
@@ -108,10 +121,15 @@ async function adminApproveInboundRequest({
 }): Promise<InboundRequestDetails> {
     try {
         const payload: any = {};
-        if (marginOverridePercent !== undefined) payload.margin_override_percent = marginOverridePercent;
-        if (marginOverrideReason !== undefined) payload.margin_override_reason = marginOverrideReason;
+        if (marginOverridePercent !== undefined)
+            payload.margin_override_percent = marginOverridePercent;
+        if (marginOverrideReason !== undefined)
+            payload.margin_override_reason = marginOverrideReason;
 
-        const response = await apiClient.post(`/client/v1/inbound-request/${id}/approve-request`, payload);
+        const response = await apiClient.post(
+            `/client/v1/inbound-request/${id}/approve-request`,
+            payload
+        );
         return response.data;
     } catch (error) {
         throwApiError(error);
@@ -127,9 +145,12 @@ async function returnInboundRequestToLogistics({
     reason: string;
 }): Promise<InboundRequestDetails> {
     try {
-        const response = await apiClient.post(`/client/v1/inbound-request/${id}/return-to-logistics`, {
-            reason,
-        });
+        const response = await apiClient.post(
+            `/client/v1/inbound-request/${id}/return-to-logistics`,
+            {
+                reason,
+            }
+        );
         return response.data;
     } catch (error) {
         throwApiError(error);
@@ -137,7 +158,10 @@ async function returnInboundRequestToLogistics({
 }
 
 // Complete inbound request
-async function completeInboundRequest(id: string, payload: CompleteInboundRequestPayload): Promise<InboundRequestDetails> {
+async function completeInboundRequest(
+    id: string,
+    payload: CompleteInboundRequestPayload
+): Promise<InboundRequestDetails> {
     try {
         const response = await apiClient.post(`/client/v1/inbound-request/${id}/complete`, payload);
         return response.data;
@@ -208,8 +232,6 @@ export function useDeleteInboundRequest() {
         },
     });
 }
-
-
 
 // Submit inbound request for approval
 

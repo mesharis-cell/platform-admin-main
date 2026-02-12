@@ -25,7 +25,7 @@ export function useListVehicleTypes(filters: Record<string, any> = {}) {
 
     return useQuery({
         queryKey: vehicleTypesKeys.list(filters),
-        queryFn: async () : Promise<{data: VehicleType[]}> => {
+        queryFn: async (): Promise<{ data: VehicleType[] }> => {
             try {
                 const response = await apiClient.get(
                     `/operations/v1/pricing/vehicle-types?${queryParams}`
@@ -64,7 +64,10 @@ export function useCreateVehicleType() {
             try {
                 // Transform camelCase to snake_case for API
                 const apiData = mapCamelToSnake(data);
-                const response = await apiClient.post("/operations/v1/pricing/vehicle-types", apiData);
+                const response = await apiClient.post(
+                    "/operations/v1/pricing/vehicle-types",
+                    apiData
+                );
                 return response.data.data;
             } catch (error) {
                 throwApiError(error);
@@ -108,7 +111,9 @@ export function useDeleteVehicleType() {
     return useMutation({
         mutationFn: async (id: string) => {
             try {
-                const response = await apiClient.delete(`/operations/v1/pricing/vehicle-types/${id}`);
+                const response = await apiClient.delete(
+                    `/operations/v1/pricing/vehicle-types/${id}`
+                );
                 return response.data;
             } catch (error) {
                 throwApiError(error);

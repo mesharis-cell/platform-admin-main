@@ -75,17 +75,23 @@ export function ProcessReskinModal({
                 <div className="px-4 space-y-6 font-mono">
                     <div className="space-y-2 text-sm">
                         <div className="flex justify-between">
-                            <span className="text-muted-foreground uppercase text-[10px]">Original Asset</span>
+                            <span className="text-muted-foreground uppercase text-[10px]">
+                                Original Asset
+                            </span>
                             <span className="font-bold">{originalAssetName}</span>
                         </div>
                         <div className="flex justify-between">
-                            <span className="text-muted-foreground uppercase text-[10px]">Target Brand</span>
+                            <span className="text-muted-foreground uppercase text-[10px]">
+                                Target Brand
+                            </span>
                             <span className="font-bold">{targetBrandName}</span>
                         </div>
                     </div>
 
                     <div className="space-y-2">
-                        <Label className="uppercase text-[10px] text-muted-foreground">Client Instructions</Label>
+                        <Label className="uppercase text-[10px] text-muted-foreground">
+                            Client Instructions
+                        </Label>
                         <div className="p-4 bg-muted/30 border border-border rounded italic text-sm leading-relaxed">
                             "{clientNotes}"
                         </div>
@@ -115,7 +121,9 @@ export function ProcessReskinModal({
                         </div>
 
                         <div className="space-y-2">
-                            <Label className="uppercase text-[10px] text-muted-foreground">Internal Notes (Optional)</Label>
+                            <Label className="uppercase text-[10px] text-muted-foreground">
+                                Internal Notes (Optional)
+                            </Label>
                             <Textarea
                                 value={adminNotes}
                                 onChange={(e) => setAdminNotes(e.target.value)}
@@ -128,12 +136,17 @@ export function ProcessReskinModal({
 
                     <div className="bg-primary/5 border border-primary/20 rounded-md p-4 space-y-2">
                         <p className="text-[10px] font-bold text-primary flex items-center gap-2">
-                            <span className="flex h-4 w-4 items-center justify-center rounded-full bg-primary text-white text-[8px]">i</span>
+                            <span className="flex h-4 w-4 items-center justify-center rounded-full bg-primary text-white text-[8px]">
+                                i
+                            </span>
                             THIS WILL:
                         </p>
                         <ul className="text-[10px] space-y-1 text-muted-foreground ml-6 list-disc">
                             <li>Create a formal reskin tracking record</li>
-                            <li>Add "{originalAssetName} Rebrand" line item ({cost || "1,500.00"} AED)</li>
+                            <li>
+                                Add "{originalAssetName} Rebrand" line item ({cost || "1,500.00"}{" "}
+                                AED)
+                            </li>
                             <li>Order will enter AWAITING_FABRICATION after confirm</li>
                         </ul>
                     </div>

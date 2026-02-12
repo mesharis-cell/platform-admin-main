@@ -413,7 +413,8 @@ export default function ItemsNeedingAttentionPage() {
                                                             </p>
                                                             <p className="mt-2 text-xs text-muted-foreground">
                                                                 {new Date(
-                                                                    item?.condition_history?.[0]?.timestamp
+                                                                    item?.condition_history?.[0]
+                                                                        ?.timestamp
                                                                 ).toLocaleString()}
                                                             </p>
                                                         </>

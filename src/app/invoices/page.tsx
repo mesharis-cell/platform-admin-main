@@ -171,17 +171,17 @@ export default function InvoicesPage() {
     // Calculate stats
     const stats = invoicesData?.data
         ? {
-            totalInvoices: invoicesData?.meta?.total,
-            paidInvoices: invoicesData.data.filter((inv) => inv.invoice_paid_at).length,
-            unpaidInvoices: invoicesData.data.filter((inv) => !inv.invoice_paid_at).length,
-            totalRevenue: invoicesData.data
-                .filter((inv) => inv.invoice_paid_at)
-                .reduce(
-                    (sum, inv) =>
-                        sum + parseFloat(inv.order.final_pricing?.total_price?.toString() || "0"),
-                    0
-                ),
-        }
+              totalInvoices: invoicesData?.meta?.total,
+              paidInvoices: invoicesData.data.filter((inv) => inv.invoice_paid_at).length,
+              unpaidInvoices: invoicesData.data.filter((inv) => !inv.invoice_paid_at).length,
+              totalRevenue: invoicesData.data
+                  .filter((inv) => inv.invoice_paid_at)
+                  .reduce(
+                      (sum, inv) =>
+                          sum + parseFloat(inv.order.final_pricing?.total_price?.toString() || "0"),
+                      0
+                  ),
+          }
         : null;
 
     return (
@@ -305,7 +305,9 @@ export default function InvoicesPage() {
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="all">All</SelectItem>
-                                        <SelectItem value="INBOUND_REQUEST">Inbound Request</SelectItem>
+                                        <SelectItem value="INBOUND_REQUEST">
+                                            Inbound Request
+                                        </SelectItem>
                                         <SelectItem value="ORDER">Order</SelectItem>
                                     </SelectContent>
                                 </Select>
@@ -366,37 +368,37 @@ export default function InvoicesPage() {
                                         transition={{ delay: index * 0.05 }}
                                         layout
                                     >
-                                        {invoice?.order && (<InvoiceCard
-                                            invoice={invoice}
-                                            onDownload={() =>
-                                                handleDownloadInvoice(invoice.id)
-                                            }
-                                            onSendInvoice={(inv) => {
-                                                setSelectedInvoice(inv);
-                                                setSentInvoice(true);
-                                            }}
-                                            onConfirmPayment={(inv) =>
-                                                handleOpenConfirmPayment(inv)
-                                            }
-                                            isDownloading={downloadInvoice.isPending}
-                                            isSending={isSendingInvoice}
-                                        />)}
+                                        {invoice?.order && (
+                                            <InvoiceCard
+                                                invoice={invoice}
+                                                onDownload={() => handleDownloadInvoice(invoice.id)}
+                                                onSendInvoice={(inv) => {
+                                                    setSelectedInvoice(inv);
+                                                    setSentInvoice(true);
+                                                }}
+                                                onConfirmPayment={(inv) =>
+                                                    handleOpenConfirmPayment(inv)
+                                                }
+                                                isDownloading={downloadInvoice.isPending}
+                                                isSending={isSendingInvoice}
+                                            />
+                                        )}
 
-                                        {invoice?.inbound_request && (<InboundRequestInvoice
-                                            invoice={invoice}
-                                            onDownload={() =>
-                                                handleDownloadInvoice(invoice.id)
-                                            }
-                                            onSendInvoice={(inv) => {
-                                                setSelectedInvoice(inv);
-                                                setSentInvoice(true);
-                                            }}
-                                            onConfirmPayment={(inv) =>
-                                                handleOpenConfirmPayment(inv)
-                                            }
-                                            isDownloading={downloadInvoice.isPending}
-                                            isSending={isSendingInvoice}
-                                        />)}
+                                        {invoice?.inbound_request && (
+                                            <InboundRequestInvoice
+                                                invoice={invoice}
+                                                onDownload={() => handleDownloadInvoice(invoice.id)}
+                                                onSendInvoice={(inv) => {
+                                                    setSelectedInvoice(inv);
+                                                    setSentInvoice(true);
+                                                }}
+                                                onConfirmPayment={(inv) =>
+                                                    handleOpenConfirmPayment(inv)
+                                                }
+                                                isDownloading={downloadInvoice.isPending}
+                                                isSending={isSendingInvoice}
+                                            />
+                                        )}
                                     </motion.div>
                                 ))}
                             </AnimatePresence>
@@ -404,55 +406,55 @@ export default function InvoicesPage() {
                             {/* Pagination */}
                             {Math.ceil(invoicesData?.meta?.total / invoicesData?.meta?.limit) >
                                 1 && (
-                                    <div className="flex items-center justify-center gap-2 mt-8">
-                                        <Button
-                                            onClick={() =>
-                                                setFilters((prev) => ({
-                                                    ...prev,
-                                                    page: Math.max(1, prev.page! - 1),
-                                                }))
-                                            }
-                                            disabled={filters.page === 1}
-                                            variant="outline"
-                                            size="sm"
-                                            className="font-mono"
-                                        >
-                                            PREV
-                                        </Button>
-                                        <div className="px-4 py-2 font-mono text-sm">
-                                            Page {filters.page} of{" "}
-                                            {Math.ceil(
-                                                invoicesData?.meta?.total / invoicesData?.meta?.limit
-                                            )}
-                                        </div>
-                                        <Button
-                                            onClick={() =>
-                                                setFilters((prev) => ({
-                                                    ...prev,
-                                                    page: Math.min(
-                                                        Math.ceil(
-                                                            invoicesData?.meta?.total /
-                                                            invoicesData?.meta?.limit
-                                                        ),
-                                                        prev.page! + 1
-                                                    ),
-                                                }))
-                                            }
-                                            disabled={
-                                                filters.page ===
-                                                Math.ceil(
-                                                    invoicesData?.meta?.total /
-                                                    invoicesData?.meta?.limit
-                                                )
-                                            }
-                                            variant="outline"
-                                            size="sm"
-                                            className="font-mono"
-                                        >
-                                            NEXT
-                                        </Button>
+                                <div className="flex items-center justify-center gap-2 mt-8">
+                                    <Button
+                                        onClick={() =>
+                                            setFilters((prev) => ({
+                                                ...prev,
+                                                page: Math.max(1, prev.page! - 1),
+                                            }))
+                                        }
+                                        disabled={filters.page === 1}
+                                        variant="outline"
+                                        size="sm"
+                                        className="font-mono"
+                                    >
+                                        PREV
+                                    </Button>
+                                    <div className="px-4 py-2 font-mono text-sm">
+                                        Page {filters.page} of{" "}
+                                        {Math.ceil(
+                                            invoicesData?.meta?.total / invoicesData?.meta?.limit
+                                        )}
                                     </div>
-                                )}
+                                    <Button
+                                        onClick={() =>
+                                            setFilters((prev) => ({
+                                                ...prev,
+                                                page: Math.min(
+                                                    Math.ceil(
+                                                        invoicesData?.meta?.total /
+                                                            invoicesData?.meta?.limit
+                                                    ),
+                                                    prev.page! + 1
+                                                ),
+                                            }))
+                                        }
+                                        disabled={
+                                            filters.page ===
+                                            Math.ceil(
+                                                invoicesData?.meta?.total /
+                                                    invoicesData?.meta?.limit
+                                            )
+                                        }
+                                        variant="outline"
+                                        size="sm"
+                                        className="font-mono"
+                                    >
+                                        NEXT
+                                    </Button>
+                                </div>
+                            )}
                         </div>
                     ) : (
                         <Card className="p-12 text-center border-2 border-dashed">

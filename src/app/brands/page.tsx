@@ -335,8 +335,8 @@ export default function BrandsPage() {
                                         {createMutation.isPending || updateMutation.isPending
                                             ? "PROCESSING..."
                                             : editingBrand
-                                                ? "UPDATE"
-                                                : "CREATE"}
+                                              ? "UPDATE"
+                                              : "CREATE"}
                                     </Button>
                                 </div>
                             </form>

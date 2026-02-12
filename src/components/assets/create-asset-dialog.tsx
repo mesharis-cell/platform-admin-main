@@ -363,20 +363,22 @@ export function CreateAssetDialog({ open, onOpenChange, onSuccess }: CreateAsset
                                     <button
                                         onClick={() => setCurrentStep(index)}
                                         disabled={index > currentStep}
-                                        className={`flex items-center gap-2 ${isActive
-                                            ? "text-primary"
-                                            : isCompleted
-                                                ? "text-foreground"
-                                                : "text-muted-foreground"
-                                            } disabled:opacity-50 disabled:cursor-not-allowed transition-colors hover:text-primary`}
+                                        className={`flex items-center gap-2 ${
+                                            isActive
+                                                ? "text-primary"
+                                                : isCompleted
+                                                  ? "text-foreground"
+                                                  : "text-muted-foreground"
+                                        } disabled:opacity-50 disabled:cursor-not-allowed transition-colors hover:text-primary`}
                                     >
                                         <div
-                                            className={`w-8 h-8 rounded-lg flex items-center justify-center border ${isActive
-                                                ? "bg-primary text-primary-foreground border-primary"
-                                                : isCompleted
-                                                    ? "bg-primary/10 border-primary/20 text-primary"
-                                                    : "bg-muted border-border"
-                                                }`}
+                                            className={`w-8 h-8 rounded-lg flex items-center justify-center border ${
+                                                isActive
+                                                    ? "bg-primary text-primary-foreground border-primary"
+                                                    : isCompleted
+                                                      ? "bg-primary/10 border-primary/20 text-primary"
+                                                      : "bg-muted border-border"
+                                            }`}
                                         >
                                             {isCompleted ? (
                                                 <Check className="w-4 h-4" />
@@ -447,8 +449,8 @@ export function CreateAssetDialog({ open, onOpenChange, onSuccess }: CreateAsset
                                                         !formData.company_id
                                                             ? "Select company first"
                                                             : brands.length === 0
-                                                                ? "No brands available"
-                                                                : "Select brand"
+                                                              ? "No brands available"
+                                                              : "Select brand"
                                                     }
                                                 />
                                             </SelectTrigger>
@@ -524,19 +526,19 @@ export function CreateAssetDialog({ open, onOpenChange, onSuccess }: CreateAsset
                                                 !DEFAULT_CATEGORIES.includes(
                                                     formData.category || ""
                                                 ))) && (
-                                                <Input
-                                                    placeholder="Enter custom category"
-                                                    value={customCategory || formData.category || ""}
-                                                    onChange={(e) => {
-                                                        setCustomCategory(e.target.value);
-                                                        setFormData({
-                                                            ...formData,
-                                                            category: e.target.value as any,
-                                                        });
-                                                    }}
-                                                    className="font-mono"
-                                                />
-                                            )}
+                                            <Input
+                                                placeholder="Enter custom category"
+                                                value={customCategory || formData.category || ""}
+                                                onChange={(e) => {
+                                                    setCustomCategory(e.target.value);
+                                                    setFormData({
+                                                        ...formData,
+                                                        category: e.target.value as any,
+                                                    });
+                                                }}
+                                                className="font-mono"
+                                            />
+                                        )}
                                     </div>
                                 </div>
 
@@ -605,8 +607,8 @@ export function CreateAssetDialog({ open, onOpenChange, onSuccess }: CreateAsset
                                                         !formData.warehouse_id
                                                             ? "Select warehouse first"
                                                             : zones.length === 0
-                                                                ? "No zones available"
-                                                                : "Select zone"
+                                                              ? "No zones available"
+                                                              : "Select zone"
                                                     }
                                                 />
                                             </SelectTrigger>
@@ -787,30 +789,32 @@ export function CreateAssetDialog({ open, onOpenChange, onSuccess }: CreateAsset
                                                         condition: cond,
                                                     }))
                                                 }
-                                                className={`flex-1 p-3 rounded-lg border-2 transition-all ${formData.condition === cond
-                                                    ? cond === "GREEN"
-                                                        ? "border-emerald-500 bg-emerald-500/10"
-                                                        : cond === "ORANGE"
-                                                            ? "border-amber-500 bg-amber-500/10"
-                                                            : "border-red-500 bg-red-500/10"
-                                                    : "border-border hover:border-muted-foreground"
-                                                    }`}
+                                                className={`flex-1 p-3 rounded-lg border-2 transition-all ${
+                                                    formData.condition === cond
+                                                        ? cond === "GREEN"
+                                                            ? "border-emerald-500 bg-emerald-500/10"
+                                                            : cond === "ORANGE"
+                                                              ? "border-amber-500 bg-amber-500/10"
+                                                              : "border-red-500 bg-red-500/10"
+                                                        : "border-border hover:border-muted-foreground"
+                                                }`}
                                             >
                                                 <div className="flex items-center justify-center gap-2">
                                                     <div
-                                                        className={`w-3 h-3 rounded-full ${cond === "GREEN"
-                                                            ? "bg-emerald-500"
-                                                            : cond === "ORANGE"
-                                                                ? "bg-amber-500"
-                                                                : "bg-red-500"
-                                                            }`}
+                                                        className={`w-3 h-3 rounded-full ${
+                                                            cond === "GREEN"
+                                                                ? "bg-emerald-500"
+                                                                : cond === "ORANGE"
+                                                                  ? "bg-amber-500"
+                                                                  : "bg-red-500"
+                                                        }`}
                                                     />
                                                     <span className="font-mono text-xs font-medium">
                                                         {cond === "GREEN"
                                                             ? "Good"
                                                             : cond === "ORANGE"
-                                                                ? "Minor Issues"
-                                                                : "Damaged"}
+                                                              ? "Minor Issues"
+                                                              : "Damaged"}
                                                     </span>
                                                 </div>
                                             </button>
@@ -821,59 +825,59 @@ export function CreateAssetDialog({ open, onOpenChange, onSuccess }: CreateAsset
                                 {/* Conditional fields for damaged items (Feedback #2) */}
                                 {(formData.condition === "ORANGE" ||
                                     formData.condition === "RED") && (
-                                        <div className="space-y-4 p-4 bg-muted/30 rounded-lg border border-border">
-                                            <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                                                <AlertCircle className="w-4 h-4 text-amber-500" />
-                                                <span>Damage Information Required</span>
-                                            </div>
+                                    <div className="space-y-4 p-4 bg-muted/30 rounded-lg border border-border">
+                                        <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                                            <AlertCircle className="w-4 h-4 text-amber-500" />
+                                            <span>Damage Information Required</span>
+                                        </div>
 
-                                            <div className="space-y-2">
-                                                <Label className="font-mono text-xs">
-                                                    Estimated Refurb Days *
-                                                </Label>
-                                                <Input
-                                                    type="number"
-                                                    min="1"
-                                                    max="90"
-                                                    placeholder="e.g., 5"
-                                                    value={formData.refurb_days_estimate || ""}
-                                                    onChange={(e) =>
-                                                        setFormData({
-                                                            ...formData,
-                                                            refurb_days_estimate:
-                                                                parseInt(e.target.value) || undefined,
-                                                        })
-                                                    }
-                                                    className="font-mono"
-                                                />
-                                                <p className="text-xs font-mono text-muted-foreground">
-                                                    How many days will it take to refurbish this item?
-                                                </p>
-                                            </div>
+                                        <div className="space-y-2">
+                                            <Label className="font-mono text-xs">
+                                                Estimated Refurb Days *
+                                            </Label>
+                                            <Input
+                                                type="number"
+                                                min="1"
+                                                max="90"
+                                                placeholder="e.g., 5"
+                                                value={formData.refurb_days_estimate || ""}
+                                                onChange={(e) =>
+                                                    setFormData({
+                                                        ...formData,
+                                                        refurb_days_estimate:
+                                                            parseInt(e.target.value) || undefined,
+                                                    })
+                                                }
+                                                className="font-mono"
+                                            />
+                                            <p className="text-xs font-mono text-muted-foreground">
+                                                How many days will it take to refurbish this item?
+                                            </p>
+                                        </div>
 
-                                            <div className="space-y-2">
-                                                {/* <Label className='font-mono text-xs'>
+                                        <div className="space-y-2">
+                                            {/* <Label className='font-mono text-xs'>
 													Condition Notes *
 												</Label> */}
-                                                <Textarea
-                                                    placeholder="Describe the damage or issues..."
-                                                    value={formData.condition_notes || ""}
-                                                    onChange={(e) =>
-                                                        setFormData({
-                                                            ...formData,
-                                                            condition_notes: e.target.value,
-                                                        })
-                                                    }
-                                                    className="font-mono text-sm"
-                                                    rows={3}
-                                                />
-                                                <p className="text-xs font-mono text-muted-foreground">
-                                                    Explain what needs to be repaired or refurbished
-                                                    (Min 10 characters)
-                                                </p>
-                                            </div>
+                                            <Textarea
+                                                placeholder="Describe the damage or issues..."
+                                                value={formData.condition_notes || ""}
+                                                onChange={(e) =>
+                                                    setFormData({
+                                                        ...formData,
+                                                        condition_notes: e.target.value,
+                                                    })
+                                                }
+                                                className="font-mono text-sm"
+                                                rows={3}
+                                            />
+                                            <p className="text-xs font-mono text-muted-foreground">
+                                                Explain what needs to be repaired or refurbished
+                                                (Min 10 characters)
+                                            </p>
                                         </div>
-                                    )}
+                                    </div>
+                                )}
 
                                 <div className="space-y-2">
                                     <Label className="font-mono text-xs">
@@ -1014,10 +1018,10 @@ export function CreateAssetDialog({ open, onOpenChange, onSuccess }: CreateAsset
                                         />
                                         {(formData.available_quantity || 0) >
                                             (formData.total_quantity || 1) && (
-                                                <p className="text-xs font-mono text-destructive">
-                                                    Cannot exceed total quantity
-                                                </p>
-                                            )}
+                                            <p className="text-xs font-mono text-destructive">
+                                                Cannot exceed total quantity
+                                            </p>
+                                        )}
                                     </div>
                                 </div>
                                 <p className="text-xs font-mono text-muted-foreground">
@@ -1071,9 +1075,7 @@ export function CreateAssetDialog({ open, onOpenChange, onSuccess }: CreateAsset
                                             <SelectItem value="AVAILABLE">Available</SelectItem>
                                             <SelectItem value="BOOKED">Booked</SelectItem>
                                             <SelectItem value="OUT">Out</SelectItem>
-                                            <SelectItem value="MAINTENANCE">
-                                                Maintenance
-                                            </SelectItem>
+                                            <SelectItem value="MAINTENANCE">Maintenance</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>

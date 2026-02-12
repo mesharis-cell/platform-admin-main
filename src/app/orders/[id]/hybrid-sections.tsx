@@ -45,8 +45,10 @@ export function PendingApprovalSection({ order, orderId, onRefresh }: HybridPric
     const [marginReason, setMarginReason] = useState("");
     const [returnToLogisticsOpen, setReturnToLogisticsOpen] = useState(false);
 
-    const { total, marginAmount } = getOrderPrice(order?.order_pricing)
-    const showMissingTransport = ["PENDING_APPROVAL", "QUOTED", "DECLINED"].includes(order.order_status) && !order?.order_pricing?.transport?.final_rate
+    const { total, marginAmount } = getOrderPrice(order?.order_pricing);
+    const showMissingTransport =
+        ["PENDING_APPROVAL", "QUOTED", "DECLINED"].includes(order.order_status) &&
+        !order?.order_pricing?.transport?.final_rate;
 
     const handleApprove = async () => {
         if (marginOverride && marginAmount === Number(marginPercent)) {
@@ -83,7 +85,11 @@ export function PendingApprovalSection({ order, orderId, onRefresh }: HybridPric
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <ReskinRequestsList orderId={orderId} order={order} orderStatus={order.order_status} />
+                    <ReskinRequestsList
+                        orderId={orderId}
+                        order={order}
+                        orderStatus={order.order_status}
+                    />
                 </CardContent>
             </Card>
 
@@ -117,7 +123,10 @@ export function PendingApprovalSection({ order, orderId, onRefresh }: HybridPric
                     </div>
                 </CardHeader>
                 <CardContent>
-                    <OrderLineItemsList targetId={orderId} canManage={canManageLineItems(order.order_status)} />
+                    <OrderLineItemsList
+                        targetId={orderId}
+                        canManage={canManageLineItems(order.order_status)}
+                    />
                 </CardContent>
             </Card>
 
@@ -139,23 +148,34 @@ export function PendingApprovalSection({ order, orderId, onRefresh }: HybridPric
                             <div className="flex justify-between">
                                 <span className="text-muted-foreground">Transport</span>
                                 <span className="font-mono">
-                                    {Number(order?.order_pricing?.transport.final_rate).toFixed(2)} AED
+                                    {Number(order?.order_pricing?.transport.final_rate).toFixed(2)}{" "}
+                                    AED
                                 </span>
                             </div>
                             <div className="flex justify-between">
                                 <span className="text-muted-foreground">Catalog Services</span>
                                 <span className="font-mono">
-                                    {Number(order?.order_pricing?.line_items?.catalog_total).toFixed(2)} AED
+                                    {Number(
+                                        order?.order_pricing?.line_items?.catalog_total
+                                    ).toFixed(2)}{" "}
+                                    AED
                                 </span>
                             </div>
                             <div className="flex justify-between">
-                                <span className="text-muted-foreground">Custom (Include Reskin) Services</span>
+                                <span className="text-muted-foreground">
+                                    Custom (Include Reskin) Services
+                                </span>
                                 <span className="font-mono">
-                                    {Number(order?.order_pricing?.line_items?.custom_total).toFixed(2)} AED
+                                    {Number(order?.order_pricing?.line_items?.custom_total).toFixed(
+                                        2
+                                    )}{" "}
+                                    AED
                                 </span>
                             </div>
                             <div className="flex justify-between">
-                                <span className="text-muted-foreground">Margin ({order.order_pricing?.margin?.percent}%)</span>
+                                <span className="text-muted-foreground">
+                                    Margin ({order.order_pricing?.margin?.percent}%)
+                                </span>
                                 <span className="font-mono">
                                     {Number(order.order_pricing?.margin?.amount).toFixed(2)} AED
                                 </span>
@@ -163,74 +183,76 @@ export function PendingApprovalSection({ order, orderId, onRefresh }: HybridPric
                             <div className="border-t border-border my-2"></div>
                             <div className="flex justify-between font-semibold">
                                 <span>Total</span>
-                                <span className="font-mono">
-                                    {Number(total).toFixed(2)} AED
-                                </span>
+                                <span className="font-mono">{Number(total).toFixed(2)} AED</span>
                             </div>
                         </div>
                     )}
 
-                    {order.order_status === "PENDING_APPROVAL" && <div>
-                        {/* Margin Override */}
-                        <div className="space-y-3 border-t border-border pt-4">
-                            <div className="flex items-center space-x-2">
-                                <Checkbox
-                                    id="marginOverride"
-                                    checked={marginOverride}
-                                    onCheckedChange={(checked) => setMarginOverride(checked as boolean)}
-                                />
-                                <Label htmlFor="marginOverride" className="cursor-pointer">
-                                    Override platform margin
-                                </Label>
+                    {order.order_status === "PENDING_APPROVAL" && (
+                        <div>
+                            {/* Margin Override */}
+                            <div className="space-y-3 border-t border-border pt-4">
+                                <div className="flex items-center space-x-2">
+                                    <Checkbox
+                                        id="marginOverride"
+                                        checked={marginOverride}
+                                        onCheckedChange={(checked) =>
+                                            setMarginOverride(checked as boolean)
+                                        }
+                                    />
+                                    <Label htmlFor="marginOverride" className="cursor-pointer">
+                                        Override platform margin
+                                    </Label>
+                                </div>
+
+                                {marginOverride && (
+                                    <div className="space-y-3 pl-6 border-l-2 border-primary">
+                                        <div>
+                                            <Label>Margin Percent (%)</Label>
+                                            <Input
+                                                type="number"
+                                                step="0.01"
+                                                min="0"
+                                                max="100"
+                                                value={marginPercent}
+                                                onChange={(e) =>
+                                                    setMarginPercent(parseFloat(e.target.value))
+                                                }
+                                            />
+                                        </div>
+                                        <div>
+                                            <Label>Reason for Override</Label>
+                                            <Textarea
+                                                value={marginReason}
+                                                onChange={(e) => setMarginReason(e.target.value)}
+                                                placeholder="e.g., High-value order, premium service justifies higher margin"
+                                                rows={2}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
-                            {marginOverride && (
-                                <div className="space-y-3 pl-6 border-l-2 border-primary">
-                                    <div>
-                                        <Label>Margin Percent (%)</Label>
-                                        <Input
-                                            type="number"
-                                            step="0.01"
-                                            min="0"
-                                            max="100"
-                                            value={marginPercent}
-                                            onChange={(e) =>
-                                                setMarginPercent(parseFloat(e.target.value))
-                                            }
-                                        />
-                                    </div>
-                                    <div>
-                                        <Label>Reason for Override</Label>
-                                        <Textarea
-                                            value={marginReason}
-                                            onChange={(e) => setMarginReason(e.target.value)}
-                                            placeholder="e.g., High-value order, premium service justifies higher margin"
-                                            rows={2}
-                                        />
-                                    </div>
-                                </div>
-                            )}
+                            {/* Actions */}
+                            <div className="flex gap-3 pt-4">
+                                <Button
+                                    onClick={handleApprove}
+                                    disabled={adminApproveQuote.isPending}
+                                    className="flex-1"
+                                >
+                                    {adminApproveQuote.isPending
+                                        ? "Approving..."
+                                        : "Approve & Send Quote to Client"}
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    onClick={() => setReturnToLogisticsOpen(true)}
+                                >
+                                    Return to Logistics
+                                </Button>
+                            </div>
                         </div>
-
-                        {/* Actions */}
-                        <div className="flex gap-3 pt-4">
-                            <Button
-                                onClick={handleApprove}
-                                disabled={adminApproveQuote.isPending}
-                                className="flex-1"
-                            >
-                                {adminApproveQuote.isPending
-                                    ? "Approving..."
-                                    : "Approve & Send Quote to Client"}
-                            </Button>
-                            <Button
-                                variant="outline"
-                                onClick={() => setReturnToLogisticsOpen(true)}
-                            >
-                                Return to Logistics
-                            </Button>
-                        </div>
-                    </div>}
+                    )}
                 </CardContent>
             </Card>
 
@@ -265,14 +287,12 @@ export function PricingReviewSection({ order, orderId, onRefresh }: HybridPricin
         <div className="space-y-6">
             <Card className="border-2 border-primary/20 bg-primary/5">
                 <CardHeader>
-                    <CardTitle className="">
-                        📋 Pricing Review
-                    </CardTitle>
+                    <CardTitle className="">📋 Pricing Review</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <p className="text-sm text-gray-500">
-                        Review the order details, add service line items if needed, and submit to Admin
-                        for approval.
+                        Review the order details, add service line items if needed, and submit to
+                        Admin for approval.
                     </p>
                 </CardContent>
             </Card>
@@ -289,9 +309,7 @@ export function AwaitingFabricationSection({ order, orderId }: HybridPricingSect
         <div className="space-y-6">
             <Card className="border-blue-500 bg-blue-50">
                 <CardHeader>
-                    <CardTitle className="text-blue-500">
-                        ⏳ Order Awaiting Fabrication
-                    </CardTitle>
+                    <CardTitle className="text-blue-500">⏳ Order Awaiting Fabrication</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <p className="text-sm text-blue-500">
