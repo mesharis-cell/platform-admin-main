@@ -233,3 +233,15 @@ export function useCompleteMaintenance() {
         },
     });
 }
+
+export function useAssetVersions(assetId: string | null) {
+    return useQuery({
+        queryKey: ["asset-versions", assetId],
+        queryFn: async () => {
+            if (!assetId) return [];
+            const res = await apiClient.get(`/operations/v1/asset/${assetId}/versions`);
+            return res.data?.data || [];
+        },
+        enabled: !!assetId,
+    });
+}

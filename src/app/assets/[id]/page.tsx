@@ -8,7 +8,7 @@
  */
 
 import { useEffect, useState, use } from "react";
-import { useAsset, useGenerateQRCode, useDeleteAsset } from "@/hooks/use-assets";
+import { useAsset, useGenerateQRCode, useDeleteAsset, useAssetVersions } from "@/hooks/use-assets";
 import { useConditionHistory } from "@/hooks/use-conditions";
 import { useAssetAvailabilityStats } from "@/hooks/use-asset-availability-stats";
 import { useRouter } from "next/navigation";
@@ -58,6 +58,9 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
     // Fetch asset
     const { data, isLoading: loading, error } = useAsset(id);
     const asset = data?.data || null;
+
+    // Fetch version history
+    const { data: versions } = useAssetVersions(asset?.id || null);
 
     // Fetch availability stats
     const { data: availabilityStats, isLoading: statsLoading } = useAssetAvailabilityStats(id);
@@ -783,6 +786,55 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                                     <div className="flex items-center justify-center py-8">
                                         <Skeleton className="h-32 w-full" />
                                     </div>
+                                )}
+                            </CardContent>
+                        </Card>
+
+                        {/* Version History */}
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2 font-mono text-sm">
+                                    <Clock className="h-4 w-4 text-primary" />
+                                    Version History
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                {versions && versions.length > 0 ? (
+                                    <div className="space-y-1 relative">
+                                        {versions.map((v: any, idx: number) => {
+                                            const snap = v.snapshot || {};
+                                            const isFirst = idx === 0;
+                                            return (
+                                                <div key={v.id} className="flex gap-3 py-2">
+                                                    <div className="flex flex-col items-center">
+                                                        <div className={`w-3 h-3 rounded-full shrink-0 mt-1.5 ${isFirst ? "bg-primary ring-4 ring-primary/20" : "bg-muted-foreground/40"}`} />
+                                                        {idx < versions.length - 1 && <div className="w-px flex-1 bg-border min-h-[20px]" />}
+                                                    </div>
+                                                    <div className="flex-1 pb-2">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-xs font-mono font-bold text-muted-foreground">v{v.version_number}</span>
+                                                            <span className="text-sm font-semibold">{v.reason}</span>
+                                                            {snap.condition && snap.condition !== "GREEN" && (
+                                                                <span className={`text-xs font-mono px-1.5 py-0.5 rounded ${snap.condition === "RED" ? "bg-destructive/10 text-destructive" : "bg-orange-500/10 text-orange-600"}`}>
+                                                                    {snap.condition}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <p className="text-xs text-muted-foreground mt-0.5">
+                                                            {new Date(v.created_at).toLocaleDateString()} {new Date(v.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                                                        </p>
+                                                        {snap.images?.[0] && (
+                                                            <div className="mt-2 w-16 h-12 rounded overflow-hidden bg-muted">
+                                                                <img src={snap.images[0]} alt="Snapshot" className="w-full h-full object-cover" />
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                ) : (
+                                    <p className="text-xs text-muted-foreground py-4 text-center">No version history yet</p>
                                 )}
                             </CardContent>
                         </Card>

@@ -416,6 +416,14 @@ export default function InboundScanningPage() {
             return;
         }
 
+        // Validate photos required for ALL conditions
+        if (currentInspection.photos.length === 0) {
+            toast.error("Photo required", {
+                description: "Please take at least one photo of the item",
+            });
+            return;
+        }
+
         // Validate quantity for BATCH assets
         if (currentInspection.trackingMethod === "BATCH" && !currentInspection.quantity) {
             toast.error("Please enter quantity");
@@ -440,7 +448,7 @@ export default function InboundScanningPage() {
                 qrCode: currentInspection.qrCode,
                 condition: currentInspection.condition,
                 notes: currentInspection.notes || undefined,
-                photos: currentInspection.photos.length > 0 ? currentInspection.photos : undefined,
+                photos: currentInspection.photos,
                 refurbDaysEstimate: currentInspection.refurbDaysEstimate || undefined, // Feedback #2
                 discrepancyReason: currentInspection.discrepancyReason || undefined,
                 quantity: currentInspection.quantity || undefined,
