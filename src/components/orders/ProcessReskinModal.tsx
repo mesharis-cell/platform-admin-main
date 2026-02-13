@@ -100,7 +100,7 @@ export function ProcessReskinModal({
                     <div className="space-y-4">
                         <div className="space-y-2">
                             <Label className="uppercase text-[10px] text-muted-foreground flex items-center gap-1">
-                                Rebrand Cost to Client <span className="text-destructive">*</span>
+                                Rebrand Base Cost (Buy) <span className="text-destructive">*</span>
                             </Label>
                             <div className="relative">
                                 <Input
@@ -116,7 +116,7 @@ export function ProcessReskinModal({
                                 </div>
                             </div>
                             <p className="text-[10px] text-muted-foreground italic">
-                                (Enter final amount including your margin)
+                                (Margin will be applied during quote calculation)
                             </p>
                         </div>
 

@@ -304,6 +304,28 @@ export function useExportOrders() {
     });
 }
 
+export function useDownloadGoodsForm() {
+    return useMutation({
+        mutationFn: async ({
+            orderId,
+            formType = "AUTO",
+        }: {
+            orderId: string;
+            formType?: "GOODS_IN" | "GOODS_OUT" | "AUTO";
+        }) => {
+            try {
+                const res = await apiClient.get(
+                    `/client/v1/order/${orderId}/goods-form?form_type=${formType}`,
+                    { responseType: "blob" }
+                );
+                return res.data;
+            } catch (error) {
+                throwApiError(error);
+            }
+        },
+    });
+}
+
 // ============================================================
 // Phase 8: Pricing & Quoting System Hooks
 // ============================================================
@@ -561,6 +583,9 @@ export function useSubmitForApproval() {
             queryClient.invalidateQueries({ queryKey: ["orders", "pending-approval"] });
             queryClient.invalidateQueries({ queryKey: ["orders", "admin-list"] });
             queryClient.invalidateQueries({ queryKey: ["orders", "admin-detail", variables] });
+            queryClient.invalidateQueries({
+                queryKey: ["orders", "admin-status-history", variables],
+            });
         },
     });
 }
@@ -600,6 +625,9 @@ export function useAdminApproveQuote() {
             queryClient.invalidateQueries({
                 queryKey: ["orders", "admin-detail", variables.orderId],
             });
+            queryClient.invalidateQueries({
+                queryKey: ["orders", "admin-status-history", variables.orderId],
+            });
         },
     });
 }
@@ -630,6 +658,9 @@ export function useReturnToLogistics() {
             queryClient.invalidateQueries({ queryKey: ["orders", "admin-list"] });
             queryClient.invalidateQueries({
                 queryKey: ["orders", "admin-detail", variables.orderId],
+            });
+            queryClient.invalidateQueries({
+                queryKey: ["orders", "admin-status-history", variables.orderId],
             });
         },
     });
@@ -692,6 +723,41 @@ export function useUpdateOrderVehicle() {
             try {
                 const response = await apiClient.patch(`/client/v1/order/${orderId}/vehicle`, {
                     vehicle_type_id: vehicleType,
+                    reason,
+                });
+                return response.data;
+            } catch (error) {
+                throwApiError(error);
+            }
+        },
+        onSuccess: (_, variables) => {
+            queryClient.invalidateQueries({
+                queryKey: ["orders", "admin-detail", variables.orderId],
+            });
+            queryClient.invalidateQueries({ queryKey: ["orders", "pricing-review"] });
+        },
+    });
+}
+
+/**
+ * Update order trip type (Logistics)
+ */
+export function useUpdateOrderTripType() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({
+            orderId,
+            tripType,
+            reason,
+        }: {
+            orderId: string;
+            tripType: "ONE_WAY" | "ROUND_TRIP";
+            reason: string;
+        }) => {
+            try {
+                const response = await apiClient.patch(`/client/v1/order/${orderId}/trip-type`, {
+                    trip_type: tripType,
                     reason,
                 });
                 return response.data;

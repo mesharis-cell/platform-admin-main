@@ -38,6 +38,8 @@ import {
 import { useCompanies } from "@/hooks/use-companies";
 import { useWarehouses } from "@/hooks/use-warehouses";
 import { useCreateZone, useDeleteRestoreZone, useUpdateZone, useZones } from "@/hooks/use-zones";
+import { hasPermission } from "@/lib/auth/permissions";
+import { useToken } from "@/lib/auth/use-token";
 import type { Zone } from "@/types";
 import {
     Box,
@@ -55,12 +57,17 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 export default function ZonesPage() {
+    const { user } = useToken();
     const [warehouseFilter, setWarehouseFilter] = useState("all");
     const [companyFilter, setCompanyFilter] = useState("all");
     const [includeDeleted, setIncludeDeleted] = useState(false);
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [editingZone, setEditingZone] = useState<Zone | null>(null);
     const [confirmDelete, setConfirmDelete] = useState<Zone | null>(null);
+    const canCreateZone = hasPermission(user, "zones:create");
+    const canUpdateZone = hasPermission(user, "zones:update");
+    const canDeleteZone = hasPermission(user, "zones:delete");
+    const canManageZones = canUpdateZone || canDeleteZone;
 
     const [formData, setFormData] = useState({
         warehouse_id: "",
@@ -185,204 +192,206 @@ export default function ZonesPage() {
                 description="Storage Areas · Company Assignment · Organization"
                 stats={{ label: "ALLOCATED ZONES", value: total }}
                 actions={
-                    <Dialog
-                        open={isCreateOpen}
-                        onOpenChange={(open) => {
-                            setIsCreateOpen(open);
-                            if (!open) {
-                                setEditingZone(null);
-                                resetForm();
-                            }
-                        }}
-                    >
-                        <DialogTrigger asChild>
-                            <Button className="gap-2 font-mono">
-                                <Plus className="h-4 w-4" />
-                                NEW ZONE
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-2xl">
-                            <DialogHeader>
-                                <DialogTitle className="font-mono">
-                                    {editingZone ? "EDIT ZONE" : "CREATE NEW ZONE"}
-                                </DialogTitle>
-                                <DialogDescription className="font-mono text-xs">
-                                    {editingZone
-                                        ? "Update zone details and assignments"
-                                        : "Allocate company-exclusive area within warehouse"}
-                                </DialogDescription>
-                            </DialogHeader>
-                            <form onSubmit={handleSubmit} className="space-y-6">
-                                <div className="grid grid-cols-2 gap-4">
-                                    {/* Warehouse Selection */}
-                                    <div className="space-y-2">
-                                        <Label
-                                            htmlFor="warehouse"
-                                            className="font-mono text-xs flex items-center gap-2"
-                                        >
-                                            <Warehouse className="h-3 w-3" />
-                                            WAREHOUSE *
-                                        </Label>
-                                        <Select
-                                            value={formData.warehouse_id}
-                                            onValueChange={(value) =>
-                                                setFormData({
-                                                    ...formData,
-                                                    warehouse_id: value,
-                                                })
-                                            }
-                                            required
-                                        >
-                                            <SelectTrigger className="font-mono">
-                                                <SelectValue placeholder="Select warehouse" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {warehouses.map((wh) => (
-                                                    <SelectItem
-                                                        key={wh.id}
-                                                        value={wh.id}
-                                                        className="font-mono"
-                                                    >
-                                                        {wh.name} · {wh.city}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
+                    canCreateZone ? (
+                        <Dialog
+                            open={isCreateOpen}
+                            onOpenChange={(open) => {
+                                setIsCreateOpen(open);
+                                if (!open) {
+                                    setEditingZone(null);
+                                    resetForm();
+                                }
+                            }}
+                        >
+                            <DialogTrigger asChild>
+                                <Button className="gap-2 font-mono">
+                                    <Plus className="h-4 w-4" />
+                                    NEW ZONE
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-2xl">
+                                <DialogHeader>
+                                    <DialogTitle className="font-mono">
+                                        {editingZone ? "EDIT ZONE" : "CREATE NEW ZONE"}
+                                    </DialogTitle>
+                                    <DialogDescription className="font-mono text-xs">
+                                        {editingZone
+                                            ? "Update zone details and assignments"
+                                            : "Allocate company-exclusive area within warehouse"}
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <form onSubmit={handleSubmit} className="space-y-6">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        {/* Warehouse Selection */}
+                                        <div className="space-y-2">
+                                            <Label
+                                                htmlFor="warehouse"
+                                                className="font-mono text-xs flex items-center gap-2"
+                                            >
+                                                <Warehouse className="h-3 w-3" />
+                                                WAREHOUSE *
+                                            </Label>
+                                            <Select
+                                                value={formData.warehouse_id}
+                                                onValueChange={(value) =>
+                                                    setFormData({
+                                                        ...formData,
+                                                        warehouse_id: value,
+                                                    })
+                                                }
+                                                required
+                                            >
+                                                <SelectTrigger className="font-mono">
+                                                    <SelectValue placeholder="Select warehouse" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {warehouses.map((wh) => (
+                                                        <SelectItem
+                                                            key={wh.id}
+                                                            value={wh.id}
+                                                            className="font-mono"
+                                                        >
+                                                            {wh.name} · {wh.city}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+
+                                        {/* Company Selection */}
+                                        <div className="space-y-2">
+                                            <Label
+                                                htmlFor="company"
+                                                className="font-mono text-xs flex items-center gap-2"
+                                            >
+                                                <Building2 className="h-3 w-3" />
+                                                COMPANY *
+                                            </Label>
+                                            <Select
+                                                value={formData.company_id}
+                                                onValueChange={(value) =>
+                                                    setFormData({
+                                                        ...formData,
+                                                        company_id: value,
+                                                    })
+                                                }
+                                                required
+                                            >
+                                                <SelectTrigger className="font-mono">
+                                                    <SelectValue placeholder="Select company" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {companies.map((co) => (
+                                                        <SelectItem
+                                                            key={co.id}
+                                                            value={co.id}
+                                                            className="font-mono"
+                                                        >
+                                                            {co.name}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
                                     </div>
 
-                                    {/* Company Selection */}
+                                    {/* Zone Name */}
                                     <div className="space-y-2">
-                                        <Label
-                                            htmlFor="company"
-                                            className="font-mono text-xs flex items-center gap-2"
-                                        >
-                                            <Building2 className="h-3 w-3" />
-                                            COMPANY *
+                                        <Label htmlFor="name" className="font-mono text-xs">
+                                            ZONE NAME *
                                         </Label>
-                                        <Select
-                                            value={formData.company_id}
-                                            onValueChange={(value) =>
+                                        <Input
+                                            id="name"
+                                            value={formData.name}
+                                            onChange={(e) =>
                                                 setFormData({
                                                     ...formData,
-                                                    company_id: value,
+                                                    name: e.target.value,
                                                 })
                                             }
+                                            placeholder="e.g., Zone A"
                                             required
-                                        >
-                                            <SelectTrigger className="font-mono">
-                                                <SelectValue placeholder="Select company" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {companies.map((co) => (
-                                                    <SelectItem
-                                                        key={co.id}
-                                                        value={co.id}
-                                                        className="font-mono"
-                                                    >
-                                                        {co.name}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
+                                            className="font-mono"
+                                        />
+                                        <p className="text-xs text-muted-foreground font-mono">
+                                            Must be unique per warehouse-company combination
+                                        </p>
                                     </div>
-                                </div>
 
-                                {/* Zone Name */}
-                                <div className="space-y-2">
-                                    <Label htmlFor="name" className="font-mono text-xs">
-                                        ZONE NAME *
-                                    </Label>
-                                    <Input
-                                        id="name"
-                                        value={formData.name}
-                                        onChange={(e) =>
-                                            setFormData({
-                                                ...formData,
-                                                name: e.target.value,
-                                            })
-                                        }
-                                        placeholder="e.g., Zone A"
-                                        required
-                                        className="font-mono"
-                                    />
-                                    <p className="text-xs text-muted-foreground font-mono">
-                                        Must be unique per warehouse-company combination
-                                    </p>
-                                </div>
+                                    {/* Zone Capacity */}
+                                    <div className="space-y-2">
+                                        <Label htmlFor="capacity" className="font-mono text-xs">
+                                            CAPACITY
+                                        </Label>
+                                        <Input
+                                            id="capacity"
+                                            type="number"
+                                            min={1}
+                                            value={formData.capacity}
+                                            onChange={(e) =>
+                                                setFormData({
+                                                    ...formData,
+                                                    capacity: e.target.value,
+                                                })
+                                            }
+                                            placeholder="e.g., 200"
+                                            className="font-mono"
+                                        />
+                                    </div>
 
-                                {/* Zone Capacity */}
-                                <div className="space-y-2">
-                                    <Label htmlFor="capacity" className="font-mono text-xs">
-                                        CAPACITY
-                                    </Label>
-                                    <Input
-                                        id="capacity"
-                                        type="number"
-                                        min={1}
-                                        value={formData.capacity}
-                                        onChange={(e) =>
-                                            setFormData({
-                                                ...formData,
-                                                capacity: e.target.value,
-                                            })
-                                        }
-                                        placeholder="e.g., 200"
-                                        className="font-mono"
-                                    />
-                                </div>
+                                    {/* Zone Description */}
+                                    <div className="space-y-2">
+                                        <Label htmlFor="description" className="font-mono text-xs">
+                                            DESCRIPTION
+                                        </Label>
+                                        <Input
+                                            id="description"
+                                            value={formData.description}
+                                            onChange={(e) =>
+                                                setFormData({
+                                                    ...formData,
+                                                    description: e.target.value,
+                                                })
+                                            }
+                                            placeholder="Optional zone description"
+                                            className="font-mono"
+                                        />
+                                    </div>
 
-                                {/* Zone Description */}
-                                <div className="space-y-2">
-                                    <Label htmlFor="description" className="font-mono text-xs">
-                                        DESCRIPTION
-                                    </Label>
-                                    <Input
-                                        id="description"
-                                        value={formData.description}
-                                        onChange={(e) =>
-                                            setFormData({
-                                                ...formData,
-                                                description: e.target.value,
-                                            })
-                                        }
-                                        placeholder="Optional zone description"
-                                        className="font-mono"
-                                    />
-                                </div>
-
-                                <div className="flex justify-end gap-3 pt-4 border-t">
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        onClick={() => {
-                                            setIsCreateOpen(false);
-                                            setEditingZone(null);
-                                            resetForm();
-                                        }}
-                                        disabled={
-                                            createMutation.isPending || updateMutation.isPending
-                                        }
-                                        className="font-mono"
-                                    >
-                                        CANCEL
-                                    </Button>
-                                    <Button
-                                        type="submit"
-                                        disabled={
-                                            createMutation.isPending || updateMutation.isPending
-                                        }
-                                        className="font-mono"
-                                    >
-                                        {createMutation.isPending || updateMutation.isPending
-                                            ? "PROCESSING..."
-                                            : editingZone
-                                              ? "UPDATE"
-                                              : "CREATE"}
-                                    </Button>
-                                </div>
-                            </form>
-                        </DialogContent>
-                    </Dialog>
+                                    <div className="flex justify-end gap-3 pt-4 border-t">
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            onClick={() => {
+                                                setIsCreateOpen(false);
+                                                setEditingZone(null);
+                                                resetForm();
+                                            }}
+                                            disabled={
+                                                createMutation.isPending || updateMutation.isPending
+                                            }
+                                            className="font-mono"
+                                        >
+                                            CANCEL
+                                        </Button>
+                                        <Button
+                                            type="submit"
+                                            disabled={
+                                                createMutation.isPending || updateMutation.isPending
+                                            }
+                                            className="font-mono"
+                                        >
+                                            {createMutation.isPending || updateMutation.isPending
+                                                ? "PROCESSING..."
+                                                : editingZone
+                                                  ? "UPDATE"
+                                                  : "CREATE"}
+                                        </Button>
+                                    </div>
+                                </form>
+                            </DialogContent>
+                        </Dialog>
+                    ) : undefined
                 }
             />
 
@@ -549,40 +558,52 @@ export default function ZonesPage() {
                                             )}
                                         </TableCell>
                                         <TableCell>
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                    >
-                                                        <MoreVertical className="h-4 w-4" />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end">
-                                                    <DropdownMenuItem
-                                                        onClick={() => openEditDialog(zone)}
-                                                        className="font-mono text-xs"
-                                                    >
-                                                        <Pencil className="h-3.5 w-3.5 mr-2" />
-                                                        Edit Zone
-                                                    </DropdownMenuItem>
-
-                                                    <DropdownMenuItem
-                                                        onClick={() => setConfirmDelete(zone)}
-                                                        className={`font-mono text-xs ${zone.is_active ? "text-destructive" : "text-primary"}`}
-                                                    >
-                                                        {zone.is_active ? (
-                                                            <Trash2 className="h-3.5 w-3.5 mr-2" />
-                                                        ) : (
-                                                            <Undo2 className="h-3.5 w-3.5 mr-2" />
+                                            {canManageZones ? (
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                        >
+                                                            <MoreVertical className="h-4 w-4" />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end">
+                                                        {canUpdateZone && (
+                                                            <DropdownMenuItem
+                                                                onClick={() => openEditDialog(zone)}
+                                                                className="font-mono text-xs"
+                                                            >
+                                                                <Pencil className="h-3.5 w-3.5 mr-2" />
+                                                                Edit Zone
+                                                            </DropdownMenuItem>
                                                         )}
-                                                        {zone.is_active
-                                                            ? "Delete Zone"
-                                                            : "Unarchive Zone"}
-                                                    </DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
+
+                                                        {canDeleteZone && (
+                                                            <DropdownMenuItem
+                                                                onClick={() =>
+                                                                    setConfirmDelete(zone)
+                                                                }
+                                                                className={`font-mono text-xs ${zone.is_active ? "text-destructive" : "text-primary"}`}
+                                                            >
+                                                                {zone.is_active ? (
+                                                                    <Trash2 className="h-3.5 w-3.5 mr-2" />
+                                                                ) : (
+                                                                    <Undo2 className="h-3.5 w-3.5 mr-2" />
+                                                                )}
+                                                                {zone.is_active
+                                                                    ? "Delete Zone"
+                                                                    : "Unarchive Zone"}
+                                                            </DropdownMenuItem>
+                                                        )}
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            ) : (
+                                                <span className="text-xs text-muted-foreground">
+                                                    -
+                                                </span>
+                                            )}
                                         </TableCell>
                                     </TableRow>
                                 ))}

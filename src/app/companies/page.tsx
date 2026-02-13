@@ -53,14 +53,21 @@ import { toast } from "sonner";
 import type { Company } from "@/types";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useUploadImage } from "@/hooks/use-assets";
+import { useToken } from "@/lib/auth/use-token";
+import { hasPermission } from "@/lib/auth/permissions";
 
 export default function CompaniesPage() {
+    const { user } = useToken();
     const [searchQuery, setSearchQuery] = useState("");
     const [includeArchived, setIncludeArchived] = useState(false);
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [editingCompany, setEditingCompany] = useState<Company | null>(null);
     const [confirmArchive, setConfirmArchive] = useState<Company | null>(null);
     const [confirmUnarchive, setConfirmUnarchive] = useState<Company | null>(null);
+    const canCreateCompany = hasPermission(user, "companies:create");
+    const canUpdateCompany = hasPermission(user, "companies:update");
+    const canArchiveCompany = hasPermission(user, "companies:archive");
+    const canManageCompanies = canUpdateCompany || canArchiveCompany;
 
     // Create/Edit form state
     const [formData, setFormData] = useState({
@@ -326,375 +333,391 @@ export default function CompaniesPage() {
                                     {total.toString().padStart(3, "0")}
                                 </div>
                             </div>
-                            <Dialog
-                                open={isCreateOpen}
-                                onOpenChange={(open) => {
-                                    setIsCreateOpen(open);
-                                    if (!open) {
-                                        setEditingCompany(null);
-                                        resetForm();
-                                    }
-                                }}
-                            >
-                                <DialogTrigger asChild>
-                                    <Button className="gap-2 font-mono">
-                                        <Plus className="h-4 w-4" />
-                                        NEW COMPANY
-                                    </Button>
-                                </DialogTrigger>
-                                <DialogContent className="max-w-2xl max-h-[calc(100vh-10rem)] overflow-y-auto">
-                                    <DialogHeader>
-                                        <DialogTitle className="font-mono">
-                                            {editingCompany ? "EDIT COMPANY" : "CREATE NEW COMPANY"}
-                                        </DialogTitle>
-                                        <DialogDescription className="font-mono text-xs">
-                                            {editingCompany
-                                                ? "Update company details and configuration"
-                                                : "Add new tenant entity to the system"}
-                                        </DialogDescription>
-                                    </DialogHeader>
-                                    <form onSubmit={handleSubmit} className="space-y-6">
-                                        {/* Company Name */}
-                                        <div className="space-y-2">
-                                            <Label htmlFor="name" className="font-mono text-xs">
-                                                COMPANY NAME *
-                                            </Label>
-                                            <Input
-                                                id="name"
-                                                value={formData.name}
-                                                onChange={(e) =>
-                                                    setFormData({
-                                                        ...formData,
-                                                        name: e.target.value,
-                                                    })
-                                                }
-                                                placeholder="e.g., Pernod Ricard"
-                                                required
-                                                className="font-mono"
-                                            />
-                                        </div>
-
-                                        {/* Domain */}
-                                        <div className="space-y-2">
-                                            <Label htmlFor="domain" className="font-mono text-xs">
-                                                DOMAIN *
-                                            </Label>
-                                            <Input
-                                                id="domain"
-                                                value={formData.domain}
-                                                onChange={(e) =>
-                                                    setFormData({
-                                                        ...formData,
-                                                        domain: e.target.value,
-                                                    })
-                                                }
-                                                placeholder="client, custom.com, sub.custom.com"
-                                                className="font-mono"
-                                                required
-                                            />
-                                        </div>
-
-                                        {/* Platform Margin */}
-                                        <div className="space-y-2">
-                                            <Label
-                                                htmlFor="margin"
-                                                className="font-mono text-xs flex items-center gap-2"
-                                            >
-                                                <Percent className="h-3 w-3" />
-                                                PLATFORM MARGIN PERCENT
-                                            </Label>
-                                            <div className="flex items-center gap-2">
+                            {canCreateCompany && (
+                                <Dialog
+                                    open={isCreateOpen}
+                                    onOpenChange={(open) => {
+                                        setIsCreateOpen(open);
+                                        if (!open) {
+                                            setEditingCompany(null);
+                                            resetForm();
+                                        }
+                                    }}
+                                >
+                                    <DialogTrigger asChild>
+                                        <Button className="gap-2 font-mono">
+                                            <Plus className="h-4 w-4" />
+                                            NEW COMPANY
+                                        </Button>
+                                    </DialogTrigger>
+                                    <DialogContent className="max-w-2xl max-h-[calc(100vh-10rem)] overflow-y-auto">
+                                        <DialogHeader>
+                                            <DialogTitle className="font-mono">
+                                                {editingCompany
+                                                    ? "EDIT COMPANY"
+                                                    : "CREATE NEW COMPANY"}
+                                            </DialogTitle>
+                                            <DialogDescription className="font-mono text-xs">
+                                                {editingCompany
+                                                    ? "Update company details and configuration"
+                                                    : "Add new tenant entity to the system"}
+                                            </DialogDescription>
+                                        </DialogHeader>
+                                        <form onSubmit={handleSubmit} className="space-y-6">
+                                            {/* Company Name */}
+                                            <div className="space-y-2">
+                                                <Label htmlFor="name" className="font-mono text-xs">
+                                                    COMPANY NAME *
+                                                </Label>
                                                 <Input
-                                                    id="margin"
-                                                    type="number"
-                                                    step="0.01"
-                                                    min="0"
-                                                    value={formData.platform_margin_percent}
+                                                    id="name"
+                                                    value={formData.name}
                                                     onChange={(e) =>
                                                         setFormData({
                                                             ...formData,
-                                                            platform_margin_percent: parseFloat(
+                                                            name: e.target.value,
+                                                        })
+                                                    }
+                                                    placeholder="e.g., Pernod Ricard"
+                                                    required
+                                                    className="font-mono"
+                                                />
+                                            </div>
+
+                                            {/* Domain */}
+                                            <div className="space-y-2">
+                                                <Label
+                                                    htmlFor="domain"
+                                                    className="font-mono text-xs"
+                                                >
+                                                    DOMAIN *
+                                                </Label>
+                                                <Input
+                                                    id="domain"
+                                                    value={formData.domain}
+                                                    onChange={(e) =>
+                                                        setFormData({
+                                                            ...formData,
+                                                            domain: e.target.value,
+                                                        })
+                                                    }
+                                                    placeholder="client, custom.com, sub.custom.com"
+                                                    className="font-mono"
+                                                    required
+                                                />
+                                            </div>
+
+                                            {/* Platform Margin */}
+                                            <div className="space-y-2">
+                                                <Label
+                                                    htmlFor="margin"
+                                                    className="font-mono text-xs flex items-center gap-2"
+                                                >
+                                                    <Percent className="h-3 w-3" />
+                                                    PLATFORM MARGIN PERCENT
+                                                </Label>
+                                                <div className="flex items-center gap-2">
+                                                    <Input
+                                                        id="margin"
+                                                        type="number"
+                                                        step="0.01"
+                                                        min="0"
+                                                        value={formData.platform_margin_percent}
+                                                        onChange={(e) =>
+                                                            setFormData({
+                                                                ...formData,
+                                                                platform_margin_percent: parseFloat(
+                                                                    e.target.value
+                                                                ),
+                                                            })
+                                                        }
+                                                        className="font-mono"
+                                                    />
+                                                    <span className="text-sm text-muted-foreground font-mono">
+                                                        %
+                                                    </span>
+                                                </div>
+                                                {/* <p className="text-xs text-muted-foreground font-mono">
+												Default margin applied to orders (2 decimal places)
+											</p> */}
+                                            </div>
+
+                                            {/* Warehouse Ops Rate */}
+                                            <div className="space-y-2">
+                                                <Label
+                                                    htmlFor="warehouse_ops_rate"
+                                                    className="font-mono text-xs flex items-center gap-2"
+                                                >
+                                                    WAREHOUSE OPS RATE
+                                                </Label>
+                                                <Input
+                                                    id="warehouse_ops_rate"
+                                                    type="number"
+                                                    step="0.01"
+                                                    min="0"
+                                                    value={formData.warehouse_ops_rate}
+                                                    onChange={(e) =>
+                                                        setFormData({
+                                                            ...formData,
+                                                            warehouse_ops_rate: parseFloat(
                                                                 e.target.value
                                                             ),
                                                         })
                                                     }
                                                     className="font-mono"
                                                 />
-                                                <span className="text-sm text-muted-foreground font-mono">
-                                                    %
-                                                </span>
+                                                <p className="text-xs text-muted-foreground font-mono">
+                                                    Default rate applied to orders (2 decimal
+                                                    places)
+                                                </p>
                                             </div>
-                                            {/* <p className="text-xs text-muted-foreground font-mono">
-												Default margin applied to orders (2 decimal places)
-											</p> */}
-                                        </div>
 
-                                        {/* Warehouse Ops Rate */}
-                                        <div className="space-y-2">
-                                            <Label
-                                                htmlFor="warehouse_ops_rate"
-                                                className="font-mono text-xs flex items-center gap-2"
-                                            >
-                                                WAREHOUSE OPS RATE
-                                            </Label>
-                                            <Input
-                                                id="warehouse_ops_rate"
-                                                type="number"
-                                                step="0.01"
-                                                min="0"
-                                                value={formData.warehouse_ops_rate}
-                                                onChange={(e) =>
-                                                    setFormData({
-                                                        ...formData,
-                                                        warehouse_ops_rate: parseFloat(
-                                                            e.target.value
-                                                        ),
-                                                    })
-                                                }
-                                                className="font-mono"
-                                            />
-                                            <p className="text-xs text-muted-foreground font-mono">
-                                                Default rate applied to orders (2 decimal places)
-                                            </p>
-                                        </div>
-
-                                        {/* Contact Information */}
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="space-y-2">
-                                                <Label
-                                                    htmlFor="email"
-                                                    className="font-mono text-xs flex items-center gap-2"
-                                                >
-                                                    <Mail className="h-3 w-3" />
-                                                    CONTACT EMAIL
-                                                </Label>
-                                                <Input
-                                                    id="email"
-                                                    type="email"
-                                                    value={formData.contact_email}
-                                                    onChange={(e) =>
-                                                        setFormData({
-                                                            ...formData,
-                                                            contact_email: e.target.value,
-                                                        })
-                                                    }
-                                                    placeholder="contact@company.com"
-                                                    className="font-mono"
-                                                />
+                                            {/* Contact Information */}
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div className="space-y-2">
+                                                    <Label
+                                                        htmlFor="email"
+                                                        className="font-mono text-xs flex items-center gap-2"
+                                                    >
+                                                        <Mail className="h-3 w-3" />
+                                                        CONTACT EMAIL
+                                                    </Label>
+                                                    <Input
+                                                        id="email"
+                                                        type="email"
+                                                        value={formData.contact_email}
+                                                        onChange={(e) =>
+                                                            setFormData({
+                                                                ...formData,
+                                                                contact_email: e.target.value,
+                                                            })
+                                                        }
+                                                        placeholder="contact@company.com"
+                                                        className="font-mono"
+                                                    />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label
+                                                        htmlFor="phone"
+                                                        className="font-mono text-xs flex items-center gap-2"
+                                                    >
+                                                        <Phone className="h-3 w-3" />
+                                                        CONTACT PHONE
+                                                    </Label>
+                                                    <Input
+                                                        id="phone"
+                                                        value={formData.contact_phone}
+                                                        onChange={(e) =>
+                                                            setFormData({
+                                                                ...formData,
+                                                                contact_phone: e.target.value,
+                                                            })
+                                                        }
+                                                        placeholder="+971-50-123-4567"
+                                                        className="font-mono"
+                                                    />
+                                                </div>
                                             </div>
-                                            <div className="space-y-2">
-                                                <Label
-                                                    htmlFor="phone"
-                                                    className="font-mono text-xs flex items-center gap-2"
-                                                >
-                                                    <Phone className="h-3 w-3" />
-                                                    CONTACT PHONE
-                                                </Label>
-                                                <Input
-                                                    id="phone"
-                                                    value={formData.contact_phone}
-                                                    onChange={(e) =>
-                                                        setFormData({
-                                                            ...formData,
-                                                            contact_phone: e.target.value,
-                                                        })
-                                                    }
-                                                    placeholder="+971-50-123-4567"
-                                                    className="font-mono"
-                                                />
-                                            </div>
-                                        </div>
 
-                                        <div className="px-2 py-2">
-                                            <div className="flex items-center gap-2">
-                                                <div className="h-px flex-1 bg-border" />
-                                                <span className="font-mono text-muted-foreground tracking-[0.2em] uppercase">
-                                                    Brand Settings
-                                                </span>
-                                                <div className="h-px flex-1 bg-border" />
+                                            <div className="px-2 py-2">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="h-px flex-1 bg-border" />
+                                                    <span className="font-mono text-muted-foreground tracking-[0.2em] uppercase">
+                                                        Brand Settings
+                                                    </span>
+                                                    <div className="h-px flex-1 bg-border" />
+                                                </div>
                                             </div>
-                                        </div>
 
-                                        {/* Settings */}
-                                        <div className="space-y-6">
-                                            {/* Title */}
-                                            <div className="space-y-2">
-                                                <Label className="font-mono text-xs flex items-center gap-2">
-                                                    TITLE (Optional)
-                                                </Label>
-                                                <Input
-                                                    id="title"
-                                                    value={formData.settings.branding.title}
-                                                    onChange={(e) =>
-                                                        setFormData({
-                                                            ...formData,
-                                                            settings: {
-                                                                ...formData.settings,
-                                                                branding: {
-                                                                    ...formData.settings.branding,
-                                                                    title: e.target.value,
+                                            {/* Settings */}
+                                            <div className="space-y-6">
+                                                {/* Title */}
+                                                <div className="space-y-2">
+                                                    <Label className="font-mono text-xs flex items-center gap-2">
+                                                        TITLE (Optional)
+                                                    </Label>
+                                                    <Input
+                                                        id="title"
+                                                        value={formData.settings.branding.title}
+                                                        onChange={(e) =>
+                                                            setFormData({
+                                                                ...formData,
+                                                                settings: {
+                                                                    ...formData.settings,
+                                                                    branding: {
+                                                                        ...formData.settings
+                                                                            .branding,
+                                                                        title: e.target.value,
+                                                                    },
                                                                 },
-                                                            },
-                                                        })
-                                                    }
-                                                    placeholder="Company title"
-                                                />
-                                            </div>
+                                                            })
+                                                        }
+                                                        placeholder="Company title"
+                                                    />
+                                                </div>
 
-                                            {/* Primary color */}
-                                            <div className="space-y-2">
-                                                <Label className="font-mono text-xs flex items-center gap-2">
-                                                    PRIMARY COLOR (Optional)
-                                                </Label>
-                                                <Input
-                                                    id="primary-color"
-                                                    value={formData.settings.branding.primary_color}
-                                                    type="color"
-                                                    className="size-14 border-none p-0"
-                                                    onChange={(e) =>
-                                                        setFormData({
-                                                            ...formData,
-                                                            settings: {
-                                                                ...formData.settings,
-                                                                branding: {
-                                                                    ...formData.settings.branding,
-                                                                    primary_color: e.target.value,
+                                                {/* Primary color */}
+                                                <div className="space-y-2">
+                                                    <Label className="font-mono text-xs flex items-center gap-2">
+                                                        PRIMARY COLOR (Optional)
+                                                    </Label>
+                                                    <Input
+                                                        id="primary-color"
+                                                        value={
+                                                            formData.settings.branding.primary_color
+                                                        }
+                                                        type="color"
+                                                        className="size-14 border-none p-0"
+                                                        onChange={(e) =>
+                                                            setFormData({
+                                                                ...formData,
+                                                                settings: {
+                                                                    ...formData.settings,
+                                                                    branding: {
+                                                                        ...formData.settings
+                                                                            .branding,
+                                                                        primary_color:
+                                                                            e.target.value,
+                                                                    },
                                                                 },
-                                                            },
-                                                        })
-                                                    }
-                                                />
-                                            </div>
+                                                            })
+                                                        }
+                                                    />
+                                                </div>
 
-                                            {/* Secondary color */}
-                                            <div className="space-y-2">
-                                                <Label className="font-mono text-xs flex items-center gap-2">
-                                                    SECONDARY COLOR (Optional)
-                                                </Label>
-                                                <Input
-                                                    id="secondary-color"
-                                                    value={
-                                                        formData.settings.branding.secondary_color
-                                                    }
-                                                    type="color"
-                                                    className="size-14 border-none p-0"
-                                                    onChange={(e) =>
-                                                        setFormData({
-                                                            ...formData,
-                                                            settings: {
-                                                                ...formData.settings,
-                                                                branding: {
-                                                                    ...formData.settings.branding,
-                                                                    secondary_color: e.target.value,
+                                                {/* Secondary color */}
+                                                <div className="space-y-2">
+                                                    <Label className="font-mono text-xs flex items-center gap-2">
+                                                        SECONDARY COLOR (Optional)
+                                                    </Label>
+                                                    <Input
+                                                        id="secondary-color"
+                                                        value={
+                                                            formData.settings.branding
+                                                                .secondary_color
+                                                        }
+                                                        type="color"
+                                                        className="size-14 border-none p-0"
+                                                        onChange={(e) =>
+                                                            setFormData({
+                                                                ...formData,
+                                                                settings: {
+                                                                    ...formData.settings,
+                                                                    branding: {
+                                                                        ...formData.settings
+                                                                            .branding,
+                                                                        secondary_color:
+                                                                            e.target.value,
+                                                                    },
                                                                 },
-                                                            },
-                                                        })
-                                                    }
-                                                />
-                                            </div>
+                                                            })
+                                                        }
+                                                    />
+                                                </div>
 
-                                            {/* Company Logo */}
-                                            <div className="space-y-2">
-                                                <Label className="font-mono text-xs flex items-center gap-2">
-                                                    <ImageIcon className="h-3 w-3" />
-                                                    COMPANY LOGO (Optional)
-                                                </Label>
+                                                {/* Company Logo */}
+                                                <div className="space-y-2">
+                                                    <Label className="font-mono text-xs flex items-center gap-2">
+                                                        <ImageIcon className="h-3 w-3" />
+                                                        COMPANY LOGO (Optional)
+                                                    </Label>
 
-                                                {logoPreview ? (
-                                                    <div className="relative group border-2 border-border rounded-lg p-4 bg-muted/30">
-                                                        <div className="flex items-center gap-4">
-                                                            <div className="relative h-20 w-20 rounded-lg overflow-hidden border border-border bg-background shrink-0">
-                                                                <img
-                                                                    src={logoPreview}
-                                                                    alt="Company logo"
-                                                                    className="w-full h-full object-contain"
-                                                                />
+                                                    {logoPreview ? (
+                                                        <div className="relative group border-2 border-border rounded-lg p-4 bg-muted/30">
+                                                            <div className="flex items-center gap-4">
+                                                                <div className="relative h-20 w-20 rounded-lg overflow-hidden border border-border bg-background shrink-0">
+                                                                    <img
+                                                                        src={logoPreview}
+                                                                        alt="Company logo"
+                                                                        className="w-full h-full object-contain"
+                                                                    />
+                                                                </div>
+                                                                <div className="flex-1">
+                                                                    <p className="text-sm font-mono font-semibold">
+                                                                        Logo uploaded
+                                                                    </p>
+                                                                    <p className="text-xs text-muted-foreground font-mono mt-1">
+                                                                        {selectedLogo
+                                                                            ? selectedLogo.name
+                                                                            : "Current logo"}
+                                                                    </p>
+                                                                </div>
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    onClick={handleRemoveLogo}
+                                                                    className="shrink-0"
+                                                                >
+                                                                    <X className="h-4 w-4" />
+                                                                </Button>
                                                             </div>
-                                                            <div className="flex-1">
-                                                                <p className="text-sm font-mono font-semibold">
-                                                                    Logo uploaded
-                                                                </p>
-                                                                <p className="text-xs text-muted-foreground font-mono mt-1">
-                                                                    {selectedLogo
-                                                                        ? selectedLogo.name
-                                                                        : "Current logo"}
-                                                                </p>
-                                                            </div>
-                                                            <Button
-                                                                type="button"
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                onClick={handleRemoveLogo}
-                                                                className="shrink-0"
-                                                            >
-                                                                <X className="h-4 w-4" />
-                                                            </Button>
                                                         </div>
-                                                    </div>
-                                                ) : (
-                                                    <div className="border-2 border-dashed border-border rounded-lg p-6 hover:border-primary/50 transition-colors">
-                                                        <input
-                                                            type="file"
-                                                            id="logo-upload"
-                                                            accept="image/png,image/jpg,image/jpeg,image/webp,image/svg+xml"
-                                                            onChange={handleLogoSelect}
-                                                            className="hidden"
-                                                            multiple={false}
-                                                        />
-                                                        <label
-                                                            htmlFor="logo-upload"
-                                                            className="cursor-pointer flex flex-col items-center"
-                                                        >
-                                                            <Upload className="h-8 w-8 text-muted-foreground mb-2" />
-                                                            <span className="text-sm font-mono text-muted-foreground">
-                                                                Click to upload logo
-                                                            </span>
-                                                            <span className="text-xs font-mono text-muted-foreground mt-1">
-                                                                PNG, JPG, WebP, SVG (max 5MB)
-                                                            </span>
-                                                        </label>
-                                                    </div>
-                                                )}
+                                                    ) : (
+                                                        <div className="border-2 border-dashed border-border rounded-lg p-6 hover:border-primary/50 transition-colors">
+                                                            <input
+                                                                type="file"
+                                                                id="logo-upload"
+                                                                accept="image/png,image/jpg,image/jpeg,image/webp,image/svg+xml"
+                                                                onChange={handleLogoSelect}
+                                                                className="hidden"
+                                                                multiple={false}
+                                                            />
+                                                            <label
+                                                                htmlFor="logo-upload"
+                                                                className="cursor-pointer flex flex-col items-center"
+                                                            >
+                                                                <Upload className="h-8 w-8 text-muted-foreground mb-2" />
+                                                                <span className="text-sm font-mono text-muted-foreground">
+                                                                    Click to upload logo
+                                                                </span>
+                                                                <span className="text-xs font-mono text-muted-foreground mt-1">
+                                                                    PNG, JPG, WebP, SVG (max 5MB)
+                                                                </span>
+                                                            </label>
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
-                                        </div>
 
-                                        {/* Actions */}
-                                        <div className="flex justify-end gap-3 pt-4 border-t">
-                                            <Button
-                                                type="button"
-                                                variant="outline"
-                                                onClick={() => {
-                                                    setIsCreateOpen(false);
-                                                    setEditingCompany(null);
-                                                    resetForm();
-                                                }}
-                                                disabled={
-                                                    createMutation.isPending ||
+                                            {/* Actions */}
+                                            <div className="flex justify-end gap-3 pt-4 border-t">
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    onClick={() => {
+                                                        setIsCreateOpen(false);
+                                                        setEditingCompany(null);
+                                                        resetForm();
+                                                    }}
+                                                    disabled={
+                                                        createMutation.isPending ||
+                                                        updateMutation.isPending
+                                                    }
+                                                    className="font-mono"
+                                                >
+                                                    CANCEL
+                                                </Button>
+                                                <Button
+                                                    type="submit"
+                                                    disabled={
+                                                        createMutation.isPending ||
+                                                        updateMutation.isPending
+                                                    }
+                                                    className="font-mono"
+                                                >
+                                                    {createMutation.isPending ||
                                                     updateMutation.isPending
-                                                }
-                                                className="font-mono"
-                                            >
-                                                CANCEL
-                                            </Button>
-                                            <Button
-                                                type="submit"
-                                                disabled={
-                                                    createMutation.isPending ||
-                                                    updateMutation.isPending
-                                                }
-                                                className="font-mono"
-                                            >
-                                                {createMutation.isPending ||
-                                                updateMutation.isPending
-                                                    ? "PROCESSING..."
-                                                    : editingCompany
-                                                      ? "UPDATE"
-                                                      : "CREATE"}
-                                            </Button>
-                                        </div>
-                                    </form>
-                                </DialogContent>
-                            </Dialog>
+                                                        ? "PROCESSING..."
+                                                        : editingCompany
+                                                          ? "UPDATE"
+                                                          : "CREATE"}
+                                                </Button>
+                                            </div>
+                                        </form>
+                                    </DialogContent>
+                                </Dialog>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -741,14 +764,16 @@ export default function CompaniesPage() {
                         <p className="font-mono text-sm text-muted-foreground">
                             NO COMPANIES FOUND
                         </p>
-                        <Button
-                            onClick={() => setIsCreateOpen(true)}
-                            variant="outline"
-                            className="font-mono text-xs"
-                        >
-                            <Plus className="h-3.5 w-3.5 mr-2" />
-                            CREATE FIRST COMPANY
-                        </Button>
+                        {canCreateCompany && (
+                            <Button
+                                onClick={() => setIsCreateOpen(true)}
+                                variant="outline"
+                                className="font-mono text-xs"
+                            >
+                                <Plus className="h-3.5 w-3.5 mr-2" />
+                                CREATE FIRST COMPANY
+                            </Button>
+                        )}
                     </div>
                 ) : (
                     <div className="border border-border rounded-lg overflow-hidden bg-card">
@@ -868,47 +893,58 @@ export default function CompaniesPage() {
                                             )}
                                         </TableCell>
                                         <TableCell>
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                    >
-                                                        <MoreVertical className="h-4 w-4" />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end">
-                                                    <DropdownMenuItem
-                                                        onClick={() => openEditDialog(company)}
-                                                        className="font-mono text-xs"
-                                                    >
-                                                        <Pencil className="h-3.5 w-3.5 mr-2" />
-                                                        Edit Company
-                                                    </DropdownMenuItem>
-                                                    {company.deleted_at ? (
-                                                        <DropdownMenuItem
-                                                            onClick={() =>
-                                                                setConfirmUnarchive(company)
-                                                            }
-                                                            className="font-mono text-xs text-primary"
+                                            {canManageCompanies ? (
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
                                                         >
-                                                            <Undo2 className="h-3.5 w-3.5 mr-2" />
-                                                            Unarchive Company
-                                                        </DropdownMenuItem>
-                                                    ) : (
-                                                        <DropdownMenuItem
-                                                            onClick={() =>
-                                                                setConfirmArchive(company)
-                                                            }
-                                                            className="font-mono text-xs text-destructive"
-                                                        >
-                                                            <Archive className="h-3.5 w-3.5 mr-2" />
-                                                            Archive Company
-                                                        </DropdownMenuItem>
-                                                    )}
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
+                                                            <MoreVertical className="h-4 w-4" />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end">
+                                                        {canUpdateCompany && (
+                                                            <DropdownMenuItem
+                                                                onClick={() =>
+                                                                    openEditDialog(company)
+                                                                }
+                                                                className="font-mono text-xs"
+                                                            >
+                                                                <Pencil className="h-3.5 w-3.5 mr-2" />
+                                                                Edit Company
+                                                            </DropdownMenuItem>
+                                                        )}
+                                                        {canArchiveCompany &&
+                                                            (company.deleted_at ? (
+                                                                <DropdownMenuItem
+                                                                    onClick={() =>
+                                                                        setConfirmUnarchive(company)
+                                                                    }
+                                                                    className="font-mono text-xs text-primary"
+                                                                >
+                                                                    <Undo2 className="h-3.5 w-3.5 mr-2" />
+                                                                    Unarchive Company
+                                                                </DropdownMenuItem>
+                                                            ) : (
+                                                                <DropdownMenuItem
+                                                                    onClick={() =>
+                                                                        setConfirmArchive(company)
+                                                                    }
+                                                                    className="font-mono text-xs text-destructive"
+                                                                >
+                                                                    <Archive className="h-3.5 w-3.5 mr-2" />
+                                                                    Archive Company
+                                                                </DropdownMenuItem>
+                                                            ))}
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            ) : (
+                                                <span className="text-xs text-muted-foreground">
+                                                    -
+                                                </span>
+                                            )}
                                         </TableCell>
                                     </TableRow>
                                 ))}

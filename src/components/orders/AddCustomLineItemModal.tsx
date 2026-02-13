@@ -88,7 +88,7 @@ export function AddCustomLineItemModal({
 
                     <div>
                         <Label>
-                            Total Amount (AED) <span className="text-destructive">*</span>
+                            Base Amount (AED) <span className="text-destructive">*</span>
                         </Label>
                         <Input
                             type="number"
@@ -99,7 +99,7 @@ export function AddCustomLineItemModal({
                             placeholder="200"
                         />
                         <p className="text-xs text-muted-foreground mt-1">
-                            Enter final amount (custom items are not subject to margin)
+                            Enter buy/base cost. Platform margin is applied during quote approval.
                         </p>
                     </div>
 
@@ -115,8 +115,8 @@ export function AddCustomLineItemModal({
 
                     <div className="bg-primary/10 border border-primary/20 rounded-md p-3">
                         <p className="text-xs text-primary">
-                            ℹ️ Custom items are entered as final amounts. The margin you've included
-                            in this price will NOT have platform margin applied again.
+                            ℹ️ Custom and reskin amounts are treated as base cost inputs, then
+                            margin is applied once by the pricing engine.
                         </p>
                     </div>
                 </div>

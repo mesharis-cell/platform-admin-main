@@ -61,6 +61,7 @@ export function LogisticsPricingReview({
                     <VehicleUpgradeSelector
                         orderId={orderId}
                         currentVehicle={order?.vehicle_type_id}
+                        currentTripType={order?.trip_type}
                         onSuccess={onSubmitSuccess}
                     />
                 </CardContent>

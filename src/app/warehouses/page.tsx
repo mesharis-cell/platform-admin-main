@@ -48,8 +48,11 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { useToken } from "@/lib/auth/use-token";
+import { hasPermission } from "@/lib/auth/permissions";
 
 export default function WarehousesPage() {
+    const { user } = useToken();
     const [searchQuery, setSearchQuery] = useState("");
     const [countryFilter, setCountryFilter] = useState("");
     const [cityFilter, setCityFilter] = useState("");
@@ -57,6 +60,10 @@ export default function WarehousesPage() {
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [editingWarehouse, setEditingWarehouse] = useState<WarehouseType | null>(null);
     const [confirmArchive, setConfirmArchive] = useState<WarehouseType | null>(null);
+    const canCreateWarehouse = hasPermission(user, "warehouses:create");
+    const canUpdateWarehouse = hasPermission(user, "warehouses:update");
+    const canArchiveWarehouse = hasPermission(user, "warehouses:archive");
+    const canManageWarehouses = canUpdateWarehouse || canArchiveWarehouse;
 
     const [formData, setFormData] = useState({
         name: "",
@@ -182,196 +189,205 @@ export default function WarehousesPage() {
                 description="Physical Locations · Capacity · Operations"
                 stats={{ label: "ACTIVE WAREHOUSES", value: total }}
                 actions={
-                    <Dialog
-                        open={isCreateOpen}
-                        onOpenChange={(open) => {
-                            setIsCreateOpen(open);
-                            if (!open) {
-                                setEditingWarehouse(null);
-                                resetForm();
-                            }
-                        }}
-                    >
-                        <DialogTrigger asChild>
-                            <Button className="gap-2 font-mono">
-                                <Plus className="h-4 w-4" />
-                                NEW WAREHOUSE
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-2xl">
-                            <DialogHeader>
-                                <DialogTitle className="font-mono">
-                                    {editingWarehouse ? "EDIT WAREHOUSE" : "CREATE NEW WAREHOUSE"}
-                                </DialogTitle>
-                                <DialogDescription className="font-mono text-xs">
-                                    {editingWarehouse
-                                        ? "Update warehouse details"
-                                        : "Add new warehouse to network"}
-                                </DialogDescription>
-                            </DialogHeader>
-                            <form onSubmit={handleSubmit} className="space-y-6">
-                                <div className="space-y-2">
-                                    <Label htmlFor="name" className="font-mono text-xs">
-                                        WAREHOUSE NAME *
-                                    </Label>
-                                    <Input
-                                        id="name"
-                                        value={formData.name}
-                                        onChange={(e) =>
-                                            setFormData({
-                                                ...formData,
-                                                name: e.target.value,
-                                            })
-                                        }
-                                        placeholder="e.g., Dubai Main Warehouse"
-                                        required
-                                        className="font-mono"
-                                    />
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4">
+                    canCreateWarehouse ? (
+                        <Dialog
+                            open={isCreateOpen}
+                            onOpenChange={(open) => {
+                                setIsCreateOpen(open);
+                                if (!open) {
+                                    setEditingWarehouse(null);
+                                    resetForm();
+                                }
+                            }}
+                        >
+                            <DialogTrigger asChild>
+                                <Button className="gap-2 font-mono">
+                                    <Plus className="h-4 w-4" />
+                                    NEW WAREHOUSE
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-2xl">
+                                <DialogHeader>
+                                    <DialogTitle className="font-mono">
+                                        {editingWarehouse
+                                            ? "EDIT WAREHOUSE"
+                                            : "CREATE NEW WAREHOUSE"}
+                                    </DialogTitle>
+                                    <DialogDescription className="font-mono text-xs">
+                                        {editingWarehouse
+                                            ? "Update warehouse details"
+                                            : "Add new warehouse to network"}
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <form onSubmit={handleSubmit} className="space-y-6">
                                     <div className="space-y-2">
-                                        <Label
-                                            htmlFor="country"
-                                            className="font-mono text-xs flex items-center gap-2"
-                                        >
-                                            <Globe className="h-3 w-3" />
-                                            COUNTRY *
+                                        <Label htmlFor="name" className="font-mono text-xs">
+                                            WAREHOUSE NAME *
                                         </Label>
                                         <Input
-                                            id="country"
-                                            value={formData.country}
+                                            id="name"
+                                            value={formData.name}
                                             onChange={(e) =>
                                                 setFormData({
                                                     ...formData,
-                                                    country: e.target.value,
+                                                    name: e.target.value,
                                                 })
                                             }
-                                            placeholder="United Arab Emirates"
+                                            placeholder="e.g., Dubai Main Warehouse"
                                             required
                                             className="font-mono"
                                         />
                                     </div>
+
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label
+                                                htmlFor="country"
+                                                className="font-mono text-xs flex items-center gap-2"
+                                            >
+                                                <Globe className="h-3 w-3" />
+                                                COUNTRY *
+                                            </Label>
+                                            <Input
+                                                id="country"
+                                                value={formData.country}
+                                                onChange={(e) =>
+                                                    setFormData({
+                                                        ...formData,
+                                                        country: e.target.value,
+                                                    })
+                                                }
+                                                placeholder="United Arab Emirates"
+                                                required
+                                                className="font-mono"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label
+                                                htmlFor="city"
+                                                className="font-mono text-xs flex items-center gap-2"
+                                            >
+                                                <MapPin className="h-3 w-3" />
+                                                CITY *
+                                            </Label>
+                                            <Input
+                                                id="city"
+                                                value={formData.city}
+                                                onChange={(e) =>
+                                                    setFormData({
+                                                        ...formData,
+                                                        city: e.target.value,
+                                                    })
+                                                }
+                                                placeholder="Dubai"
+                                                required
+                                                className="font-mono"
+                                            />
+                                        </div>
+                                    </div>
+
                                     <div className="space-y-2">
-                                        <Label
-                                            htmlFor="city"
-                                            className="font-mono text-xs flex items-center gap-2"
-                                        >
-                                            <MapPin className="h-3 w-3" />
-                                            CITY *
+                                        <Label htmlFor="address" className="font-mono text-xs">
+                                            FULL ADDRESS *
                                         </Label>
                                         <Input
-                                            id="city"
-                                            value={formData.city}
+                                            id="address"
+                                            value={formData.address}
                                             onChange={(e) =>
                                                 setFormData({
                                                     ...formData,
-                                                    city: e.target.value,
+                                                    address: e.target.value,
                                                 })
                                             }
-                                            placeholder="Dubai"
+                                            placeholder="Building 123, Street Name, Area, Dubai, UAE"
                                             required
                                             className="font-mono"
                                         />
                                     </div>
-                                </div>
 
-                                <div className="space-y-2">
-                                    <Label htmlFor="address" className="font-mono text-xs">
-                                        FULL ADDRESS *
-                                    </Label>
-                                    <Input
-                                        id="address"
-                                        value={formData.address}
-                                        onChange={(e) =>
-                                            setFormData({
-                                                ...formData,
-                                                address: e.target.value,
-                                            })
-                                        }
-                                        placeholder="Building 123, Street Name, Area, Dubai, UAE"
-                                        required
-                                        className="font-mono"
-                                    />
-                                </div>
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-full space-y-2">
+                                            <Label htmlFor="latitude" className="font-mono text-xs">
+                                                LATITUDE
+                                            </Label>
+                                            <Input
+                                                id="latitude"
+                                                type="number"
+                                                value={formData.coordinates?.lat?.toString()}
+                                                onChange={(e) =>
+                                                    setFormData({
+                                                        ...formData,
+                                                        coordinates: {
+                                                            lat: Number(e.target.value),
+                                                            lng:
+                                                                formData.coordinates?.lng ||
+                                                                undefined,
+                                                        },
+                                                    })
+                                                }
+                                                className="font-mono"
+                                            />
+                                        </div>
 
-                                <div className="flex items-center gap-4">
-                                    <div className="w-full space-y-2">
-                                        <Label htmlFor="latitude" className="font-mono text-xs">
-                                            LATITUDE
-                                        </Label>
-                                        <Input
-                                            id="latitude"
-                                            type="number"
-                                            value={formData.coordinates?.lat?.toString()}
-                                            onChange={(e) =>
-                                                setFormData({
-                                                    ...formData,
-                                                    coordinates: {
-                                                        lat: Number(e.target.value),
-                                                        lng: formData.coordinates?.lng || undefined,
-                                                    },
-                                                })
-                                            }
-                                            className="font-mono"
-                                        />
+                                        <div className="w-full space-y-2">
+                                            <Label
+                                                htmlFor="longitude"
+                                                className="font-mono text-xs"
+                                            >
+                                                LONGITUDE
+                                            </Label>
+                                            <Input
+                                                id="longitude"
+                                                type="number"
+                                                value={formData.coordinates?.lng?.toString()}
+                                                onChange={(e) =>
+                                                    setFormData({
+                                                        ...formData,
+                                                        coordinates: {
+                                                            lat: Number(formData.coordinates?.lat),
+                                                            lng: Number(e.target.value),
+                                                        },
+                                                    })
+                                                }
+                                                className="font-mono"
+                                            />
+                                        </div>
                                     </div>
 
-                                    <div className="w-full space-y-2">
-                                        <Label htmlFor="longitude" className="font-mono text-xs">
-                                            LONGITUDE
-                                        </Label>
-                                        <Input
-                                            id="longitude"
-                                            type="number"
-                                            value={formData.coordinates?.lng?.toString()}
-                                            onChange={(e) =>
-                                                setFormData({
-                                                    ...formData,
-                                                    coordinates: {
-                                                        lat: Number(formData.coordinates?.lat),
-                                                        lng: Number(e.target.value),
-                                                    },
-                                                })
+                                    <div className="flex justify-end gap-3 pt-4 border-t">
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            onClick={() => {
+                                                setIsCreateOpen(false);
+                                                setEditingWarehouse(null);
+                                                resetForm();
+                                            }}
+                                            disabled={
+                                                createMutation.isPending || updateMutation.isPending
                                             }
                                             className="font-mono"
-                                        />
+                                        >
+                                            CANCEL
+                                        </Button>
+                                        <Button
+                                            type="submit"
+                                            disabled={
+                                                createMutation.isPending || updateMutation.isPending
+                                            }
+                                            className="font-mono"
+                                        >
+                                            {createMutation.isPending || updateMutation.isPending
+                                                ? "PROCESSING..."
+                                                : editingWarehouse
+                                                  ? "UPDATE"
+                                                  : "CREATE"}
+                                        </Button>
                                     </div>
-                                </div>
-
-                                <div className="flex justify-end gap-3 pt-4 border-t">
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        onClick={() => {
-                                            setIsCreateOpen(false);
-                                            setEditingWarehouse(null);
-                                            resetForm();
-                                        }}
-                                        disabled={
-                                            createMutation.isPending || updateMutation.isPending
-                                        }
-                                        className="font-mono"
-                                    >
-                                        CANCEL
-                                    </Button>
-                                    <Button
-                                        type="submit"
-                                        disabled={
-                                            createMutation.isPending || updateMutation.isPending
-                                        }
-                                        className="font-mono"
-                                    >
-                                        {createMutation.isPending || updateMutation.isPending
-                                            ? "PROCESSING..."
-                                            : editingWarehouse
-                                              ? "UPDATE"
-                                              : "CREATE"}
-                                    </Button>
-                                </div>
-                            </form>
-                        </DialogContent>
-                    </Dialog>
+                                </form>
+                            </DialogContent>
+                        </Dialog>
+                    ) : undefined
                 }
             />
 
@@ -444,14 +460,16 @@ export default function WarehousesPage() {
                         <p className="font-mono text-sm text-muted-foreground">
                             NO WAREHOUSES FOUND
                         </p>
-                        <Button
-                            onClick={() => setIsCreateOpen(true)}
-                            variant="outline"
-                            className="font-mono text-xs"
-                        >
-                            <Plus className="h-3.5 w-3.5 mr-2" />
-                            CREATE FIRST WAREHOUSE
-                        </Button>
+                        {canCreateWarehouse && (
+                            <Button
+                                onClick={() => setIsCreateOpen(true)}
+                                variant="outline"
+                                className="font-mono text-xs"
+                            >
+                                <Plus className="h-3.5 w-3.5 mr-2" />
+                                CREATE FIRST WAREHOUSE
+                            </Button>
+                        )}
                     </div>
                 ) : (
                     <div className="border border-border rounded-lg overflow-hidden bg-card">
@@ -556,40 +574,54 @@ export default function WarehousesPage() {
                                             )}
                                         </TableCell>
                                         <TableCell>
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                    >
-                                                        <MoreVertical className="h-4 w-4" />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end">
-                                                    <DropdownMenuItem
-                                                        onClick={() => openEditDialog(warehouse)}
-                                                        className="font-mono text-xs"
-                                                    >
-                                                        <Pencil className="h-3.5 w-3.5 mr-2" />
-                                                        Edit Warehouse
-                                                    </DropdownMenuItem>
-
-                                                    <DropdownMenuItem
-                                                        onClick={() => setConfirmArchive(warehouse)}
-                                                        className={`font-mono text-xs ${warehouse.is_active ? "text-destructive" : "text-primary"}`}
-                                                    >
-                                                        {warehouse.is_active ? (
-                                                            <Archive className="h-3.5 w-3.5 mr-2" />
-                                                        ) : (
-                                                            <Undo2 className="h-3.5 w-3.5 mr-2" />
+                                            {canManageWarehouses ? (
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                        >
+                                                            <MoreVertical className="h-4 w-4" />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end">
+                                                        {canUpdateWarehouse && (
+                                                            <DropdownMenuItem
+                                                                onClick={() =>
+                                                                    openEditDialog(warehouse)
+                                                                }
+                                                                className="font-mono text-xs"
+                                                            >
+                                                                <Pencil className="h-3.5 w-3.5 mr-2" />
+                                                                Edit Warehouse
+                                                            </DropdownMenuItem>
                                                         )}
-                                                        {warehouse.is_active
-                                                            ? "Archive Warehouse"
-                                                            : "Unarchive Warehouse"}
-                                                    </DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
+
+                                                        {canArchiveWarehouse && (
+                                                            <DropdownMenuItem
+                                                                onClick={() =>
+                                                                    setConfirmArchive(warehouse)
+                                                                }
+                                                                className={`font-mono text-xs ${warehouse.is_active ? "text-destructive" : "text-primary"}`}
+                                                            >
+                                                                {warehouse.is_active ? (
+                                                                    <Archive className="h-3.5 w-3.5 mr-2" />
+                                                                ) : (
+                                                                    <Undo2 className="h-3.5 w-3.5 mr-2" />
+                                                                )}
+                                                                {warehouse.is_active
+                                                                    ? "Archive Warehouse"
+                                                                    : "Unarchive Warehouse"}
+                                                            </DropdownMenuItem>
+                                                        )}
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            ) : (
+                                                <span className="text-xs text-muted-foreground">
+                                                    -
+                                                </span>
+                                            )}
                                         </TableCell>
                                     </TableRow>
                                 ))}

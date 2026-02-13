@@ -141,7 +141,7 @@ export function OrderLineItemsList({
                                         </Badge>
                                     </div>
                                     <p className="text-xs text-muted-foreground mt-1">
-                                        No margin applied (final amount)
+                                        Base cost input (margin applied during quote calculation)
                                     </p>
                                     {item.notes && (
                                         <p className="text-xs text-muted-foreground mt-1">

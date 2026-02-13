@@ -41,17 +41,23 @@ export function PendingApprovalSection({ order, orderId, onRefresh }: HybridPric
     const [addCatalogOpen, setAddCatalogOpen] = useState(false);
     const [addCustomOpen, setAddCustomOpen] = useState(false);
     const [marginOverride, setMarginOverride] = useState(false);
-    const [marginPercent, setMarginPercent] = useState(order?.company?.platform_margin_percent);
+    const currentMarginPercent = Number(
+        order?.order_pricing?.margin?.percent ?? order?.company?.platform_margin_percent ?? 0
+    );
+    const [marginPercent, setMarginPercent] = useState(currentMarginPercent);
     const [marginReason, setMarginReason] = useState("");
     const [returnToLogisticsOpen, setReturnToLogisticsOpen] = useState(false);
 
-    const { total, marginAmount } = getOrderPrice(order?.order_pricing);
+    const effectiveMarginPercent = marginOverride
+        ? Number(marginPercent || 0)
+        : currentMarginPercent;
+    const { total, marginAmount } = getOrderPrice(order?.order_pricing, effectiveMarginPercent);
     const showMissingTransport =
         ["PENDING_APPROVAL", "QUOTED", "DECLINED"].includes(order.order_status) &&
         !order?.order_pricing?.transport?.final_rate;
 
     const handleApprove = async () => {
-        if (marginOverride && marginAmount === Number(marginPercent)) {
+        if (marginOverride && Math.abs(Number(marginPercent) - currentMarginPercent) < 0.0001) {
             toast.error("Margin is same as company margin");
             return;
         }
@@ -174,10 +180,10 @@ export function PendingApprovalSection({ order, orderId, onRefresh }: HybridPric
                             </div>
                             <div className="flex justify-between">
                                 <span className="text-muted-foreground">
-                                    Margin ({order.order_pricing?.margin?.percent}%)
+                                    Margin ({effectiveMarginPercent}%)
                                 </span>
                                 <span className="font-mono">
-                                    {Number(order.order_pricing?.margin?.amount).toFixed(2)} AED
+                                    {Number(marginAmount).toFixed(2)} AED
                                 </span>
                             </div>
                             <div className="border-t border-border my-2"></div>
@@ -216,7 +222,7 @@ export function PendingApprovalSection({ order, orderId, onRefresh }: HybridPric
                                                 max="100"
                                                 value={marginPercent}
                                                 onChange={(e) =>
-                                                    setMarginPercent(parseFloat(e.target.value))
+                                                    setMarginPercent(Number(e.target.value || 0))
                                                 }
                                             />
                                         </div>

@@ -21,9 +21,7 @@ export const inboundRequestKeys = {
 };
 
 // Fetch inbound requests list
-async function fetchInboundRequests(
-    params?: Record<string, string>
-): Promise<{
+async function fetchInboundRequests(params?: Record<string, string>): Promise<{
     data: InboundRequestDetails[];
     meta: { total: number; limit: number; page: number };
 }> {

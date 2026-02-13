@@ -150,7 +150,7 @@ export function FullPricingDisplay({ pricing, lineItems = [] }: FullPricingDispl
                                 ))}
                             </div>
                             <p className="text-xs text-muted-foreground mt-1 ml-2">
-                                No margin applied (final amounts)
+                                Base cost inputs (margin is included in quote totals)
                             </p>
                         </div>
                         <div className="border-t border-border my-3"></div>

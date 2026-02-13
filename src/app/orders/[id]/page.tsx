@@ -16,6 +16,7 @@ import Link from "next/link";
 import {
     useAdminOrderDetails,
     useAdminOrderStatusHistory,
+    useDownloadGoodsForm,
     useUpdateJobNumber,
 } from "@/hooks/use-orders";
 import { ScanActivityTimeline } from "@/components/scanning/scan-activity-timeline";
@@ -237,6 +238,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
     );
 
     const updateJobNumber = useUpdateJobNumber();
+    const downloadGoodsForm = useDownloadGoodsForm();
 
     const [isEditingJobNumber, setIsEditingJobNumber] = useState(false);
     const [jobNumber, setJobNumber] = useState("");
@@ -293,6 +295,35 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
             toast.success("Job number updated");
         } catch (error: any) {
             toast.error(error.message || "Failed to update job number");
+        }
+    };
+
+    const handleDownloadGoodsForm = async (
+        formType: "AUTO" | "GOODS_IN" | "GOODS_OUT" = "AUTO"
+    ) => {
+        if (!order?.data) return;
+        try {
+            const blob = await downloadGoodsForm.mutateAsync({
+                orderId: order.data.id,
+                formType,
+            });
+            const suffix =
+                formType === "AUTO"
+                    ? ["AWAITING_RETURN", "RETURN_IN_TRANSIT", "CLOSED"].includes(
+                          order.data.order_status
+                      )
+                        ? "goods-in"
+                        : "goods-out"
+                    : formType.toLowerCase().replace("_", "-");
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `${order.data.order_id}-${suffix}.xlsx`;
+            link.click();
+            URL.revokeObjectURL(url);
+            toast.success("Goods form downloaded");
+        } catch (error: any) {
+            toast.error(error.message || "Failed to download goods form");
         }
     };
 
@@ -479,6 +510,19 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
 
                             {/* NEW: Cancel Order Button */}
                             <CancelOrderButton order={order.data} orderId={order.data.id} />
+
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                className="gap-2 font-mono text-xs"
+                                onClick={() => handleDownloadGoodsForm("AUTO")}
+                                disabled={downloadGoodsForm.isPending}
+                            >
+                                <FileText className="h-3.5 w-3.5" />
+                                {downloadGoodsForm.isPending
+                                    ? "DOWNLOADING..."
+                                    : "DOWNLOAD GOODS FORM"}
+                            </Button>
 
                             {allowedNextStates.length > 0 && (
                                 <Dialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
@@ -1642,8 +1686,18 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                     <Skeleton className="h-40 w-full" />
                                 ) : (
                                     <div className="space-y-1 relative">
-                                        {statusHistory?.data?.history?.map(
-                                            (entry: any, index: number) => {
+                                        {(() => {
+                                            const history = statusHistory?.data?.history || [];
+                                            const currentStatus =
+                                                statusHistory?.data?.current_status ||
+                                                order?.data?.order_status;
+                                            const currentStatusIndex = history.findIndex(
+                                                (entry: any) => entry.status === currentStatus
+                                            );
+                                            const activeIndex =
+                                                currentStatusIndex >= 0 ? currentStatusIndex : 0;
+
+                                            return history.map((entry: any, index: number) => {
                                                 const statusConfig = STATUS_CONFIG[
                                                     entry.status as keyof typeof STATUS_CONFIG
                                                 ] || {
@@ -1651,16 +1705,14 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                                     color: "bg-slate-500/10 text-slate-600 border-slate-500/20",
                                                     nextStates: [],
                                                 };
-                                                const isLatest = index === 0;
+                                                const isLatest = index === activeIndex;
 
                                                 return (
                                                     <div
                                                         key={entry.id}
                                                         className="relative pl-6 pb-4 last:pb-0"
                                                     >
-                                                        {index <
-                                                            statusHistory?.data?.history?.length -
-                                                                1 && (
+                                                        {index < history.length - 1 && (
                                                             <div className="absolute left-[7px] top-5 bottom-0 w-px bg-border" />
                                                         )}
                                                         <div
@@ -1698,8 +1750,8 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                                         </div>
                                                     </div>
                                                 );
-                                            }
-                                        )}
+                                            });
+                                        })()}
                                     </div>
                                 )}
                             </CardContent>

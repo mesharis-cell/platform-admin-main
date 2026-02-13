@@ -45,8 +45,30 @@ export function PendingApprovalSection({
 
     // Helper to ensure numbers
     const pricing = request.request_pricing;
+    const currentMarginPercent = Number(pricing?.margin?.percent || 0);
+    const effectiveMarginPercent = marginOverride
+        ? Number(marginPercent || 0)
+        : currentMarginPercent;
+    const roundCurrency = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
+    const applyMargin = (baseValue: number) =>
+        roundCurrency(baseValue * (1 + effectiveMarginPercent / 100));
+    const baseOpsBase = Number(pricing?.base_ops_total || 0);
+    const catalogBase = Number(pricing?.line_items?.catalog_total || 0);
+    const customBase = Number(pricing?.line_items?.custom_total || 0);
+    const baseOpsSell = applyMargin(baseOpsBase);
+    const catalogSell = applyMargin(catalogBase);
+    const customSell = applyMargin(customBase);
+    const finalTotalPreview = roundCurrency(baseOpsSell + catalogSell + customSell);
+    const marginAmountPreview = roundCurrency(
+        finalTotalPreview - (baseOpsBase + catalogBase + customBase)
+    );
 
     const handleApprove = async () => {
+        if (marginOverride && Math.abs(Number(marginPercent) - currentMarginPercent) < 0.0001) {
+            toast.error("Margin is same as current margin");
+            return;
+        }
+
         if (marginOverride && !marginReason.trim()) {
             toast.error("Please provide reason for margin override");
             return;
@@ -128,28 +150,28 @@ export function PendingApprovalSection({
                             <div className="flex justify-between">
                                 <span className="text-muted-foreground">Catalog Services</span>
                                 <span className="font-mono">
-                                    {Number(pricing.line_items?.catalog_total || 0).toFixed(2)} AED
+                                    {Number(catalogBase).toFixed(2)} AED
                                 </span>
                             </div>
                             <div className="flex justify-between">
                                 <span className="text-muted-foreground">Custom Services</span>
                                 <span className="font-mono">
-                                    {Number(pricing.line_items?.custom_total || 0).toFixed(2)} AED
+                                    {Number(customBase).toFixed(2)} AED
                                 </span>
                             </div>
                             <div className="flex justify-between">
                                 <span className="text-muted-foreground">
-                                    Margin ({pricing.margin?.percent}%)
+                                    Margin ({effectiveMarginPercent}%)
                                 </span>
                                 <span className="font-mono">
-                                    {Number(pricing.margin?.amount || 0).toFixed(2)} AED
+                                    {Number(marginAmountPreview).toFixed(2)} AED
                                 </span>
                             </div>
                             <div className="border-t border-border my-2"></div>
                             <div className="flex justify-between font-semibold">
                                 <span>Total</span>
                                 <span className="font-mono">
-                                    {Number(pricing.final_total).toFixed(2)} AED
+                                    {Number(finalTotalPreview).toFixed(2)} AED
                                 </span>
                             </div>
                         </div>
@@ -182,7 +204,9 @@ export function PendingApprovalSection({
                                                 min="0"
                                                 max="100"
                                                 value={marginPercent}
-                                                onChange={(e) => setMarginPercent(e.target.value)}
+                                                onChange={(e) =>
+                                                    setMarginPercent(Number(e.target.value || 0))
+                                                }
                                             />
                                         </div>
                                         <div>
