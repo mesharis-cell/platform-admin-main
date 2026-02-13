@@ -28,7 +28,10 @@ export function hasAllPermissions(user: User | null, requiredPermissions: string
 /**
  * Check if user has ANY of the specified permissions
  */
-export function hasAnyPermission(user: User | null, requiredPermissions: string[]): boolean {
+export function hasAnyPermission(
+    user: User | null,
+    requiredPermissions: readonly string[]
+): boolean {
     if (!user || !user.is_active) return false;
     return requiredPermissions.some((permission) => hasPermission(user, permission));
 }

@@ -40,6 +40,7 @@ import { useWarehouses } from "@/hooks/use-warehouses";
 import { useCreateZone, useDeleteRestoreZone, useUpdateZone, useZones } from "@/hooks/use-zones";
 import { hasPermission } from "@/lib/auth/permissions";
 import { useToken } from "@/lib/auth/use-token";
+import { ADMIN_ACTION_PERMISSIONS } from "@/lib/auth/permission-map";
 import type { Zone } from "@/types";
 import {
     Box,
@@ -64,9 +65,9 @@ export default function ZonesPage() {
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [editingZone, setEditingZone] = useState<Zone | null>(null);
     const [confirmDelete, setConfirmDelete] = useState<Zone | null>(null);
-    const canCreateZone = hasPermission(user, "zones:create");
-    const canUpdateZone = hasPermission(user, "zones:update");
-    const canDeleteZone = hasPermission(user, "zones:delete");
+    const canCreateZone = hasPermission(user, ADMIN_ACTION_PERMISSIONS.zonesCreate);
+    const canUpdateZone = hasPermission(user, ADMIN_ACTION_PERMISSIONS.zonesUpdate);
+    const canDeleteZone = hasPermission(user, ADMIN_ACTION_PERMISSIONS.zonesDelete);
     const canManageZones = canUpdateZone || canDeleteZone;
 
     const [formData, setFormData] = useState({

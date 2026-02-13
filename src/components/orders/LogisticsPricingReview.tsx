@@ -15,6 +15,9 @@ import { VehicleUpgradeSelector } from "./VehicleUpgradeSelector";
 import { canManageLineItems } from "@/lib/order-helpers";
 import type { OrderPricing, VehicleType } from "@/types/hybrid-pricing";
 import { AddMissingTransportRate } from "./AddMissingTransportRate";
+import { useToken } from "@/lib/auth/use-token";
+import { hasPermission } from "@/lib/auth/permissions";
+import { ADMIN_ACTION_PERMISSIONS } from "@/lib/auth/permission-map";
 
 interface LogisticsPricingReviewProps {
     orderId: string;
@@ -27,13 +30,17 @@ export function LogisticsPricingReview({
     order,
     onSubmitSuccess,
 }: LogisticsPricingReviewProps) {
+    const { user } = useToken();
     const [addCatalogOpen, setAddCatalogOpen] = useState(false);
+    const canManagePricing = hasPermission(user, ADMIN_ACTION_PERMISSIONS.ordersPricingAdjust);
+    const canManageServiceItems = canManageLineItems(order?.order_status) && canManagePricing;
 
     const pricing = order?.order_pricing as OrderPricing | undefined;
     const hasRebrandRequests = order?.items?.some((item: any) => item.isReskinRequest);
     const showMissingTransport =
         ["PRICING_REVIEW"].includes(order.order_status) &&
-        !order?.order_pricing?.transport?.final_rate;
+        !order?.order_pricing?.transport?.final_rate &&
+        canManagePricing;
 
     return (
         <div className="space-y-6">
@@ -58,12 +65,18 @@ export function LogisticsPricingReview({
                     <CardTitle>Transport Vehicle</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <VehicleUpgradeSelector
-                        orderId={orderId}
-                        currentVehicle={order?.vehicle_type_id}
-                        currentTripType={order?.trip_type}
-                        onSuccess={onSubmitSuccess}
-                    />
+                    {canManagePricing ? (
+                        <VehicleUpgradeSelector
+                            orderId={orderId}
+                            currentVehicle={order?.vehicle_type_id}
+                            currentTripType={order?.trip_type}
+                            onSuccess={onSubmitSuccess}
+                        />
+                    ) : (
+                        <p className="text-xs text-muted-foreground">
+                            You can view pricing details but cannot modify transport settings.
+                        </p>
+                    )}
                 </CardContent>
             </Card>
 
@@ -75,7 +88,7 @@ export function LogisticsPricingReview({
                 <CardHeader>
                     <div className="flex items-center justify-between">
                         <CardTitle>Service Line Items</CardTitle>
-                        {canManageLineItems(order?.order_status) && (
+                        {canManageServiceItems && (
                             <Button size="sm" onClick={() => setAddCatalogOpen(true)}>
                                 <Plus className="h-3 w-3 mr-1" />
                                 Add Service
@@ -86,7 +99,10 @@ export function LogisticsPricingReview({
                 <CardContent>
                     <OrderLineItemsList
                         targetId={orderId}
-                        canManage={canManageLineItems(order?.orderStatus || order?.order_status)}
+                        canManage={
+                            canManageLineItems(order?.orderStatus || order?.order_status) &&
+                            canManagePricing
+                        }
                     />
                     <p className="text-xs text-muted-foreground mt-3">
                         Add services like assembly, equipment rental, etc. Custom charges will be

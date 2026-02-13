@@ -55,6 +55,7 @@ import { toast } from "sonner";
 import { useToken } from "@/lib/auth/use-token";
 import { usePlatform } from "@/contexts/platform-context";
 import { hasAnyPermission } from "@/lib/auth/permissions";
+import { ADMIN_NAV_PERMISSIONS } from "@/lib/auth/permission-map";
 
 type NavItem = {
     name: string;
@@ -73,119 +74,115 @@ const navigation: NavItem[] = [
         name: "Analytics",
         href: "/analytics",
         icon: BarChart3,
-        requiredAnyPermission: ["analytics:view_revenue", "analytics:track_margin"],
+        requiredAnyPermission: ADMIN_NAV_PERMISSIONS.analytics,
     },
     {
         name: "Orders",
         href: "/orders",
         icon: ShoppingCart,
-        requiredAnyPermission: ["orders:read"],
+        requiredAnyPermission: ADMIN_NAV_PERMISSIONS.orders,
     },
     {
         name: "Pricing Review",
         href: "/orders/pricing-review",
         icon: DollarSign,
-        requiredAnyPermission: ["pricing:review", "pricing:approve_standard", "pricing:adjust"],
+        requiredAnyPermission: ADMIN_NAV_PERMISSIONS.pricingReview,
     },
     {
         name: "Pending Approval",
         href: "/orders/pending-approval",
         icon: AlertCircle,
-        requiredAnyPermission: ["pricing:approve_standard", "pricing:adjust"],
+        requiredAnyPermission: ADMIN_NAV_PERMISSIONS.pendingApproval,
     },
     {
         name: "Scanning",
         href: "/scanning",
         icon: ScanLine,
-        requiredAnyPermission: ["scanning:scan_out", "scanning:scan_in"],
+        requiredAnyPermission: ADMIN_NAV_PERMISSIONS.scanning,
     },
     {
         name: "Conditions",
         href: "/conditions",
         icon: AlertCircle,
-        requiredAnyPermission: [
-            "conditions:view_history",
-            "conditions:update",
-            "conditions:view_items_needing_attention",
-        ],
+        requiredAnyPermission: ADMIN_NAV_PERMISSIONS.conditions,
     },
     {
         name: "Invoices",
         href: "/invoices",
         icon: Receipt,
-        requiredAnyPermission: ["invoices:read", "invoices:generate"],
+        requiredAnyPermission: ADMIN_NAV_PERMISSIONS.invoices,
     },
     {
         name: "Notifications",
         href: "/notifications",
         icon: Mail,
-        requiredAnyPermission: ["notifications:view_failed", "lifecycle:receive_notifications"],
+        requiredAnyPermission: ADMIN_NAV_PERMISSIONS.notifications,
     },
     {
         name: "Events Calendar",
         href: "/event-calendar",
         icon: Calendar,
-        requiredAnyPermission: ["orders:read"],
+        requiredAnyPermission: ADMIN_NAV_PERMISSIONS.eventCalendar,
     },
     {
         name: "Users",
         href: "/users",
         icon: Users,
-        requiredAnyPermission: ["users:read"],
+        requiredAnyPermission: ADMIN_NAV_PERMISSIONS.users,
     },
     {
         name: "Companies",
         href: "/companies",
         icon: Building,
-        requiredAnyPermission: ["companies:read"],
+        requiredAnyPermission: ADMIN_NAV_PERMISSIONS.companies,
     },
     {
         name: "Warehouses",
         href: "/warehouses",
         icon: Warehouse,
-        requiredAnyPermission: ["warehouses:read"],
+        requiredAnyPermission: ADMIN_NAV_PERMISSIONS.warehouses,
     },
     {
         name: "Zones",
         href: "/zones",
         icon: Grid3x3,
-        requiredAnyPermission: ["zones:read", "zones:create", "zones:update", "zones:delete"],
+        requiredAnyPermission: ADMIN_NAV_PERMISSIONS.zones,
     },
     {
         name: "Brands",
         href: "/brands",
         icon: Tag,
-        requiredAnyPermission: ["brands:read"],
+        requiredAnyPermission: ADMIN_NAV_PERMISSIONS.brands,
     },
     {
         name: "Assets",
         href: "/assets",
         icon: Package,
-        requiredAnyPermission: ["assets:read"],
+        requiredAnyPermission: ADMIN_NAV_PERMISSIONS.assets,
     },
     {
         name: "Collections",
         href: "/collections",
         icon: Layers,
-        requiredAnyPermission: ["collections:read"],
+        requiredAnyPermission: ADMIN_NAV_PERMISSIONS.collections,
     },
     {
         name: "Inbound Request",
         href: "/inbound-request",
         icon: Package,
-        requiredAnyPermission: ["orders:read"],
+        requiredAnyPermission: ADMIN_NAV_PERMISSIONS.inboundRequest,
     },
     {
         name: "Feature Flags",
         href: "/feature-flags",
         icon: Flag,
-        requiredAnyPermission: ["system:*"],
+        requiredAnyPermission: ADMIN_NAV_PERMISSIONS.featureFlags,
     },
     {
         name: "System Settings",
         href: "/system-settings",
         icon: Settings,
-        requiredAnyPermission: ["system:*"],
+        requiredAnyPermission: ADMIN_NAV_PERMISSIONS.systemSettings,
         items: [
             { title: "Country", url: "/countries" },
             { title: "City", url: "/cities" },
@@ -199,7 +196,7 @@ const navigation: NavItem[] = [
         name: "Reset Password",
         href: "/reset-password",
         icon: Lock,
-        requiredAnyPermission: ["auth:reset_password"],
+        requiredAnyPermission: ADMIN_NAV_PERMISSIONS.resetPassword,
     },
 ];
 

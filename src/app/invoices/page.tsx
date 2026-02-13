@@ -44,8 +44,12 @@ import { usePlatform } from "@/contexts/platform-context";
 import { useSendInvoice } from "@/hooks/use-orders";
 import { InvoiceCard } from "@/components/invoices/InvoiceCard";
 import { InboundRequestInvoice } from "@/components/invoices/InboundRequestInvoice";
+import { useToken } from "@/lib/auth/use-token";
+import { hasPermission } from "@/lib/auth/permissions";
+import { ADMIN_ACTION_PERMISSIONS } from "@/lib/auth/permission-map";
 
 export default function InvoicesPage() {
+    const { user } = useToken();
     // Filters
     const [filters, setFilters] = useState<InvoiceListParams>({
         page: 1,
@@ -79,6 +83,12 @@ export default function InvoicesPage() {
     const confirmPayment = useConfirmPayment();
     const downloadInvoice = useDownloadInvoice();
     const { mutateAsync: sendInvoice, isPending: isSendingInvoice } = useSendInvoice();
+    const canDownloadInvoices = hasPermission(user, ADMIN_ACTION_PERMISSIONS.invoicesDownload);
+    const canSendInvoices = hasPermission(user, ADMIN_ACTION_PERMISSIONS.invoicesGenerate);
+    const canConfirmInvoicePayment = hasPermission(
+        user,
+        ADMIN_ACTION_PERMISSIONS.invoicesConfirmPayment
+    );
 
     const handleApplyFilters = () => {
         setFilters((prev) => ({
@@ -101,6 +111,7 @@ export default function InvoicesPage() {
     };
 
     const handleOpenConfirmPayment = (invoice: any) => {
+        if (!canConfirmInvoicePayment) return;
         setSelectedInvoice(invoice);
         setPaymentMethod("");
         setPaymentReference("");
@@ -110,6 +121,7 @@ export default function InvoicesPage() {
     };
 
     const handleConfirmPayment = async () => {
+        if (!canConfirmInvoicePayment) return;
         if (!selectedInvoice) return;
 
         if (!paymentMethod || !paymentReference || !paymentDate) {
@@ -137,6 +149,7 @@ export default function InvoicesPage() {
     };
 
     const handleDownloadInvoice = async (invoiceNumber: string) => {
+        if (!canDownloadInvoices) return;
         if (!invoiceNumber) return;
 
         try {
@@ -156,6 +169,7 @@ export default function InvoicesPage() {
     };
 
     const handleSendInvoice = async () => {
+        if (!canSendInvoices) return;
         if (!selectedInvoice) return;
 
         try {
@@ -371,13 +385,23 @@ export default function InvoicesPage() {
                                         {invoice?.order && (
                                             <InvoiceCard
                                                 invoice={invoice}
-                                                onDownload={() => handleDownloadInvoice(invoice.id)}
-                                                onSendInvoice={(inv) => {
-                                                    setSelectedInvoice(inv);
-                                                    setSentInvoice(true);
-                                                }}
-                                                onConfirmPayment={(inv) =>
-                                                    handleOpenConfirmPayment(inv)
+                                                onDownload={
+                                                    canDownloadInvoices
+                                                        ? () => handleDownloadInvoice(invoice.id)
+                                                        : undefined
+                                                }
+                                                onSendInvoice={
+                                                    canSendInvoices
+                                                        ? (inv) => {
+                                                              setSelectedInvoice(inv);
+                                                              setSentInvoice(true);
+                                                          }
+                                                        : undefined
+                                                }
+                                                onConfirmPayment={
+                                                    canConfirmInvoicePayment
+                                                        ? (inv) => handleOpenConfirmPayment(inv)
+                                                        : undefined
                                                 }
                                                 isDownloading={downloadInvoice.isPending}
                                                 isSending={isSendingInvoice}
@@ -387,13 +411,23 @@ export default function InvoicesPage() {
                                         {invoice?.inbound_request && (
                                             <InboundRequestInvoice
                                                 invoice={invoice}
-                                                onDownload={() => handleDownloadInvoice(invoice.id)}
-                                                onSendInvoice={(inv) => {
-                                                    setSelectedInvoice(inv);
-                                                    setSentInvoice(true);
-                                                }}
-                                                onConfirmPayment={(inv) =>
-                                                    handleOpenConfirmPayment(inv)
+                                                onDownload={
+                                                    canDownloadInvoices
+                                                        ? () => handleDownloadInvoice(invoice.id)
+                                                        : undefined
+                                                }
+                                                onSendInvoice={
+                                                    canSendInvoices
+                                                        ? (inv) => {
+                                                              setSelectedInvoice(inv);
+                                                              setSentInvoice(true);
+                                                          }
+                                                        : undefined
+                                                }
+                                                onConfirmPayment={
+                                                    canConfirmInvoicePayment
+                                                        ? (inv) => handleOpenConfirmPayment(inv)
+                                                        : undefined
                                                 }
                                                 isDownloading={downloadInvoice.isPending}
                                                 isSending={isSendingInvoice}

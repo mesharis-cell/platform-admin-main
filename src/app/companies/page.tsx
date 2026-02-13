@@ -55,6 +55,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useUploadImage } from "@/hooks/use-assets";
 import { useToken } from "@/lib/auth/use-token";
 import { hasPermission } from "@/lib/auth/permissions";
+import { ADMIN_ACTION_PERMISSIONS } from "@/lib/auth/permission-map";
 
 export default function CompaniesPage() {
     const { user } = useToken();
@@ -64,9 +65,9 @@ export default function CompaniesPage() {
     const [editingCompany, setEditingCompany] = useState<Company | null>(null);
     const [confirmArchive, setConfirmArchive] = useState<Company | null>(null);
     const [confirmUnarchive, setConfirmUnarchive] = useState<Company | null>(null);
-    const canCreateCompany = hasPermission(user, "companies:create");
-    const canUpdateCompany = hasPermission(user, "companies:update");
-    const canArchiveCompany = hasPermission(user, "companies:archive");
+    const canCreateCompany = hasPermission(user, ADMIN_ACTION_PERMISSIONS.companiesCreate);
+    const canUpdateCompany = hasPermission(user, ADMIN_ACTION_PERMISSIONS.companiesUpdate);
+    const canArchiveCompany = hasPermission(user, ADMIN_ACTION_PERMISSIONS.companiesArchive);
     const canManageCompanies = canUpdateCompany || canArchiveCompany;
 
     // Create/Edit form state

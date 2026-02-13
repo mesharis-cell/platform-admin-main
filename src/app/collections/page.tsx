@@ -48,8 +48,12 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { AdminHeader } from "@/components/admin-header";
+import { useToken } from "@/lib/auth/use-token";
+import { hasPermission } from "@/lib/auth/permissions";
+import { ADMIN_ACTION_PERMISSIONS } from "@/lib/auth/permission-map";
 
 export default function CollectionsPage() {
+    const { user } = useToken();
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedCompany, setSelectedCompany] = useState<string>("");
     const [selectedBrand, setSelectedBrand] = useState<string>("");
@@ -58,6 +62,8 @@ export default function CollectionsPage() {
         id: string;
         name: string;
     } | null>(null);
+    const canCreateCollection = hasPermission(user, ADMIN_ACTION_PERMISSIONS.collectionsCreate);
+    const canDeleteCollection = hasPermission(user, ADMIN_ACTION_PERMISSIONS.collectionsDelete);
 
     // Fetch data
     const { data: collectionsData, isLoading } = useCollections({
@@ -202,17 +208,18 @@ export default function CollectionsPage() {
                         : undefined
                 }
                 actions={
-                    <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-                        <DialogTrigger asChild>
-                            <Button className="gap-2 font-mono">
-                                <Plus className="h-4 w-4" />
-                                NEW COLLECTION
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                            <DialogHeader>
-                                <DialogTitle className="text-2xl">Create Collection</DialogTitle>
-                            </DialogHeader>
+                    canCreateCollection ? (
+                        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+                            <DialogTrigger asChild>
+                                <Button className="gap-2 font-mono">
+                                    <Plus className="h-4 w-4" />
+                                    NEW COLLECTION
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                                <DialogHeader>
+                                    <DialogTitle className="text-2xl">Create Collection</DialogTitle>
+                                </DialogHeader>
 
                             <div className="space-y-6 py-4">
                                 {/* Company Selection */}
@@ -378,29 +385,30 @@ export default function CollectionsPage() {
                                 </div>
                             </div>
 
-                            <DialogFooter>
-                                <Button
-                                    variant="outline"
-                                    onClick={() => setIsCreateDialogOpen(false)}
-                                >
-                                    Cancel
-                                </Button>
-                                <Button
-                                    onClick={handleCreateCollection}
-                                    disabled={
-                                        createMutation.isPending ||
-                                        uploadMutation.isPending ||
-                                        !formData.company ||
-                                        !formData.name
-                                    }
-                                >
-                                    {createMutation.isPending || uploadMutation.isPending
-                                        ? "Creating..."
-                                        : "Create Collection"}
-                                </Button>
-                            </DialogFooter>
-                        </DialogContent>
-                    </Dialog>
+                                <DialogFooter>
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => setIsCreateDialogOpen(false)}
+                                    >
+                                        Cancel
+                                    </Button>
+                                    <Button
+                                        onClick={handleCreateCollection}
+                                        disabled={
+                                            createMutation.isPending ||
+                                            uploadMutation.isPending ||
+                                            !formData.company ||
+                                            !formData.name
+                                        }
+                                    >
+                                        {createMutation.isPending || uploadMutation.isPending
+                                            ? "Creating..."
+                                            : "Create Collection"}
+                                    </Button>
+                                </DialogFooter>
+                            </DialogContent>
+                        </Dialog>
+                    ) : undefined
                 }
             />
 
@@ -487,10 +495,12 @@ export default function CollectionsPage() {
                         <p className="text-muted-foreground text-sm mb-6">
                             Create your first collection to group assets for streamlined ordering.
                         </p>
-                        <Button onClick={() => setIsCreateDialogOpen(true)}>
-                            <Plus className="w-4 h-4 mr-2" />
-                            Create Collection
-                        </Button>
+                        {canCreateCollection ? (
+                            <Button onClick={() => setIsCreateDialogOpen(true)}>
+                                <Plus className="w-4 h-4 mr-2" />
+                                Create Collection
+                            </Button>
+                        ) : null}
                     </Card>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -567,21 +577,23 @@ export default function CollectionsPage() {
                                                 View Details
                                             </Link>
                                         </Button>
-                                        <Button
-                                            size="sm"
-                                            variant="outline"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                setConfirmDelete({
-                                                    id: collection.id,
-                                                    name: collection.name,
-                                                });
-                                            }}
-                                            disabled={deleteMutation.isPending}
-                                            className="gap-2"
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                        </Button>
+                                        {canDeleteCollection ? (
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setConfirmDelete({
+                                                        id: collection.id,
+                                                        name: collection.name,
+                                                    });
+                                                }}
+                                                disabled={deleteMutation.isPending}
+                                                className="gap-2"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </Button>
+                                        ) : null}
                                     </div>
                                 </CardContent>
                             </Card>
@@ -599,16 +611,18 @@ export default function CollectionsPage() {
             </div>
 
             {/* Confirm Delete Dialog */}
-            <ConfirmDialog
-                open={!!confirmDelete}
-                onOpenChange={(open) => !open && setConfirmDelete(null)}
-                onConfirm={handleDeleteCollection}
-                title="Delete Collection"
-                description={`Are you sure you want to delete collection "${confirmDelete?.name}"?`}
-                confirmText="Delete"
-                cancelText="Cancel"
-                variant="destructive"
-            />
+            {canDeleteCollection ? (
+                <ConfirmDialog
+                    open={!!confirmDelete}
+                    onOpenChange={(open) => !open && setConfirmDelete(null)}
+                    onConfirm={handleDeleteCollection}
+                    title="Delete Collection"
+                    description={`Are you sure you want to delete collection "${confirmDelete?.name}"?`}
+                    confirmText="Delete"
+                    cancelText="Cancel"
+                    variant="destructive"
+                />
+            ) : null}
         </div>
     );
 }

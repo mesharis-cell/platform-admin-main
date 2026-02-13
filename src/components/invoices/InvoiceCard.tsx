@@ -145,15 +145,17 @@ export function InvoiceCard({
 
                     <div className="flex gap-2">
                         {/* Download Button */}
-                        <Button
-                            onClick={() => onDownload?.(invoice.invoice_id)}
-                            variant="outline"
-                            size="sm"
-                            className="font-mono"
-                            disabled={isDownloading}
-                        >
-                            <Download className="w-4 h-4" />
-                        </Button>
+                        {onDownload && (
+                            <Button
+                                onClick={() => onDownload(invoice.invoice_id)}
+                                variant="outline"
+                                size="sm"
+                                className="font-mono"
+                                disabled={isDownloading}
+                            >
+                                <Download className="w-4 h-4" />
+                            </Button>
+                        )}
 
                         {/* Send Invoice Button - Show for PENDING_INVOICE status */}
                         {invoice.order.financial_status === "PENDING_INVOICE" && onSendInvoice && (

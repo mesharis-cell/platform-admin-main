@@ -44,6 +44,9 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { AdminHeader } from "@/components/admin-header";
+import { useToken } from "@/lib/auth/use-token";
+import { hasPermission } from "@/lib/auth/permissions";
+import { ADMIN_ACTION_PERMISSIONS } from "@/lib/auth/permission-map";
 
 // Order status display configuration
 const ORDER_STATUS_CONFIG = {
@@ -73,6 +76,7 @@ const ORDER_STATUS_CONFIG = {
 };
 
 export default function AdminOrdersPage() {
+    const { user } = useToken();
     // Filters state
     const [page, setPage] = useState(1);
     const [limit] = useState(20);
@@ -99,6 +103,7 @@ export default function AdminOrdersPage() {
     const { data: companiesData } = useCompanies({ limit: "100" });
     const { data: brandsData } = useBrands({ limit: "100" });
     const exportOrders = useExportOrders();
+    const canExportOrders = hasPermission(user, ADMIN_ACTION_PERMISSIONS.ordersExport);
     const totalOrders = data?.meta?.total ?? 0;
     const totalPages = Math.max(1, Math.ceil(totalOrders / (data?.meta?.limit ?? limit)));
 
@@ -116,6 +121,7 @@ export default function AdminOrdersPage() {
 
     // Handle export
     const handleExport = async () => {
+        if (!canExportOrders) return;
         try {
             const csvBlob = await exportOrders.mutateAsync({
                 company: company || undefined,
@@ -161,15 +167,17 @@ export default function AdminOrdersPage() {
                 description="Manage · Track · Fulfill"
                 stats={data ? { label: "TOTAL ORDERS", value: data?.meta.total } : undefined}
                 actions={
-                    <Button
-                        onClick={handleExport}
-                        disabled={exportOrders.isPending}
-                        variant="outline"
-                        className="gap-2 font-medium font-mono"
-                    >
-                        <Download className="h-4 w-4" />
-                        {exportOrders.isPending ? "EXPORTING..." : "EXPORT CSV"}
-                    </Button>
+                    canExportOrders ? (
+                        <Button
+                            onClick={handleExport}
+                            disabled={exportOrders.isPending}
+                            variant="outline"
+                            className="gap-2 font-medium font-mono"
+                        >
+                            <Download className="h-4 w-4" />
+                            {exportOrders.isPending ? "EXPORTING..." : "EXPORT CSV"}
+                        </Button>
+                    ) : undefined
                 }
             />
 

@@ -43,8 +43,12 @@ import { CreateAssetDialog } from "@/components/assets/create-asset-dialog";
 import { AdminHeader } from "@/components/admin-header";
 import { useCompanies } from "@/hooks/use-companies";
 import { removeUnderScore } from "@/lib/utils/helper";
+import { useToken } from "@/lib/auth/use-token";
+import { hasPermission } from "@/lib/auth/permissions";
+import { ADMIN_ACTION_PERMISSIONS } from "@/lib/auth/permission-map";
 
 export default function AssetsPage() {
+    const { user } = useToken();
     const router = useRouter();
     const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
     const [searchQuery, setSearchQuery] = useState("");
@@ -57,6 +61,8 @@ export default function AssetsPage() {
     });
     const [showCreateDialog, setShowCreateDialog] = useState(false);
     const { data: companies } = useCompanies();
+    const canCreateAsset = hasPermission(user, ADMIN_ACTION_PERMISSIONS.assetsCreate);
+    const canBulkUploadAsset = hasPermission(user, ADMIN_ACTION_PERMISSIONS.assetsBulkUpload);
 
     // Build query params
     const queryParams = useMemo(() => {
@@ -112,24 +118,30 @@ export default function AssetsPage() {
                 description="Physical Items · QR Codes · Tracking"
                 stats={data ? { label: "TOTAL ASSETS", value: data.meta.total } : undefined}
                 actions={
-                    <div className="flex gap-2">
-                        <Button
-                            variant="outline"
-                            size="lg"
-                            className="font-mono"
-                            onClick={() => router.push("/assets/bulk-upload")}
-                        >
-                            <Upload className="w-4 h-4 mr-2" />
-                            Bulk Upload
-                        </Button>
-                        <CreateAssetDialog
-                            open={showCreateDialog}
-                            onOpenChange={setShowCreateDialog}
-                            onSuccess={() => {
-                                setShowCreateDialog(false);
-                            }}
-                        />
-                    </div>
+                    canCreateAsset || canBulkUploadAsset ? (
+                        <div className="flex gap-2">
+                            {canBulkUploadAsset && (
+                                <Button
+                                    variant="outline"
+                                    size="lg"
+                                    className="font-mono"
+                                    onClick={() => router.push("/assets/bulk-upload")}
+                                >
+                                    <Upload className="w-4 h-4 mr-2" />
+                                    Bulk Upload
+                                </Button>
+                            )}
+                            {canCreateAsset && (
+                                <CreateAssetDialog
+                                    open={showCreateDialog}
+                                    onOpenChange={setShowCreateDialog}
+                                    onSuccess={() => {
+                                        setShowCreateDialog(false);
+                                    }}
+                                />
+                            )}
+                        </div>
+                    ) : undefined
                 }
             />
 
@@ -273,10 +285,12 @@ export default function AssetsPage() {
                         <p className="text-muted-foreground font-mono text-sm mb-6 max-w-md">
                             Create your first asset to start tracking inventory with QR codes
                         </p>
-                        <Button onClick={() => setShowCreateDialog(true)}>
-                            <Plus className="w-4 h-4 mr-2" />
-                            Create Asset
-                        </Button>
+                        {canCreateAsset ? (
+                            <Button onClick={() => setShowCreateDialog(true)}>
+                                <Plus className="w-4 h-4 mr-2" />
+                                Create Asset
+                            </Button>
+                        ) : null}
                     </div>
                 ) : viewMode === "grid" ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">

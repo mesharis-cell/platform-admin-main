@@ -22,6 +22,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAdminApproveQuote } from "@/hooks/use-orders";
 import { canManageLineItems } from "@/lib/order-helpers";
 import { getOrderPrice } from "@/lib/utils/helper";
+import { useToken } from "@/lib/auth/use-token";
+import { hasPermission } from "@/lib/auth/permissions";
+import { ADMIN_ACTION_PERMISSIONS } from "@/lib/auth/permission-map";
 import { DollarSign, Package, Plus } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -36,6 +39,7 @@ interface HybridPricingSectionProps {
  * PENDING_APPROVAL Section (Admin Review)
  */
 export function PendingApprovalSection({ order, orderId, onRefresh }: HybridPricingSectionProps) {
+    const { user } = useToken();
     const adminApproveQuote = useAdminApproveQuote();
 
     const [addCatalogOpen, setAddCatalogOpen] = useState(false);
@@ -47,6 +51,9 @@ export function PendingApprovalSection({ order, orderId, onRefresh }: HybridPric
     const [marginPercent, setMarginPercent] = useState(currentMarginPercent);
     const [marginReason, setMarginReason] = useState("");
     const [returnToLogisticsOpen, setReturnToLogisticsOpen] = useState(false);
+    const canManagePricing = hasPermission(user, ADMIN_ACTION_PERMISSIONS.ordersPricingAdjust);
+    const canApproveQuote = hasPermission(user, ADMIN_ACTION_PERMISSIONS.ordersPricingAdminApprove);
+    const canManageServiceItems = canManageLineItems(order.order_status) && canManagePricing;
 
     const effectiveMarginPercent = marginOverride
         ? Number(marginPercent || 0)
@@ -54,9 +61,11 @@ export function PendingApprovalSection({ order, orderId, onRefresh }: HybridPric
     const { total, marginAmount } = getOrderPrice(order?.order_pricing, effectiveMarginPercent);
     const showMissingTransport =
         ["PENDING_APPROVAL", "QUOTED", "DECLINED"].includes(order.order_status) &&
-        !order?.order_pricing?.transport?.final_rate;
+        !order?.order_pricing?.transport?.final_rate &&
+        canManagePricing;
 
     const handleApprove = async () => {
+        if (!canApproveQuote) return;
         if (marginOverride && Math.abs(Number(marginPercent) - currentMarginPercent) < 0.0001) {
             toast.error("Margin is same as company margin");
             return;
@@ -110,7 +119,7 @@ export function PendingApprovalSection({ order, orderId, onRefresh }: HybridPric
                             <DollarSign className="h-5 w-5" />
                             Service Line Items
                         </CardTitle>
-                        {canManageLineItems(order.order_status) && (
+                        {canManageServiceItems && (
                             <div className="flex gap-2">
                                 <Button
                                     size="sm"
@@ -131,7 +140,7 @@ export function PendingApprovalSection({ order, orderId, onRefresh }: HybridPric
                 <CardContent>
                     <OrderLineItemsList
                         targetId={orderId}
-                        canManage={canManageLineItems(order.order_status)}
+                        canManage={canManageServiceItems}
                     />
                 </CardContent>
             </Card>
@@ -194,7 +203,7 @@ export function PendingApprovalSection({ order, orderId, onRefresh }: HybridPric
                         </div>
                     )}
 
-                    {order.order_status === "PENDING_APPROVAL" && (
+                    {order.order_status === "PENDING_APPROVAL" && canApproveQuote && (
                         <div>
                             {/* Margin Override */}
                             <div className="space-y-3 border-t border-border pt-4">
@@ -333,6 +342,7 @@ export function AwaitingFabricationSection({ order, orderId }: HybridPricingSect
  * Cancel Order Button (shows if order can be cancelled)
  */
 export function CancelOrderButton({ order, orderId }: HybridPricingSectionProps) {
+    const { user } = useToken();
     const [cancelOpen, setCancelOpen] = useState(false);
 
     const CANCELLABLE_STATUSES = [
@@ -347,8 +357,9 @@ export function CancelOrderButton({ order, orderId }: HybridPricingSectionProps)
     ];
 
     const canCancel = CANCELLABLE_STATUSES.includes(order.order_status);
+    const canCancelOrder = hasPermission(user, ADMIN_ACTION_PERMISSIONS.ordersCancel);
 
-    if (!canCancel) return null;
+    if (!canCancel || !canCancelOrder) return null;
 
     return (
         <>

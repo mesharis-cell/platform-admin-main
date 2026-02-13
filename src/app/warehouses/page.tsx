@@ -50,6 +50,7 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useToken } from "@/lib/auth/use-token";
 import { hasPermission } from "@/lib/auth/permissions";
+import { ADMIN_ACTION_PERMISSIONS } from "@/lib/auth/permission-map";
 
 export default function WarehousesPage() {
     const { user } = useToken();
@@ -60,9 +61,9 @@ export default function WarehousesPage() {
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [editingWarehouse, setEditingWarehouse] = useState<WarehouseType | null>(null);
     const [confirmArchive, setConfirmArchive] = useState<WarehouseType | null>(null);
-    const canCreateWarehouse = hasPermission(user, "warehouses:create");
-    const canUpdateWarehouse = hasPermission(user, "warehouses:update");
-    const canArchiveWarehouse = hasPermission(user, "warehouses:archive");
+    const canCreateWarehouse = hasPermission(user, ADMIN_ACTION_PERMISSIONS.warehousesCreate);
+    const canUpdateWarehouse = hasPermission(user, ADMIN_ACTION_PERMISSIONS.warehousesUpdate);
+    const canArchiveWarehouse = hasPermission(user, ADMIN_ACTION_PERMISSIONS.warehousesArchive);
     const canManageWarehouses = canUpdateWarehouse || canArchiveWarehouse;
 
     const [formData, setFormData] = useState({
