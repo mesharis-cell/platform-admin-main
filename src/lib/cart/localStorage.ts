@@ -1,4 +1,5 @@
 "use client";
+/* global globalThis */
 
 /**
  * LocalStorage utilities for cart persistence
@@ -37,7 +38,12 @@ interface LocalCart {
  * Save cart to localStorage
  */
 export function saveCart(items: LocalCartItem[]): void {
-    if (typeof window === "undefined") return;
+    const runtimeGlobal =
+        typeof globalThis !== "undefined"
+            ? (globalThis as unknown as Record<string, unknown>)
+            : undefined;
+    const storage = runtimeGlobal?.["localStorage"] as Storage | undefined;
+    if (!storage) return;
 
     try {
         const cart: LocalCart = {
@@ -45,7 +51,7 @@ export function saveCart(items: LocalCartItem[]): void {
             version: CART_VERSION,
             lastUpdated: Date.now(),
         };
-        localStorage.setItem(CART_KEY, JSON.stringify(cart));
+        storage.setItem(CART_KEY, JSON.stringify(cart));
     } catch (error) {
         console.error("Failed to save cart:", error);
         if (error instanceof Error && error.name === "QuotaExceededError") {
@@ -60,10 +66,15 @@ export function saveCart(items: LocalCartItem[]): void {
  * Load cart from localStorage with validation
  */
 export function loadCart(): LocalCartItem[] {
-    if (typeof window === "undefined") return [];
+    const runtimeGlobal =
+        typeof globalThis !== "undefined"
+            ? (globalThis as unknown as Record<string, unknown>)
+            : undefined;
+    const storage = runtimeGlobal?.["localStorage"] as Storage | undefined;
+    if (!storage) return [];
 
     try {
-        const data = localStorage.getItem(CART_KEY);
+        const data = storage.getItem(CART_KEY);
         if (!data) return [];
 
         const cart = JSON.parse(data) as LocalCart;
@@ -106,9 +117,14 @@ export function loadCart(): LocalCartItem[] {
  * Clear cart from localStorage
  */
 export function clearCart(): void {
-    if (typeof window === "undefined") return;
+    const runtimeGlobal =
+        typeof globalThis !== "undefined"
+            ? (globalThis as unknown as Record<string, unknown>)
+            : undefined;
+    const storage = runtimeGlobal?.["localStorage"] as Storage | undefined;
+    if (!storage) return;
 
-    localStorage.removeItem(CART_KEY);
+    storage.removeItem(CART_KEY);
 }
 
 /**

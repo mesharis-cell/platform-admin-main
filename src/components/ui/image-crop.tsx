@@ -1,4 +1,5 @@
 "use client";
+/* global globalThis */
 
 import { Button } from "@/components/ui/button";
 import { CropIcon, RotateCcwIcon } from "lucide-react";
@@ -55,7 +56,13 @@ const getCroppedPngImage = async (
     pixelCrop: PixelCrop,
     maxImageSize: number
 ): Promise<string> => {
-    const canvas = document.createElement("canvas");
+    const runtimeGlobal =
+        typeof globalThis !== "undefined"
+            ? (globalThis as unknown as Record<string, unknown>)
+            : undefined;
+    const doc = runtimeGlobal?.["document"] as Document | undefined;
+    if (!doc) throw new Error("Image crop is only available in browser");
+    const canvas = doc.createElement("canvas");
     const ctx = canvas.getContext("2d");
 
     if (!ctx) {

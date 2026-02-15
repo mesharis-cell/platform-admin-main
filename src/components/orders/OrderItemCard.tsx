@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useCompleteMaintenance, useSendToMaintenance } from "@/hooks/use-assets";
 import { useListReskinRequests } from "@/hooks/use-reskin-requests";
 import { Condition } from "@/types";
+import { PrintQrAction } from "@/components/qr/PrintQrAction";
 import { toast } from "sonner";
 
 interface OrderItemCardProps {
@@ -13,6 +14,7 @@ interface OrderItemCardProps {
         asset?: {
             id: string;
             name?: string;
+            qr_code?: string;
             condition: Condition;
             status: string;
             refurbishment_days_estimate?: number;
@@ -106,7 +108,10 @@ export function OrderItemCard({
         <div className="bg-muted/30 rounded border border-border p-3">
             <div className="flex-1">
                 {/* Asset Name */}
-                <p className="font-mono text-sm font-medium">{item.asset?.name}</p>
+                <div className="flex items-start justify-between gap-2">
+                    <p className="font-mono text-sm font-medium">{item.asset?.name}</p>
+                    <PrintQrAction qrCode={item.asset?.qr_code} assetName={item.asset?.name} />
+                </div>
 
                 {/* Quantity, Volume, Weight */}
                 <p className="font-mono text-xs text-muted-foreground mt-1">
@@ -174,45 +179,28 @@ export function OrderItemCard({
                         </Button>
                     )}
 
-                {/* Reskin Request for PRICING_REVIEW status */}
-                {orderStatus === "PRICING_REVIEW" && item?.order_item?.is_reskin_request && (
-                    <div className="bg-primary/10 p-2 rounded border border-primary/20 mt-4 font-mono text-xs text-primary">
-                        <p>Target brand: {item?.order_item?.reskin_target_brand_name}</p>
-                        <p className="mt-2">
-                            Client instructions: {item?.order_item?.reskin_notes}
-                        </p>
-                        <p className="mt-2">Status: ⏳ Pending Admin Action</p>
-                    </div>
-                )}
+                {["PRICING_REVIEW", "PENDING_APPROVAL"].includes(orderStatus) &&
+                    item?.order_item?.is_reskin_request && (
+                        <div className="bg-primary/10 p-2 rounded border border-primary/20 mt-4 font-mono text-xs text-muted-foreground">
+                            <p>Target brand: {item?.order_item?.reskin_target_brand_name}</p>
+                            <p className="mt-2">
+                                Client instructions: {item?.order_item?.reskin_notes}
+                            </p>
+                            <p className="mt-2">Status: ⏳ Awaiting processing</p>
 
-                {/* Reskin Request for PENDING_APPROVAL status */}
-                {orderStatus === "PENDING_APPROVAL" && item?.order_item?.is_reskin_request && (
-                    <div className="bg-primary/10 p-2 rounded border border-primary/20 mt-4 font-mono text-xs text-muted-foreground">
-                        <p className="mt-2">
-                            Client instructions: {item?.order_item?.reskin_notes}
-                        </p>
-                        <p className="mt-2">Status: ⏳ Awaiting Processing</p>
-
-                        {!reskinRequest && (
-                            <div className="mt-4 flex gap-2">
-                                <Button
-                                    variant="default"
-                                    className="text-xs font-mono"
-                                    onClick={handleProcessReskin}
-                                >
-                                    Rebrand Request
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    className="text-xs font-mono"
-                                    onClick={handleRejectReskin}
-                                >
-                                    Reject & Contact Client
-                                </Button>
-                            </div>
-                        )}
-                    </div>
-                )}
+                            {!reskinRequest && (
+                                <div className="mt-4">
+                                    <Button
+                                        variant="default"
+                                        className="text-xs font-mono"
+                                        onClick={handleProcessReskin}
+                                    >
+                                        Rebrand Request
+                                    </Button>
+                                </div>
+                            )}
+                        </div>
+                    )}
             </div>
         </div>
     );

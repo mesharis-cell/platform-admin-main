@@ -27,7 +27,7 @@ interface AddCatalogLineItemModalProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     targetId: string;
-    purposeType?: "ORDER" | "INBOUND_REQUEST";
+    purposeType?: "ORDER" | "INBOUND_REQUEST" | "SERVICE_REQUEST";
 }
 
 export function AddCatalogLineItemModal({

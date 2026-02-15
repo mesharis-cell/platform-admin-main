@@ -34,21 +34,14 @@ import {
     useUpdateTransportRate,
     useDeleteTransportRate,
 } from "@/hooks/use-transport-rates";
-import type { TransportRate, CreateTransportRateRequest } from "@/types/hybrid-pricing";
-
-const EMIRATES = [
-    "Dubai",
-    "Abu Dhabi",
-    "Al Ain",
-    "Sharjah",
-    "Ajman",
-    "Ras Al Khaimah",
-    "Umm Al Quwain",
-    "Fujairah",
-];
+import { useCities } from "@/hooks/use-cities";
+import { useListVehicleTypes } from "@/hooks/use-vehicle-types";
+import type { TransportRate, TripType } from "@/types/hybrid-pricing";
 
 export default function TransportRatesPage() {
     const { data, isLoading } = useListTransportRates({});
+    const { data: citiesData } = useCities();
+    const { data: vehicleTypesData } = useListVehicleTypes({ include_inactive: true });
     const createRate = useCreateTransportRate();
     const updateRate = useUpdateTransportRate();
     const deleteRate = useDeleteTransportRate();
@@ -58,29 +51,37 @@ export default function TransportRatesPage() {
     const [selectedRate, setSelectedRate] = useState<TransportRate | null>(null);
 
     const [formData, setFormData] = useState({
-        emirate: "",
-        tripType: "ROUND_TRIP" as "ONE_WAY" | "ROUND_TRIP",
-        vehicleType: "STANDARD" as "STANDARD" | "7_TON" | "10_TON",
+        city_id: "",
+        area: "",
+        trip_type: "ROUND_TRIP" as TripType,
+        vehicle_type_id: "",
         rate: "",
     });
 
     const handleCreate = async () => {
         const rateNum = parseFloat(formData.rate);
-        if (!formData.emirate || isNaN(rateNum) || rateNum < 0) {
+        if (!formData.city_id || !formData.vehicle_type_id || isNaN(rateNum) || rateNum < 0) {
             toast.error("Please fill all required fields with valid values");
             return;
         }
 
         try {
             await createRate.mutateAsync({
-                emirate: formData.emirate,
-                tripType: formData.tripType,
-                vehicleType: formData.vehicleType,
+                city_id: formData.city_id,
+                area: formData.area || null,
+                trip_type: formData.trip_type,
+                vehicle_type_id: formData.vehicle_type_id,
                 rate: rateNum,
             });
             toast.success("Transport rate created successfully");
             setCreateDialogOpen(false);
-            setFormData({ emirate: "", tripType: "ROUND_TRIP", vehicleType: "STANDARD", rate: "" });
+            setFormData({
+                city_id: "",
+                area: "",
+                trip_type: "ROUND_TRIP",
+                vehicle_type_id: "",
+                rate: "",
+            });
         } catch (error: any) {
             toast.error(error.message || "Failed to create rate");
         }
@@ -110,7 +111,7 @@ export default function TransportRatesPage() {
     const handleDelete = async (rate: TransportRate) => {
         if (
             !confirm(
-                `Deactivate transport rate for ${rate.emirate} (${rate.tripType}, ${rate.vehicleType})?`
+                `Deactivate transport rate for ${rate.city.name}${rate.area ? ` (${rate.area})` : ""} (${rate.trip_type}, ${rate.vehicle_type.name})?`
             )
         ) {
             return;
@@ -127,9 +128,10 @@ export default function TransportRatesPage() {
     const openEdit = (rate: TransportRate) => {
         setSelectedRate(rate);
         setFormData({
-            emirate: rate.emirate,
-            tripType: rate.tripType,
-            vehicleType: rate.vehicleType,
+            city_id: rate.city.id,
+            area: rate.area || "",
+            trip_type: rate.trip_type,
+            vehicle_type_id: rate.vehicle_type.id,
             rate: rate.rate.toString(),
         });
         setEditDialogOpen(true);
@@ -171,17 +173,27 @@ export default function TransportRatesPage() {
                                         <div className="flex-1">
                                             <div className="flex items-center gap-3">
                                                 <span className="font-semibold">
-                                                    {rate.emirate}
+                                                    {rate.city.name}
                                                 </span>
-                                                <Badge variant="outline">{rate.tripType}</Badge>
-                                                <Badge variant="outline">{rate.vehicleType}</Badge>
-                                                {!rate.isActive && (
+                                                {rate.area && (
+                                                    <Badge
+                                                        variant="outline"
+                                                        className="max-w-[140px] truncate"
+                                                    >
+                                                        {rate.area}
+                                                    </Badge>
+                                                )}
+                                                <Badge variant="outline">{rate.trip_type}</Badge>
+                                                <Badge variant="outline">
+                                                    {rate.vehicle_type.name}
+                                                </Badge>
+                                                {!rate.is_active && (
                                                     <Badge variant="destructive">Inactive</Badge>
                                                 )}
                                             </div>
-                                            {rate.companyId && (
+                                            {rate.company?.id && (
                                                 <p className="text-xs text-muted-foreground mt-1">
-                                                    Company-specific override
+                                                    Company-specific override: {rate.company.name}
                                                 </p>
                                             )}
                                         </div>
@@ -223,32 +235,40 @@ export default function TransportRatesPage() {
                     <div className="space-y-4">
                         <div>
                             <Label>
-                                Emirate <span className="text-destructive">*</span>
+                                City <span className="text-destructive">*</span>
                             </Label>
                             <Select
-                                value={formData.emirate}
-                                onValueChange={(v) => setFormData({ ...formData, emirate: v })}
+                                value={formData.city_id}
+                                onValueChange={(v) => setFormData({ ...formData, city_id: v })}
                             >
                                 <SelectTrigger>
-                                    <SelectValue placeholder="Select emirate" />
+                                    <SelectValue placeholder="Select city" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {EMIRATES.map((e) => (
-                                        <SelectItem key={e} value={e}>
-                                            {e}
+                                    {(citiesData?.data || []).map((city) => (
+                                        <SelectItem key={city.id} value={city.id}>
+                                            {city.name}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
                         </div>
                         <div>
+                            <Label>Area (Optional)</Label>
+                            <Input
+                                value={formData.area}
+                                onChange={(e) => setFormData({ ...formData, area: e.target.value })}
+                                placeholder="e.g. Downtown, Marina"
+                            />
+                        </div>
+                        <div>
                             <Label>
                                 Trip Type <span className="text-destructive">*</span>
                             </Label>
                             <Select
-                                value={formData.tripType}
-                                onValueChange={(v: any) =>
-                                    setFormData({ ...formData, tripType: v })
+                                value={formData.trip_type}
+                                onValueChange={(v: TripType) =>
+                                    setFormData({ ...formData, trip_type: v })
                                 }
                             >
                                 <SelectTrigger>
@@ -265,18 +285,20 @@ export default function TransportRatesPage() {
                                 Vehicle Type <span className="text-destructive">*</span>
                             </Label>
                             <Select
-                                value={formData.vehicleType}
-                                onValueChange={(v: any) =>
-                                    setFormData({ ...formData, vehicleType: v })
+                                value={formData.vehicle_type_id}
+                                onValueChange={(v) =>
+                                    setFormData({ ...formData, vehicle_type_id: v })
                                 }
                             >
                                 <SelectTrigger>
-                                    <SelectValue />
+                                    <SelectValue placeholder="Select vehicle type" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="STANDARD">Standard</SelectItem>
-                                    <SelectItem value="7_TON">7-Ton Truck</SelectItem>
-                                    <SelectItem value="10_TON">10-Ton Truck</SelectItem>
+                                    {(vehicleTypesData?.data || []).map((vehicleType) => (
+                                        <SelectItem key={vehicleType.id} value={vehicleType.id}>
+                                            {vehicleType.name}
+                                        </SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -314,13 +336,16 @@ export default function TransportRatesPage() {
                     <div className="space-y-4">
                         <div className="p-3 bg-muted rounded-md text-sm">
                             <p>
-                                <strong>Emirate:</strong> {selectedRate?.emirate}
+                                <strong>City:</strong> {selectedRate?.city?.name}
                             </p>
                             <p>
-                                <strong>Trip Type:</strong> {selectedRate?.tripType}
+                                <strong>Area:</strong> {selectedRate?.area || "N/A"}
                             </p>
                             <p>
-                                <strong>Vehicle:</strong> {selectedRate?.vehicleType}
+                                <strong>Trip Type:</strong> {selectedRate?.trip_type}
+                            </p>
+                            <p>
+                                <strong>Vehicle:</strong> {selectedRate?.vehicle_type?.name}
                             </p>
                         </div>
                         <div>

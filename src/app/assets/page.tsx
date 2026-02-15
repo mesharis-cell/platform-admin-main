@@ -41,6 +41,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CreateAssetDialog } from "@/components/assets/create-asset-dialog";
 import { AdminHeader } from "@/components/admin-header";
+import { PrintQrAction } from "@/components/qr/PrintQrAction";
 import { useCompanies } from "@/hooks/use-companies";
 import { removeUnderScore } from "@/lib/utils/helper";
 import { useToken } from "@/lib/auth/use-token";
@@ -423,6 +424,10 @@ export default function AssetsPage() {
                                                         <QrCode className="w-3 h-3" />
                                                         {asset.qr_code}
                                                     </span>
+                                                    <PrintQrAction
+                                                        qrCode={asset.qr_code}
+                                                        assetName={asset.name}
+                                                    />
                                                 </div>
                                             </div>
 

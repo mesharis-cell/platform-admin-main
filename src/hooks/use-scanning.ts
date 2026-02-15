@@ -149,7 +149,8 @@ const scanInboundItem = async (data: {
     qrCode: string;
     condition: "GREEN" | "ORANGE" | "RED";
     notes?: string;
-    photos?: string[];
+    latestReturnImages: string[];
+    damageReportEntries?: Array<{ url: string; description?: string }>;
     refurbDaysEstimate?: number;
     discrepancyReason?: "BROKEN" | "LOST" | "OTHER";
     quantity?: number;
@@ -161,7 +162,8 @@ const scanInboundItem = async (data: {
                 qr_code: data.qrCode,
                 condition: data.condition,
                 notes: data.notes,
-                photos: data.photos,
+                latest_return_images: data.latestReturnImages,
+                damage_report_entries: data.damageReportEntries || [],
                 refurb_days_estimate: data.refurbDaysEstimate,
                 discrepancy_reason: data.discrepancyReason,
                 quantity: data.quantity,

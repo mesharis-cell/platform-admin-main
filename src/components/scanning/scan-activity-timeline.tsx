@@ -10,6 +10,7 @@
 
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { PrintQrAction } from "@/components/qr/PrintQrAction";
 import { useOrderScanEvents } from "@/hooks/use-scanning";
 import {
     PackageCheck,
@@ -71,6 +72,21 @@ export function ScanActivityTimeline({ orderId }: ScanActivityTimelineProps) {
         return variants[condition as keyof typeof variants] || "";
     };
 
+    const getDamageEntries = (event: any): Array<{ url: string; description?: string }> => {
+        if (Array.isArray(event.damage_report_entries) && event.damage_report_entries.length > 0) {
+            return event.damage_report_entries
+                .map((entry: any) => {
+                    if (!entry?.url) return null;
+                    return {
+                        url: entry.url,
+                        description: entry.description || undefined,
+                    };
+                })
+                .filter((entry: any) => entry !== null);
+        }
+        return (event.photos || []).map((url: string) => ({ url }));
+    };
+
     return (
         <div className="space-y-4">
             {/* Summary stats */}
@@ -114,98 +130,114 @@ export function ScanActivityTimeline({ orderId }: ScanActivityTimelineProps) {
                     SCAN TIMELINE
                 </h3>
                 <div className="space-y-4">
-                    {scanData.data.map((event, idx) => (
-                        <div
-                            key={event.id}
-                            className="relative pl-8 pb-4 border-l-2 border-border last:border-l-0 last:pb-0"
-                        >
-                            {/* Timeline dot */}
-                            <div className="absolute left-0 top-1 -translate-x-1/2 w-4 h-4 rounded-full bg-primary border-4 border-background" />
+                    {scanData.data.map((event, idx) => {
+                        const damageEntries = getDamageEntries(event);
+                        return (
+                            <div
+                                key={event.id}
+                                className="relative pl-8 pb-4 border-l-2 border-border last:border-l-0 last:pb-0"
+                            >
+                                {/* Timeline dot */}
+                                <div className="absolute left-0 top-1 -translate-x-1/2 w-4 h-4 rounded-full bg-primary border-4 border-background" />
 
-                            {/* Event content */}
-                            <div className="space-y-2">
-                                <div className="flex items-start justify-between gap-4">
-                                    <div className="flex-1">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <Badge
-                                                variant="outline"
-                                                className={
-                                                    event.scan_type === "OUTBOUND"
-                                                        ? "border-primary/30 text-primary"
-                                                        : "border-secondary/30 text-secondary"
-                                                }
-                                            >
-                                                {event.scan_type}
-                                            </Badge>
-                                            <Badge
-                                                variant="outline"
-                                                className={getConditionBadge(event.condition)}
-                                            >
-                                                {getConditionIcon(event.condition)}
-                                                {event.condition}
-                                            </Badge>
-                                        </div>
-                                        <div className="font-mono text-sm font-bold">
-                                            {event?.asset?.name}
-                                        </div>
-                                        <div className="text-xs text-muted-foreground font-mono">
-                                            QR: {event?.asset?.qr_code} • Qty: {event.quantity} •{" "}
-                                            {event?.asset?.tracking_method}
-                                        </div>
-                                    </div>
-                                    <div className="text-right text-xs">
-                                        <div className="text-muted-foreground font-mono">
-                                            {format(new Date(event?.scanned_at), "MMM d, HH:mm")}
-                                        </div>
-                                        <div className="text-muted-foreground">
-                                            by {event?.scanned_by_user?.name}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Notes */}
-                                {event.notes && (
-                                    <div className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg">
-                                        {event.notes}
-                                    </div>
-                                )}
-
-                                {/* Discrepancy */}
-                                {event.discrepancy_reason && (
-                                    <div className="flex items-center gap-2 text-sm text-amber-600">
-                                        <AlertTriangle className="w-4 h-4" />
-                                        <span className="font-mono font-bold">
-                                            Discrepancy: {event.discrepancy_reason}
-                                        </span>
-                                    </div>
-                                )}
-
-                                {/* Photos */}
-                                {event.photos.length > 0 && (
-                                    <div className="space-y-2">
-                                        <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground">
-                                            <Camera className="w-4 h-4" />
-                                            {event.photos.length} photo(s)
-                                        </div>
-                                        <div className="grid grid-cols-3 gap-2">
-                                            {event.photos.map((photo, photoIdx) => (
-                                                <div
-                                                    key={photoIdx}
-                                                    className="aspect-square bg-muted rounded-lg overflow-hidden border border-border"
+                                {/* Event content */}
+                                <div className="space-y-2">
+                                    <div className="flex items-start justify-between gap-4">
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <Badge
+                                                    variant="outline"
+                                                    className={
+                                                        event.scan_type === "OUTBOUND"
+                                                            ? "border-primary/30 text-primary"
+                                                            : "border-secondary/30 text-secondary"
+                                                    }
                                                 >
-                                                    <img
-                                                        src={photo}
-                                                        alt={`Scan photo ${photoIdx + 1}`}
-                                                        className="w-full h-full object-cover"
-                                                    />
+                                                    {event.scan_type}
+                                                </Badge>
+                                                <Badge
+                                                    variant="outline"
+                                                    className={getConditionBadge(event.condition)}
+                                                >
+                                                    {getConditionIcon(event.condition)}
+                                                    {event.condition}
+                                                </Badge>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <div className="font-mono text-sm font-bold">
+                                                    {event?.asset?.name}
                                                 </div>
-                                            ))}
+                                                <PrintQrAction
+                                                    qrCode={event?.asset?.qr_code}
+                                                    assetName={event?.asset?.name}
+                                                />
+                                            </div>
+                                            <div className="text-xs text-muted-foreground font-mono">
+                                                QR: {event?.asset?.qr_code} • Qty: {event.quantity}{" "}
+                                                • {event?.asset?.tracking_method}
+                                            </div>
+                                        </div>
+                                        <div className="text-right text-xs">
+                                            <div className="text-muted-foreground font-mono">
+                                                {format(
+                                                    new Date(event?.scanned_at),
+                                                    "MMM d, HH:mm"
+                                                )}
+                                            </div>
+                                            <div className="text-muted-foreground">
+                                                by {event?.scanned_by_user?.name}
+                                            </div>
                                         </div>
                                     </div>
-                                )}
+
+                                    {/* Notes */}
+                                    {event.notes && (
+                                        <div className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg">
+                                            {event.notes}
+                                        </div>
+                                    )}
+
+                                    {/* Discrepancy */}
+                                    {event.discrepancy_reason && (
+                                        <div className="flex items-center gap-2 text-sm text-amber-600">
+                                            <AlertTriangle className="w-4 h-4" />
+                                            <span className="font-mono font-bold">
+                                                Discrepancy: {event.discrepancy_reason}
+                                            </span>
+                                        </div>
+                                    )}
+
+                                    {/* Damage photos */}
+                                    {damageEntries.length > 0 && (
+                                        <div className="space-y-2">
+                                            <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground">
+                                                <Camera className="w-4 h-4" />
+                                                {damageEntries.length} photo(s)
+                                            </div>
+                                            <div className="grid grid-cols-3 gap-2">
+                                                {damageEntries.map((entry, photoIdx) => (
+                                                    <div key={photoIdx} className="space-y-1">
+                                                        <div className="aspect-square bg-muted rounded-lg overflow-hidden border border-border">
+                                                            <img
+                                                                src={entry.url}
+                                                                alt={`Scan photo ${photoIdx + 1}`}
+                                                                className="w-full h-full object-cover"
+                                                            />
+                                                        </div>
+                                                        {entry.description && (
+                                                            <p className="text-[10px] text-muted-foreground">
+                                                                {entry.description}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             </Card>
         </div>

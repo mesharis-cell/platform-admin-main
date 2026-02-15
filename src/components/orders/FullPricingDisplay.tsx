@@ -22,6 +22,10 @@ export function FullPricingDisplay({ pricing, lineItems = [] }: FullPricingDispl
     const customItems = lineItems.filter(
         (item) => item.lineItemType === "CUSTOM" && !item.isVoided
     );
+    const vehicleTypeLabel =
+        typeof pricing.transport.vehicle_type === "string"
+            ? pricing.transport.vehicle_type
+            : pricing.transport.vehicle_type?.name || "N/A";
 
     return (
         <Card>
@@ -63,7 +67,7 @@ export function FullPricingDisplay({ pricing, lineItems = [] }: FullPricingDispl
                             {pricing.transport.trip_type === "ROUND_TRIP"
                                 ? "Round-trip"
                                 : "One-way"}{" "}
-                            ({pricing.transport.vehicle_type})
+                            ({vehicleTypeLabel})
                         </span>
                         <span className="font-mono font-semibold">
                             {pricing.transport.final_rate.toFixed(2)} AED

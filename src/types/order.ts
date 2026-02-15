@@ -25,6 +25,7 @@ export type OrderStatus =
     | "DELIVERED"
     | "IN_USE"
     | "AWAITING_RETURN"
+    | "RETURN_IN_TRANSIT"
     | "CLOSED"
     | "CANCELLED";
 
@@ -32,11 +33,14 @@ export type OrderStatus =
 export type FinancialStatus =
     | "PENDING_QUOTE"
     | "QUOTE_SENT"
+    | "QUOTE_REVISED"
     | "QUOTE_ACCEPTED"
     | "PENDING_INVOICE"
     | "INVOICED"
     | "PAID"
     | "CANCELLED";
+
+export type MaintenanceDecision = "FIX_IN_ORDER" | "USE_AS_IS";
 
 // ============================================================
 // Order Types
@@ -155,6 +159,10 @@ export interface OrderItem {
     totalWeight: string; // decimal as string (quantity * weight)
     condition: Condition;
     handlingTags: HandlingTag[];
+    maintenanceDecision?: MaintenanceDecision | null;
+    requiresMaintenance?: boolean;
+    maintenanceRefurbDaysSnapshot?: number | null;
+    maintenanceDecisionLockedAt?: Date | null;
     fromCollection?: string | null;
     fromCollectionName?: string | null;
     createdAt: Date;
@@ -610,4 +618,54 @@ export interface TruckDetailsData {
     tailgateRequired: boolean;
     manpower: number;
     notes: string;
+}
+
+export type OrderTransportUnitKind = "DELIVERY_BILLABLE" | "PICKUP_OPS" | "OTHER_ACCESS";
+
+export interface OrderTransportUnitDetailsData {
+    truck_plate?: string | null;
+    driver_name?: string | null;
+    driver_contact?: string | null;
+    truck_size?: string | null;
+    tailgate_required?: boolean;
+    manpower?: number;
+    pickup_notes?: string | null;
+    delivery_notes?: string | null;
+    notes?: string | null;
+    metadata?: Record<string, unknown>;
+}
+
+export interface OrderTransportUnit {
+    id: string;
+    kind: OrderTransportUnitKind;
+    vehicle_type_id: string | null;
+    label: string | null;
+    is_default: boolean;
+    is_billable: boolean;
+    billable_rate: string | null;
+    vehicle_type?: {
+        id: string;
+        name: string;
+    } | null;
+    details?: OrderTransportUnitDetailsData | null;
+}
+
+export interface CreateOrderTransportUnitPayload {
+    kind: OrderTransportUnitKind;
+    vehicle_type_id?: string;
+    label?: string;
+    is_default?: boolean;
+    is_billable?: boolean;
+    billable_rate?: number;
+    detail?: OrderTransportUnitDetailsData;
+}
+
+export interface UpdateOrderTransportUnitPayload {
+    kind?: OrderTransportUnitKind;
+    vehicle_type_id?: string | null;
+    label?: string;
+    is_default?: boolean;
+    is_billable?: boolean;
+    billable_rate?: number | null;
+    detail?: OrderTransportUnitDetailsData;
 }

@@ -26,7 +26,15 @@ import type { ConditionHistoryEntry } from "@/types/condition";
 import type { Condition } from "@/types/asset";
 
 interface ConditionHistoryTimelineProps {
-    history: { notes: string; condition: Condition; updated_by: string; timestamp: string }[];
+    history: Array<{
+        id?: string;
+        notes: string;
+        condition: Condition;
+        updated_by: string;
+        timestamp: string;
+        photos?: string[];
+        damage_report_entries?: Array<{ url: string; description?: string }>;
+    }>;
     assetName: string;
 }
 
@@ -80,6 +88,22 @@ export function ConditionHistoryTimeline({ history, assetName }: ConditionHistor
         }
     };
 
+    const getDamageEntries = (
+        entry: ConditionHistoryTimelineProps["history"][number]
+    ): Array<{ url: string; description?: string }> => {
+        if (Array.isArray(entry.damage_report_entries) && entry.damage_report_entries.length > 0) {
+            return entry.damage_report_entries
+                .map((item) => {
+                    if (!item?.url) return null;
+                    return item.description
+                        ? { url: item.url, description: item.description }
+                        : { url: item.url };
+                })
+                .filter((item): item is NonNullable<typeof item> => item !== null);
+        }
+        return (entry.photos || []).map((url) => ({ url }));
+    };
+
     if (history.length === 0) {
         return (
             <div className="rounded-lg border border-dashed p-8 text-center">
@@ -99,6 +123,7 @@ export function ConditionHistoryTimeline({ history, assetName }: ConditionHistor
                 {history.map((entry, index) => {
                     const isExpanded = expandedEntries.has(entry.timestamp);
                     const isFirst = index === 0;
+                    const damageEntries = getDamageEntries(entry);
 
                     return (
                         <div key={entry.timestamp} className="relative">
@@ -147,7 +172,7 @@ export function ConditionHistoryTimeline({ history, assetName }: ConditionHistor
                                             </div>
                                         </div>
 
-                                        {entry.notes && (
+                                        {(entry.notes || damageEntries.length > 0) && (
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
@@ -181,6 +206,48 @@ export function ConditionHistoryTimeline({ history, assetName }: ConditionHistor
                                                     <p className="whitespace-pre-wrap text-sm">
                                                         {entry.notes}
                                                     </p>
+                                                </div>
+                                            )}
+
+                                            {damageEntries.length > 0 && (
+                                                <div className="space-y-2">
+                                                    <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
+                                                        <ImageIcon className="h-3 w-3" />
+                                                        Damage Photos ({damageEntries.length})
+                                                    </div>
+                                                    <div className="grid gap-2 sm:grid-cols-3">
+                                                        {damageEntries.map((photo, photoIndex) => (
+                                                            <Dialog key={photoIndex}>
+                                                                <DialogTrigger asChild>
+                                                                    <button className="group relative aspect-square overflow-hidden rounded-md border bg-muted transition-all hover:border-primary hover:ring-2 hover:ring-primary/20">
+                                                                        <Image
+                                                                            src={photo.url}
+                                                                            alt={`Damage photo ${photoIndex + 1}`}
+                                                                            fill
+                                                                            className="object-cover transition-transform group-hover:scale-110"
+                                                                        />
+                                                                    </button>
+                                                                </DialogTrigger>
+                                                                <DialogContent className="max-w-3xl">
+                                                                    <div className="space-y-2">
+                                                                        <div className="relative aspect-video w-full overflow-hidden rounded-lg">
+                                                                            <Image
+                                                                                src={photo.url}
+                                                                                alt={`Damage photo ${photoIndex + 1}`}
+                                                                                fill
+                                                                                className="object-contain"
+                                                                            />
+                                                                        </div>
+                                                                        {photo.description && (
+                                                                            <p className="text-sm text-muted-foreground">
+                                                                                {photo.description}
+                                                                            </p>
+                                                                        )}
+                                                                    </div>
+                                                                </DialogContent>
+                                                            </Dialog>
+                                                        ))}
+                                                    </div>
                                                 </div>
                                             )}
                                         </div>

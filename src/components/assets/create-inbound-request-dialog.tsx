@@ -117,7 +117,7 @@ export function CreateInboundRequestDialog({
         new Map()
     );
     const [showDropdownPerItem, setShowDropdownPerItem] = useState<Map<number, boolean>>(new Map());
-    const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // Image upload state - store files locally per item until form submit
     const [selectedImagesPerItem, setSelectedImagesPerItem] = useState<Map<number, File[]>>(

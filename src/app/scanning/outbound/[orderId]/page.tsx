@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { PrintQrAction } from "@/components/qr/PrintQrAction";
 import {
     useOutboundScanProgress,
     useScanOutboundItem,
@@ -139,15 +140,16 @@ export default function OutboundScanningPage() {
 
     const requestCameraPermission = async () => {
         try {
-            // Check if mediaDevices API is available
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            const mediaDevices =
+                typeof window !== "undefined" ? window.navigator?.mediaDevices : undefined;
+
+            if (!mediaDevices?.getUserMedia) {
                 throw new Error(
                     "Camera API not available. Please use HTTPS or enable insecure origins in Chrome flags."
                 );
             }
 
-            // Step 1: Request camera permission
-            const stream = await navigator.mediaDevices.getUserMedia({
+            const stream = await mediaDevices.getUserMedia({
                 video: { facingMode: "environment" },
             });
             // Stop the test stream
@@ -189,15 +191,17 @@ export default function OutboundScanningPage() {
         try {
             console.log("🎥 Starting camera for truck photos...");
 
-            // Check if mediaDevices API is available
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            const mediaDevices =
+                typeof window !== "undefined" ? window.navigator?.mediaDevices : undefined;
+
+            if (!mediaDevices?.getUserMedia) {
                 throw new Error(
                     "Camera API not available. Please use HTTPS or enable insecure origins in Chrome flags."
                 );
             }
 
             console.log("🎥 Requesting camera stream...");
-            const photoStream = await navigator.mediaDevices.getUserMedia({
+            const photoStream = await mediaDevices.getUserMedia({
                 video: {
                     facingMode: "environment",
                     width: { ideal: 1920 },
@@ -843,7 +847,7 @@ export default function OutboundScanningPage() {
                                         : "bg-muted/20 border-border"
                                 }`}
                             >
-                                <div className="flex items-center justify-between">
+                                <div className="flex items-center justify-between gap-2">
                                     <div className="flex-1">
                                         <div className="font-mono text-sm font-bold">
                                             {asset.asset_name}
@@ -852,15 +856,23 @@ export default function OutboundScanningPage() {
                                             QR: {asset.qr_code} • {asset.tracking_method}
                                         </div>
                                     </div>
-                                    <div className="text-right">
-                                        <div className="text-sm font-mono font-bold">
-                                            {asset.scanned_quantity}/{asset.required_quantity}
+                                    <div className="flex items-center gap-2">
+                                        <PrintQrAction
+                                            qrCode={asset.qr_code}
+                                            assetName={asset.asset_name}
+                                            variant="outline"
+                                            className="h-8 w-8 border-border/50"
+                                        />
+                                        <div className="text-right">
+                                            <div className="text-sm font-mono font-bold">
+                                                {asset.scanned_quantity}/{asset.required_quantity}
+                                            </div>
+                                            {asset.scanned_quantity === asset.required_quantity ? (
+                                                <CheckCircle2 className="w-5 h-5 text-primary ml-auto" />
+                                            ) : (
+                                                <Package className="w-5 h-5 text-muted-foreground ml-auto" />
+                                            )}
                                         </div>
-                                        {asset.scanned_quantity === asset.required_quantity ? (
-                                            <CheckCircle2 className="w-5 h-5 text-primary ml-auto" />
-                                        ) : (
-                                            <Package className="w-5 h-5 text-muted-foreground ml-auto" />
-                                        )}
                                     </div>
                                 </div>
                             </div>

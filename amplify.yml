@@ -5,7 +5,8 @@ frontend:
             commands:
                 - curl -fsSL https://bun.sh/install | bash
                 - export PATH="$HOME/.bun/bin:$PATH"
-                - bun install
+                - test ! -f pnpm-lock.yaml && test ! -f package-lock.json || (echo "Lockfile policy violation: use bun.lock only" && exit 1)
+                - bun install --frozen-lockfile
         build:
             commands:
                 - export PATH="$HOME/.bun/bin:$PATH"

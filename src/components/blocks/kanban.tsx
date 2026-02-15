@@ -1,4 +1,5 @@
 "use client";
+/* global globalThis */
 
 import type {
     Announcements,
@@ -197,6 +198,12 @@ export const KanbanProvider = <
     ...props
 }: KanbanProviderProps<T, C>) => {
     const [activeCardId, setActiveCardId] = useState<string | null>(null);
+    const runtimeGlobal =
+        typeof globalThis !== "undefined"
+            ? (globalThis as unknown as Record<string, unknown>)
+            : undefined;
+    const documentRef = runtimeGlobal?.["document"] as Document | undefined;
+    const documentBody = documentRef?.body;
 
     const sensors = useSensors(
         useSensor(MouseSensor),
@@ -304,12 +311,12 @@ export const KanbanProvider = <
                 <div className={cn("grid size-full auto-cols-fr grid-flow-col gap-4", className)}>
                     {columns.map((column) => children(column))}
                 </div>
-                {typeof window !== "undefined" &&
+                {documentBody &&
                     createPortal(
                         <DragOverlay>
                             <t.Out />
                         </DragOverlay>,
-                        document.body
+                        documentBody
                     )}
             </DndContext>
         </KanbanContext.Provider>

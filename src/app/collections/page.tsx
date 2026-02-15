@@ -218,172 +218,179 @@ export default function CollectionsPage() {
                             </DialogTrigger>
                             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                                 <DialogHeader>
-                                    <DialogTitle className="text-2xl">Create Collection</DialogTitle>
+                                    <DialogTitle className="text-2xl">
+                                        Create Collection
+                                    </DialogTitle>
                                 </DialogHeader>
 
-                            <div className="space-y-6 py-4">
-                                {/* Company Selection */}
-                                <div className="space-y-2">
-                                    <Label htmlFor="company">Company *</Label>
-                                    <Select
-                                        value={formData.company}
-                                        onValueChange={(value) =>
-                                            setFormData({
-                                                ...formData,
-                                                company: value,
-                                                brand: "",
-                                            })
-                                        }
-                                    >
-                                        <SelectTrigger id="company">
-                                            <SelectValue placeholder="Select company" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {companies.map((company) => (
-                                                <SelectItem key={company.id} value={company.id}>
-                                                    {company.name}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                {/* Brand Selection */}
-                                <div className="space-y-2">
-                                    <Label htmlFor="brand">Brand (Optional)</Label>
-                                    <div className="flex gap-2">
+                                <div className="space-y-6 py-4">
+                                    {/* Company Selection */}
+                                    <div className="space-y-2">
+                                        <Label htmlFor="company">Company *</Label>
                                         <Select
-                                            value={formData.brand || "__empty__"}
+                                            value={formData.company}
                                             onValueChange={(value) =>
                                                 setFormData({
                                                     ...formData,
-                                                    brand: value === "__empty__" ? "" : value,
+                                                    company: value,
+                                                    brand: "",
                                                 })
                                             }
-                                            disabled={!formData.company}
                                         >
-                                            <SelectTrigger id="brand" className="flex-1">
-                                                <SelectValue placeholder="Select brand (optional)" />
+                                            <SelectTrigger id="company">
+                                                <SelectValue placeholder="Select company" />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="__empty__">No Brand</SelectItem>
-                                                {formBrands.length === 0 ? (
-                                                    <div className="px-2 py-6 text-center text-sm text-muted-foreground">
-                                                        No brands for this company
-                                                    </div>
-                                                ) : (
-                                                    formBrands.map((brand) => (
-                                                        <SelectItem key={brand.id} value={brand.id}>
-                                                            {brand.name}
-                                                        </SelectItem>
-                                                    ))
-                                                )}
+                                                {companies.map((company) => (
+                                                    <SelectItem key={company.id} value={company.id}>
+                                                        {company.name}
+                                                    </SelectItem>
+                                                ))}
                                             </SelectContent>
                                         </Select>
                                     </div>
-                                </div>
 
-                                {/* Collection Name */}
-                                <div className="space-y-2">
-                                    <Label htmlFor="name">Collection Name *</Label>
-                                    <Input
-                                        id="name"
-                                        placeholder="e.g., Absolut Bar Setup"
-                                        value={formData.name}
-                                        onChange={(e) =>
-                                            setFormData({
-                                                ...formData,
-                                                name: e.target.value,
-                                            })
-                                        }
-                                    />
-                                </div>
-
-                                {/* Description */}
-                                <div className="space-y-2">
-                                    <Label htmlFor="description">Description</Label>
-                                    <Textarea
-                                        id="description"
-                                        placeholder="Describe this collection bundle..."
-                                        rows={3}
-                                        value={formData.description}
-                                        onChange={(e) =>
-                                            setFormData({
-                                                ...formData,
-                                                description: e.target.value,
-                                            })
-                                        }
-                                    />
-                                </div>
-
-                                {/* Category */}
-                                <div className="space-y-2">
-                                    <Label htmlFor="category">Category</Label>
-                                    <Input
-                                        id="category"
-                                        placeholder="e.g., Bar Setup, Lounge Area"
-                                        value={formData.category}
-                                        onChange={(e) =>
-                                            setFormData({
-                                                ...formData,
-                                                category: e.target.value,
-                                            })
-                                        }
-                                    />
-                                </div>
-
-                                {/* Image Upload */}
-                                <div className="space-y-2">
-                                    <Label>Collection Images</Label>
-                                    <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary/50 transition-colors">
-                                        <input
-                                            type="file"
-                                            id="collection-images"
-                                            multiple
-                                            accept="image/*"
-                                            onChange={handleImageSelect}
-                                            className="hidden"
-                                        />
-                                        <label
-                                            htmlFor="collection-images"
-                                            className="cursor-pointer"
-                                        >
-                                            <ImagePlus className="w-12 h-12 mx-auto mb-3 text-muted-foreground" />
-                                            <p className="text-sm text-muted-foreground mb-1">
-                                                Click to upload collection images
-                                            </p>
-                                            <p className="text-xs text-muted-foreground">
-                                                PNG, JPG, WebP (max 5MB each)
-                                            </p>
-                                        </label>
+                                    {/* Brand Selection */}
+                                    <div className="space-y-2">
+                                        <Label htmlFor="brand">Brand (Optional)</Label>
+                                        <div className="flex gap-2">
+                                            <Select
+                                                value={formData.brand || "__empty__"}
+                                                onValueChange={(value) =>
+                                                    setFormData({
+                                                        ...formData,
+                                                        brand: value === "__empty__" ? "" : value,
+                                                    })
+                                                }
+                                                disabled={!formData.company}
+                                            >
+                                                <SelectTrigger id="brand" className="flex-1">
+                                                    <SelectValue placeholder="Select brand (optional)" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="__empty__">
+                                                        No Brand
+                                                    </SelectItem>
+                                                    {formBrands.length === 0 ? (
+                                                        <div className="px-2 py-6 text-center text-sm text-muted-foreground">
+                                                            No brands for this company
+                                                        </div>
+                                                    ) : (
+                                                        formBrands.map((brand) => (
+                                                            <SelectItem
+                                                                key={brand.id}
+                                                                value={brand.id}
+                                                            >
+                                                                {brand.name}
+                                                            </SelectItem>
+                                                        ))
+                                                    )}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
                                     </div>
 
-                                    {/* Image Previews */}
-                                    {previewUrls.length > 0 && (
-                                        <div className="grid grid-cols-3 gap-4 mt-4">
-                                            {previewUrls.map((url, index) => (
-                                                <div
-                                                    key={index}
-                                                    className="relative aspect-square rounded-lg overflow-hidden border border-border group"
-                                                >
-                                                    <Image
-                                                        src={url}
-                                                        alt={`Preview ${index + 1}`}
-                                                        fill
-                                                        className="object-cover"
-                                                    />
-                                                    <button
-                                                        onClick={() => handleRemoveImage(index)}
-                                                        className="absolute top-2 right-2 p-1 bg-destructive rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                                                    >
-                                                        <X className="w-4 h-4 text-destructive-foreground" />
-                                                    </button>
-                                                </div>
-                                            ))}
+                                    {/* Collection Name */}
+                                    <div className="space-y-2">
+                                        <Label htmlFor="name">Collection Name *</Label>
+                                        <Input
+                                            id="name"
+                                            placeholder="e.g., Absolut Bar Setup"
+                                            value={formData.name}
+                                            onChange={(e) =>
+                                                setFormData({
+                                                    ...formData,
+                                                    name: e.target.value,
+                                                })
+                                            }
+                                        />
+                                    </div>
+
+                                    {/* Description */}
+                                    <div className="space-y-2">
+                                        <Label htmlFor="description">Description</Label>
+                                        <Textarea
+                                            id="description"
+                                            placeholder="Describe this collection bundle..."
+                                            rows={3}
+                                            value={formData.description}
+                                            onChange={(e) =>
+                                                setFormData({
+                                                    ...formData,
+                                                    description: e.target.value,
+                                                })
+                                            }
+                                        />
+                                    </div>
+
+                                    {/* Category */}
+                                    <div className="space-y-2">
+                                        <Label htmlFor="category">Category</Label>
+                                        <Input
+                                            id="category"
+                                            placeholder="e.g., Bar Setup, Lounge Area"
+                                            value={formData.category}
+                                            onChange={(e) =>
+                                                setFormData({
+                                                    ...formData,
+                                                    category: e.target.value,
+                                                })
+                                            }
+                                        />
+                                    </div>
+
+                                    {/* Image Upload */}
+                                    <div className="space-y-2">
+                                        <Label>Collection Images</Label>
+                                        <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary/50 transition-colors">
+                                            <input
+                                                type="file"
+                                                id="collection-images"
+                                                multiple
+                                                accept="image/*"
+                                                onChange={handleImageSelect}
+                                                className="hidden"
+                                            />
+                                            <label
+                                                htmlFor="collection-images"
+                                                className="cursor-pointer"
+                                            >
+                                                <ImagePlus className="w-12 h-12 mx-auto mb-3 text-muted-foreground" />
+                                                <p className="text-sm text-muted-foreground mb-1">
+                                                    Click to upload collection images
+                                                </p>
+                                                <p className="text-xs text-muted-foreground">
+                                                    PNG, JPG, WebP (max 5MB each)
+                                                </p>
+                                            </label>
                                         </div>
-                                    )}
+
+                                        {/* Image Previews */}
+                                        {previewUrls.length > 0 && (
+                                            <div className="grid grid-cols-3 gap-4 mt-4">
+                                                {previewUrls.map((url, index) => (
+                                                    <div
+                                                        key={index}
+                                                        className="relative aspect-square rounded-lg overflow-hidden border border-border group"
+                                                    >
+                                                        <Image
+                                                            src={url}
+                                                            alt={`Preview ${index + 1}`}
+                                                            fill
+                                                            className="object-cover"
+                                                        />
+                                                        <button
+                                                            onClick={() => handleRemoveImage(index)}
+                                                            className="absolute top-2 right-2 p-1 bg-destructive rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                                        >
+                                                            <X className="w-4 h-4 text-destructive-foreground" />
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
 
                                 <DialogFooter>
                                     <Button

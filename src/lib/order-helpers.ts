@@ -73,6 +73,7 @@ export function getStatusColor(status: OrderStatus): string {
         DELIVERED: "bg-emerald-500",
         IN_USE: "bg-teal-500",
         AWAITING_RETURN: "bg-amber-500",
+        RETURN_IN_TRANSIT: "bg-orange-500",
         CLOSED: "bg-gray-600",
         CANCELLED: "bg-red-600",
     };

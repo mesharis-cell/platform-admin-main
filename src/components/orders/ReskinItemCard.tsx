@@ -2,6 +2,7 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useToken } from "@/lib/auth/use-token";
 import { RefreshCw, CheckCircle, XCircle } from "lucide-react";
 import type { ReskinRequest } from "@/types/hybrid-pricing";
 
@@ -32,7 +33,9 @@ export function ReskinItemCard({
     orderStatus,
     disabled,
 }: ReskinItemCardProps) {
+    const { user } = useToken();
     const showActionButton = orderStatus === "AWAITING_FABRICATION" && reskin.completedAt === null;
+    const canCancel = user?.role === "ADMIN";
 
     if (status === "pending") {
         return (
@@ -63,9 +66,11 @@ export function ReskinItemCard({
                         <Button size="sm" onClick={() => onMarkComplete?.(reskin)}>
                             Mark Complete
                         </Button>
-                        <Button size="sm" variant="outline" onClick={() => onCancel?.(reskin)}>
-                            Cancel Reskin
-                        </Button>
+                        {canCancel && (
+                            <Button size="sm" variant="outline" onClick={() => onCancel?.(reskin)}>
+                                Cancel Reskin
+                            </Button>
+                        )}
                     </div>
                 )}
             </div>

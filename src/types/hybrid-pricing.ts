@@ -29,15 +29,16 @@ export type TripType = "ONE_WAY" | "ROUND_TRIP";
 export interface VehicleType {
     id: string;
     name: string;
-    vehicle_size: number;
-    platform_id: string;
+    vehicle_size: number | null;
+    platform_id: string | null;
     is_default: boolean;
     is_active: boolean;
     display_order: number;
-    description: string;
+    description: string | null;
     created_at: string;
     updated_at: string;
 }
+export type VehicleTypeRef = string | VehicleType;
 
 export interface TransportRate {
     id: string;
@@ -79,7 +80,7 @@ export interface UpdateTransportRateRequest {
 export interface TransportRateLookup {
     emirate: string;
     tripType: TripType;
-    vehicleType: VehicleType;
+    vehicleType: VehicleTypeRef;
     rate: number;
 }
 
@@ -161,7 +162,7 @@ export interface UpdateServiceTypeRequest {
 // ============================================================
 
 export type LineItemType = "CATALOG" | "CUSTOM";
-export type PurposeType = "ORDER" | "INBOUND_REQUEST";
+export type PurposeType = "ORDER" | "INBOUND_REQUEST" | "SERVICE_REQUEST";
 
 export interface OrderLineItem {
     id: string;
@@ -190,6 +191,7 @@ export interface OrderLineItem {
 export interface CreateCatalogLineItemRequest {
     order_id?: string;
     inbound_request_id?: string;
+    service_request_id?: string;
     purpose_type: PurposeType;
     service_type_id: string;
     quantity: number;
@@ -199,18 +201,21 @@ export interface CreateCatalogLineItemRequest {
 export interface CreateCustomLineItemRequest {
     order_id?: string;
     inbound_request_id?: string;
+    service_request_id?: string;
     purpose_type: PurposeType;
     description: string;
     category: ServiceCategory;
-    total: number;
+    quantity: number;
+    unit: string;
+    unit_rate: number;
     notes?: string;
     reskin_request_id?: string;
 }
 
 export interface UpdateLineItemRequest {
     quantity?: number;
+    unit?: string;
     unitRate?: number;
-    total?: number;
     notes?: string;
 }
 
@@ -234,7 +239,7 @@ export interface OrderPricing {
     transport: {
         emirate?: string;
         trip_type?: TripType;
-        vehicle_type?: VehicleType;
+        vehicle_type?: VehicleTypeRef;
         system_rate: number;
         final_rate: number;
         vehicle_changed?: boolean;

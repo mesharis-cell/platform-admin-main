@@ -31,6 +31,7 @@ import {
     ChevronRight,
     Settings,
     Flag,
+    ClipboardList,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -62,7 +63,7 @@ type NavItem = {
     href: string;
     icon: React.ComponentType<{ className?: string }>;
     badge?: string;
-    requiredAnyPermission?: string[];
+    requiredAnyPermission?: readonly string[];
     items?: {
         title: string;
         url: string;
@@ -81,6 +82,12 @@ const navigation: NavItem[] = [
         href: "/orders",
         icon: ShoppingCart,
         requiredAnyPermission: ADMIN_NAV_PERMISSIONS.orders,
+    },
+    {
+        name: "Service Requests",
+        href: "/service-requests",
+        icon: ClipboardList,
+        requiredAnyPermission: ADMIN_NAV_PERMISSIONS.serviceRequests,
     },
     {
         name: "Pricing Review",

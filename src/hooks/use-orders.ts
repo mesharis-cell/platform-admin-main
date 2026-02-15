@@ -9,12 +9,15 @@
 import { apiClient } from "@/lib/api/api-client";
 import { throwApiError } from "@/lib/utils/throw-api-error";
 import type {
+    CreateOrderTransportUnitPayload,
     MyOrdersListParams,
     MyOrdersListResponse,
+    OrderTransportUnit,
     OrderWithDetails,
     SubmitOrderRequest,
     SubmitOrderResponse,
     TruckDetailsData,
+    UpdateOrderTransportUnitPayload,
 } from "@/types/order";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { invoiceKeys } from "./use-invoices";
@@ -766,6 +769,115 @@ export function useUpdateOrderTripType() {
             }
         },
         onSuccess: (_, variables) => {
+            queryClient.invalidateQueries({
+                queryKey: ["orders", "admin-detail", variables.orderId],
+            });
+            queryClient.invalidateQueries({ queryKey: ["orders", "pricing-review"] });
+        },
+    });
+}
+
+export function useOrderTransportUnits(orderId: string | null) {
+    return useQuery({
+        queryKey: ["orders", "transport-units", orderId],
+        queryFn: async (): Promise<OrderTransportUnit[]> => {
+            try {
+                const response = await apiClient.get(`/client/v1/order/${orderId}/transport-units`);
+                return response.data?.data || [];
+            } catch (error) {
+                throwApiError(error);
+            }
+        },
+        enabled: !!orderId,
+    });
+}
+
+export function useCreateOrderTransportUnit() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({
+            orderId,
+            payload,
+        }: {
+            orderId: string;
+            payload: CreateOrderTransportUnitPayload;
+        }) => {
+            try {
+                const response = await apiClient.post(
+                    `/client/v1/order/${orderId}/transport-units`,
+                    payload
+                );
+                return response.data?.data || [];
+            } catch (error) {
+                throwApiError(error);
+            }
+        },
+        onSuccess: (_, variables) => {
+            queryClient.invalidateQueries({
+                queryKey: ["orders", "transport-units", variables.orderId],
+            });
+            queryClient.invalidateQueries({
+                queryKey: ["orders", "admin-detail", variables.orderId],
+            });
+            queryClient.invalidateQueries({ queryKey: ["orders", "pricing-review"] });
+        },
+    });
+}
+
+export function useUpdateOrderTransportUnit() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({
+            orderId,
+            unitId,
+            payload,
+        }: {
+            orderId: string;
+            unitId: string;
+            payload: UpdateOrderTransportUnitPayload;
+        }) => {
+            try {
+                const response = await apiClient.patch(
+                    `/client/v1/order/${orderId}/transport-units/${unitId}`,
+                    payload
+                );
+                return response.data?.data || [];
+            } catch (error) {
+                throwApiError(error);
+            }
+        },
+        onSuccess: (_, variables) => {
+            queryClient.invalidateQueries({
+                queryKey: ["orders", "transport-units", variables.orderId],
+            });
+            queryClient.invalidateQueries({
+                queryKey: ["orders", "admin-detail", variables.orderId],
+            });
+            queryClient.invalidateQueries({ queryKey: ["orders", "pricing-review"] });
+        },
+    });
+}
+
+export function useDeleteOrderTransportUnit() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({ orderId, unitId }: { orderId: string; unitId: string }) => {
+            try {
+                const response = await apiClient.delete(
+                    `/client/v1/order/${orderId}/transport-units/${unitId}`
+                );
+                return response.data?.data || [];
+            } catch (error) {
+                throwApiError(error);
+            }
+        },
+        onSuccess: (_, variables) => {
+            queryClient.invalidateQueries({
+                queryKey: ["orders", "transport-units", variables.orderId],
+            });
             queryClient.invalidateQueries({
                 queryKey: ["orders", "admin-detail", variables.orderId],
             });

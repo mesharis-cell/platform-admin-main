@@ -31,7 +31,7 @@ import {
 import { ProcessReskinModal } from "@/components/orders/ProcessReskinModal";
 import { OrderApprovalRequestSubmitBtn } from "@/components/orders/OrderApprovalRequestSubmitBtn";
 import { OrderItemCard } from "@/components/orders/OrderItemCard";
-import { TruckDetailsModal } from "@/components/orders/TruckDetailsModal";
+import { OrderTransportUnitsCard } from "@/components/orders/OrderTransportUnitsCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -70,8 +70,6 @@ import {
     CheckCircle,
     Loader2,
     ImagePlus,
-    PlusCircle,
-    Pencil,
     Trash2,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -85,19 +83,6 @@ import { AddMissingTransportRate } from "@/components/orders/AddMissingTransport
 import { useToken } from "@/lib/auth/use-token";
 import { hasPermission } from "@/lib/auth/permissions";
 import { ADMIN_ACTION_PERMISSIONS } from "@/lib/auth/permission-map";
-
-const getTruckDetailsInitialData = (details: any) => {
-    if (!details) return undefined;
-    return {
-        truckPlate: details.truck_plate || "",
-        driverName: details.driver_name || "",
-        driverContact: details.driver_contact || "",
-        truckSize: details.truck_size || "",
-        tailgateRequired: details.tailgate_required || false,
-        manpower: details.manpower || 0,
-        notes: details.notes || "",
-    };
-};
 
 const FINANCIAL_STATUS = {
     PENDING_QUOTE: {
@@ -278,9 +263,6 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
         pickupWindowEnd: undefined,
     });
 
-    // Truck details modal states
-    const [deliveryTruckDialogOpen, setDeliveryTruckDialogOpen] = useState(false);
-    const [pickupTruckDialogOpen, setPickupTruckDialogOpen] = useState(false);
     const canDownloadGoodsForm = hasPermission(
         user,
         ADMIN_ACTION_PERMISSIONS.ordersDownloadGoodsForm
@@ -601,7 +583,10 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                             ) : null}
 
                             {allowedNextStates.length > 0 && canProgressOrderStatus && (
-                                <Dialog open={statusDialogOpen} onOpenChange={handleStatusDialogToggle}>
+                                <Dialog
+                                    open={statusDialogOpen}
+                                    onOpenChange={handleStatusDialogToggle}
+                                >
                                     <DialogTrigger asChild>
                                         <Button
                                             size="sm"
@@ -879,8 +864,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                                 {Math.floor(
                                                     (Date.now() -
                                                         new Date(
-                                                            order?.data?.final_pricing
-                                                                ?.quote_sent_at
+                                                            order?.data?.final_pricing?.quote_sent_at
                                                         ).getTime()) /
                                                         (1000 * 60 * 60 * 24)
                                                 )}{" "}
@@ -888,8 +872,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                                 {Math.floor(
                                                     (Date.now() -
                                                         new Date(
-                                                            order?.data?.final_pricing
-                                                                ?.quote_sent_at
+                                                            order?.data?.final_pricing?.quote_sent_at
                                                         ).getTime()) /
                                                         (1000 * 60 * 60 * 24)
                                                 ) >= 2 && " - Consider following up with client"}
@@ -1486,170 +1469,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                             </Card>
                         )}
 
-                        {/* Truck details */}
-                        <Card>
-                            <CardHeader>
-                                <CardTitle className="font-mono text-sm flex items-center gap-2">
-                                    <Truck className="h-4 w-4 text-primary" />
-                                    TRUCK DETAILS
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                {/* Delivery Truck Section */}
-                                {order.data.delivery_truck_details &&
-                                Object.keys(order.data.delivery_truck_details).length > 0 ? (
-                                    <div className="border-2 rounded-lg p-4 border-blue-200 bg-blue-50/50">
-                                        <div className="flex justify-between items-start">
-                                            <div className="flex gap-3">
-                                                <div>
-                                                    <p className="font-mono text-sm font-bold text-blue-900">
-                                                        Delivery Truck
-                                                    </p>
-                                                    <div className="mt-2 space-y-1 text-xs text-blue-800 font-mono">
-                                                        <p>
-                                                            Plate:{" "}
-                                                            {
-                                                                order.data.delivery_truck_details
-                                                                    .truck_plate
-                                                            }
-                                                        </p>
-                                                        <p>
-                                                            Driver:{" "}
-                                                            {
-                                                                order.data.delivery_truck_details
-                                                                    .driver_name
-                                                            }
-                                                        </p>
-                                                        <p>
-                                                            Contact:{" "}
-                                                            {
-                                                                order.data.delivery_truck_details
-                                                                    .driver_contact
-                                                            }
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-100"
-                                                onClick={() => setDeliveryTruckDialogOpen(true)}
-                                            >
-                                                <Pencil className="h-4 w-4" />
-                                            </Button>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="border-2 rounded-lg p-4 transition-all border-primary/30 bg-primary/5 cursor-pointer hover:border-primary/50">
-                                        <button
-                                            className="w-full flex items-center justify-between cursor-pointer"
-                                            onClick={() => setDeliveryTruckDialogOpen(true)}
-                                        >
-                                            <div className="flex items-center gap-3">
-                                                <div className="text-left">
-                                                    <p className="font-mono text-sm font-bold">
-                                                        Delivery Truck
-                                                    </p>
-                                                    <p className="font-mono text-xs text-muted-foreground">
-                                                        Click to add pickup truck details
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <PlusCircle className="h-6 w-6 text-primary" />
-                                        </button>
-                                    </div>
-                                )}
-
-                                <TruckDetailsModal
-                                    open={deliveryTruckDialogOpen}
-                                    onOpenChange={setDeliveryTruckDialogOpen}
-                                    type="delivery"
-                                    orderId={id}
-                                    initialData={getTruckDetailsInitialData(
-                                        order.data.delivery_truck_details
-                                    )}
-                                />
-
-                                <Separator />
-
-                                {/* Pickup Truck Section */}
-                                {order.data.pickup_truck_details &&
-                                Object.keys(order.data.pickup_truck_details).length > 0 ? (
-                                    <div className="border-2 rounded-lg p-4 border-rose-200 bg-rose-50/50">
-                                        <div className="flex justify-between items-start">
-                                            <div className="flex gap-3">
-                                                <div>
-                                                    <p className="font-mono text-sm font-bold text-rose-900">
-                                                        Pickup Truck
-                                                    </p>
-                                                    <div className="mt-2 space-y-1 text-xs text-rose-800 font-mono">
-                                                        <p>
-                                                            Plate:{" "}
-                                                            {
-                                                                order.data.pickup_truck_details
-                                                                    .truck_plate
-                                                            }
-                                                        </p>
-                                                        <p>
-                                                            Driver:{" "}
-                                                            {
-                                                                order.data.pickup_truck_details
-                                                                    .driver_name
-                                                            }
-                                                        </p>
-                                                        <p>
-                                                            Contact:{" "}
-                                                            {
-                                                                order.data.pickup_truck_details
-                                                                    .driver_contact
-                                                            }
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-8 w-8 text-rose-600 hover:text-rose-700 hover:bg-rose-100"
-                                                onClick={() => setPickupTruckDialogOpen(true)}
-                                            >
-                                                <Pencil className="h-4 w-4" />
-                                            </Button>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="border-2 rounded-lg p-4 transition-all border-primary/30 bg-primary/5 cursor-pointer hover:border-primary/50">
-                                        <button
-                                            className="w-full flex items-center justify-between cursor-pointer"
-                                            onClick={() => setPickupTruckDialogOpen(true)}
-                                        >
-                                            <div className="flex items-center gap-3">
-                                                <div className="text-left">
-                                                    <p className="font-mono text-sm font-bold">
-                                                        Pickup Truck
-                                                    </p>
-                                                    <p className="font-mono text-xs text-muted-foreground">
-                                                        Click to add pickup truck details
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <PlusCircle className="h-6 w-6 text-primary" />
-                                        </button>
-                                    </div>
-                                )}
-
-                                <TruckDetailsModal
-                                    open={pickupTruckDialogOpen}
-                                    onOpenChange={setPickupTruckDialogOpen}
-                                    type="pickup"
-                                    orderId={id}
-                                    initialData={getTruckDetailsInitialData(
-                                        order.data.pickup_truck_details
-                                    )}
-                                />
-                            </CardContent>
-                        </Card>
+                        <OrderTransportUnitsCard orderId={id} canManage={canProgressOrderStatus} />
 
                         {/* Event & Venue */}
                         <Card>

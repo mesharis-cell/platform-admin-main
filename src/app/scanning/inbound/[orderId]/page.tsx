@@ -1,4 +1,5 @@
 "use client";
+/* global globalThis */
 
 /**
  * Mobile Inbound Scanning Interface
@@ -18,6 +19,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
+import { PrintQrAction } from "@/components/qr/PrintQrAction";
 import {
     Dialog,
     DialogContent,
@@ -46,6 +48,11 @@ import { toast } from "sonner";
 import { Html5Qrcode } from "html5-qrcode";
 
 type ScanStep = "scanning" | "complete";
+type DamageReportEntryInput = {
+    url: string;
+    description: string;
+};
+type PhotoCaptureTarget = "latest_return_images" | "damage_report_entries";
 type InspectionState = {
     qrCode: string;
     assetId: string;
@@ -55,7 +62,8 @@ type InspectionState = {
     scannedQuantity: number;
     condition: "GREEN" | "ORANGE" | "RED" | null;
     notes: string;
-    photos: string[];
+    latestReturnImages: string[];
+    damageReportEntries: DamageReportEntryInput[];
     refurbDaysEstimate: number | null; // Feedback #2: Refurb estimate for damaged items
     discrepancyReason: "BROKEN" | "LOST" | "OTHER" | null;
     quantity: number | null;
@@ -70,6 +78,8 @@ export default function InboundScanningPage() {
     const [cameraPermissionGranted, setCameraPermissionGranted] = useState(false);
     const [cameraActive, setCameraActive] = useState(false);
     const [damagePhotoCameraActive, setDamagePhotoCameraActive] = useState(false);
+    const [photoCaptureTarget, setPhotoCaptureTarget] =
+        useState<PhotoCaptureTarget>("latest_return_images");
     const [inspectionDialogOpen, setInspectionDialogOpen] = useState(false);
     const [currentInspection, setCurrentInspection] = useState<InspectionState | null>(null);
     const [lastScannedQR, setLastScannedQR] = useState<string | null>(null);
@@ -81,6 +91,14 @@ export default function InboundScanningPage() {
     const qrScannerRef = useRef<Html5Qrcode | null>(null);
     const scannerDivRef = useRef<HTMLDivElement>(null);
     const lastScanTimeRef = useRef<number>(0);
+    const getMediaDevices = () => {
+        const runtimeGlobal =
+            typeof globalThis !== "undefined"
+                ? (globalThis as unknown as Record<string, unknown>)
+                : undefined;
+        const nav = runtimeGlobal?.["navigator"] as Navigator | undefined;
+        return nav?.mediaDevices;
+    };
 
     const scanItem = useScanInboundItem();
     const completeScan = useCompleteInboundScan();
@@ -156,14 +174,15 @@ export default function InboundScanningPage() {
     const requestCameraPermission = async () => {
         try {
             // Check if mediaDevices API is available
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            const mediaDevices = getMediaDevices();
+            if (!mediaDevices?.getUserMedia) {
                 throw new Error(
                     "Camera API not available. Please use HTTPS or enable insecure origins in Chrome flags."
                 );
             }
 
             // Request camera permission
-            const stream = await navigator.mediaDevices.getUserMedia({
+            const stream = await mediaDevices.getUserMedia({
                 video: { facingMode: "environment" },
             });
             // Stop the test stream
@@ -263,7 +282,8 @@ export default function InboundScanningPage() {
             scannedQuantity: asset.scanned_quantity,
             condition: null,
             notes: "",
-            photos: [],
+            latestReturnImages: [],
+            damageReportEntries: [],
             refurbDaysEstimate: null, // Feedback #2
             discrepancyReason: null,
             quantity: asset.tracking_method === "BATCH" ? null : 1,
@@ -281,16 +301,14 @@ export default function InboundScanningPage() {
         setManualQRInput("");
     };
 
-    const startDamagePhotoCamera = async () => {
+    const startCamera = async (target: PhotoCaptureTarget) => {
+        setPhotoCaptureTarget(target);
         try {
-            console.log("📸 Starting camera for damage photos...");
-
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                throw new Error("Camera API not available");
-            }
+            const mediaDevices = getMediaDevices();
+            if (!mediaDevices?.getUserMedia) throw new Error("Camera API not available");
 
             // Request back camera with specific constraints
-            const photoStream = await navigator.mediaDevices.getUserMedia({
+            const photoStream = await mediaDevices.getUserMedia({
                 video: {
                     facingMode: { exact: "environment" },
                     width: { ideal: 1920 },
@@ -331,7 +349,10 @@ export default function InboundScanningPage() {
             if (error instanceof Error && error.name === "OverconstrainedError") {
                 try {
                     console.log("📸 Retrying with relaxed constraints...");
-                    const photoStream = await navigator.mediaDevices.getUserMedia({
+                    const retryMediaDevices = getMediaDevices();
+                    if (!retryMediaDevices?.getUserMedia)
+                        throw new Error("Camera API not available");
+                    const photoStream = await retryMediaDevices.getUserMedia({
                         video: {
                             facingMode: "environment",
                             width: { ideal: 1920 },
@@ -381,22 +402,31 @@ export default function InboundScanningPage() {
         }
     };
 
-    const captureDamagePhoto = () => {
+    const capturePhoto = () => {
         if (!canvasRef.current || !videoRef.current || !currentInspection) return;
 
         const canvas = canvasRef.current;
         const video = videoRef.current;
-
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         const ctx = canvas.getContext("2d");
         ctx?.drawImage(video, 0, 0);
 
         const photoBase64 = canvas.toDataURL("image/jpeg", 0.8);
-        setCurrentInspection({
-            ...currentInspection,
-            photos: [...currentInspection.photos, photoBase64],
-        });
+        if (photoCaptureTarget === "latest_return_images") {
+            setCurrentInspection({
+                ...currentInspection,
+                latestReturnImages: [...currentInspection.latestReturnImages, photoBase64],
+            });
+        } else {
+            setCurrentInspection({
+                ...currentInspection,
+                damageReportEntries: [
+                    ...currentInspection.damageReportEntries,
+                    { url: photoBase64, description: "" },
+                ],
+            });
+        }
         toast.success("Photo captured");
     };
 
@@ -431,10 +461,16 @@ export default function InboundScanningPage() {
         const isDamagedCondition =
             currentInspection.condition === "ORANGE" || currentInspection.condition === "RED";
 
-        // Require photos for damaged conditions only.
-        if (isDamagedCondition && currentInspection.photos.length === 0) {
-            toast.error("Photo required", {
-                description: "Please take at least one photo of the item",
+        if (currentInspection.latestReturnImages.length < 2) {
+            toast.error("Latest return photos required", {
+                description: "Please take at least 2 photos of the returned item",
+            });
+            return;
+        }
+
+        if (isDamagedCondition && currentInspection.damageReportEntries.length < 1) {
+            toast.error("Damage photo required", {
+                description: "Please take at least one damage photo for ORANGE/RED items",
             });
             return;
         }
@@ -463,7 +499,14 @@ export default function InboundScanningPage() {
                 qrCode: currentInspection.qrCode,
                 condition: currentInspection.condition,
                 notes: currentInspection.notes || undefined,
-                photos: isDamagedCondition ? currentInspection.photos : undefined,
+                latestReturnImages: currentInspection.latestReturnImages,
+                damageReportEntries: isDamagedCondition
+                    ? currentInspection.damageReportEntries.map((e) =>
+                          e.description.trim()
+                              ? { url: e.url, description: e.description }
+                              : { url: e.url }
+                      )
+                    : undefined,
                 refurbDaysEstimate: isDamagedCondition
                     ? currentInspection.refurbDaysEstimate || undefined
                     : undefined,
@@ -702,7 +745,7 @@ export default function InboundScanningPage() {
                                         : "bg-muted/20 border-border"
                                 }`}
                             >
-                                <div className="flex items-center justify-between">
+                                <div className="flex items-center justify-between gap-2">
                                     <div className="flex-1">
                                         <div className="font-mono text-sm font-bold">
                                             {asset.asset_name}
@@ -711,15 +754,23 @@ export default function InboundScanningPage() {
                                             QR: {asset.qr_code} • {asset.tracking_method}
                                         </div>
                                     </div>
-                                    <div className="text-right">
-                                        <div className="text-sm font-mono font-bold">
-                                            {asset.scanned_quantity}/{asset.required_quantity}
+                                    <div className="flex items-center gap-2">
+                                        <PrintQrAction
+                                            qrCode={asset.qr_code}
+                                            assetName={asset.asset_name}
+                                            variant="outline"
+                                            className="h-8 w-8 border-border/50"
+                                        />
+                                        <div className="text-right">
+                                            <div className="text-sm font-mono font-bold">
+                                                {asset.scanned_quantity}/{asset.required_quantity}
+                                            </div>
+                                            {asset.scanned_quantity === asset.required_quantity ? (
+                                                <CheckCircle2 className="w-5 h-5 text-primary ml-auto" />
+                                            ) : (
+                                                <Package className="w-5 h-5 text-muted-foreground ml-auto" />
+                                            )}
                                         </div>
-                                        {asset.scanned_quantity === asset.required_quantity ? (
-                                            <CheckCircle2 className="w-5 h-5 text-primary ml-auto" />
-                                        ) : (
-                                            <Package className="w-5 h-5 text-muted-foreground ml-auto" />
-                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -863,7 +914,217 @@ export default function InboundScanningPage() {
                                     </div>
                                 </div>
 
-                                {/* Refurb Days Estimate - Feedback #2 */}
+                                {/* Shared camera - when active */}
+                                {damagePhotoCameraActive && (
+                                    <div className="space-y-2">
+                                        <p className="text-xs font-mono text-muted-foreground">
+                                            Capturing for:{" "}
+                                            {photoCaptureTarget === "latest_return_images"
+                                                ? "Latest return"
+                                                : "Damage report"}
+                                        </p>
+                                        <div className="relative aspect-video bg-black rounded-lg overflow-hidden border border-border">
+                                            <video
+                                                ref={videoRef}
+                                                autoPlay
+                                                playsInline
+                                                muted
+                                                className="w-full h-full object-cover"
+                                            />
+                                            <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-2">
+                                                <Button
+                                                    onClick={capturePhoto}
+                                                    size="sm"
+                                                    className="rounded-full bg-primary hover:bg-primary/90"
+                                                >
+                                                    <Camera className="w-4 h-4 mr-1" /> CAPTURE
+                                                </Button>
+                                                <Button
+                                                    onClick={stopDamagePhotoCamera}
+                                                    size="sm"
+                                                    variant="outline"
+                                                    className="rounded-full"
+                                                >
+                                                    <XCircle className="w-4 h-4 mr-1" /> STOP
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Latest return photos - required for ALL conditions */}
+                                <div className="space-y-2">
+                                    <label className="text-xs font-mono font-bold">
+                                        LATEST RETURN PHOTOS * (min 2)
+                                    </label>
+                                    <div className="space-y-2">
+                                        {!damagePhotoCameraActive && (
+                                            <Button
+                                                onClick={() => startCamera("latest_return_images")}
+                                                variant="outline"
+                                                className="w-full border-dashed border-2"
+                                            >
+                                                <Camera className="w-5 h-5 mr-2" /> START CAMERA
+                                            </Button>
+                                        )}
+                                        {currentInspection.latestReturnImages.length > 0 && (
+                                            <div>
+                                                <p className="text-xs font-mono text-muted-foreground mb-2">
+                                                    CAPTURED (
+                                                    {currentInspection.latestReturnImages.length})
+                                                </p>
+                                                <div className="grid grid-cols-3 gap-2">
+                                                    {currentInspection.latestReturnImages.map(
+                                                        (url, idx) => (
+                                                            <div
+                                                                key={idx}
+                                                                className="aspect-square bg-muted rounded-lg overflow-hidden border border-border relative group"
+                                                            >
+                                                                <img
+                                                                    src={url}
+                                                                    alt={`Return ${idx + 1}`}
+                                                                    className="w-full h-full object-cover"
+                                                                />
+                                                                <button
+                                                                    onClick={() =>
+                                                                        setCurrentInspection({
+                                                                            ...currentInspection,
+                                                                            latestReturnImages:
+                                                                                currentInspection.latestReturnImages.filter(
+                                                                                    (_, i) =>
+                                                                                        i !== idx
+                                                                                ),
+                                                                        })
+                                                                    }
+                                                                    className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                >
+                                                                    <XCircle className="w-3 h-3" />
+                                                                </button>
+                                                            </div>
+                                                        )
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Damage report photos - ORANGE/RED only */}
+                                {(currentInspection.condition === "ORANGE" ||
+                                    currentInspection.condition === "RED") && (
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-mono font-bold">
+                                            DAMAGE REPORT PHOTOS * (min 1)
+                                        </label>
+                                        <div className="space-y-2">
+                                            {!damagePhotoCameraActive && (
+                                                <Button
+                                                    onClick={() =>
+                                                        startCamera("damage_report_entries")
+                                                    }
+                                                    variant="outline"
+                                                    className="w-full border-dashed border-2"
+                                                >
+                                                    <Camera className="w-5 h-5 mr-2" /> START CAMERA
+                                                </Button>
+                                            )}
+                                            {currentInspection.damageReportEntries.length > 0 && (
+                                                <div>
+                                                    <p className="text-xs font-mono text-muted-foreground mb-2">
+                                                        CAPTURED (
+                                                        {
+                                                            currentInspection.damageReportEntries
+                                                                .length
+                                                        }
+                                                        )
+                                                    </p>
+                                                    <div className="space-y-2">
+                                                        {currentInspection.damageReportEntries.map(
+                                                            (entry, idx) => (
+                                                                <div
+                                                                    key={idx}
+                                                                    className="flex gap-2 items-start"
+                                                                >
+                                                                    <div className="aspect-square w-20 shrink-0 bg-muted rounded-lg overflow-hidden border border-border relative group">
+                                                                        <img
+                                                                            src={entry.url}
+                                                                            alt={`Damage ${idx + 1}`}
+                                                                            className="w-full h-full object-cover"
+                                                                        />
+                                                                        <button
+                                                                            onClick={() =>
+                                                                                setCurrentInspection(
+                                                                                    {
+                                                                                        ...currentInspection,
+                                                                                        damageReportEntries:
+                                                                                            currentInspection.damageReportEntries.filter(
+                                                                                                (
+                                                                                                    _,
+                                                                                                    i
+                                                                                                ) =>
+                                                                                                    i !==
+                                                                                                    idx
+                                                                                            ),
+                                                                                    }
+                                                                                )
+                                                                            }
+                                                                            className="absolute top-0.5 right-0.5 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                        >
+                                                                            <XCircle className="w-2.5 h-2.5" />
+                                                                        </button>
+                                                                    </div>
+                                                                    <Textarea
+                                                                        placeholder="Description (optional)"
+                                                                        value={entry.description}
+                                                                        onChange={(e) => {
+                                                                            const next = [
+                                                                                ...currentInspection.damageReportEntries,
+                                                                            ];
+                                                                            next[idx] = {
+                                                                                ...next[idx],
+                                                                                description:
+                                                                                    e.target.value,
+                                                                            };
+                                                                            setCurrentInspection({
+                                                                                ...currentInspection,
+                                                                                damageReportEntries:
+                                                                                    next,
+                                                                            });
+                                                                        }}
+                                                                        className="flex-1 font-mono text-xs min-h-[60px]"
+                                                                    />
+                                                                </div>
+                                                            )
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Notes - ORANGE/RED */}
+                                {(currentInspection.condition === "ORANGE" ||
+                                    currentInspection.condition === "RED") && (
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-mono font-bold">
+                                            INSPECTION NOTES * (Required for ORANGE/RED)
+                                        </label>
+                                        <Textarea
+                                            value={currentInspection.notes}
+                                            onChange={(e) =>
+                                                setCurrentInspection({
+                                                    ...currentInspection,
+                                                    notes: e.target.value,
+                                                })
+                                            }
+                                            placeholder="Describe damage, wear, or issues..."
+                                            className="font-mono text-sm min-h-[100px]"
+                                        />
+                                    </div>
+                                )}
+
+                                {/* Refurb days - ORANGE/RED */}
                                 {(currentInspection.condition === "ORANGE" ||
                                     currentInspection.condition === "RED") && (
                                     <div className="space-y-2">
@@ -888,125 +1149,6 @@ export default function InboundScanningPage() {
                                         <p className="text-xs text-muted-foreground font-mono text-center">
                                             How many days to refurbish this item?
                                         </p>
-                                    </div>
-                                )}
-
-                                {/* Notes */}
-                                {(currentInspection.condition === "ORANGE" ||
-                                    currentInspection.condition === "RED") && (
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-mono font-bold">
-                                            INSPECTION NOTES * (Required for ORANGE/RED)
-                                        </label>
-                                        <Textarea
-                                            value={currentInspection.notes}
-                                            onChange={(e) =>
-                                                setCurrentInspection({
-                                                    ...currentInspection,
-                                                    notes: e.target.value,
-                                                })
-                                            }
-                                            placeholder="Describe damage, wear, or issues..."
-                                            className="font-mono text-sm min-h-[100px]"
-                                        />
-                                    </div>
-                                )}
-
-                                {/* Damage photos - Feedback #2: Show for both ORANGE and RED */}
-                                {(currentInspection.condition === "ORANGE" ||
-                                    currentInspection.condition === "RED") && (
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-mono font-bold">
-                                            DAMAGE PHOTOS{" "}
-                                            {currentInspection.condition === "RED"
-                                                ? "(Recommended)"
-                                                : "(Optional)"}
-                                        </label>
-                                        <div className="space-y-2">
-                                            {/* Camera view for damage photos */}
-                                            <div className="relative aspect-video bg-black rounded-lg overflow-hidden border border-border">
-                                                <video
-                                                    ref={videoRef}
-                                                    autoPlay
-                                                    playsInline
-                                                    muted
-                                                    className="w-full h-full object-cover"
-                                                />
-
-                                                {damagePhotoCameraActive ? (
-                                                    <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-2">
-                                                        <Button
-                                                            onClick={captureDamagePhoto}
-                                                            size="sm"
-                                                            className="rounded-full bg-primary hover:bg-primary/90"
-                                                        >
-                                                            <Camera className="w-4 h-4 mr-1" />
-                                                            CAPTURE
-                                                        </Button>
-                                                        <Button
-                                                            onClick={stopDamagePhotoCamera}
-                                                            size="sm"
-                                                            variant="outline"
-                                                            className="rounded-full"
-                                                        >
-                                                            <XCircle className="w-4 h-4 mr-1" />
-                                                            STOP
-                                                        </Button>
-                                                    </div>
-                                                ) : (
-                                                    <div className="absolute inset-0 flex items-center justify-center bg-black/90">
-                                                        <Button
-                                                            onClick={startDamagePhotoCamera}
-                                                            variant="outline"
-                                                            className="border-dashed border-2"
-                                                        >
-                                                            <Camera className="w-5 h-5 mr-2" />
-                                                            START CAMERA
-                                                        </Button>
-                                                    </div>
-                                                )}
-                                            </div>
-
-                                            {/* Captured photos grid */}
-                                            {currentInspection.photos.length > 0 && (
-                                                <div>
-                                                    <p className="text-xs font-mono text-muted-foreground mb-2">
-                                                        CAPTURED PHOTOS (
-                                                        {currentInspection.photos.length})
-                                                    </p>
-                                                    <div className="grid grid-cols-3 gap-2">
-                                                        {currentInspection.photos.map(
-                                                            (photo, idx) => (
-                                                                <div
-                                                                    key={idx}
-                                                                    className="aspect-square bg-muted rounded-lg overflow-hidden border border-border relative group"
-                                                                >
-                                                                    <img
-                                                                        src={photo}
-                                                                        alt={`Damage photo ${idx + 1}`}
-                                                                        className="w-full h-full object-cover"
-                                                                    />
-                                                                    <button
-                                                                        onClick={() => {
-                                                                            setCurrentInspection({
-                                                                                ...currentInspection,
-                                                                                photos: currentInspection.photos.filter(
-                                                                                    (_, i) =>
-                                                                                        i !== idx
-                                                                                ),
-                                                                            });
-                                                                        }}
-                                                                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                                    >
-                                                                        <XCircle className="w-3 h-3" />
-                                                                    </button>
-                                                                </div>
-                                                            )
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
                                     </div>
                                 )}
 
@@ -1092,11 +1234,15 @@ export default function InboundScanningPage() {
                                     className="w-full bg-primary hover:bg-primary/90 font-mono font-bold"
                                     disabled={
                                         !currentInspection.condition ||
+                                        currentInspection.latestReturnImages.length < 2 ||
                                         (currentInspection.trackingMethod === "BATCH" &&
                                             !currentInspection.quantity) ||
                                         ((currentInspection.condition === "ORANGE" ||
                                             currentInspection.condition === "RED") &&
-                                            !currentInspection.notes.trim()) ||
+                                            (!currentInspection.notes.trim() ||
+                                                currentInspection.damageReportEntries.length < 1 ||
+                                                !currentInspection.refurbDaysEstimate ||
+                                                currentInspection.refurbDaysEstimate < 1)) ||
                                         scanItem.isPending
                                     }
                                 >

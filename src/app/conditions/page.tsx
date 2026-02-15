@@ -36,6 +36,7 @@ import {
 } from "lucide-react";
 import type { AssetStatus, Condition } from "@/types/asset";
 import { AdminHeader } from "@/components/admin-header";
+import { PrintQrAction } from "@/components/qr/PrintQrAction";
 import { useAssets } from "@/hooks/use-assets";
 
 export default function ItemsNeedingAttentionPage() {
@@ -97,7 +98,7 @@ export default function ItemsNeedingAttentionPage() {
     };
 
     const getStatusBadge = (status: AssetStatus) => {
-        if (status === "IN_MAINTENANCE") {
+        if (status === "MAINTENANCE") {
             return (
                 <Badge variant="secondary" className="font-mono text-xs uppercase tracking-wider">
                     In Maintenance
@@ -368,9 +369,15 @@ export default function ItemsNeedingAttentionPage() {
                                                         <h3 className="font-mono text-lg font-semibold group-hover:text-primary">
                                                             {item?.name}
                                                         </h3>
-                                                        <p className="font-mono text-sm text-muted-foreground">
-                                                            QR: {item?.qr_code}
-                                                        </p>
+                                                        <div className="flex items-center gap-2">
+                                                            <p className="font-mono text-sm text-muted-foreground">
+                                                                QR: {item?.qr_code}
+                                                            </p>
+                                                            <PrintQrAction
+                                                                qrCode={item?.qr_code}
+                                                                assetName={item?.name}
+                                                            />
+                                                        </div>
                                                     </div>
                                                     <ChevronRight className="h-5 w-5 text-muted-foreground transition-transform group-hover:translate-x-1" />
                                                 </div>
@@ -413,8 +420,7 @@ export default function ItemsNeedingAttentionPage() {
                                                             </p>
                                                             <p className="mt-2 text-xs text-muted-foreground">
                                                                 {new Date(
-                                                                    item?.condition_history?.[0]
-                                                                        ?.timestamp
+                                                                    item?.condition_history?.[0]?.timestamp
                                                                 ).toLocaleString()}
                                                             </p>
                                                         </>

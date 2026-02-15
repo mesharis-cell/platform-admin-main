@@ -12,7 +12,7 @@ import type { OrderLineItem } from "@/types/hybrid-pricing";
 interface OrderLineItemsListProps {
     targetId: string;
     canManage?: boolean;
-    purposeType?: "ORDER" | "INBOUND_REQUEST";
+    purposeType?: "ORDER" | "INBOUND_REQUEST" | "SERVICE_REQUEST";
 }
 
 export function OrderLineItemsList({
@@ -141,7 +141,8 @@ export function OrderLineItemsList({
                                         </Badge>
                                     </div>
                                     <p className="text-xs text-muted-foreground mt-1">
-                                        Base cost input (margin applied during quote calculation)
+                                        {item.quantity || 0} {item.unit || "unit"} ×{" "}
+                                        {item.unitRate?.toFixed(2) || "0.00"} AED
                                     </p>
                                     {item.notes && (
                                         <p className="text-xs text-muted-foreground mt-1">

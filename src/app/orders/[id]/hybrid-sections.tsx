@@ -138,10 +138,7 @@ export function PendingApprovalSection({ order, orderId, onRefresh }: HybridPric
                     </div>
                 </CardHeader>
                 <CardContent>
-                    <OrderLineItemsList
-                        targetId={orderId}
-                        canManage={canManageServiceItems}
-                    />
+                    <OrderLineItemsList targetId={orderId} canManage={canManageServiceItems} />
                 </CardContent>
             </Card>
 
@@ -328,12 +325,17 @@ export function AwaitingFabricationSection({ order, orderId }: HybridPricingSect
                 </CardHeader>
                 <CardContent>
                     <p className="text-sm text-blue-500">
-                        This order is confirmed but waiting for custom rebranding work to complete.
-                        Once all fabrication is done, the order will automatically move to
-                        IN_PREPARATION.
+                        Complete pending reskin/fabrication requests. When all requests are
+                        resolved, the order auto-progresses to IN_PREPARATION.
+                    </p>
+                    <p className="text-xs text-blue-500 mt-2">
+                        Process/complete actions are available to Admin and Logistics. Cancellation
+                        remains Admin-only.
                     </p>
                 </CardContent>
             </Card>
+
+            <ReskinRequestsList orderId={orderId} order={order} orderStatus={order.order_status} />
         </div>
     );
 }

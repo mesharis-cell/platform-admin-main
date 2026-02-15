@@ -14,7 +14,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { inboundRequestKeys } from "@/hooks/use-inbound-requests";
 
 export const lineItemsKeys = {
-    list: (targetId: string, purposeType: "ORDER" | "INBOUND_REQUEST") =>
+    list: (targetId: string, purposeType: "ORDER" | "INBOUND_REQUEST" | "SERVICE_REQUEST") =>
         ["line-items", purposeType, targetId] as const,
 };
 
@@ -26,7 +26,7 @@ export const orderLineItemsKeys = {
 // List line items (works for both orders and inbound requests)
 export function useListLineItems(
     targetId: string | null,
-    purposeType: "ORDER" | "INBOUND_REQUEST" = "ORDER"
+    purposeType: "ORDER" | "INBOUND_REQUEST" | "SERVICE_REQUEST" = "ORDER"
 ) {
     return useQuery({
         queryKey: targetId ? lineItemsKeys.list(targetId, purposeType) : ["line-items", "none"],
@@ -36,7 +36,9 @@ export function useListLineItems(
                 const queryParam =
                     purposeType === "ORDER"
                         ? `order_id=${targetId}`
-                        : `inbound_request_id=${targetId}`;
+                        : purposeType === "INBOUND_REQUEST"
+                          ? `inbound_request_id=${targetId}`
+                          : `service_request_id=${targetId}`;
                 const response = await apiClient.get(`/operations/v1/line-item?${queryParam}`);
                 // Map snake_case API response to camelCase for UI components
                 return mapArraySnakeToCamel(response.data.data) as unknown as OrderLineItem[];
@@ -56,7 +58,7 @@ export function useListOrderLineItems(orderId: string | null) {
 // Create catalog line item
 export function useCreateCatalogLineItem(
     targetId: string,
-    purposeType: "ORDER" | "INBOUND_REQUEST" = "ORDER"
+    purposeType: "ORDER" | "INBOUND_REQUEST" | "SERVICE_REQUEST" = "ORDER"
 ) {
     const queryClient = useQueryClient();
 
@@ -64,7 +66,7 @@ export function useCreateCatalogLineItem(
         mutationFn: async (
             data: Omit<
                 CreateCatalogLineItemRequest,
-                "order_id" | "inbound_request_id" | "purpose_type"
+                "order_id" | "inbound_request_id" | "service_request_id" | "purpose_type"
             >
         ) => {
             try {
@@ -73,7 +75,9 @@ export function useCreateCatalogLineItem(
                     purpose_type: purposeType,
                     ...(purposeType === "ORDER"
                         ? { order_id: targetId }
-                        : { inbound_request_id: targetId }),
+                        : purposeType === "INBOUND_REQUEST"
+                          ? { inbound_request_id: targetId }
+                          : { service_request_id: targetId }),
                 };
                 const response = await apiClient.post(`/operations/v1/line-item/catalog`, payload);
                 return response.data.data;
@@ -86,9 +90,11 @@ export function useCreateCatalogLineItem(
 
             if (purposeType === "ORDER") {
                 queryClient.invalidateQueries({ queryKey: ["orders"] });
-            } else {
+            } else if (purposeType === "INBOUND_REQUEST") {
                 queryClient.invalidateQueries({ queryKey: ["inbound-requests"] });
                 queryClient.invalidateQueries({ queryKey: inboundRequestKeys.detail(targetId) });
+            } else {
+                queryClient.invalidateQueries({ queryKey: ["service-requests"] });
             }
         },
     });
@@ -97,7 +103,7 @@ export function useCreateCatalogLineItem(
 // Create custom line item
 export function useCreateCustomLineItem(
     targetId: string,
-    purposeType: "ORDER" | "INBOUND_REQUEST" = "ORDER"
+    purposeType: "ORDER" | "INBOUND_REQUEST" | "SERVICE_REQUEST" = "ORDER"
 ) {
     const queryClient = useQueryClient();
 
@@ -105,7 +111,7 @@ export function useCreateCustomLineItem(
         mutationFn: async (
             data: Omit<
                 CreateCustomLineItemRequest,
-                "order_id" | "inbound_request_id" | "purpose_type"
+                "order_id" | "inbound_request_id" | "service_request_id" | "purpose_type"
             >
         ) => {
             try {
@@ -114,7 +120,9 @@ export function useCreateCustomLineItem(
                     purpose_type: purposeType,
                     ...(purposeType === "ORDER"
                         ? { order_id: targetId }
-                        : { inbound_request_id: targetId }),
+                        : purposeType === "INBOUND_REQUEST"
+                          ? { inbound_request_id: targetId }
+                          : { service_request_id: targetId }),
                 };
                 const response = await apiClient.post(`/operations/v1/line-item/custom`, payload);
                 return response.data.data;
@@ -127,9 +135,11 @@ export function useCreateCustomLineItem(
 
             if (purposeType === "ORDER") {
                 queryClient.invalidateQueries({ queryKey: ["orders"] });
-            } else {
+            } else if (purposeType === "INBOUND_REQUEST") {
                 queryClient.invalidateQueries({ queryKey: ["inbound-requests"] });
                 queryClient.invalidateQueries({ queryKey: inboundRequestKeys.detail(targetId) });
+            } else {
+                queryClient.invalidateQueries({ queryKey: ["service-requests"] });
             }
         },
     });
@@ -138,7 +148,7 @@ export function useCreateCustomLineItem(
 // Update line item
 export function useUpdateLineItem(
     targetId: string,
-    purposeType: "ORDER" | "INBOUND_REQUEST" = "ORDER"
+    purposeType: "ORDER" | "INBOUND_REQUEST" | "SERVICE_REQUEST" = "ORDER"
 ) {
     const queryClient = useQueryClient();
 
@@ -158,9 +168,11 @@ export function useUpdateLineItem(
 
             if (purposeType === "ORDER") {
                 queryClient.invalidateQueries({ queryKey: ["orders"] });
-            } else {
+            } else if (purposeType === "INBOUND_REQUEST") {
                 queryClient.invalidateQueries({ queryKey: ["inbound-requests"] });
                 queryClient.invalidateQueries({ queryKey: inboundRequestKeys.detail(targetId) });
+            } else {
+                queryClient.invalidateQueries({ queryKey: ["service-requests"] });
             }
         },
     });
@@ -169,7 +181,7 @@ export function useUpdateLineItem(
 // Void line item
 export function useVoidLineItem(
     targetId: string,
-    purposeType: "ORDER" | "INBOUND_REQUEST" = "ORDER"
+    purposeType: "ORDER" | "INBOUND_REQUEST" | "SERVICE_REQUEST" = "ORDER"
 ) {
     const queryClient = useQueryClient();
 
@@ -191,9 +203,11 @@ export function useVoidLineItem(
 
             if (purposeType === "ORDER") {
                 queryClient.invalidateQueries({ queryKey: ["orders"] });
-            } else {
+            } else if (purposeType === "INBOUND_REQUEST") {
                 queryClient.invalidateQueries({ queryKey: ["inbound-requests"] });
                 queryClient.invalidateQueries({ queryKey: inboundRequestKeys.detail(targetId) });
+            } else {
+                queryClient.invalidateQueries({ queryKey: ["service-requests"] });
             }
         },
     });

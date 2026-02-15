@@ -11,6 +11,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useCreateCustomLineItem } from "@/hooks/use-order-line-items";
@@ -20,7 +27,7 @@ interface AddCustomLineItemModalProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     targetId: string;
-    purposeType?: "ORDER" | "INBOUND_REQUEST";
+    purposeType?: "ORDER" | "INBOUND_REQUEST" | "SERVICE_REQUEST";
 }
 
 export function AddCustomLineItemModal({
@@ -33,18 +40,32 @@ export function AddCustomLineItemModal({
 
     const [description, setDescription] = useState("");
     const [category, setCategory] = useState<ServiceCategory>("OTHER");
-    const [total, setTotal] = useState("");
+    const [quantity, setQuantity] = useState("1");
+    const [unit, setUnit] = useState("service");
+    const [unitRate, setUnitRate] = useState("");
     const [notes, setNotes] = useState("");
+    const quantityNum = Number(quantity || 0);
+    const unitRateNum = Number(unitRate || 0);
+    const derivedTotal =
+        Number.isFinite(quantityNum) && Number.isFinite(unitRateNum)
+            ? quantityNum * unitRateNum
+            : 0;
 
     const handleAdd = async () => {
         if (!description.trim()) {
             toast.error("Please enter a description");
             return;
         }
-
-        const totalNum = parseFloat(total);
-        if (isNaN(totalNum) || totalNum <= 0) {
-            toast.error("Please enter a valid total amount");
+        if (!unit.trim()) {
+            toast.error("Please enter a unit");
+            return;
+        }
+        if (!Number.isFinite(quantityNum) || quantityNum <= 0) {
+            toast.error("Please enter a valid quantity");
+            return;
+        }
+        if (!Number.isFinite(unitRateNum) || unitRateNum < 0) {
+            toast.error("Please enter a valid unit rate");
             return;
         }
 
@@ -52,14 +73,18 @@ export function AddCustomLineItemModal({
             await createLineItem.mutateAsync({
                 description: description.trim(),
                 category,
-                total: totalNum,
+                quantity: quantityNum,
+                unit: unit.trim(),
+                unit_rate: unitRateNum,
                 notes: notes || undefined,
             });
             toast.success("Custom line item added");
             onOpenChange(false);
             setDescription("");
             setCategory("OTHER");
-            setTotal("");
+            setQuantity("1");
+            setUnit("service");
+            setUnitRate("");
             setNotes("");
         } catch (error: any) {
             toast.error(error.message || "Failed to add line item");
@@ -88,18 +113,70 @@ export function AddCustomLineItemModal({
 
                     <div>
                         <Label>
-                            Base Amount (AED) <span className="text-destructive">*</span>
+                            Category <span className="text-destructive">*</span>
                         </Label>
-                        <Input
-                            type="number"
-                            step="1"
-                            min="0"
-                            value={total}
-                            onChange={(e) => setTotal(e.target.value)}
-                            placeholder="200"
-                        />
+                        <Select
+                            value={category}
+                            onValueChange={(value) => setCategory(value as ServiceCategory)}
+                        >
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select category" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="ASSEMBLY">ASSEMBLY</SelectItem>
+                                <SelectItem value="EQUIPMENT">EQUIPMENT</SelectItem>
+                                <SelectItem value="HANDLING">HANDLING</SelectItem>
+                                <SelectItem value="RESKIN">RESKIN</SelectItem>
+                                <SelectItem value="OTHER">OTHER</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-3">
+                        <div>
+                            <Label>
+                                Qty <span className="text-destructive">*</span>
+                            </Label>
+                            <Input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={quantity}
+                                onChange={(e) => setQuantity(e.target.value)}
+                                placeholder="1"
+                            />
+                        </div>
+                        <div>
+                            <Label>
+                                Unit <span className="text-destructive">*</span>
+                            </Label>
+                            <Input
+                                value={unit}
+                                onChange={(e) => setUnit(e.target.value)}
+                                placeholder="service"
+                                maxLength={20}
+                            />
+                        </div>
+                        <div>
+                            <Label>
+                                Unit Rate (AED) <span className="text-destructive">*</span>
+                            </Label>
+                            <Input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={unitRate}
+                                onChange={(e) => setUnitRate(e.target.value)}
+                                placeholder="200.00"
+                            />
+                        </div>
+                    </div>
+
+                    <div>
+                        <Label>Derived Total (AED)</Label>
+                        <Input value={derivedTotal.toFixed(2)} readOnly className="bg-muted" />
                         <p className="text-xs text-muted-foreground mt-1">
-                            Enter buy/base cost. Platform margin is applied during quote approval.
+                            Total is calculated as qty × unit rate and margin is applied later.
                         </p>
                     </div>
 

@@ -42,6 +42,11 @@ export interface Asset {
         condition: Condition;
         updated_by: string;
         timestamp: string;
+        photos?: string[];
+        damage_report_entries?: Array<{
+            url: string;
+            description?: string;
+        }>;
     }[];
     brand_id: string | null;
     name: string;
@@ -102,6 +107,10 @@ export interface AssetConditionHistoryEntry {
     condition: Condition;
     notes?: string;
     photos: string[];
+    damage_report_entries?: Array<{
+        url: string;
+        description?: string;
+    }>;
     updatedBy: string;
     timestamp: string;
 }
@@ -250,6 +259,11 @@ export interface AssetsDetails {
         condition: Condition;
         updated_by: string;
         timestamp: string;
+        photos?: string[];
+        damage_report_entries?: Array<{
+            url: string;
+            description?: string;
+        }>;
     }[];
     handling_tags: string[];
 

@@ -15,6 +15,12 @@ export interface City {
     country: Country;
 }
 
+export interface Meta {
+    page: number;
+    limit: number;
+    total: number;
+}
+
 export interface CountryResponse {
     success: boolean;
     message: string;

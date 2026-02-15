@@ -11,7 +11,6 @@ export type InboundRequestStatus =
     | "QUOTED"
     | "CONFIRMED"
     | "DECLINED"
-    | "IN_PROGRESS"
     | "COMPLETED"
     | "CANCELLED";
 
