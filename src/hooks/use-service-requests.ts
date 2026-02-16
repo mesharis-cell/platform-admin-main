@@ -200,7 +200,7 @@ export function useGenerateServiceRequestInvoice() {
     return useMutation({
         mutationFn: async (serviceRequestId: string) => {
             try {
-                const response = await apiClient.post("/client/v1/invoice/generate", {
+                const response = await apiClient.post("/operations/v1/invoice/generate", {
                     service_request_id: serviceRequestId,
                 });
                 return response.data;
@@ -211,6 +211,28 @@ export function useGenerateServiceRequestInvoice() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["invoices"] });
             queryClient.invalidateQueries({ queryKey: serviceRequestKeys.all() });
+        },
+    });
+}
+
+export function useDownloadServiceRequestCostEstimate() {
+    return useMutation({
+        mutationFn: async ({
+            requestId,
+            platformId,
+        }: {
+            requestId: string;
+            platformId: string;
+        }) => {
+            try {
+                const response = await apiClient.get(
+                    `/operations/v1/invoice/download-sr-cost-estimate-pdf/${requestId}?pid=${platformId}`,
+                    { responseType: "blob" }
+                );
+                return response.data;
+            } catch (error) {
+                throwApiError(error);
+            }
         },
     });
 }
