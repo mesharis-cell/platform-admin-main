@@ -15,6 +15,7 @@ import {
     AlertCircle,
     TrendingUp,
     Receipt,
+    Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -35,7 +36,12 @@ import {
     DialogFooter,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useInvoices, useConfirmPayment, useDownloadInvoice } from "@/hooks/use-invoices";
+import {
+    useInvoices,
+    useConfirmPayment,
+    useDownloadInvoice,
+    useExportReconciliation,
+} from "@/hooks/use-invoices";
 import { useCompanies } from "@/hooks/use-companies";
 import { toast } from "sonner";
 import { InvoiceListParams } from "@/types/order";
@@ -72,6 +78,12 @@ export default function InvoicesPage() {
     const [paymentNotes, setPaymentNotes] = useState("");
     const [invoiceType, setInvoiceType] = useState("all");
 
+    // Reconciliation export
+    const [reconciliationOpen, setReconciliationOpen] = useState(false);
+    const [reconCompany, setReconCompany] = useState("");
+    const [reconDateFrom, setReconDateFrom] = useState("");
+    const [reconDateTo, setReconDateTo] = useState("");
+
     // Hooks
     const { data: companies } = useCompanies({});
     const { data: invoicesData, isLoading } = useInvoices({
@@ -89,6 +101,8 @@ export default function InvoicesPage() {
         user,
         ADMIN_ACTION_PERMISSIONS.invoicesConfirmPayment
     );
+    const canExport = hasPermission(user, ADMIN_ACTION_PERMISSIONS.ordersExport);
+    const exportReconciliation = useExportReconciliation();
 
     const handleApplyFilters = () => {
         setFilters((prev) => ({
@@ -182,6 +196,20 @@ export default function InvoicesPage() {
         }
     };
 
+    const handleExportReconciliation = async () => {
+        try {
+            await exportReconciliation.mutateAsync({
+                company_id: reconCompany && reconCompany !== "all" ? reconCompany : undefined,
+                date_from: reconDateFrom || undefined,
+                date_to: reconDateTo || undefined,
+            });
+            toast.success("Reconciliation export downloaded");
+            setReconciliationOpen(false);
+        } catch (error: any) {
+            toast.error(error.message || "Failed to export reconciliation");
+        }
+    };
+
     // Calculate stats
     const stats = invoicesData?.data
         ? {
@@ -205,6 +233,18 @@ export default function InvoicesPage() {
                 title="INVOICE MANAGEMENT"
                 description="Generate · Track · Payments"
                 stats={stats ? { label: "TOTAL INVOICES", value: stats.totalInvoices } : undefined}
+                actions={
+                    canExport ? (
+                        <Button
+                            variant="outline"
+                            className="font-mono gap-2"
+                            onClick={() => setReconciliationOpen(true)}
+                        >
+                            <Download className="w-4 h-4" />
+                            RECONCILIATION EXPORT
+                        </Button>
+                    ) : undefined
+                }
             />
 
             <div className="container mx-auto px-4 py-8 max-w-7xl">
@@ -640,6 +680,68 @@ export default function InvoicesPage() {
                     </DialogContent>
                 </Dialog>
             )}
+
+            {/* Reconciliation Export Dialog */}
+            <Dialog open={reconciliationOpen} onOpenChange={setReconciliationOpen}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="font-mono">RECONCILIATION EXPORT</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                        <div>
+                            <Label className="font-mono text-xs mb-2">COMPANY</Label>
+                            <Select value={reconCompany} onValueChange={setReconCompany}>
+                                <SelectTrigger className="font-mono">
+                                    <SelectValue placeholder="All Companies" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Companies</SelectItem>
+                                    {companies?.data.map((company) => (
+                                        <SelectItem key={company.id} value={company.id}>
+                                            {company.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div>
+                            <Label className="font-mono text-xs mb-2">DATE FROM</Label>
+                            <Input
+                                type="date"
+                                value={reconDateFrom}
+                                onChange={(e) => setReconDateFrom(e.target.value)}
+                                className="font-mono"
+                            />
+                        </div>
+                        <div>
+                            <Label className="font-mono text-xs mb-2">DATE TO</Label>
+                            <Input
+                                type="date"
+                                value={reconDateTo}
+                                onChange={(e) => setReconDateTo(e.target.value)}
+                                className="font-mono"
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button
+                            onClick={() => setReconciliationOpen(false)}
+                            variant="outline"
+                            className="font-mono"
+                        >
+                            CANCEL
+                        </Button>
+                        <Button
+                            onClick={handleExportReconciliation}
+                            disabled={exportReconciliation.isPending}
+                            className="font-mono gap-2"
+                        >
+                            <Download className="w-4 h-4" />
+                            {exportReconciliation.isPending ? "EXPORTING..." : "EXPORT CSV"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

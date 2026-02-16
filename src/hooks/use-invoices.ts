@@ -22,6 +22,45 @@ import { throwApiError } from "@/lib/utils/throw-api-error";
 import { apiClient } from "@/lib/api/api-client";
 
 // ============================================================
+// Reconciliation Export
+// ============================================================
+
+export type ReconciliationExportParams = {
+    company_id?: string;
+    date_from?: string;
+    date_to?: string;
+};
+
+export function useExportReconciliation() {
+    return useMutation({
+        mutationFn: async (params: ReconciliationExportParams) => {
+            const qp = new URLSearchParams();
+            if (params.company_id) qp.set("company_id", params.company_id);
+            if (params.date_from) qp.set("date_from", params.date_from);
+            if (params.date_to) qp.set("date_to", params.date_to);
+
+            try {
+                const response = await apiClient.get(
+                    `/operations/v1/export/accounts-reconciliation?${qp.toString()}`,
+                    { responseType: "blob" }
+                );
+                if (typeof window !== "undefined" && typeof document !== "undefined") {
+                    const blob = new Blob([response.data], { type: "text/csv" });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = `accounts-reconciliation-${new Date().toISOString().slice(0, 10)}.csv`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                }
+            } catch (error) {
+                throwApiError(error);
+            }
+        },
+    });
+}
+
+// ============================================================
 // Query Keys
 // ============================================================
 
