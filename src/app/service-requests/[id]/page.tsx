@@ -304,11 +304,15 @@ export default function ServiceRequestDetailsPage() {
                                                     Refurb days: {item.refurb_days_estimate}
                                                 </p>
                                             )}
-                                            {item.notes && <p className="text-sm mt-1">{item.notes}</p>}
+                                            {item.notes && (
+                                                <p className="text-sm mt-1">{item.notes}</p>
+                                            )}
                                         </div>
                                     ))
                                 ) : (
-                                    <p className="text-muted-foreground">No items on this request.</p>
+                                    <p className="text-muted-foreground">
+                                        No items on this request.
+                                    </p>
                                 )}
                             </CardContent>
                         </Card>
@@ -362,7 +366,10 @@ export default function ServiceRequestDetailsPage() {
                                     </div>
                                 )}
 
-                                <Button onClick={handleStatusUpdate} disabled={updateStatus.isPending}>
+                                <Button
+                                    onClick={handleStatusUpdate}
+                                    disabled={updateStatus.isPending}
+                                >
                                     {updateStatus.isPending
                                         ? "Updating..."
                                         : "Update Operational Status"}
@@ -382,7 +389,9 @@ export default function ServiceRequestDetailsPage() {
                                         onClick={handleCancel}
                                         disabled={cancelRequest.isPending}
                                     >
-                                        {cancelRequest.isPending ? "Cancelling..." : "Cancel Request"}
+                                        {cancelRequest.isPending
+                                            ? "Cancelling..."
+                                            : "Cancel Request"}
                                     </Button>
                                 </div>
                             </CardContent>
@@ -452,7 +461,9 @@ export default function ServiceRequestDetailsPage() {
                                         onClick={handleGenerateInvoice}
                                         disabled={generateInvoice.isPending}
                                     >
-                                        {generateInvoice.isPending ? "Generating..." : "Generate Invoice"}
+                                        {generateInvoice.isPending
+                                            ? "Generating..."
+                                            : "Generate Invoice"}
                                     </Button>
                                 </div>
                             </CardContent>
@@ -506,7 +517,10 @@ export default function ServiceRequestDetailsPage() {
                                         <div key={entry.id} className="rounded-md border p-3">
                                             <div className="flex items-center justify-between text-sm">
                                                 <p className="font-medium">
-                                                    {(entry.from_status || "NONE").replace(/_/g, " ")}
+                                                    {(entry.from_status || "NONE").replace(
+                                                        /_/g,
+                                                        " "
+                                                    )}
                                                     {" -> "}
                                                     {entry.to_status.replace(/_/g, " ")}
                                                 </p>
@@ -514,9 +528,12 @@ export default function ServiceRequestDetailsPage() {
                                                     {new Date(entry.changed_at).toLocaleString()}
                                                 </p>
                                             </div>
-                                            {entry.note && <p className="text-sm mt-1">{entry.note}</p>}
+                                            {entry.note && (
+                                                <p className="text-sm mt-1">{entry.note}</p>
+                                            )}
                                             <p className="text-xs text-muted-foreground mt-1">
-                                                By: {entry.changed_by_user?.name || entry.changed_by}
+                                                By:{" "}
+                                                {entry.changed_by_user?.name || entry.changed_by}
                                             </p>
                                         </div>
                                     ))
