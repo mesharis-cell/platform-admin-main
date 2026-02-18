@@ -125,8 +125,12 @@ export function BatchPrintLabels({
                                         <span className="text-muted-foreground w-6 text-right shrink-0">
                                             {i + 1}.
                                         </span>
-                                        <span className="font-semibold truncate">{label.assetName}</span>
-                                        <span className="text-muted-foreground truncate">{label.qrCode}</span>
+                                        <span className="font-semibold truncate">
+                                            {label.assetName}
+                                        </span>
+                                        <span className="text-muted-foreground truncate">
+                                            {label.qrCode}
+                                        </span>
                                     </div>
                                 ))}
                                 {labelCount > 5 && (
@@ -145,7 +149,11 @@ export function BatchPrintLabels({
                     </div>
 
                     <DialogFooter className="gap-2 sm:gap-0">
-                        <Button variant="ghost" onClick={() => setIsOpen(false)} disabled={isPrinting}>
+                        <Button
+                            variant="ghost"
+                            onClick={() => setIsOpen(false)}
+                            disabled={isPrinting}
+                        >
                             Cancel
                         </Button>
                         <Button onClick={handlePrint} disabled={isPrinting}>

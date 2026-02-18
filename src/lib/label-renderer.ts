@@ -59,14 +59,18 @@ function buildLabelHtml(label: LabelData, labelSize: LabelSize, qrImage: string)
                         opacity: 0.85;
                         word-break: break-all;
                     ">${label.qrCode}</div>
-                    ${label.meta ? `<div style="
+                    ${
+                        label.meta
+                            ? `<div style="
                         font-size: ${fonts.meta}pt;
                         line-height: 1.1;
                         opacity: 0.7;
                         overflow: hidden;
                         white-space: nowrap;
                         text-overflow: ellipsis;
-                    ">${label.meta}</div>` : ""}
+                    ">${label.meta}</div>`
+                            : ""
+                    }
                 </div>
             </div>`;
     }
@@ -112,11 +116,15 @@ function buildLabelHtml(label: LabelData, labelSize: LabelSize, qrImage: string)
                         opacity: 0.85;
                         word-break: break-all;
                     ">${label.qrCode}</div>
-                    ${label.meta ? `<div style="
+                    ${
+                        label.meta
+                            ? `<div style="
                         font-size: ${fonts.meta}pt;
                         line-height: 1.1;
                         opacity: 0.7;
-                    ">${label.meta}</div>` : ""}
+                    ">${label.meta}</div>`
+                            : ""
+                    }
                 </div>
             </div>`;
     }
@@ -249,12 +257,13 @@ export async function printLabels(labels: LabelData[], options: PrintLabelOption
                 width: qrPixelSize,
                 margin: 1,
             })
-        ),
+        )
     );
 
     const labelsHtml = labels.map((label, i) => buildLabelHtml(label, labelSize, qrImages[i]));
     const doc = buildPrintDocument(labelsHtml, labelSize);
 
+    // eslint-disable-next-line creatr/no-browser-globals-in-ssr
     const printWindow = window.open("", "_blank");
     if (!printWindow) throw new Error("popup_blocked");
 

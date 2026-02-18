@@ -14,10 +14,7 @@ const DEFAULT_OPTIONS: QRCodeOptions = {
     margin: 2,
 };
 
-export const generateQRCode = async (
-    qrCode: string,
-    options?: QRCodeOptions,
-): Promise<string> => {
+export const generateQRCode = async (qrCode: string, options?: QRCodeOptions): Promise<string> => {
     const mergedOptions = { ...DEFAULT_OPTIONS, ...options };
 
     const qrCodeImage = await QRCode.toDataURL(qrCode, {

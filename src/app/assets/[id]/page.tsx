@@ -489,7 +489,11 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                                             <PrintQrAction
                                                 qrCode={asset?.qr_code}
                                                 assetName={asset?.name}
-                                                meta={[asset?.category, asset?.tracking_method].filter(Boolean).join(" · ") || undefined}
+                                                meta={
+                                                    [asset?.category, asset?.tracking_method]
+                                                        .filter(Boolean)
+                                                        .join(" · ") || undefined
+                                                }
                                                 className="w-full font-mono"
                                                 size="sm"
                                                 variant="outline"

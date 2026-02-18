@@ -13,11 +13,7 @@ import {
     DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 import { printLabel } from "@/lib/label-renderer";
-import {
-    LABEL_SIZES,
-    getPreferredLabelSize,
-    setPreferredLabelSize,
-} from "@/lib/label-config";
+import { LABEL_SIZES, getPreferredLabelSize, setPreferredLabelSize } from "@/lib/label-config";
 
 type ButtonProps = ComponentProps<typeof Button>;
 
@@ -61,7 +57,7 @@ export function PrintQrAction({
         try {
             await printLabel(
                 { qrCode, assetName: assetName || "Asset", meta },
-                { labelSize: currentLabelSize },
+                { labelSize: currentLabelSize }
             );
         } catch (error) {
             if (error instanceof Error && error.message === "popup_blocked")
