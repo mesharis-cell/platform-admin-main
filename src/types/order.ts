@@ -580,7 +580,7 @@ export interface APIOrder {
         name: string;
     };
     brand: string | null;
-    user_id: string;
+    created_by: string;
     job_number: string | null;
     contact_name: string;
     contact_email: string;
