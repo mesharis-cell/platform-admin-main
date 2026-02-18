@@ -231,6 +231,7 @@ const navigationSections: NavSection[] = [
                     { title: "City", url: "/cities" },
                     { title: "Pricing Config", url: "/settings/pricing/config" },
                     { title: "Notification Rules", url: "/settings/notifications" },
+                    { title: "Platform Settings", url: "/settings/platform" },
                     { title: "Service Types", url: "/service-types" },
                     { title: "Vehicle Type", url: "/vehicle-types" },
                     { title: "Transport Rates", url: "/transport-rates" },
