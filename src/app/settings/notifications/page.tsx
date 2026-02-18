@@ -1,7 +1,21 @@
 "use client";
 
-import { useState } from "react";
-import { Bell, Plus, Trash2, ToggleLeft, ToggleRight, RotateCcw, ChevronRight } from "lucide-react";
+import { useState, useMemo } from "react";
+import {
+    Bell,
+    Plus,
+    Trash2,
+    RotateCcw,
+    ChevronRight,
+    User,
+    Users,
+    Mail,
+    AlertTriangle,
+    Search,
+    X,
+    VolumeX,
+    Volume2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,6 +27,7 @@ import {
     DialogHeader,
     DialogTitle,
     DialogFooter,
+    DialogDescription,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -23,96 +38,116 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { AdminHeader } from "@/components/admin-header";
 import {
+    useNotificationMeta,
     useNotificationRules,
     useCreateNotificationRule,
     useUpdateNotificationRule,
     useDeleteNotificationRule,
     useResetEventRules,
 } from "@/lib/hooks/use-notification-rules";
-import type { NotificationRule, RecipientType } from "@/types/notifications";
+import type {
+    NotificationRule,
+    NotificationMeta,
+    RecipientType,
+    TemplateMeta,
+} from "@/types/notifications";
 
-// ─── Event type registry for the left panel ───────────────────────────────────
-const EVENT_GROUPS = [
-    {
-        label: "Orders",
-        events: [
-            { key: "order.submitted", label: "Order Submitted" },
-            { key: "order.confirmed", label: "Order Confirmed" },
-            { key: "order.in_transit", label: "Order In Transit" },
-            { key: "order.delivered", label: "Order Delivered" },
-            { key: "order.cancelled", label: "Order Cancelled" },
-            { key: "order.closed", label: "Order Closed" },
-            { key: "order.ready_for_delivery", label: "Ready for Delivery" },
-            { key: "order.pickup_reminder", label: "Pickup Reminder" },
-            { key: "order.time_windows_updated", label: "Time Windows Updated" },
-        ],
-    },
-    {
-        label: "Quotes",
-        events: [
-            { key: "quote.sent", label: "Quote Sent" },
-            { key: "quote.revised", label: "Quote Revised" },
-            { key: "quote.approved", label: "Quote Approved" },
-            { key: "quote.declined", label: "Quote Declined" },
-        ],
-    },
-    {
-        label: "Invoices & Payments",
-        events: [
-            { key: "invoice.generated", label: "Invoice Generated" },
-            { key: "payment.confirmed", label: "Payment Confirmed" },
-            { key: "fabrication.completed", label: "Fabrication Completed" },
-        ],
-    },
-    {
-        label: "Inbound Requests",
-        events: [
-            { key: "inbound_request.submitted", label: "IR Submitted" },
-            { key: "inbound_request.quoted", label: "IR Quoted" },
-            { key: "inbound_request.approved", label: "IR Approved" },
-            { key: "inbound_request.declined", label: "IR Declined" },
-            { key: "inbound_request.completed", label: "IR Completed" },
-            { key: "inbound_request.invoice_generated", label: "IR Invoice Generated" },
-        ],
-    },
-    {
-        label: "Service Requests",
-        events: [
-            { key: "service_request.submitted", label: "SR Submitted" },
-            { key: "service_request.quoted", label: "SR Quoted" },
-            { key: "service_request.approved", label: "SR Approved" },
-            { key: "service_request.completed", label: "SR Completed" },
-            { key: "service_request.invoice_generated", label: "SR Invoice Generated" },
-        ],
-    },
-    {
-        label: "Auth",
-        events: [{ key: "auth.password_reset_requested", label: "Password Reset Requested" }],
-    },
-];
+const EMPTY_META: NotificationMeta = { event_groups: [], templates_by_event: {} };
 
-const RECIPIENT_TYPE_LABELS: Record<RecipientType, string> = {
-    ROLE: "Role",
-    ENTITY_OWNER: "Entity Owner",
-    EMAIL: "Static Email",
+const ROLE_LABELS: Record<string, string> = {
+    ADMIN: "Admin",
+    LOGISTICS: "Logistics",
+    CLIENT: "Client",
+    WAREHOUSE: "Warehouse",
 };
+
+// Guess which audience a template targets based on its key suffix
+function templateAudience(key: string): string | null {
+    if (key.endsWith("_admin")) return "ADMIN";
+    if (key.endsWith("_logistics")) return "LOGISTICS";
+    if (key.endsWith("_client")) return "CLIENT";
+    if (key.endsWith("_warehouse")) return "WAREHOUSE";
+    return null;
+}
+
+function filterTemplatesForRecipient(
+    templates: TemplateMeta[],
+    recipientType: RecipientType,
+    recipientValue: string
+): TemplateMeta[] {
+    if (recipientType === "ENTITY_OWNER")
+        return templates.filter(
+            (t) => templateAudience(t.key) === "CLIENT" || templateAudience(t.key) === null
+        );
+    if (recipientType === "ROLE" && recipientValue)
+        return templates.filter(
+            (t) => templateAudience(t.key) === recipientValue || templateAudience(t.key) === null
+        );
+    return templates;
+}
+
+// ─── Recipient label ──────────────────────────────────────────────────────────
+function RecipientLabel({ rule }: { rule: NotificationRule }) {
+    if (rule.recipient_type === "ENTITY_OWNER")
+        return (
+            <span className="flex items-center gap-1.5 text-xs font-medium">
+                <User className="h-3 w-3 shrink-0" />
+                Client (order creator)
+            </span>
+        );
+    if (rule.recipient_type === "ROLE")
+        return (
+            <span className="flex items-center gap-1.5 text-xs font-medium">
+                <Users className="h-3 w-3 shrink-0" />
+                {ROLE_LABELS[rule.recipient_value ?? ""] ?? rule.recipient_value} role
+            </span>
+        );
+    return (
+        <span className="flex items-center gap-1.5 text-xs font-medium">
+            <Mail className="h-3 w-3 shrink-0" />
+            {rule.recipient_value}
+        </span>
+    );
+}
 
 // ─── Add Rule Dialog ──────────────────────────────────────────────────────────
 function AddRuleDialog({
     eventType,
+    availableTemplates,
     open,
     onClose,
 }: {
     eventType: string;
+    availableTemplates: TemplateMeta[];
     open: boolean;
     onClose: () => void;
 }) {
     const [recipientType, setRecipientType] = useState<RecipientType>("ROLE");
-    const [recipientValue, setRecipientValue] = useState("");
+    const [recipientValue, setRecipientValue] = useState("ADMIN");
     const [templateKey, setTemplateKey] = useState("");
     const createRule = useCreateNotificationRule();
+
+    const filteredTemplates = useMemo(
+        () => filterTemplatesForRecipient(availableTemplates, recipientType, recipientValue),
+        [availableTemplates, recipientType, recipientValue]
+    );
+
+    const handleRecipientTypeChange = (v: RecipientType) => {
+        setRecipientType(v);
+        setRecipientValue(v === "ROLE" ? "ADMIN" : "");
+        setTemplateKey("");
+    };
+
+    const handleRecipientValueChange = (v: string) => {
+        setRecipientValue(v);
+        // Auto-select template if there's exactly one match
+        const filtered = filterTemplatesForRecipient(availableTemplates, recipientType, v);
+        if (filtered.length === 1) setTemplateKey(filtered[0].key);
+        else setTemplateKey("");
+    };
 
     const handleSubmit = async () => {
         await createRule.mutateAsync({
@@ -123,79 +158,135 @@ function AddRuleDialog({
             template_key: templateKey,
         });
         setRecipientType("ROLE");
-        setRecipientValue("");
+        setRecipientValue("ADMIN");
         setTemplateKey("");
         onClose();
     };
+
+    const canSubmit =
+        !createRule.isPending &&
+        !!templateKey &&
+        (recipientType === "ENTITY_OWNER" || !!recipientValue);
 
     return (
         <Dialog open={open} onOpenChange={onClose}>
             <DialogContent className="max-w-md">
                 <DialogHeader>
-                    <DialogTitle className="font-mono text-sm">ADD NOTIFICATION RULE</DialogTitle>
+                    <DialogTitle className="text-sm">Add notification rule</DialogTitle>
+                    <DialogDescription className="font-mono text-[11px]">
+                        {eventType}
+                    </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-2">
-                    <div className="space-y-1">
-                        <Label className="font-mono text-xs">EVENT TYPE</Label>
-                        <Input value={eventType} disabled className="font-mono text-xs" />
-                    </div>
-                    <div className="space-y-1">
-                        <Label className="font-mono text-xs">RECIPIENT TYPE</Label>
+                    <div className="space-y-1.5">
+                        <Label className="text-xs font-medium">Send to</Label>
                         <Select
                             value={recipientType}
-                            onValueChange={(v) => setRecipientType(v as RecipientType)}
+                            onValueChange={(v) => handleRecipientTypeChange(v as RecipientType)}
                         >
-                            <SelectTrigger className="font-mono text-xs">
+                            <SelectTrigger>
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="ROLE" className="font-mono text-xs">
-                                    ROLE
+                                <SelectItem value="ROLE">
+                                    <span className="flex items-center gap-2">
+                                        <Users className="h-3.5 w-3.5" />
+                                        All users with a role
+                                    </span>
                                 </SelectItem>
-                                <SelectItem value="ENTITY_OWNER" className="font-mono text-xs">
-                                    ENTITY_OWNER
+                                <SelectItem value="ENTITY_OWNER">
+                                    <span className="flex items-center gap-2">
+                                        <User className="h-3.5 w-3.5" />
+                                        Client (whoever created this)
+                                    </span>
                                 </SelectItem>
-                                <SelectItem value="EMAIL" className="font-mono text-xs">
-                                    EMAIL
+                                <SelectItem value="EMAIL">
+                                    <span className="flex items-center gap-2">
+                                        <Mail className="h-3.5 w-3.5" />A specific email address
+                                    </span>
                                 </SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
-                    {recipientType !== "ENTITY_OWNER" && (
-                        <div className="space-y-1">
-                            <Label className="font-mono text-xs">
-                                {recipientType === "ROLE"
-                                    ? "ROLE (e.g. ADMIN, LOGISTICS)"
-                                    : "EMAIL ADDRESS"}
-                            </Label>
+
+                    {recipientType === "ROLE" && (
+                        <div className="space-y-1.5">
+                            <Label className="text-xs font-medium">Role</Label>
+                            <Select
+                                value={recipientValue}
+                                onValueChange={handleRecipientValueChange}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {["ADMIN", "LOGISTICS", "CLIENT", "WAREHOUSE"].map((r) => (
+                                        <SelectItem key={r} value={r}>
+                                            {r}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    )}
+
+                    {recipientType === "EMAIL" && (
+                        <div className="space-y-1.5">
+                            <Label className="text-xs font-medium">Email address</Label>
                             <Input
                                 value={recipientValue}
                                 onChange={(e) => setRecipientValue(e.target.value)}
-                                className="font-mono text-xs"
-                                placeholder={recipientType === "ROLE" ? "ADMIN" : "ops@example.com"}
+                                placeholder="ops@example.com"
+                                type="email"
                             />
                         </div>
                     )}
-                    <div className="space-y-1">
-                        <Label className="font-mono text-xs">TEMPLATE KEY</Label>
-                        <Input
-                            value={templateKey}
-                            onChange={(e) => setTemplateKey(e.target.value)}
-                            className="font-mono text-xs"
-                            placeholder="e.g. order_submitted_admin"
-                        />
+
+                    <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                            <Label className="text-xs font-medium">Email template</Label>
+                            {filteredTemplates.length < availableTemplates.length && (
+                                <span className="text-[10px] text-muted-foreground">
+                                    Showing {filteredTemplates.length} of{" "}
+                                    {availableTemplates.length} (filtered for{" "}
+                                    {recipientValue || "recipient"})
+                                </span>
+                            )}
+                        </div>
+                        {filteredTemplates.length > 0 ? (
+                            <Select value={templateKey} onValueChange={setTemplateKey}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select a template…" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {filteredTemplates.map((t) => (
+                                        <SelectItem key={t.key} value={t.key}>
+                                            <div>
+                                                <p className="text-sm">{t.label}</p>
+                                                <p className="text-[10px] text-muted-foreground font-mono">
+                                                    {t.key}
+                                                </p>
+                                            </div>
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        ) : (
+                            <Input
+                                value={templateKey}
+                                onChange={(e) => setTemplateKey(e.target.value)}
+                                placeholder="template_key"
+                                className="font-mono text-xs"
+                            />
+                        )}
                     </div>
                 </div>
                 <DialogFooter>
-                    <Button variant="outline" onClick={onClose} className="font-mono text-xs">
-                        CANCEL
+                    <Button variant="outline" onClick={onClose}>
+                        Cancel
                     </Button>
-                    <Button
-                        onClick={handleSubmit}
-                        disabled={createRule.isPending || !templateKey}
-                        className="font-mono text-xs"
-                    >
-                        {createRule.isPending ? "SAVING..." : "ADD RULE"}
+                    <Button onClick={handleSubmit} disabled={!canSubmit}>
+                        {createRule.isPending ? "Adding…" : "Add rule"}
                     </Button>
                 </DialogFooter>
             </DialogContent>
@@ -203,39 +294,112 @@ function AddRuleDialog({
     );
 }
 
-// ─── Rule Row ─────────────────────────────────────────────────────────────────
-function RuleRow({ rule }: { rule: NotificationRule }) {
+// ─── Reset confirmation dialog ────────────────────────────────────────────────
+function ResetConfirmDialog({
+    eventType,
+    open,
+    onClose,
+}: {
+    eventType: string;
+    open: boolean;
+    onClose: () => void;
+}) {
+    const resetRules = useResetEventRules();
+    return (
+        <Dialog open={open} onOpenChange={onClose}>
+            <DialogContent className="max-w-sm">
+                <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2 text-sm">
+                        <AlertTriangle className="h-4 w-4 text-destructive" />
+                        Delete all rules?
+                    </DialogTitle>
+                    <DialogDescription className="text-xs">
+                        All rules for <span className="font-mono font-semibold">{eventType}</span>{" "}
+                        will be removed. No emails will be sent for this event until you add new
+                        rules.
+                    </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                    <Button variant="outline" size="sm" onClick={onClose}>
+                        Cancel
+                    </Button>
+                    <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={async () => {
+                            await resetRules.mutateAsync({ event_type: eventType });
+                            onClose();
+                        }}
+                        disabled={resetRules.isPending}
+                    >
+                        {resetRules.isPending ? "Deleting…" : "Delete all rules"}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+// ─── Rule Row with inline delete confirm ─────────────────────────────────────
+function RuleRow({
+    rule,
+    templateLabelMap,
+}: {
+    rule: NotificationRule;
+    templateLabelMap: Record<string, string>;
+}) {
     const updateRule = useUpdateNotificationRule();
     const deleteRule = useDeleteNotificationRule();
+    const [confirmDelete, setConfirmDelete] = useState(false);
+    const templateLabel = templateLabelMap[rule.template_key];
 
-    const toggle = () => updateRule.mutate({ id: rule.id, is_enabled: !rule.is_enabled });
+    if (confirmDelete) {
+        return (
+            <div className="flex items-center justify-between p-3 border-2 border-destructive/40 rounded bg-destructive/5">
+                <p className="text-xs text-destructive font-medium">Delete this rule?</p>
+                <div className="flex gap-2">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={() => setConfirmDelete(false)}
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        variant="destructive"
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={() => deleteRule.mutate(rule.id)}
+                        disabled={deleteRule.isPending}
+                    >
+                        {deleteRule.isPending ? "Deleting…" : "Delete"}
+                    </Button>
+                </div>
+            </div>
+        );
+    }
 
     return (
-        <div className="flex items-center justify-between p-3 border rounded bg-card hover:bg-muted/20 transition-colors">
+        <div
+            className={`flex items-center justify-between p-3 border rounded transition-all ${rule.is_enabled ? "bg-card hover:bg-muted/20" : "bg-muted/30 opacity-55"}`}
+        >
             <div className="flex items-center gap-3 min-w-0">
                 <Switch
                     checked={rule.is_enabled}
-                    onCheckedChange={toggle}
+                    onCheckedChange={() =>
+                        updateRule.mutate({ id: rule.id, is_enabled: !rule.is_enabled })
+                    }
                     disabled={updateRule.isPending}
                 />
                 <div className="min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                        <Badge variant="outline" className="font-mono text-[10px]">
-                            {rule.recipient_type}
-                        </Badge>
-                        {rule.recipient_value && (
-                            <span className="font-mono text-xs font-semibold">
-                                {rule.recipient_value}
-                            </span>
-                        )}
-                        {rule.recipient_type === "ENTITY_OWNER" && (
-                            <span className="font-mono text-xs font-semibold">entity creator</span>
-                        )}
-                    </div>
-                    <p className="font-mono text-[10px] text-muted-foreground mt-0.5 truncate">
-                        template: {rule.template_key}
+                    <RecipientLabel rule={rule} />
+                    <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
+                        {templateLabel ?? <span className="font-mono">{rule.template_key}</span>}
                         {rule.company_id && (
-                            <span className="ml-2 text-blue-600">company override</span>
+                            <Badge variant="secondary" className="ml-2 text-[9px] py-0">
+                                company override
+                            </Badge>
                         )}
                     </p>
                 </div>
@@ -244,8 +408,7 @@ function RuleRow({ rule }: { rule: NotificationRule }) {
                 variant="ghost"
                 size="sm"
                 className="text-muted-foreground hover:text-destructive h-7 w-7 p-0 shrink-0"
-                onClick={() => deleteRule.mutate(rule.id)}
-                disabled={deleteRule.isPending}
+                onClick={() => setConfirmDelete(true)}
             >
                 <Trash2 className="h-3.5 w-3.5" />
             </Button>
@@ -255,123 +418,283 @@ function RuleRow({ rule }: { rule: NotificationRule }) {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function NotificationSettingsPage() {
-    const [selectedEvent, setSelectedEvent] = useState<string>(EVENT_GROUPS[0].events[0].key);
+    const { data: meta } = useNotificationMeta();
+    const { event_groups, templates_by_event } = meta ?? EMPTY_META;
+
+    const firstEventKey = event_groups[0]?.events[0]?.key ?? "";
+    const [selectedEvent, setSelectedEvent] = useState<string>("");
+    const [search, setSearch] = useState("");
     const [addDialogOpen, setAddDialogOpen] = useState(false);
-    const { data: rules, isLoading } = useNotificationRules({ event_type: selectedEvent });
-    const resetRules = useResetEventRules();
+    const [resetDialogOpen, setResetDialogOpen] = useState(false);
+
+    const activeEvent = selectedEvent || firstEventKey;
+
+    const { data: rules, isLoading } = useNotificationRules({ event_type: activeEvent });
+    const { data: allRules } = useNotificationRules({});
+    const updateRule = useUpdateNotificationRule();
+
+    const ruleCountByEvent = useMemo(
+        () =>
+            (allRules ?? []).reduce<Record<string, number>>((acc, rule) => {
+                acc[rule.event_type] = (acc[rule.event_type] ?? 0) + 1;
+                return acc;
+            }, {}),
+        [allRules]
+    );
+
+    const templateLabelMap = useMemo(
+        () =>
+            Object.values(templates_by_event)
+                .flat()
+                .reduce<Record<string, string>>((acc, t) => {
+                    acc[t.key] = t.label;
+                    return acc;
+                }, {}),
+        [templates_by_event]
+    );
+
+    // Filter event groups by search
+    const filteredGroups = useMemo(() => {
+        if (!search.trim()) return event_groups;
+        const q = search.toLowerCase();
+        return event_groups
+            .map((g) => ({
+                ...g,
+                events: g.events.filter(
+                    (e) => e.label.toLowerCase().includes(q) || e.key.includes(q)
+                ),
+            }))
+            .filter((g) => g.events.length > 0);
+    }, [event_groups, search]);
 
     const selectedLabel =
-        EVENT_GROUPS.flatMap((g) => g.events).find((e) => e.key === selectedEvent)?.label ??
-        selectedEvent;
+        event_groups.flatMap((g) => g.events).find((e) => e.key === activeEvent)?.label ??
+        activeEvent;
+    const availableTemplates = templates_by_event[activeEvent] ?? [];
+    const enabledCount = (rules ?? []).filter((r) => r.is_enabled).length;
+    const totalCount = (rules ?? []).length;
+
+    // Mute/unmute all rules for event
+    const allEnabled = totalCount > 0 && enabledCount === totalCount;
+    const handleMuteToggle = () => {
+        (rules ?? []).forEach((r) => {
+            if (r.is_enabled === allEnabled)
+                updateRule.mutate({ id: r.id, is_enabled: !allEnabled });
+        });
+    };
 
     return (
-        <div className="min-h-screen bg-background">
-            <AdminHeader
-                icon={Bell}
-                title="NOTIFICATION RULES"
-                description="Configure who receives emails for each event"
-            />
+        <TooltipProvider>
+            <div className="min-h-screen bg-background">
+                <AdminHeader
+                    icon={Bell}
+                    title="NOTIFICATION RULES"
+                    description="Configure who receives emails for each event"
+                />
 
-            <div className="container mx-auto px-6 py-8">
-                <div className="grid grid-cols-[280px_1fr] gap-6">
-                    {/* Left: Event list */}
-                    <div className="space-y-4">
-                        {EVENT_GROUPS.map((group) => (
-                            <div key={group.label}>
-                                <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest mb-1 px-1">
-                                    {group.label}
-                                </p>
-                                <div className="space-y-0.5">
-                                    {group.events.map((event) => (
-                                        <button
-                                            key={event.key}
-                                            onClick={() => setSelectedEvent(event.key)}
-                                            className={`w-full flex items-center justify-between px-3 py-2 rounded text-left transition-colors ${
-                                                selectedEvent === event.key
-                                                    ? "bg-primary/10 text-primary font-semibold"
-                                                    : "hover:bg-muted/50 text-muted-foreground"
-                                            }`}
+                <div className="container mx-auto px-6 py-8">
+                    <div className="grid grid-cols-[260px_1fr] gap-6 items-start">
+                        {/* Left: sticky event list */}
+                        <div className="sticky top-6 space-y-3">
+                            {/* Search */}
+                            <div className="relative">
+                                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+                                <Input
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                    placeholder="Filter events…"
+                                    className="pl-8 h-8 text-xs"
+                                />
+                                {search && (
+                                    <button
+                                        onClick={() => setSearch("")}
+                                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                    >
+                                        <X className="h-3.5 w-3.5" />
+                                    </button>
+                                )}
+                            </div>
+
+                            <div className="space-y-4 max-h-[calc(100vh-200px)] overflow-y-auto pr-1">
+                                {event_groups.length === 0 ? (
+                                    Array.from({ length: 4 }).map((_, i) => (
+                                        <Skeleton key={i} className="h-28 w-full rounded-lg" />
+                                    ))
+                                ) : filteredGroups.length === 0 ? (
+                                    <p className="text-xs text-muted-foreground text-center py-6">
+                                        No events match "{search}"
+                                    </p>
+                                ) : (
+                                    filteredGroups.map((group) => (
+                                        <div key={group.label}>
+                                            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-1 px-1">
+                                                {group.label}
+                                            </p>
+                                            <div className="space-y-0.5">
+                                                {group.events.map((event) => {
+                                                    const count = ruleCountByEvent[event.key] ?? 0;
+                                                    const isSelected = activeEvent === event.key;
+                                                    return (
+                                                        <button
+                                                            key={event.key}
+                                                            onClick={() => {
+                                                                setSelectedEvent(event.key);
+                                                                setSearch("");
+                                                            }}
+                                                            className={`w-full flex items-center justify-between px-3 py-2 rounded text-left transition-colors ${isSelected ? "bg-primary/10 text-primary" : "hover:bg-muted/50 text-muted-foreground"}`}
+                                                        >
+                                                            <span className="text-xs font-medium">
+                                                                {event.label}
+                                                            </span>
+                                                            <div className="flex items-center gap-1.5">
+                                                                {count > 0 ? (
+                                                                    <span
+                                                                        className={`text-[10px] font-mono px-1.5 py-0.5 rounded-full ${isSelected ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"}`}
+                                                                    >
+                                                                        {count}
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/25" />
+                                                                )}
+                                                                {isSelected && (
+                                                                    <ChevronRight className="h-3 w-3" />
+                                                                )}
+                                                            </div>
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Right: Rules panel */}
+                        <Card className="border-2">
+                            <CardHeader className="pb-3">
+                                <div className="flex items-start justify-between gap-4">
+                                    <div>
+                                        <CardTitle className="text-base">{selectedLabel}</CardTitle>
+                                        <p className="font-mono text-[10px] text-muted-foreground mt-0.5">
+                                            {activeEvent}
+                                        </p>
+                                    </div>
+                                    <div className="flex items-center gap-2 shrink-0">
+                                        {totalCount > 0 && (
+                                            <>
+                                                <span className="text-xs text-muted-foreground whitespace-nowrap">
+                                                    {enabledCount}/{totalCount} active
+                                                </span>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            className="h-8 w-8 p-0"
+                                                            onClick={handleMuteToggle}
+                                                            disabled={updateRule.isPending}
+                                                        >
+                                                            {allEnabled ? (
+                                                                <VolumeX className="h-3.5 w-3.5" />
+                                                            ) : (
+                                                                <Volume2 className="h-3.5 w-3.5" />
+                                                            )}
+                                                        </Button>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent
+                                                        side="bottom"
+                                                        className="text-xs"
+                                                    >
+                                                        {allEnabled
+                                                            ? "Mute all (disable without deleting)"
+                                                            : "Unmute all"}
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+                                                            onClick={() => setResetDialogOpen(true)}
+                                                        >
+                                                            <RotateCcw className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent
+                                                        side="bottom"
+                                                        className="text-xs"
+                                                    >
+                                                        Delete all rules for this event
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            </>
+                                        )}
+                                        <Button
+                                            size="sm"
+                                            className="gap-1"
+                                            onClick={() => setAddDialogOpen(true)}
                                         >
-                                            <span className="font-mono text-xs">{event.label}</span>
-                                            {selectedEvent === event.key && (
-                                                <ChevronRight className="h-3 w-3" />
-                                            )}
-                                        </button>
-                                    ))}
+                                            <Plus className="h-3.5 w-3.5" />
+                                            Add rule
+                                        </Button>
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
+                            </CardHeader>
+                            <CardContent>
+                                {isLoading ? (
+                                    <div className="space-y-2">
+                                        <Skeleton className="h-14 w-full" />
+                                        <Skeleton className="h-14 w-full" />
+                                    </div>
+                                ) : !rules?.length ? (
+                                    <div className="py-10 text-center border-2 border-dashed rounded-lg">
+                                        <Bell className="h-8 w-8 mx-auto mb-3 text-muted-foreground/30" />
+                                        <p className="text-sm text-muted-foreground font-medium">
+                                            No rules configured
+                                        </p>
+                                        <p className="text-xs text-muted-foreground/60 mt-1 mb-4">
+                                            No emails will be sent when this event fires.
+                                        </p>
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => setAddDialogOpen(true)}
+                                            className="gap-1"
+                                        >
+                                            <Plus className="h-3.5 w-3.5" />
+                                            Add first rule
+                                        </Button>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-2">
+                                        {rules.map((rule) => (
+                                            <RuleRow
+                                                key={rule.id}
+                                                rule={rule}
+                                                templateLabelMap={templateLabelMap}
+                                            />
+                                        ))}
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
                     </div>
-
-                    {/* Right: Rules for selected event */}
-                    <Card className="border-2 h-fit">
-                        <CardHeader className="pb-3">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <CardTitle className="font-mono text-sm">
-                                        {selectedLabel}
-                                    </CardTitle>
-                                    <p className="font-mono text-[10px] text-muted-foreground mt-0.5">
-                                        {selectedEvent}
-                                    </p>
-                                </div>
-                                <div className="flex gap-2">
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="font-mono text-xs gap-1"
-                                        onClick={() =>
-                                            resetRules.mutate({ event_type: selectedEvent })
-                                        }
-                                        disabled={resetRules.isPending}
-                                    >
-                                        <RotateCcw className="h-3 w-3" />
-                                        RESET
-                                    </Button>
-                                    <Button
-                                        size="sm"
-                                        className="font-mono text-xs gap-1"
-                                        onClick={() => setAddDialogOpen(true)}
-                                    >
-                                        <Plus className="h-3 w-3" />
-                                        ADD RULE
-                                    </Button>
-                                </div>
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            {isLoading ? (
-                                <div className="space-y-2">
-                                    <Skeleton className="h-14 w-full" />
-                                    <Skeleton className="h-14 w-full" />
-                                </div>
-                            ) : !rules?.length ? (
-                                <div className="py-10 text-center">
-                                    <Bell className="h-10 w-10 mx-auto mb-3 text-muted-foreground/40" />
-                                    <p className="font-mono text-xs text-muted-foreground">
-                                        No rules configured for this event.
-                                    </p>
-                                    <p className="font-mono text-[10px] text-muted-foreground/60 mt-1">
-                                        No emails will be sent when this event fires.
-                                    </p>
-                                </div>
-                            ) : (
-                                <div className="space-y-2">
-                                    {rules.map((rule) => (
-                                        <RuleRow key={rule.id} rule={rule} />
-                                    ))}
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
                 </div>
-            </div>
 
-            <AddRuleDialog
-                eventType={selectedEvent}
-                open={addDialogOpen}
-                onClose={() => setAddDialogOpen(false)}
-            />
-        </div>
+                <AddRuleDialog
+                    eventType={activeEvent}
+                    availableTemplates={availableTemplates}
+                    open={addDialogOpen}
+                    onClose={() => setAddDialogOpen(false)}
+                />
+                <ResetConfirmDialog
+                    eventType={activeEvent}
+                    open={resetDialogOpen}
+                    onClose={() => setResetDialogOpen(false)}
+                />
+            </div>
+        </TooltipProvider>
     );
 }

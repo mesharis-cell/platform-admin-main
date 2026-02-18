@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { apiClient } from "@/lib/api/api-client";
 import { throwApiError } from "@/lib/utils/throw-api-error";
-import type { NotificationRule } from "@/types/notifications";
+import type { NotificationMeta, NotificationRule } from "@/types/notifications";
 
 const BASE = "/operations/v1/notification-rules";
 
@@ -27,6 +27,17 @@ interface UpdateInput {
     is_enabled?: boolean;
     template_key?: string;
     sort_order?: number;
+}
+
+export function useNotificationMeta() {
+    return useQuery<NotificationMeta>({
+        queryKey: ["notification-meta"],
+        queryFn: async () => {
+            const res = await apiClient.get(`${BASE}/meta`);
+            return res.data.data;
+        },
+        staleTime: 5 * 60 * 1000, // meta rarely changes — cache for 5 min
+    });
 }
 
 export function useNotificationRules(params?: ListParams) {

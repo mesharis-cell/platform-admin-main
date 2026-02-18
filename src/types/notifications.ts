@@ -1,4 +1,24 @@
 export type RecipientType = "ROLE" | "ENTITY_OWNER" | "EMAIL";
+
+export interface EventMeta {
+    key: string;
+    label: string;
+}
+
+export interface EventGroup {
+    label: string;
+    events: EventMeta[];
+}
+
+export interface TemplateMeta {
+    key: string;
+    label: string;
+}
+
+export interface NotificationMeta {
+    event_groups: EventGroup[];
+    templates_by_event: Record<string, TemplateMeta[]>;
+}
 export type NotificationStatus = "QUEUED" | "SENT" | "FAILED" | "RETRYING";
 export type EntityType = "ORDER" | "INBOUND_REQUEST" | "SERVICE_REQUEST" | "USER";
 
