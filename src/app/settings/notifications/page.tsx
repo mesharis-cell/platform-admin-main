@@ -29,7 +29,6 @@ import {
     DialogFooter,
     DialogDescription,
 } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import {
     Select,
@@ -57,52 +56,35 @@ import type {
 
 const EMPTY_META: NotificationMeta = { event_groups: [], templates_by_event: {} };
 
-const ROLE_LABELS: Record<string, string> = {
-    ADMIN: "Admin",
-    LOGISTICS: "Logistics",
-    CLIENT: "Client",
-    WAREHOUSE: "Warehouse",
-};
-
-// Guess which audience a template targets based on its key suffix
-function templateAudience(key: string): string | null {
-    if (key.endsWith("_admin")) return "ADMIN";
-    if (key.endsWith("_logistics")) return "LOGISTICS";
-    if (key.endsWith("_client")) return "CLIENT";
-    if (key.endsWith("_warehouse")) return "WAREHOUSE";
-    return null;
+// ─── Infer the natural recipient from a template key's suffix ────────────────
+// Template naming convention: *_admin, *_logistics, *_warehouse, *_client
+// _client → ENTITY_OWNER (the user who created the entity — typically the client
+//           for orders/IRs/SRs, or the requesting user for auth events)
+function inferRecipient(key: string): { type: RecipientType; value: string | null; label: string } {
+    if (key.endsWith("_admin")) return { type: "ROLE", value: "ADMIN", label: "Admin role" };
+    if (key.endsWith("_logistics"))
+        return { type: "ROLE", value: "LOGISTICS", label: "Logistics role" };
+    if (key.endsWith("_warehouse"))
+        return { type: "ROLE", value: "WAREHOUSE", label: "Warehouse role" };
+    if (key.endsWith("_client"))
+        return { type: "ENTITY_OWNER", value: null, label: "Entity creator" };
+    return { type: "ROLE", value: "ADMIN", label: "Admin role" };
 }
 
-function filterTemplatesForRecipient(
-    templates: TemplateMeta[],
-    recipientType: RecipientType,
-    recipientValue: string
-): TemplateMeta[] {
-    if (recipientType === "ENTITY_OWNER")
-        return templates.filter(
-            (t) => templateAudience(t.key) === "CLIENT" || templateAudience(t.key) === null
-        );
-    if (recipientType === "ROLE" && recipientValue)
-        return templates.filter(
-            (t) => templateAudience(t.key) === recipientValue || templateAudience(t.key) === null
-        );
-    return templates;
-}
-
-// ─── Recipient label ──────────────────────────────────────────────────────────
+// ─── Recipient label used in rule rows ───────────────────────────────────────
 function RecipientLabel({ rule }: { rule: NotificationRule }) {
     if (rule.recipient_type === "ENTITY_OWNER")
         return (
             <span className="flex items-center gap-1.5 text-xs font-medium">
                 <User className="h-3 w-3 shrink-0" />
-                Client (order creator)
+                Entity creator
             </span>
         );
     if (rule.recipient_type === "ROLE")
         return (
             <span className="flex items-center gap-1.5 text-xs font-medium">
                 <Users className="h-3 w-3 shrink-0" />
-                {ROLE_LABELS[rule.recipient_value ?? ""] ?? rule.recipient_value} role
+                {rule.recipient_value} role
             </span>
         );
     return (
@@ -113,180 +95,186 @@ function RecipientLabel({ rule }: { rule: NotificationRule }) {
     );
 }
 
-// ─── Add Rule Dialog ──────────────────────────────────────────────────────────
+// ─── Add Rules Dialog — bulk checklist ───────────────────────────────────────
 function AddRuleDialog({
     eventType,
     availableTemplates,
+    existingRules,
     open,
     onClose,
 }: {
     eventType: string;
     availableTemplates: TemplateMeta[];
+    existingRules: NotificationRule[];
     open: boolean;
     onClose: () => void;
 }) {
-    const [recipientType, setRecipientType] = useState<RecipientType>("ROLE");
-    const [recipientValue, setRecipientValue] = useState("ADMIN");
-    const [templateKey, setTemplateKey] = useState("");
     const createRule = useCreateNotificationRule();
-
-    const filteredTemplates = useMemo(
-        () => filterTemplatesForRecipient(availableTemplates, recipientType, recipientValue),
-        [availableTemplates, recipientType, recipientValue]
+    const existingKeys = useMemo(
+        () => new Set(existingRules.map((r) => r.template_key)),
+        [existingRules]
     );
+    const [checked, setChecked] = useState<Record<string, boolean>>({});
+    const [customEmail, setCustomEmail] = useState("");
+    const [customTemplate, setCustomTemplate] = useState("");
 
-    const handleRecipientTypeChange = (v: RecipientType) => {
-        setRecipientType(v);
-        setRecipientValue(v === "ROLE" ? "ADMIN" : "");
-        setTemplateKey("");
-    };
+    const toggle = (key: string) => setChecked((p) => ({ ...p, [key]: !p[key] }));
 
-    const handleRecipientValueChange = (v: string) => {
-        setRecipientValue(v);
-        // Auto-select template if there's exactly one match
-        const filtered = filterTemplatesForRecipient(availableTemplates, recipientType, v);
-        if (filtered.length === 1) setTemplateKey(filtered[0].key);
-        else setTemplateKey("");
+    const checkedCount = Object.values(checked).filter(Boolean).length;
+    const customValid = !!customEmail && !!customTemplate;
+    const totalToAdd = checkedCount + (customValid ? 1 : 0);
+
+    const reset = () => {
+        setChecked({});
+        setCustomEmail("");
+        setCustomTemplate("");
     };
 
     const handleSubmit = async () => {
-        await createRule.mutateAsync({
-            event_type: eventType,
-            recipient_type: recipientType,
-            recipient_value:
-                recipientType === "ENTITY_OWNER" ? undefined : recipientValue || undefined,
-            template_key: templateKey,
-        });
-        setRecipientType("ROLE");
-        setRecipientValue("ADMIN");
-        setTemplateKey("");
+        const jobs: Promise<unknown>[] = [];
+
+        for (const t of availableTemplates) {
+            if (!checked[t.key] || existingKeys.has(t.key)) continue;
+            const { type, value } = inferRecipient(t.key);
+            jobs.push(
+                createRule.mutateAsync({
+                    event_type: eventType,
+                    recipient_type: type,
+                    recipient_value: value ?? undefined,
+                    template_key: t.key,
+                })
+            );
+        }
+
+        if (customValid) {
+            jobs.push(
+                createRule.mutateAsync({
+                    event_type: eventType,
+                    recipient_type: "EMAIL",
+                    recipient_value: customEmail,
+                    template_key: customTemplate,
+                })
+            );
+        }
+
+        await Promise.all(jobs);
+        reset();
         onClose();
     };
 
-    const canSubmit =
-        !createRule.isPending &&
-        !!templateKey &&
-        (recipientType === "ENTITY_OWNER" || !!recipientValue);
-
     return (
-        <Dialog open={open} onOpenChange={onClose}>
-            <DialogContent className="max-w-md">
+        <Dialog
+            open={open}
+            onOpenChange={(o) => {
+                if (!o) {
+                    reset();
+                    onClose();
+                }
+            }}
+        >
+            <DialogContent className="max-w-lg">
                 <DialogHeader>
-                    <DialogTitle className="text-sm">Add notification rule</DialogTitle>
+                    <DialogTitle className="text-sm">Add notification rules</DialogTitle>
                     <DialogDescription className="font-mono text-[11px]">
                         {eventType}
                     </DialogDescription>
                 </DialogHeader>
-                <div className="space-y-4 py-2">
-                    <div className="space-y-1.5">
-                        <Label className="text-xs font-medium">Send to</Label>
-                        <Select
-                            value={recipientType}
-                            onValueChange={(v) => handleRecipientTypeChange(v as RecipientType)}
-                        >
-                            <SelectTrigger>
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="ROLE">
-                                    <span className="flex items-center gap-2">
-                                        <Users className="h-3.5 w-3.5" />
-                                        All users with a role
-                                    </span>
-                                </SelectItem>
-                                <SelectItem value="ENTITY_OWNER">
-                                    <span className="flex items-center gap-2">
-                                        <User className="h-3.5 w-3.5" />
-                                        Client (whoever created this)
-                                    </span>
-                                </SelectItem>
-                                <SelectItem value="EMAIL">
-                                    <span className="flex items-center gap-2">
-                                        <Mail className="h-3.5 w-3.5" />A specific email address
-                                    </span>
-                                </SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
 
-                    {recipientType === "ROLE" && (
-                        <div className="space-y-1.5">
-                            <Label className="text-xs font-medium">Role</Label>
-                            <Select
-                                value={recipientValue}
-                                onValueChange={handleRecipientValueChange}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {["ADMIN", "LOGISTICS", "CLIENT", "WAREHOUSE"].map((r) => (
-                                        <SelectItem key={r} value={r}>
-                                            {r}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
+                <div className="space-y-2 max-h-[60vh] overflow-y-auto py-1 pr-1">
+                    {availableTemplates.length === 0 ? (
+                        <p className="text-xs text-muted-foreground text-center py-6">
+                            No standard templates for this event. Use the custom row below.
+                        </p>
+                    ) : (
+                        availableTemplates.map((t) => {
+                            const already = existingKeys.has(t.key);
+                            const { label: recipientLabel } = inferRecipient(t.key);
+                            const isChecked = already || !!checked[t.key];
+                            return (
+                                <label
+                                    key={t.key}
+                                    className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer select-none transition-colors ${
+                                        already
+                                            ? "opacity-40 cursor-not-allowed bg-muted/30"
+                                            : isChecked
+                                              ? "bg-primary/5 border-primary/40"
+                                              : "hover:bg-muted/40 border-transparent hover:border-border"
+                                    }`}
+                                >
+                                    <input
+                                        type="checkbox"
+                                        checked={isChecked}
+                                        disabled={already}
+                                        onChange={() => !already && toggle(t.key)}
+                                        className="h-4 w-4 rounded accent-primary shrink-0"
+                                    />
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium leading-tight">
+                                            {t.label}
+                                        </p>
+                                        <p className="text-[10px] text-muted-foreground font-mono mt-0.5 truncate">
+                                            {t.key}
+                                        </p>
+                                    </div>
+                                    <Badge
+                                        variant={already ? "secondary" : "outline"}
+                                        className="text-[10px] shrink-0"
+                                    >
+                                        {already ? "already added" : recipientLabel}
+                                    </Badge>
+                                </label>
+                            );
+                        })
                     )}
 
-                    {recipientType === "EMAIL" && (
-                        <div className="space-y-1.5">
-                            <Label className="text-xs font-medium">Email address</Label>
+                    {/* Custom email rule */}
+                    <div className="border rounded-lg p-3 space-y-2 mt-1">
+                        <p className="text-xs font-medium text-muted-foreground">
+                            Send to a specific email address
+                        </p>
+                        <div className="grid grid-cols-2 gap-2">
                             <Input
-                                value={recipientValue}
-                                onChange={(e) => setRecipientValue(e.target.value)}
+                                value={customEmail}
+                                onChange={(e) => setCustomEmail(e.target.value)}
                                 placeholder="ops@example.com"
                                 type="email"
+                                className="text-xs h-8"
                             />
-                        </div>
-                    )}
-
-                    <div className="space-y-1.5">
-                        <div className="flex items-center justify-between">
-                            <Label className="text-xs font-medium">Email template</Label>
-                            {filteredTemplates.length < availableTemplates.length && (
-                                <span className="text-[10px] text-muted-foreground">
-                                    Showing {filteredTemplates.length} of{" "}
-                                    {availableTemplates.length} (filtered for{" "}
-                                    {recipientValue || "recipient"})
-                                </span>
-                            )}
-                        </div>
-                        {filteredTemplates.length > 0 ? (
-                            <Select value={templateKey} onValueChange={setTemplateKey}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select a template…" />
+                            <Select value={customTemplate} onValueChange={setCustomTemplate}>
+                                <SelectTrigger className="h-8 text-xs">
+                                    <SelectValue placeholder="Pick template…" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {filteredTemplates.map((t) => (
-                                        <SelectItem key={t.key} value={t.key}>
-                                            <div>
-                                                <p className="text-sm">{t.label}</p>
-                                                <p className="text-[10px] text-muted-foreground font-mono">
-                                                    {t.key}
-                                                </p>
-                                            </div>
+                                    {availableTemplates.map((t) => (
+                                        <SelectItem key={t.key} value={t.key} className="text-xs">
+                                            {t.label}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
-                        ) : (
-                            <Input
-                                value={templateKey}
-                                onChange={(e) => setTemplateKey(e.target.value)}
-                                placeholder="template_key"
-                                className="font-mono text-xs"
-                            />
-                        )}
+                        </div>
                     </div>
                 </div>
+
                 <DialogFooter>
-                    <Button variant="outline" onClick={onClose}>
+                    <Button
+                        variant="outline"
+                        onClick={() => {
+                            reset();
+                            onClose();
+                        }}
+                    >
                         Cancel
                     </Button>
-                    <Button onClick={handleSubmit} disabled={!canSubmit}>
-                        {createRule.isPending ? "Adding…" : "Add rule"}
+                    <Button
+                        onClick={handleSubmit}
+                        disabled={totalToAdd === 0 || createRule.isPending}
+                    >
+                        {createRule.isPending
+                            ? "Adding…"
+                            : totalToAdd > 0
+                              ? `Add ${totalToAdd} rule${totalToAdd > 1 ? "s" : ""}`
+                              : "Select rules to add"}
                     </Button>
                 </DialogFooter>
             </DialogContent>
@@ -294,7 +282,7 @@ function AddRuleDialog({
     );
 }
 
-// ─── Reset confirmation dialog ────────────────────────────────────────────────
+// ─── Reset confirmation ───────────────────────────────────────────────────────
 function ResetConfirmDialog({
     eventType,
     open,
@@ -355,7 +343,7 @@ function RuleRow({
 
     if (confirmDelete) {
         return (
-            <div className="flex items-center justify-between p-3 border-2 border-destructive/40 rounded bg-destructive/5">
+            <div className="flex items-center justify-between p-3 border-2 border-destructive/40 rounded-lg bg-destructive/5">
                 <p className="text-xs text-destructive font-medium">Delete this rule?</p>
                 <div className="flex gap-2">
                     <Button
@@ -382,7 +370,7 @@ function RuleRow({
 
     return (
         <div
-            className={`flex items-center justify-between p-3 border rounded transition-all ${rule.is_enabled ? "bg-card hover:bg-muted/20" : "bg-muted/30 opacity-55"}`}
+            className={`flex items-center justify-between p-3 border rounded-lg transition-all ${rule.is_enabled ? "bg-card hover:bg-muted/20" : "bg-muted/30 opacity-55"}`}
         >
             <div className="flex items-center gap-3 min-w-0">
                 <Switch
@@ -435,8 +423,8 @@ export default function NotificationSettingsPage() {
 
     const ruleCountByEvent = useMemo(
         () =>
-            (allRules ?? []).reduce<Record<string, number>>((acc, rule) => {
-                acc[rule.event_type] = (acc[rule.event_type] ?? 0) + 1;
+            (allRules ?? []).reduce<Record<string, number>>((acc, r) => {
+                acc[r.event_type] = (acc[r.event_type] ?? 0) + 1;
                 return acc;
             }, {}),
         [allRules]
@@ -453,7 +441,6 @@ export default function NotificationSettingsPage() {
         [templates_by_event]
     );
 
-    // Filter event groups by search
     const filteredGroups = useMemo(() => {
         if (!search.trim()) return event_groups;
         const q = search.toLowerCase();
@@ -473,15 +460,13 @@ export default function NotificationSettingsPage() {
     const availableTemplates = templates_by_event[activeEvent] ?? [];
     const enabledCount = (rules ?? []).filter((r) => r.is_enabled).length;
     const totalCount = (rules ?? []).length;
-
-    // Mute/unmute all rules for event
     const allEnabled = totalCount > 0 && enabledCount === totalCount;
-    const handleMuteToggle = () => {
+
+    const handleMuteToggle = () =>
         (rules ?? []).forEach((r) => {
             if (r.is_enabled === allEnabled)
                 updateRule.mutate({ id: r.id, is_enabled: !allEnabled });
         });
-    };
 
     return (
         <TooltipProvider>
@@ -496,7 +481,6 @@ export default function NotificationSettingsPage() {
                     <div className="grid grid-cols-[260px_1fr] gap-6 items-start">
                         {/* Left: sticky event list */}
                         <div className="sticky top-6 space-y-3">
-                            {/* Search */}
                             <div className="relative">
                                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
                                 <Input
@@ -637,7 +621,7 @@ export default function NotificationSettingsPage() {
                                             onClick={() => setAddDialogOpen(true)}
                                         >
                                             <Plus className="h-3.5 w-3.5" />
-                                            Add rule
+                                            Add rules
                                         </Button>
                                     </div>
                                 </div>
@@ -664,7 +648,7 @@ export default function NotificationSettingsPage() {
                                             className="gap-1"
                                         >
                                             <Plus className="h-3.5 w-3.5" />
-                                            Add first rule
+                                            Add rules
                                         </Button>
                                     </div>
                                 ) : (
@@ -686,6 +670,7 @@ export default function NotificationSettingsPage() {
                 <AddRuleDialog
                     eventType={activeEvent}
                     availableTemplates={availableTemplates}
+                    existingRules={rules ?? []}
                     open={addDialogOpen}
                     onClose={() => setAddDialogOpen(false)}
                 />
