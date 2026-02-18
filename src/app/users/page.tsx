@@ -85,6 +85,7 @@ export default function UsersManagementPage() {
         permissionTemplate: "" as PermissionTemplate | "CUSTOM" | "",
         customPermissions: [] as string[],
         selectedCompany: null as string | null,
+        is_super_admin: false,
     });
 
     // Build query params
@@ -317,6 +318,7 @@ export default function UsersManagementPage() {
                 : (user.permission_template as PermissionTemplate),
             customPermissions: user.permissions,
             selectedCompany: user.company?.id || null,
+            is_super_admin: user.is_super_admin ?? false,
         });
         setIsEditDialogOpen(true);
     };
@@ -430,6 +432,11 @@ export default function UsersManagementPage() {
                 // Custom permissions
                 payload.permission_template = null;
                 payload.permissions = editFormData.customPermissions;
+            }
+
+            // Include super admin toggle if current user is super admin
+            if (AuthUser?.is_super_admin) {
+                payload.is_super_admin = editFormData.is_super_admin;
             }
 
             await updateMutation.mutateAsync({ userId: editingUser.id, data: payload });
@@ -1551,6 +1558,33 @@ export default function UsersManagementPage() {
                                         </div>
                                     </div>
 
+                                    {/* Super Admin toggle — only super admins can grant/revoke */}
+                                    {AuthUser?.is_super_admin && (
+                                        <>
+                                            <Separator />
+                                            <div className="flex items-center justify-between p-3 bg-amber-500/5 border border-amber-500/20 rounded-lg">
+                                                <div>
+                                                    <p className="font-mono font-semibold text-sm text-amber-600">
+                                                        Super Admin
+                                                    </p>
+                                                    <p className="font-mono text-xs text-muted-foreground mt-0.5">
+                                                        Bypasses all permission checks. Grant with
+                                                        care.
+                                                    </p>
+                                                </div>
+                                                <Checkbox
+                                                    checked={editFormData.is_super_admin}
+                                                    onCheckedChange={(checked) =>
+                                                        setEditFormData((p) => ({
+                                                            ...p,
+                                                            is_super_admin: !!checked,
+                                                        }))
+                                                    }
+                                                />
+                                            </div>
+                                        </>
+                                    )}
+
                                     {/* Actions */}
                                     <div className="flex gap-2 pt-4">
                                         <Button
@@ -1626,9 +1660,27 @@ export default function UsersManagementPage() {
                                     <TableRow key={user.id} className="border-border/50">
                                         <TableCell>
                                             <div>
-                                                <p className="font-mono font-semibold">
-                                                    {user.name}
-                                                </p>
+                                                <div className="flex items-center gap-2">
+                                                    <p className="font-mono font-semibold">
+                                                        {user.name}
+                                                    </p>
+                                                    {user.is_super_admin && (
+                                                        <Badge
+                                                            className="font-mono text-xs bg-amber-500/10 text-amber-600 border-amber-500/30 py-0"
+                                                            variant="outline"
+                                                        >
+                                                            ⚡ Super Admin
+                                                        </Badge>
+                                                    )}
+                                                    {user.id === AuthUser?.id && (
+                                                        <Badge
+                                                            className="font-mono text-xs py-0"
+                                                            variant="outline"
+                                                        >
+                                                            You
+                                                        </Badge>
+                                                    )}
+                                                </div>
                                                 <p className="text-xs text-muted-foreground font-mono">
                                                     {user.email}
                                                 </p>

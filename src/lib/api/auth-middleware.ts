@@ -28,6 +28,8 @@ export async function getAuthUser(): Promise<User | null> {
                 (session.user as any).permission_template ??
                 (session.user as any).permissionTemplate ??
                 null,
+            is_super_admin:
+                (session.user as any).is_super_admin ?? (session.user as any).isSuperAdmin ?? false,
             is_active: (session.user as any).is_active ?? (session.user as any).isActive ?? true,
             last_login_at:
                 (session.user as any).last_login_at ?? (session.user as any).lastLoginAt ?? null,

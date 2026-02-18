@@ -7,6 +7,9 @@ import { User } from "@/types/auth";
 export function hasPermission(user: User | null, requiredPermission: string): boolean {
     if (!user || !user.is_active) return false;
 
+    // Super admins bypass all permission checks
+    if (user.is_super_admin) return true;
+
     // Check for exact permission match
     if (user.permissions.includes(requiredPermission)) return true;
 
@@ -22,6 +25,7 @@ export function hasPermission(user: User | null, requiredPermission: string): bo
  */
 export function hasAllPermissions(user: User | null, requiredPermissions: string[]): boolean {
     if (!user || !user.is_active) return false;
+    if (user.is_super_admin) return true;
     return requiredPermissions.every((permission) => hasPermission(user, permission));
 }
 
@@ -33,6 +37,7 @@ export function hasAnyPermission(
     requiredPermissions: readonly string[]
 ): boolean {
     if (!user || !user.is_active) return false;
+    if (user.is_super_admin) return true;
     return requiredPermissions.some((permission) => hasPermission(user, permission));
 }
 
