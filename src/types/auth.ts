@@ -521,6 +521,13 @@ export const ADMIN_PERMISSION_GROUPS: Record<string, string[]> = {
         "analytics:filter_by_company",
         "analytics:*",
     ],
+    "Self-Bookings": [
+        "self_bookings:create",
+        "self_bookings:read",
+        "self_bookings:return",
+        "self_bookings:cancel",
+        "self_bookings:*",
+    ],
 };
 
 // Role-specific permission groups for LOGISTICS users

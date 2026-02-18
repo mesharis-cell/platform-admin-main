@@ -25,6 +25,7 @@ export const ADMIN_NAV_PERMISSIONS = {
     featureFlags: ["system:*"],
     systemSettings: ["system:*"],
     resetPassword: ["auth:reset_password"],
+    selfBookings: ["self_bookings:read", "self_bookings:create"],
 } as const;
 
 export const ADMIN_ACTION_PERMISSIONS = {

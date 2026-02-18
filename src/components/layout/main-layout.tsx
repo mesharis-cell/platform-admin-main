@@ -32,6 +32,7 @@ import {
     Settings,
     Flag,
     ClipboardList,
+    BookmarkPlus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -115,6 +116,12 @@ const navigationSections: NavSection[] = [
                 href: "/scanning",
                 icon: ScanLine,
                 requiredAnyPermission: ADMIN_NAV_PERMISSIONS.scanning,
+            },
+            {
+                name: "Self-Bookings",
+                href: "/self-bookings",
+                icon: BookmarkPlus,
+                requiredAnyPermission: ADMIN_NAV_PERMISSIONS.selfBookings,
             },
             {
                 name: "Events Calendar",

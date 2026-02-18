@@ -683,6 +683,20 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                                                     {availabilityStats.data.in_maintenance_quantity}
                                                 </span>
                                             </div>
+                                            {(availabilityStats.data as any).self_booked_quantity >
+                                                0 && (
+                                                <div className="flex items-center justify-between text-sm font-mono">
+                                                    <span className="text-blue-600">
+                                                        Self-Booked
+                                                    </span>
+                                                    <span className="font-semibold text-blue-600">
+                                                        {
+                                                            (availabilityStats.data as any)
+                                                                .self_booked_quantity
+                                                        }
+                                                    </span>
+                                                </div>
+                                            )}
                                         </div>
                                     ) : (
                                         <div className="p-3 bg-blue-500/5 border border-blue-500/20 rounded-md">
