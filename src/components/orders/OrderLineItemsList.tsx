@@ -40,7 +40,9 @@ export function OrderLineItemsList({
             { label: "Manpower", value: details.manpower },
             { label: "Tailgate", value: formatBool(details.tailgate_required) },
             { label: "Transport Notes", value: details.notes },
-        ].filter((entry) => entry.value !== undefined && entry.value !== null && entry.value !== "");
+        ].filter(
+            (entry) => entry.value !== undefined && entry.value !== null && entry.value !== ""
+        );
 
         if (!info.length) return null;
 

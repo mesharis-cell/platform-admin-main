@@ -83,7 +83,10 @@ export function AddCatalogLineItemModal({
         let metadata: TransportLineItemMetadata | undefined;
         if (isTransportService) {
             const manpowerValue = manpower.trim() ? Number(manpower) : undefined;
-            if (manpowerValue !== undefined && (!Number.isInteger(manpowerValue) || manpowerValue < 0)) {
+            if (
+                manpowerValue !== undefined &&
+                (!Number.isInteger(manpowerValue) || manpowerValue < 0)
+            ) {
                 toast.error("Manpower must be a non-negative integer");
                 return;
             }
@@ -219,7 +222,11 @@ export function AddCatalogLineItemModal({
                                         value={tripDirection}
                                         onValueChange={(value) =>
                                             setTripDirection(
-                                                value as "DELIVERY" | "PICKUP" | "ACCESS" | "TRANSFER"
+                                                value as
+                                                    | "DELIVERY"
+                                                    | "PICKUP"
+                                                    | "ACCESS"
+                                                    | "TRANSFER"
                                             )
                                         }
                                     >
@@ -288,7 +295,9 @@ export function AddCatalogLineItemModal({
                                     checked={tailgateRequired}
                                     onCheckedChange={(value) => setTailgateRequired(!!value)}
                                 />
-                                <Label htmlFor="catalog-transport-tailgate">Tailgate Required</Label>
+                                <Label htmlFor="catalog-transport-tailgate">
+                                    Tailgate Required
+                                </Label>
                             </div>
                             <div>
                                 <Label>Transport Notes</Label>

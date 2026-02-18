@@ -259,7 +259,8 @@ function AdminSidebarContent() {
             ...section,
             items: section.items.filter(
                 (item) =>
-                    !item.requiredAnyPermission || hasAnyPermission(user, item.requiredAnyPermission)
+                    !item.requiredAnyPermission ||
+                    hasAnyPermission(user, item.requiredAnyPermission)
             ),
         }))
         .filter((section) => section.items.length > 0);
@@ -492,7 +493,10 @@ function AdminSidebarContent() {
                                     </Avatar>
                                 </button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent side="top" align={isCollapsed ? "center" : "start"}>
+                            <DropdownMenuContent
+                                side="top"
+                                align={isCollapsed ? "center" : "start"}
+                            >
                                 <DropdownMenuLabel className="font-mono text-xs uppercase tracking-wide">
                                     {user?.name || "Admin User"}
                                 </DropdownMenuLabel>

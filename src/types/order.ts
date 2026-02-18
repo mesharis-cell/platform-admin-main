@@ -399,43 +399,37 @@ export interface InvoiceListItem {
     invoice_paid_at: string | null;
     payment_method: string | null;
     payment_reference: string | null;
-    order:
-        | {
-              id: string;
-              order_id: string;
-              contact_name: string;
-              event_start_date: string;
-              venue_name: string;
-              order_status: string;
-              financial_status: string;
-              pricing?: OrderPricing;
-              final_pricing?: {
-                  total_price: number;
-                  quote_sent_at: string;
-              };
-              order_pricing?: OrderPricing;
-          }
-        | null;
-    inbound_request:
-        | {
-              id: string;
-              inbound_request_id: string;
-              request_status: string;
-              financial_status: string;
-              incoming_at: string;
-              pricing: OrderPricing;
-          }
-        | null;
-    service_request:
-        | {
-              id: string;
-              service_request_id: string;
-              request_status: string;
-              commercial_status: string;
-              title: string;
-              pricing: OrderPricing;
-          }
-        | null;
+    order: {
+        id: string;
+        order_id: string;
+        contact_name: string;
+        event_start_date: string;
+        venue_name: string;
+        order_status: string;
+        financial_status: string;
+        pricing?: OrderPricing;
+        final_pricing?: {
+            total_price: number;
+            quote_sent_at: string;
+        };
+        order_pricing?: OrderPricing;
+    } | null;
+    inbound_request: {
+        id: string;
+        inbound_request_id: string;
+        request_status: string;
+        financial_status: string;
+        incoming_at: string;
+        pricing: OrderPricing;
+    } | null;
+    service_request: {
+        id: string;
+        service_request_id: string;
+        request_status: string;
+        commercial_status: string;
+        title: string;
+        pricing: OrderPricing;
+    } | null;
     company: {
         id: string;
         name: string;
@@ -619,4 +613,3 @@ export interface APIOrdersResponse {
     meta: any;
     success: boolean;
 }
-

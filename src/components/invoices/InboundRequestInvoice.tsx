@@ -158,31 +158,29 @@ export function InboundRequestInvoice({
                         )}
 
                         {/* Send Invoice Button - Show for PENDING_INVOICE status */}
-                        {inbound.financial_status === "PENDING_INVOICE" &&
-                            onSendInvoice && (
-                                <Button
-                                    onClick={() => onSendInvoice(invoice)}
-                                    size="sm"
-                                    className="font-mono"
-                                    disabled={isSending}
-                                >
-                                    <Send className="w-4 h-4 mr-2" />
-                                    SEND INVOICE
-                                </Button>
-                            )}
+                        {inbound.financial_status === "PENDING_INVOICE" && onSendInvoice && (
+                            <Button
+                                onClick={() => onSendInvoice(invoice)}
+                                size="sm"
+                                className="font-mono"
+                                disabled={isSending}
+                            >
+                                <Send className="w-4 h-4 mr-2" />
+                                SEND INVOICE
+                            </Button>
+                        )}
 
                         {/* Confirm Payment Button - Show for INVOICED status */}
-                        {inbound.financial_status === "INVOICED" &&
-                            onConfirmPayment && (
-                                <Button
-                                    onClick={() => onConfirmPayment(invoice)}
-                                    size="sm"
-                                    className="font-mono"
-                                >
-                                    <DollarSign className="w-4 h-4 mr-2" />
-                                    CONFIRM PAYMENT
-                                </Button>
-                            )}
+                        {inbound.financial_status === "INVOICED" && onConfirmPayment && (
+                            <Button
+                                onClick={() => onConfirmPayment(invoice)}
+                                size="sm"
+                                className="font-mono"
+                            >
+                                <DollarSign className="w-4 h-4 mr-2" />
+                                CONFIRM PAYMENT
+                            </Button>
+                        )}
                     </div>
                 </div>
             </div>

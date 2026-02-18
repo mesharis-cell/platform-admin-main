@@ -602,7 +602,9 @@ export default function InvoicesPage() {
                                         <span className="text-muted-foreground">
                                             {selectedInvoiceReference.type}:
                                         </span>{" "}
-                                        <span className="font-bold">{selectedInvoiceReference.id}</span>
+                                        <span className="font-bold">
+                                            {selectedInvoiceReference.id}
+                                        </span>
                                     </div>
                                     <div>
                                         <span className="text-muted-foreground">Company:</span>{" "}

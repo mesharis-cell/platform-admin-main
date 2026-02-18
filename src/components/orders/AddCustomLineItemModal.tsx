@@ -89,7 +89,10 @@ export function AddCustomLineItemModal({
         let metadata: TransportLineItemMetadata | undefined;
         if (isTransportCategory) {
             const manpowerValue = manpower.trim() ? Number(manpower) : undefined;
-            if (manpowerValue !== undefined && (!Number.isInteger(manpowerValue) || manpowerValue < 0)) {
+            if (
+                manpowerValue !== undefined &&
+                (!Number.isInteger(manpowerValue) || manpowerValue < 0)
+            ) {
                 toast.error("Manpower must be a non-negative integer");
                 return;
             }
@@ -259,7 +262,11 @@ export function AddCustomLineItemModal({
                                         value={tripDirection}
                                         onValueChange={(value) =>
                                             setTripDirection(
-                                                value as "DELIVERY" | "PICKUP" | "ACCESS" | "TRANSFER"
+                                                value as
+                                                    | "DELIVERY"
+                                                    | "PICKUP"
+                                                    | "ACCESS"
+                                                    | "TRANSFER"
                                             )
                                         }
                                     >

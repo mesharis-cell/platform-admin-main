@@ -153,17 +153,19 @@ export function InvoiceCard({
                             </Button>
                         )}
 
-                        {invoice.order && financialStatus === "PENDING_INVOICE" && onSendInvoice && (
-                            <Button
-                                onClick={() => onSendInvoice(invoice)}
-                                size="sm"
-                                className="font-mono"
-                                disabled={isSending}
-                            >
-                                <Send className="w-4 h-4 mr-2" />
-                                SEND INVOICE
-                            </Button>
-                        )}
+                        {invoice.order &&
+                            financialStatus === "PENDING_INVOICE" &&
+                            onSendInvoice && (
+                                <Button
+                                    onClick={() => onSendInvoice(invoice)}
+                                    size="sm"
+                                    className="font-mono"
+                                    disabled={isSending}
+                                >
+                                    <Send className="w-4 h-4 mr-2" />
+                                    SEND INVOICE
+                                </Button>
+                            )}
 
                         {invoice.order && financialStatus === "INVOICED" && onConfirmPayment && (
                             <Button

@@ -143,7 +143,9 @@ export default function PricingReviewPage() {
                                                 <span>Base Price</span>
                                             </div>
                                             <p className="font-medium font-mono">
-                                                {Number(order.order_pricing?.base_ops_total).toFixed(2)}
+                                                {Number(
+                                                    order.order_pricing?.base_ops_total
+                                                ).toFixed(2)}
                                             </p>
                                         </div>
                                     </div>

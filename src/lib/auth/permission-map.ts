@@ -1,12 +1,7 @@
 export const ADMIN_NAV_PERMISSIONS = {
     analytics: ["analytics:view_revenue", "analytics:track_margin"],
     orders: ["orders:read"],
-    serviceRequests: [
-        "orders:read",
-        "orders:update",
-        "pricing:review",
-        "pricing:adjust",
-    ],
+    serviceRequests: ["orders:read", "orders:update", "pricing:review", "pricing:adjust"],
     pricingReview: ["pricing:review", "pricing:adjust"],
     pendingApproval: ["pricing:adjust", "pricing:admin_approve"],
     scanning: ["scanning:scan_out", "scanning:scan_in"],

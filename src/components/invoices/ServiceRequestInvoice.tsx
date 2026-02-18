@@ -98,7 +98,9 @@ export function ServiceRequestInvoice({
                             <div className="text-sm font-mono mt-1">{serviceRequest.title}</div>
                         </div>
                         <div>
-                            <div className="text-xs text-muted-foreground font-mono">INVOICE DATE</div>
+                            <div className="text-xs text-muted-foreground font-mono">
+                                INVOICE DATE
+                            </div>
                             <div className="text-sm font-mono flex items-center gap-1.5 mt-1">
                                 <Calendar className="w-3.5 h-3.5 text-secondary" />
                                 {new Date(invoice.created_at).toLocaleDateString()}
