@@ -233,14 +233,12 @@ export default function ReportsPage() {
                     ? response.data
                     : new Blob([response.data], { type: "text/csv;charset=utf-8;" });
             const downloadUrl = URL.createObjectURL(blob);
-            const maybeDocument = (globalThis as Record<string, unknown>)["document"] as
-                | Document
-                | undefined;
-            if (!maybeDocument) {
+            if (typeof window === "undefined") {
                 URL.revokeObjectURL(downloadUrl);
                 throw new Error("Download is only available in the browser.");
             }
-            const link = maybeDocument.createElement("a");
+            // eslint-disable-next-line creatr/no-browser-globals-in-ssr
+            const link = window.document.createElement("a");
             link.href = downloadUrl;
             link.download = `${card.endpoint}-${new Date().toISOString().slice(0, 10)}.csv`;
             link.click();
