@@ -8,7 +8,14 @@
  */
 
 import { useEffect, useState, use } from "react";
-import { useAsset, useGenerateQRCode, useDeleteAsset, useAssetVersions } from "@/hooks/use-assets";
+import {
+    useAsset,
+    useGenerateQRCode,
+    useDeleteAsset,
+    useAssetVersions,
+    useUploadImage,
+    useUpdateAsset,
+} from "@/hooks/use-assets";
 import { useConditionHistory } from "@/hooks/use-conditions";
 import { useAssetAvailabilityStats } from "@/hooks/use-asset-availability-stats";
 import { useRouter } from "next/navigation";
@@ -34,6 +41,9 @@ import {
     ChevronLeft,
     ChevronRight,
     Clock,
+    Camera,
+    X,
+    Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -45,7 +55,7 @@ import { ConditionHistoryTimeline } from "@/components/conditions/condition-hist
 import { MaintenanceCompletionDialog } from "@/components/conditions/maintenance-completion-dialog";
 import { AddNotesDialog } from "@/components/conditions/add-notes-dialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { EditAssetDialog } from "@/components/assets/edit-asset-dialog";
+import { EditAssetDialog, type EditAssetTab } from "@/components/assets/edit-asset-dialog";
 import { PrintQrAction } from "@/components/qr/PrintQrAction";
 import { generateQRCode } from "@/lib/services/qr-code";
 
@@ -55,6 +65,7 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [showEditDialog, setShowEditDialog] = useState(false);
+    const [editDialogTab, setEditDialogTab] = useState<EditAssetTab>("basic");
 
     // Fetch asset
     const { data, isLoading: loading, error } = useAsset(id);
@@ -69,8 +80,10 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
     // Generate QR code
     const [qrCodeImage, setQrCodeImage] = useState<string | null>(null);
 
-    // Delete mutation
+    // Mutations
     const deleteMutation = useDeleteAsset();
+    const uploadImageMutation = useUploadImage();
+    const updateAssetMutation = useUpdateAsset();
 
     // Generate QR code when asset loads
     useEffect(() => {
@@ -114,8 +127,48 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
         }
     }
 
-    function handleEdit() {
+    function handleEdit(tab: EditAssetTab = "basic") {
+        setEditDialogTab(tab);
         setShowEditDialog(true);
+    }
+
+    async function handleInlinePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+        if (!asset) return;
+        const files = Array.from(e.target.files || []);
+        if (files.length === 0) return;
+        e.target.value = "";
+
+        try {
+            const companyId = typeof asset.company === "string" ? asset.company : asset.company?.id;
+            const fd = new FormData();
+            fd.append("companyId", companyId || "");
+            files.forEach((f) => fd.append("files", f));
+            const result = await uploadImageMutation.mutateAsync(fd);
+            const newUrls: string[] = result.data?.imageUrls || [];
+            await updateAssetMutation.mutateAsync({
+                id: asset.id,
+                data: { images: [...asset.images, ...newUrls] } as any,
+            });
+            toast.success(`${newUrls.length} photo${newUrls.length > 1 ? "s" : ""} added`);
+        } catch {
+            toast.error("Failed to upload photo");
+        }
+    }
+
+    async function handleInlinePhotoDelete(index: number) {
+        if (!asset) return;
+        try {
+            const newImages = asset.images.filter((_, i) => i !== index);
+            await updateAssetMutation.mutateAsync({
+                id: asset.id,
+                data: { images: newImages } as any,
+            });
+            if (currentImageIndex >= newImages.length)
+                setCurrentImageIndex(Math.max(0, newImages.length - 1));
+            toast.success("Photo removed");
+        } catch {
+            toast.error("Failed to remove photo");
+        }
     }
 
     function getConditionColor(condition: string) {
@@ -201,7 +254,7 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                                 variant="outline"
                                 size="sm"
                                 className="font-mono"
-                                onClick={handleEdit}
+                                onClick={() => handleEdit("basic")}
                             >
                                 <Edit className="w-4 h-4 mr-2" />
                                 Edit
@@ -257,71 +310,127 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                     {/* Main content */}
                     <div className="lg:col-span-2 space-y-6">
                         {/* Image gallery */}
-                        {asset?.images?.length > 0 && (
-                            <Card>
-                                <CardContent className="p-6">
-                                    <div className="relative aspect-16/10 bg-muted rounded-lg overflow-hidden mb-4">
-                                        <Image
-                                            src={asset.images[currentImageIndex]}
-                                            alt={asset.name}
-                                            fill
-                                            className="object-cover"
-                                        />
+                        <Card>
+                            <CardHeader className="flex flex-row items-center justify-between py-3 px-6">
+                                <CardTitle className="font-mono text-sm">
+                                    Photos ({asset?.images?.length || 0})
+                                </CardTitle>
+                                <label htmlFor="inline-photo-upload" className="cursor-pointer">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="font-mono pointer-events-none"
+                                        disabled={
+                                            uploadImageMutation.isPending ||
+                                            updateAssetMutation.isPending
+                                        }
+                                        asChild
+                                    >
+                                        <span>
+                                            {uploadImageMutation.isPending ||
+                                            updateAssetMutation.isPending ? (
+                                                <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                                            ) : (
+                                                <Camera className="w-3.5 h-3.5 mr-1.5" />
+                                            )}
+                                            Add Photo
+                                        </span>
+                                    </Button>
+                                    <input
+                                        id="inline-photo-upload"
+                                        type="file"
+                                        accept="image/*"
+                                        multiple
+                                        className="hidden"
+                                        onChange={handleInlinePhotoUpload}
+                                    />
+                                </label>
+                            </CardHeader>
+                            <CardContent className="p-6 pt-0">
+                                {asset?.images?.length > 0 ? (
+                                    <>
+                                        <div className="relative aspect-16/10 bg-muted rounded-lg overflow-hidden mb-4">
+                                            <Image
+                                                src={asset.images[currentImageIndex]}
+                                                alt={asset.name}
+                                                fill
+                                                className="object-cover"
+                                            />
+                                            <button
+                                                onClick={() =>
+                                                    handleInlinePhotoDelete(currentImageIndex)
+                                                }
+                                                className="absolute top-2 right-2 p-1.5 bg-destructive/90 text-destructive-foreground rounded-md hover:bg-destructive transition-colors"
+                                                title="Remove this photo"
+                                            >
+                                                <X className="w-3.5 h-3.5" />
+                                            </button>
 
-                                        {asset?.images?.length > 1 && (
-                                            <>
-                                                <button
-                                                    onClick={() =>
-                                                        setCurrentImageIndex(
-                                                            (prev) =>
-                                                                (prev - 1 + asset.images.length) %
-                                                                asset.images.length
-                                                        )
-                                                    }
-                                                    className="absolute left-2 top-1/2 -translate-y-1/2 p-2 bg-background/90 backdrop-blur-sm rounded-full border border-border hover:bg-background transition-colors"
-                                                >
-                                                    <ChevronLeft className="w-4 h-4" />
-                                                </button>
-                                                <button
-                                                    onClick={() =>
-                                                        setCurrentImageIndex(
-                                                            (prev) =>
-                                                                (prev + 1) % asset.images.length
-                                                        )
-                                                    }
-                                                    className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-background/90 backdrop-blur-sm rounded-full border border-border hover:bg-background transition-colors"
-                                                >
-                                                    <ChevronRight className="w-4 h-4" />
-                                                </button>
-                                            </>
-                                        )}
-                                    </div>
-
-                                    {asset?.images?.length > 1 && (
-                                        <div className="flex gap-2 overflow-x-auto">
-                                            {asset?.images?.map((img, index) => (
-                                                <button
-                                                    key={index}
-                                                    onClick={() => setCurrentImageIndex(index)}
-                                                    className={`relative w-20 h-20 shrink-0 rounded-md overflow-hidden border-2 ${
-                                                        index === currentImageIndex
-                                                            ? "border-primary"
-                                                            : "border-border hover:border-primary/50"
-                                                    } transition-colors`}
-                                                >
-                                                    <Image
-                                                        src={img}
-                                                        alt={`Thumbnail ${index + 1}`}
-                                                        fill
-                                                        className="object-cover"
-                                                    />
-                                                </button>
-                                            ))}
+                                            {asset.images.length > 1 && (
+                                                <>
+                                                    <button
+                                                        onClick={() =>
+                                                            setCurrentImageIndex(
+                                                                (prev) =>
+                                                                    (prev -
+                                                                        1 +
+                                                                        asset.images.length) %
+                                                                    asset.images.length
+                                                            )
+                                                        }
+                                                        className="absolute left-2 top-1/2 -translate-y-1/2 p-2 bg-background/90 backdrop-blur-sm rounded-full border border-border hover:bg-background transition-colors"
+                                                    >
+                                                        <ChevronLeft className="w-4 h-4" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() =>
+                                                            setCurrentImageIndex(
+                                                                (prev) =>
+                                                                    (prev + 1) % asset.images.length
+                                                            )
+                                                        }
+                                                        className="absolute right-10 top-1/2 -translate-y-1/2 p-2 bg-background/90 backdrop-blur-sm rounded-full border border-border hover:bg-background transition-colors"
+                                                    >
+                                                        <ChevronRight className="w-4 h-4" />
+                                                    </button>
+                                                </>
+                                            )}
                                         </div>
-                                    )}
-                                </CardContent>
-                            </Card>
-                        )}
+
+                                        {asset.images.length > 1 && (
+                                            <div className="flex gap-2 overflow-x-auto">
+                                                {asset.images.map((img, index) => (
+                                                    <button
+                                                        key={index}
+                                                        onClick={() => setCurrentImageIndex(index)}
+                                                        className={`relative w-20 h-20 shrink-0 rounded-md overflow-hidden border-2 ${
+                                                            index === currentImageIndex
+                                                                ? "border-primary"
+                                                                : "border-border hover:border-primary/50"
+                                                        } transition-colors`}
+                                                    >
+                                                        <Image
+                                                            src={img}
+                                                            alt={`Thumbnail ${index + 1}`}
+                                                            fill
+                                                            className="object-cover"
+                                                        />
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </>
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                                        <Camera className="w-10 h-10 mb-3 opacity-30" />
+                                        <p className="text-sm font-mono">No photos yet</p>
+                                        <p className="text-xs font-mono mt-1">
+                                            Use "Add Photo" above to upload
+                                        </p>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
 
                         {/* Description */}
                         {asset?.description && (
@@ -339,11 +448,20 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
 
                         {/* Physical Specifications */}
                         <Card>
-                            <CardHeader>
+                            <CardHeader className="flex flex-row items-center justify-between py-3 px-6">
                                 <CardTitle className="font-mono text-sm flex items-center gap-2">
                                     <Ruler className="w-4 h-4 text-primary" />
                                     Physical Specifications
                                 </CardTitle>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="font-mono h-7 px-2 text-xs"
+                                    onClick={() => handleEdit("specs")}
+                                >
+                                    <Edit className="w-3 h-3 mr-1" />
+                                    Edit
+                                </Button>
                             </CardHeader>
                             <CardContent>
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -795,10 +913,8 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                     asset={asset}
                     open={showEditDialog}
                     onOpenChange={setShowEditDialog}
-                    onSuccess={() => {
-                        setShowEditDialog(false);
-                        // Refetch asset data would happen automatically via React Query
-                    }}
+                    defaultTab={editDialogTab}
+                    onSuccess={() => setShowEditDialog(false)}
                 />
             )}
 
