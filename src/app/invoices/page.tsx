@@ -50,9 +50,11 @@ import { usePlatform } from "@/contexts/platform-context";
 import { useSendInvoice } from "@/hooks/use-orders";
 import { InvoiceCard } from "@/components/invoices/InvoiceCard";
 import { InboundRequestInvoice } from "@/components/invoices/InboundRequestInvoice";
+import { ServiceRequestInvoice } from "@/components/invoices/ServiceRequestInvoice";
 import { useToken } from "@/lib/auth/use-token";
 import { hasPermission } from "@/lib/auth/permissions";
 import { ADMIN_ACTION_PERMISSIONS } from "@/lib/auth/permission-map";
+import { getOrderPrice } from "@/lib/utils/helper";
 
 export default function InvoicesPage() {
     const { user } = useToken();
@@ -104,6 +106,31 @@ export default function InvoicesPage() {
     const canExport = hasPermission(user, ADMIN_ACTION_PERMISSIONS.ordersExport);
     const exportReconciliation = useExportReconciliation();
 
+    const getInvoiceAmount = (invoice: any) => {
+        const pricing =
+            invoice?.order?.pricing ||
+            invoice?.order?.order_pricing ||
+            invoice?.inbound_request?.pricing ||
+            invoice?.service_request?.pricing;
+        if (pricing) return Number(getOrderPrice(pricing).total || 0);
+        return Number(invoice?.order?.final_pricing?.total_price || 0);
+    };
+
+    const getInvoiceReference = (invoice: any) => {
+        if (invoice?.order) return { type: "Order", id: invoice.order.order_id };
+        if (invoice?.inbound_request)
+            return {
+                type: "New Stock Request",
+                id: invoice.inbound_request.inbound_request_id,
+            };
+        if (invoice?.service_request)
+            return {
+                type: "Service Request",
+                id: invoice.service_request.service_request_id,
+            };
+        return { type: "Reference", id: "N/A" };
+    };
+
     const handleApplyFilters = () => {
         setFilters((prev) => ({
             ...prev,
@@ -126,6 +153,10 @@ export default function InvoicesPage() {
 
     const handleOpenConfirmPayment = (invoice: any) => {
         if (!canConfirmInvoicePayment) return;
+        if (!invoice?.order?.id) {
+            toast.error("Payment confirmation is only available for order invoices");
+            return;
+        }
         setSelectedInvoice(invoice);
         setPaymentMethod("");
         setPaymentReference("");
@@ -137,6 +168,11 @@ export default function InvoicesPage() {
     const handleConfirmPayment = async () => {
         if (!canConfirmInvoicePayment) return;
         if (!selectedInvoice) return;
+        const orderId = selectedInvoice?.order?.id;
+        if (!orderId) {
+            toast.error("Invalid invoice source for payment confirmation");
+            return;
+        }
 
         if (!paymentMethod || !paymentReference || !paymentDate) {
             toast.error("Payment method, reference, and date are required");
@@ -145,7 +181,7 @@ export default function InvoicesPage() {
 
         try {
             await confirmPayment.mutateAsync({
-                orderId: selectedInvoice.order.id,
+                orderId,
                 data: {
                     payment_method: paymentMethod,
                     payment_reference: paymentReference,
@@ -185,6 +221,10 @@ export default function InvoicesPage() {
     const handleSendInvoice = async () => {
         if (!canSendInvoices) return;
         if (!selectedInvoice) return;
+        if (!selectedInvoice?.order?.id) {
+            toast.error("Sending invoice is only available for order invoices");
+            return;
+        }
 
         try {
             await sendInvoice(selectedInvoice.order.id);
@@ -218,13 +258,12 @@ export default function InvoicesPage() {
               unpaidInvoices: invoicesData.data.filter((inv) => !inv.invoice_paid_at).length,
               totalRevenue: invoicesData.data
                   .filter((inv) => inv.invoice_paid_at)
-                  .reduce(
-                      (sum, inv) =>
-                          sum + parseFloat(inv.order.final_pricing?.total_price?.toString() || "0"),
-                      0
-                  ),
+                  .reduce((sum, inv) => sum + getInvoiceAmount(inv), 0),
           }
         : null;
+    const selectedInvoiceReference = selectedInvoice
+        ? getInvoiceReference(selectedInvoice)
+        : { type: "Reference", id: "N/A" };
 
     return (
         <div className="min-h-screen bg-background">
@@ -360,7 +399,7 @@ export default function InvoicesPage() {
                                     <SelectContent>
                                         <SelectItem value="all">All</SelectItem>
                                         <SelectItem value="INBOUND_REQUEST">
-                                            Inbound Request
+                                            New Stock Request
                                         </SelectItem>
                                         <SelectItem value="ORDER">Order</SelectItem>
                                     </SelectContent>
@@ -456,17 +495,17 @@ export default function InvoicesPage() {
                                                         ? () => handleDownloadInvoice(invoice.id)
                                                         : undefined
                                                 }
-                                                onSendInvoice={
-                                                    canSendInvoices
-                                                        ? (inv) => {
-                                                              setSelectedInvoice(inv);
-                                                              setSentInvoice(true);
-                                                          }
-                                                        : undefined
-                                                }
-                                                onConfirmPayment={
-                                                    canConfirmInvoicePayment
-                                                        ? (inv) => handleOpenConfirmPayment(inv)
+                                                isDownloading={downloadInvoice.isPending}
+                                                isSending={isSendingInvoice}
+                                            />
+                                        )}
+
+                                        {invoice?.service_request && (
+                                            <ServiceRequestInvoice
+                                                invoice={invoice}
+                                                onDownload={
+                                                    canDownloadInvoices
+                                                        ? () => handleDownloadInvoice(invoice.id)
                                                         : undefined
                                                 }
                                                 isDownloading={downloadInvoice.isPending}
@@ -560,10 +599,10 @@ export default function InvoicesPage() {
                                         </span>
                                     </div>
                                     <div>
-                                        <span className="text-muted-foreground">Order:</span>{" "}
-                                        <span className="font-bold">
-                                            {selectedInvoice.order.order_id}
-                                        </span>
+                                        <span className="text-muted-foreground">
+                                            {selectedInvoiceReference.type}:
+                                        </span>{" "}
+                                        <span className="font-bold">{selectedInvoiceReference.id}</span>
                                     </div>
                                     <div>
                                         <span className="text-muted-foreground">Company:</span>{" "}
@@ -572,12 +611,7 @@ export default function InvoicesPage() {
                                     <div>
                                         <span className="text-muted-foreground">Amount:</span>{" "}
                                         <span className="font-bold text-primary">
-                                            {parseFloat(
-                                                selectedInvoice?.order?.final_pricing?.total_price?.toFixed(
-                                                    2
-                                                )
-                                            )}{" "}
-                                            AED
+                                            {getInvoiceAmount(selectedInvoice).toFixed(2)} AED
                                         </span>
                                     </div>
                                 </div>

@@ -66,7 +66,6 @@ export type Permission =
     | "pricing_tiers:set_base_price"
     // Pricing & Quoting (Phase 8)
     | "pricing:review"
-    | "pricing:approve_standard"
     | "pricing:adjust"
     | "pricing:view_breakdown"
     | "pricing:pmg_review_adjustment"
@@ -281,7 +280,6 @@ export const PERMISSION_GROUPS = {
     ],
     "Pricing & Quoting": [
         "pricing:review",
-        "pricing:approve_standard",
         "pricing:adjust",
         "pricing:pmg_review_adjustment",
         "pricing:pmg_approve",
@@ -372,7 +370,6 @@ export const PERMISSION_TEMPLATES: Record<
             "orders:update",
             "orders:add_time_windows", // Phase 10
             "pricing:review",
-            "pricing:approve_standard",
             "pricing:adjust",
             "lifecycle:progress_status", // Phase 10
             "lifecycle:receive_notifications", // Phase 10
@@ -469,7 +466,6 @@ export const ADMIN_PERMISSION_GROUPS: Record<string, string[]> = {
     ],
     "Pricing Review": [
         "pricing:review",
-        "pricing:approve_standard",
         "pricing:adjust",
         "pricing:admin_review_adjustment",
         "pricing:admin_approve",
@@ -539,7 +535,7 @@ export const LOGISTICS_PERMISSION_GROUPS: Record<string, string[]> = {
         "orders:export",
         "orders:*",
     ],
-    "Pricing Review": ["pricing:review", "pricing:approve_standard", "pricing:adjust", "pricing:*"],
+    "Pricing Review": ["pricing:review", "pricing:adjust", "pricing:*"],
     "QR Scanning": [
         "scanning:scan_out",
         "scanning:scan_in",

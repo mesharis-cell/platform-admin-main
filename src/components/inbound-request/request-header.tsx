@@ -109,7 +109,7 @@ export function RequestHeader({
                     className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1 font-mono"
                 >
                     <ArrowLeft className="w-4 h-4" />
-                    Inbound Requests
+                    New Stock Requests
                 </Link>
 
                 {/* Action Buttons */}
@@ -151,7 +151,7 @@ export function RequestHeader({
                                     {status.replace(/_/g, " ")}
                                 </Badge>
                                 <span className="text-xs text-muted-foreground font-mono flex items-center gap-1">
-                                    Inbound request ID: {request.inbound_request_id}
+                                    New stock request ID: {request.inbound_request_id}
                                 </span>
                             </div>
                             <h1 className="text-4xl font-bold mb-2">

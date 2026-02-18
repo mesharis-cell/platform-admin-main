@@ -31,7 +31,6 @@ import {
 import { ProcessReskinModal } from "@/components/orders/ProcessReskinModal";
 import { OrderApprovalRequestSubmitBtn } from "@/components/orders/OrderApprovalRequestSubmitBtn";
 import { OrderItemCard } from "@/components/orders/OrderItemCard";
-import { OrderTransportUnitsCard } from "@/components/orders/OrderTransportUnitsCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -79,7 +78,6 @@ import { apiClient } from "@/lib/api/api-client";
 import { getOrderPrice, removeUnderScore } from "@/lib/utils/helper";
 import { addDays, endOfDay, isAfter, isBefore, startOfDay, subDays } from "date-fns";
 import { LogisticsPricingReview } from "@/components/orders/LogisticsPricingReview";
-import { AddMissingTransportRate } from "@/components/orders/AddMissingTransportRate";
 import { useToken } from "@/lib/auth/use-token";
 import { hasPermission } from "@/lib/auth/permissions";
 import { ADMIN_ACTION_PERMISSIONS } from "@/lib/auth/permission-map";
@@ -204,6 +202,11 @@ const STATUS_CONFIG: Record<
     AWAITING_RETURN: {
         label: "AWAITING RET.",
         color: "bg-rose-500/10 text-rose-700 border-rose-500/20",
+        nextStates: ["RETURN_IN_TRANSIT", "CLOSED"],
+    },
+    RETURN_IN_TRANSIT: {
+        label: "RETURN TRANSIT",
+        color: "bg-orange-500/10 text-orange-700 border-orange-500/20",
         nextStates: ["CLOSED"],
     },
     CLOSED: {
@@ -1468,8 +1471,6 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                 </CardContent>
                             </Card>
                         )}
-
-                        <OrderTransportUnitsCard orderId={id} canManage={canProgressOrderStatus} />
 
                         {/* Event & Venue */}
                         <Card>

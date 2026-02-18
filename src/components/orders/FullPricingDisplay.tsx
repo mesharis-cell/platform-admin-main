@@ -22,11 +22,6 @@ export function FullPricingDisplay({ pricing, lineItems = [] }: FullPricingDispl
     const customItems = lineItems.filter(
         (item) => item.lineItemType === "CUSTOM" && !item.isVoided
     );
-    const vehicleTypeLabel =
-        typeof pricing.transport.vehicle_type === "string"
-            ? pricing.transport.vehicle_type
-            : pricing.transport.vehicle_type?.name || "N/A";
-
     return (
         <Card>
             <CardHeader>
@@ -56,28 +51,6 @@ export function FullPricingDisplay({ pricing, lineItems = [] }: FullPricingDispl
                     <p className="text-xs text-muted-foreground mt-1 ml-2">
                         Covers: Picking + Handling Out + Handling In
                     </p>
-                </div>
-
-                {/* Transport */}
-                <div>
-                    <h4 className="text-sm font-semibold text-muted-foreground mb-2">TRANSPORT</h4>
-                    <div className="flex justify-between text-sm p-2 bg-muted/30 rounded">
-                        <span>
-                            {pricing.transport.emirate},{" "}
-                            {pricing.transport.trip_type === "ROUND_TRIP"
-                                ? "Round-trip"
-                                : "One-way"}{" "}
-                            ({vehicleTypeLabel})
-                        </span>
-                        <span className="font-mono font-semibold">
-                            {pricing.transport.final_rate.toFixed(2)} AED
-                        </span>
-                    </div>
-                    {pricing.transport.vehicle_changed && (
-                        <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 ml-2">
-                            Vehicle upgraded: {pricing.transport.vehicle_change_reason}
-                        </p>
-                    )}
                 </div>
 
                 {/* Catalog Line Items */}

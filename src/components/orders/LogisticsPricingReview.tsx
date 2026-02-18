@@ -12,10 +12,8 @@ import { DollarSign, Plus } from "lucide-react";
 import { OrderLineItemsList } from "./OrderLineItemsList";
 import { AddCatalogLineItemModal } from "./AddCatalogLineItemModal";
 import { AddCustomLineItemModal } from "./AddCustomLineItemModal";
-import { VehicleUpgradeSelector } from "./VehicleUpgradeSelector";
 import { canManageLineItems } from "@/lib/order-helpers";
-import type { OrderPricing, VehicleType } from "@/types/hybrid-pricing";
-import { AddMissingTransportRate } from "./AddMissingTransportRate";
+import type { OrderPricing } from "@/types/hybrid-pricing";
 import { useToken } from "@/lib/auth/use-token";
 import { hasPermission } from "@/lib/auth/permissions";
 import { ADMIN_ACTION_PERMISSIONS } from "@/lib/auth/permission-map";
@@ -30,7 +28,7 @@ interface LogisticsPricingReviewProps {
 export function LogisticsPricingReview({
     orderId,
     order,
-    onSubmitSuccess,
+    onSubmitSuccess: _onSubmitSuccess,
 }: LogisticsPricingReviewProps) {
     const { user } = useToken();
     const [addCatalogOpen, setAddCatalogOpen] = useState(false);
@@ -40,10 +38,6 @@ export function LogisticsPricingReview({
 
     const pricing = order?.order_pricing as OrderPricing | undefined;
     const hasRebrandRequests = order?.items?.some((item: any) => item.isReskinRequest);
-    const showMissingTransport =
-        ["PRICING_REVIEW"].includes(order.order_status) &&
-        !order?.order_pricing?.transport?.final_rate &&
-        canManagePricing;
     const damagedItemCount =
         order?.items?.filter((item: any) => {
             const condition = item?.asset?.condition || item?.condition || "";
@@ -66,30 +60,6 @@ export function LogisticsPricingReview({
                     </CardContent>
                 </Card>
             )}
-
-            {/* Vehicle Type (Optional Upgrade) */}
-            <Card>
-                <CardHeader>
-                    <CardTitle>Transport Vehicle</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    {canManagePricing ? (
-                        <VehicleUpgradeSelector
-                            orderId={orderId}
-                            currentVehicle={order?.vehicle_type_id}
-                            currentTripType={order?.trip_type}
-                            onSuccess={onSubmitSuccess}
-                        />
-                    ) : (
-                        <p className="text-xs text-muted-foreground">
-                            You can view pricing details but cannot modify transport settings.
-                        </p>
-                    )}
-                </CardContent>
-            </Card>
-
-            {/* Add missing transport rate */}
-            {showMissingTransport && <AddMissingTransportRate order={order} />}
 
             <MaintenancePromptCard
                 damagedItemCount={damagedItemCount}
@@ -150,12 +120,10 @@ export function LogisticsPricingReview({
                                 ⚠️ Pricing calculation failed
                             </p>
                             <p className="text-xs text-muted-foreground mb-3">
-                                This order may be missing required configuration (e.g., transport
-                                rate for the emirate, trip type, or vehicle type).
+                                This order may be missing required pricing configuration.
                             </p>
                             <p className="text-xs text-muted-foreground">
-                                Please contact your Platform Admin to add the missing transport rate
-                                configuration.
+                                Please contact your Platform Admin to complete pricing setup.
                             </p>
                         </div>
                     )}
@@ -166,15 +134,6 @@ export function LogisticsPricingReview({
                                     Base Operations ({order?.calculated_totals?.volume || 0} m³)
                                 </span>
                                 <span className="font-mono">{pricing.base_ops_total || 0} AED</span>
-                            </div>
-                            <div className="flex justify-between p-2 bg-muted/30 rounded">
-                                <span className="text-muted-foreground">
-                                    Transport ({order?.venue_city},{" "}
-                                    {order?.trip_type === "ROUND_TRIP" ? "Round-trip" : "One-way"})
-                                </span>
-                                <span className="font-mono">
-                                    {pricing.transport?.final_rate?.toFixed(2) || 0} AED
-                                </span>
                             </div>
                             {pricing.line_items?.catalog_total ? (
                                 <div className="flex justify-between p-2 bg-muted/30 rounded">

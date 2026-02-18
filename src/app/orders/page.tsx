@@ -72,6 +72,10 @@ const ORDER_STATUS_CONFIG = {
         label: "Awaiting Return",
         color: "bg-rose-100 text-rose-700 border-rose-300",
     },
+    RETURN_IN_TRANSIT: {
+        label: "Return in Transit",
+        color: "bg-orange-100 text-orange-700 border-orange-300",
+    },
     CLOSED: { label: "Closed", color: "bg-slate-100 text-slate-700 border-slate-300" },
 };
 

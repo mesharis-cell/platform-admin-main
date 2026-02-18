@@ -19,9 +19,14 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { useCreateCustomLineItem } from "@/hooks/use-order-line-items";
-import type { ServiceCategory } from "@/types/hybrid-pricing";
+import type {
+    LineItemBillingMode,
+    ServiceCategory,
+    TransportLineItemMetadata,
+} from "@/types/hybrid-pricing";
 
 interface AddCustomLineItemModalProps {
     open: boolean;
@@ -40,12 +45,24 @@ export function AddCustomLineItemModal({
 
     const [description, setDescription] = useState("");
     const [category, setCategory] = useState<ServiceCategory>("OTHER");
+    const [billingMode, setBillingMode] = useState<LineItemBillingMode>("BILLABLE");
     const [quantity, setQuantity] = useState("1");
     const [unit, setUnit] = useState("service");
     const [unitRate, setUnitRate] = useState("");
     const [notes, setNotes] = useState("");
+    const [tripDirection, setTripDirection] = useState<
+        "DELIVERY" | "PICKUP" | "ACCESS" | "TRANSFER"
+    >("DELIVERY");
+    const [truckPlate, setTruckPlate] = useState("");
+    const [driverName, setDriverName] = useState("");
+    const [driverContact, setDriverContact] = useState("");
+    const [truckSize, setTruckSize] = useState("");
+    const [tailgateRequired, setTailgateRequired] = useState(false);
+    const [manpower, setManpower] = useState("");
+    const [transportNotes, setTransportNotes] = useState("");
     const quantityNum = Number(quantity || 0);
     const unitRateNum = Number(unitRate || 0);
+    const isTransportCategory = category === "TRANSPORT";
     const derivedTotal =
         Number.isFinite(quantityNum) && Number.isFinite(unitRateNum)
             ? quantityNum * unitRateNum
@@ -69,23 +86,53 @@ export function AddCustomLineItemModal({
             return;
         }
 
+        let metadata: TransportLineItemMetadata | undefined;
+        if (isTransportCategory) {
+            const manpowerValue = manpower.trim() ? Number(manpower) : undefined;
+            if (manpowerValue !== undefined && (!Number.isInteger(manpowerValue) || manpowerValue < 0)) {
+                toast.error("Manpower must be a non-negative integer");
+                return;
+            }
+            metadata = {
+                trip_direction: tripDirection,
+                truck_plate: truckPlate.trim() || undefined,
+                driver_name: driverName.trim() || undefined,
+                driver_contact: driverContact.trim() || undefined,
+                truck_size: truckSize.trim() || undefined,
+                tailgate_required: tailgateRequired,
+                manpower: manpowerValue,
+                notes: transportNotes.trim() || undefined,
+            };
+        }
+
         try {
             await createLineItem.mutateAsync({
                 description: description.trim(),
                 category,
+                billing_mode: billingMode,
                 quantity: quantityNum,
                 unit: unit.trim(),
                 unit_rate: unitRateNum,
                 notes: notes || undefined,
+                metadata,
             });
             toast.success("Custom line item added");
             onOpenChange(false);
             setDescription("");
             setCategory("OTHER");
+            setBillingMode("BILLABLE");
             setQuantity("1");
             setUnit("service");
             setUnitRate("");
             setNotes("");
+            setTripDirection("DELIVERY");
+            setTruckPlate("");
+            setDriverName("");
+            setDriverContact("");
+            setTruckSize("");
+            setTailgateRequired(false);
+            setManpower("");
+            setTransportNotes("");
         } catch (error: any) {
             toast.error(error.message || "Failed to add line item");
         }
@@ -127,7 +174,27 @@ export function AddCustomLineItemModal({
                                 <SelectItem value="EQUIPMENT">EQUIPMENT</SelectItem>
                                 <SelectItem value="HANDLING">HANDLING</SelectItem>
                                 <SelectItem value="RESKIN">RESKIN</SelectItem>
+                                <SelectItem value="TRANSPORT">TRANSPORT</SelectItem>
                                 <SelectItem value="OTHER">OTHER</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <div>
+                        <Label>
+                            Billing Mode <span className="text-destructive">*</span>
+                        </Label>
+                        <Select
+                            value={billingMode}
+                            onValueChange={(value) => setBillingMode(value as LineItemBillingMode)}
+                        >
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select billing mode" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="BILLABLE">BILLABLE</SelectItem>
+                                <SelectItem value="NON_BILLABLE">NON-BILLABLE</SelectItem>
+                                <SelectItem value="COMPLIMENTARY">COMPLIMENTARY</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
@@ -179,6 +246,101 @@ export function AddCustomLineItemModal({
                             Total is calculated as qty × unit rate and margin is applied later.
                         </p>
                     </div>
+
+                    {isTransportCategory && (
+                        <div className="space-y-4 rounded-md border border-border p-4">
+                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                                Transport Metadata
+                            </p>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div>
+                                    <Label>Trip Direction</Label>
+                                    <Select
+                                        value={tripDirection}
+                                        onValueChange={(value) =>
+                                            setTripDirection(
+                                                value as "DELIVERY" | "PICKUP" | "ACCESS" | "TRANSFER"
+                                            )
+                                        }
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="DELIVERY">Delivery</SelectItem>
+                                            <SelectItem value="PICKUP">Pickup</SelectItem>
+                                            <SelectItem value="ACCESS">Access</SelectItem>
+                                            <SelectItem value="TRANSFER">Transfer</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div>
+                                    <Label>Truck License Plate</Label>
+                                    <Input
+                                        value={truckPlate}
+                                        onChange={(event) => setTruckPlate(event.target.value)}
+                                        placeholder="e.g., ABC-1234"
+                                        maxLength={80}
+                                    />
+                                </div>
+                                <div>
+                                    <Label>Driver Name</Label>
+                                    <Input
+                                        value={driverName}
+                                        onChange={(event) => setDriverName(event.target.value)}
+                                        placeholder="Driver full name"
+                                        maxLength={120}
+                                    />
+                                </div>
+                                <div>
+                                    <Label>Driver Contact Number</Label>
+                                    <Input
+                                        value={driverContact}
+                                        onChange={(event) => setDriverContact(event.target.value)}
+                                        placeholder="+971..."
+                                        maxLength={80}
+                                    />
+                                </div>
+                                <div>
+                                    <Label>Truck Size</Label>
+                                    <Input
+                                        value={truckSize}
+                                        onChange={(event) => setTruckSize(event.target.value)}
+                                        placeholder="e.g., 3 Ton"
+                                        maxLength={80}
+                                    />
+                                </div>
+                                <div>
+                                    <Label>Manpower</Label>
+                                    <Input
+                                        type="number"
+                                        min="0"
+                                        step="1"
+                                        value={manpower}
+                                        onChange={(event) => setManpower(event.target.value)}
+                                        placeholder="0"
+                                    />
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Checkbox
+                                    id="custom-transport-tailgate"
+                                    checked={tailgateRequired}
+                                    onCheckedChange={(value) => setTailgateRequired(!!value)}
+                                />
+                                <Label htmlFor="custom-transport-tailgate">Tailgate Required</Label>
+                            </div>
+                            <div>
+                                <Label>Transport Notes</Label>
+                                <Textarea
+                                    value={transportNotes}
+                                    onChange={(event) => setTransportNotes(event.target.value)}
+                                    placeholder="Operational notes for logistics team..."
+                                    rows={2}
+                                />
+                            </div>
+                        </div>
+                    )}
 
                     <div>
                         <Label>Notes (Optional)</Label>

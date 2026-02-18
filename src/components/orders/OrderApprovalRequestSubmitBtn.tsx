@@ -39,7 +39,7 @@ export function OrderApprovalRequestSubmitBtn({
                 toast.success("Order submitted to Admin for approval!");
             } else {
                 await submitInboundRequestForApproval.mutateAsync(orderId);
-                toast.success("Inbound Request submitted to Admin for approval!");
+                toast.success("New stock request submitted to Admin for approval!");
             }
 
             onSubmitSuccess?.();

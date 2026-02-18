@@ -99,7 +99,7 @@ export function CompleteInboundDialog({
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-                        Complete Inbound Request
+                        Complete New Stock Request
                     </DialogTitle>
                     <DialogDescription>
                         This will mark the request as completed, create assets for all items, and

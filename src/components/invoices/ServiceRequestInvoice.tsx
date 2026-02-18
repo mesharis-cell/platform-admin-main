@@ -1,10 +1,5 @@
 "use client";
 
-/**
- * InvoiceCard Component
- * Reusable invoice card for displaying invoice information with actions
- */
-
 import {
     FileText,
     DollarSign,
@@ -21,7 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import type { InvoiceListItem } from "@/types/order";
 import { getOrderPrice } from "@/lib/utils/helper";
 
-interface InboundRequestInvoiceProps {
+interface ServiceRequestInvoiceProps {
     invoice: InvoiceListItem;
     onDownload?: (invoiceNumber: string) => void;
     onSendInvoice?: (invoice: InvoiceListItem) => void;
@@ -31,7 +26,7 @@ interface InboundRequestInvoiceProps {
     className?: string;
 }
 
-export function InboundRequestInvoice({
+export function ServiceRequestInvoice({
     invoice,
     onDownload,
     onSendInvoice,
@@ -39,13 +34,15 @@ export function InboundRequestInvoice({
     isDownloading = false,
     isSending = false,
     className = "",
-}: InboundRequestInvoiceProps) {
-    const inbound = invoice?.inbound_request;
-    if (!inbound) return null;
-    const { total } = getOrderPrice(inbound.pricing);
+}: ServiceRequestInvoiceProps) {
+    const serviceRequest = invoice?.service_request;
+    if (!serviceRequest) return null;
+
+    const { total } = getOrderPrice(serviceRequest.pricing);
+    const financialStatus = serviceRequest.commercial_status || "PENDING_INVOICE";
 
     const getStatusBadge = () => {
-        if (inbound.financial_status === "PAID") {
+        if (financialStatus === "PAID") {
             return (
                 <Badge className="bg-green-500/10 text-green-600 border-green-500/30 font-mono">
                     <CheckCircle2 className="w-3 h-3 mr-1" />
@@ -53,7 +50,7 @@ export function InboundRequestInvoice({
                 </Badge>
             );
         }
-        if (inbound.financial_status === "INVOICED") {
+        if (financialStatus === "INVOICED") {
             return (
                 <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/30 font-mono">
                     <Clock className="w-3 h-3 mr-1" />
@@ -74,7 +71,6 @@ export function InboundRequestInvoice({
             className={`p-6 border-2 hover:border-primary/50 transition-all duration-200 ${className}`}
         >
             <div className="flex items-start justify-between gap-6">
-                {/* Left: Invoice Info */}
                 <div className="flex-1 space-y-3">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-md bg-primary/10 flex items-center justify-center border-2 border-primary/20">
@@ -83,7 +79,7 @@ export function InboundRequestInvoice({
                         <div>
                             <div className="font-mono font-bold text-lg">{invoice.invoice_id}</div>
                             <div className="text-sm text-muted-foreground font-mono">
-                                Order: {inbound.inbound_request_id}
+                                Service Request: {serviceRequest.service_request_id}
                             </div>
                         </div>
                         {getStatusBadge()}
@@ -98,13 +94,11 @@ export function InboundRequestInvoice({
                             </div>
                         </div>
                         <div>
-                            <div className="text-xs text-muted-foreground font-mono">CONTACT</div>
-                            <div className="text-sm font-mono mt-1">{invoice?.company?.name}</div>
+                            <div className="text-xs text-muted-foreground font-mono">TITLE</div>
+                            <div className="text-sm font-mono mt-1">{serviceRequest.title}</div>
                         </div>
                         <div>
-                            <div className="text-xs text-muted-foreground font-mono">
-                                INVOICE DATE
-                            </div>
+                            <div className="text-xs text-muted-foreground font-mono">INVOICE DATE</div>
                             <div className="text-sm font-mono flex items-center gap-1.5 mt-1">
                                 <Calendar className="w-3.5 h-3.5 text-secondary" />
                                 {new Date(invoice.created_at).toLocaleDateString()}
@@ -112,7 +106,6 @@ export function InboundRequestInvoice({
                         </div>
                     </div>
 
-                    {/* Payment Details (shown when paid) */}
                     {invoice.invoice_paid_at && (
                         <div className="pl-13 pt-2 border-t border-border">
                             <div className="flex items-center gap-6 text-sm font-mono">
@@ -133,7 +126,6 @@ export function InboundRequestInvoice({
                     )}
                 </div>
 
-                {/* Right: Amount & Actions */}
                 <div className="flex flex-col items-end gap-3">
                     <div className="text-right">
                         <div className="text-xs text-muted-foreground font-mono">AMOUNT</div>
@@ -144,7 +136,6 @@ export function InboundRequestInvoice({
                     </div>
 
                     <div className="flex gap-2">
-                        {/* Download Button */}
                         {onDownload && (
                             <Button
                                 onClick={() => onDownload(invoice.invoice_id)}
@@ -157,32 +148,28 @@ export function InboundRequestInvoice({
                             </Button>
                         )}
 
-                        {/* Send Invoice Button - Show for PENDING_INVOICE status */}
-                        {inbound.financial_status === "PENDING_INVOICE" &&
-                            onSendInvoice && (
-                                <Button
-                                    onClick={() => onSendInvoice(invoice)}
-                                    size="sm"
-                                    className="font-mono"
-                                    disabled={isSending}
-                                >
-                                    <Send className="w-4 h-4 mr-2" />
-                                    SEND INVOICE
-                                </Button>
-                            )}
+                        {financialStatus === "PENDING_INVOICE" && onSendInvoice && (
+                            <Button
+                                onClick={() => onSendInvoice(invoice)}
+                                size="sm"
+                                className="font-mono"
+                                disabled={isSending}
+                            >
+                                <Send className="w-4 h-4 mr-2" />
+                                SEND INVOICE
+                            </Button>
+                        )}
 
-                        {/* Confirm Payment Button - Show for INVOICED status */}
-                        {inbound.financial_status === "INVOICED" &&
-                            onConfirmPayment && (
-                                <Button
-                                    onClick={() => onConfirmPayment(invoice)}
-                                    size="sm"
-                                    className="font-mono"
-                                >
-                                    <DollarSign className="w-4 h-4 mr-2" />
-                                    CONFIRM PAYMENT
-                                </Button>
-                            )}
+                        {financialStatus === "INVOICED" && onConfirmPayment && (
+                            <Button
+                                onClick={() => onConfirmPayment(invoice)}
+                                size="sm"
+                                className="font-mono"
+                            >
+                                <DollarSign className="w-4 h-4 mr-2" />
+                                CONFIRM PAYMENT
+                            </Button>
+                        )}
                     </div>
                 </div>
             </div>

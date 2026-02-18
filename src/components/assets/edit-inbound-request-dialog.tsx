@@ -578,7 +578,7 @@ export function EditInboundRequestDialog({
                 <DialogHeader>
                     <DialogTitle className="font-mono text-xl flex items-center gap-2">
                         <Pencil className="w-5 h-5 text-primary" />
-                        Edit Inbound Request
+                        Edit New Stock Request
                     </DialogTitle>
                     <DialogDescription className="font-mono text-xs">
                         Update request ID: {request.id.slice(0, 8)}...

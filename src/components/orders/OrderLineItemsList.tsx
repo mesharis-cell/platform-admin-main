@@ -26,6 +26,39 @@ export function OrderLineItemsList({
     const [voidDialogOpen, setVoidDialogOpen] = useState(false);
     const [selectedItem, setSelectedItem] = useState<OrderLineItem | null>(null);
 
+    const renderTransportMetadata = (metadata: OrderLineItem["metadata"]) => {
+        if (!metadata || typeof metadata !== "object") return null;
+        const details = metadata as Record<string, unknown>;
+        const formatBool = (value: unknown) =>
+            value === true ? "Yes" : value === false ? "No" : "N/A";
+        const info = [
+            { label: "Direction", value: details.trip_direction },
+            { label: "Truck Plate", value: details.truck_plate },
+            { label: "Driver", value: details.driver_name },
+            { label: "Driver Contact", value: details.driver_contact },
+            { label: "Truck Size", value: details.truck_size },
+            { label: "Manpower", value: details.manpower },
+            { label: "Tailgate", value: formatBool(details.tailgate_required) },
+            { label: "Transport Notes", value: details.notes },
+        ].filter((entry) => entry.value !== undefined && entry.value !== null && entry.value !== "");
+
+        if (!info.length) return null;
+
+        return (
+            <div className="mt-2 rounded border border-border/60 bg-background/60 p-2 text-xs">
+                <p className="font-medium text-muted-foreground mb-1">Transport Details</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
+                    {info.map((entry) => (
+                        <p key={entry.label} className="text-muted-foreground">
+                            <span className="font-medium text-foreground">{entry.label}:</span>{" "}
+                            {String(entry.value)}
+                        </p>
+                    ))}
+                </div>
+            </div>
+        );
+    };
+
     const openVoidDialog = (item: OrderLineItem) => {
         setSelectedItem(item);
         setVoidDialogOpen(true);
@@ -87,6 +120,11 @@ export function OrderLineItemsList({
                                         <Badge variant="outline" className="text-xs">
                                             {item.category}
                                         </Badge>
+                                        {item.billingMode && (
+                                            <Badge variant="secondary" className="text-xs">
+                                                {item.billingMode.replaceAll("_", " ")}
+                                            </Badge>
+                                        )}
                                     </div>
                                     <p className="text-xs text-muted-foreground mt-1">
                                         {item.quantity} {item.unit} × {item.unitRate?.toFixed(2)}{" "}
@@ -97,6 +135,8 @@ export function OrderLineItemsList({
                                             Note: {item.notes}
                                         </p>
                                     )}
+                                    {item.category === "TRANSPORT" &&
+                                        renderTransportMetadata(item.metadata)}
                                 </div>
                                 <div className="flex items-center gap-3">
                                     <span className="font-mono font-semibold">
@@ -139,6 +179,11 @@ export function OrderLineItemsList({
                                         <Badge variant="outline" className="text-xs">
                                             {item.category}
                                         </Badge>
+                                        {item.billingMode && (
+                                            <Badge variant="secondary" className="text-xs">
+                                                {item.billingMode.replaceAll("_", " ")}
+                                            </Badge>
+                                        )}
                                     </div>
                                     <p className="text-xs text-muted-foreground mt-1">
                                         {item.quantity || 0} {item.unit || "unit"} ×{" "}
@@ -149,6 +194,8 @@ export function OrderLineItemsList({
                                             Note: {item.notes}
                                         </p>
                                     )}
+                                    {item.category === "TRANSPORT" &&
+                                        renderTransportMetadata(item.metadata)}
                                 </div>
                                 <div className="flex items-center gap-3">
                                     <span className="font-mono font-semibold">

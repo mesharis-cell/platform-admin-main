@@ -7,7 +7,6 @@
 
 import { AddCatalogLineItemModal } from "@/components/orders/AddCatalogLineItemModal";
 import { AddCustomLineItemModal } from "@/components/orders/AddCustomLineItemModal";
-import { AddMissingTransportRate } from "@/components/orders/AddMissingTransportRate";
 import { CancelOrderModal } from "@/components/orders/CancelOrderModal";
 import { LogisticsPricingReview } from "@/components/orders/LogisticsPricingReview";
 import { OrderLineItemsList } from "@/components/orders/OrderLineItemsList";
@@ -59,10 +58,6 @@ export function PendingApprovalSection({ order, orderId, onRefresh }: HybridPric
         ? Number(marginPercent || 0)
         : currentMarginPercent;
     const { total, marginAmount } = getOrderPrice(order?.order_pricing, effectiveMarginPercent);
-    const showMissingTransport =
-        ["PENDING_APPROVAL", "QUOTED", "DECLINED"].includes(order.order_status) &&
-        !order?.order_pricing?.transport?.final_rate &&
-        canManagePricing;
 
     const handleApprove = async () => {
         if (!canApproveQuote) return;
@@ -108,9 +103,6 @@ export function PendingApprovalSection({ order, orderId, onRefresh }: HybridPric
                 </CardContent>
             </Card>
 
-            {/* Add missing transport rate */}
-            {showMissingTransport && <AddMissingTransportRate order={order} />}
-
             {/* Service Line Items */}
             <Card>
                 <CardHeader>
@@ -155,13 +147,6 @@ export function PendingApprovalSection({ order, orderId, onRefresh }: HybridPric
                                 <span className="text-muted-foreground">Base Operations</span>
                                 <span className="font-mono">
                                     {Number(order?.order_pricing?.base_ops_total).toFixed(2)} AED
-                                </span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-muted-foreground">Transport</span>
-                                <span className="font-mono">
-                                    {Number(order?.order_pricing?.transport.final_rate).toFixed(2)}{" "}
-                                    AED
                                 </span>
                             </div>
                             <div className="flex justify-between">

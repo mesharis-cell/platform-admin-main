@@ -34,7 +34,6 @@ import {
     ClipboardList,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
     Sidebar,
@@ -51,6 +50,14 @@ import {
     SidebarProvider,
     useSidebar,
 } from "@/components/ui/sidebar";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
 import { useToken } from "@/lib/auth/use-token";
@@ -70,141 +77,166 @@ type NavItem = {
     }[];
 };
 
-const navigation: NavItem[] = [
+type NavSection = {
+    title: "Operations" | "Financial" | "Inventory" | "Administration";
+    items: NavItem[];
+};
+
+const navigationSections: NavSection[] = [
     {
-        name: "Analytics",
-        href: "/analytics",
-        icon: BarChart3,
-        requiredAnyPermission: ADMIN_NAV_PERMISSIONS.analytics,
-    },
-    {
-        name: "Orders",
-        href: "/orders",
-        icon: ShoppingCart,
-        requiredAnyPermission: ADMIN_NAV_PERMISSIONS.orders,
-    },
-    {
-        name: "Service Requests",
-        href: "/service-requests",
-        icon: ClipboardList,
-        requiredAnyPermission: ADMIN_NAV_PERMISSIONS.serviceRequests,
-    },
-    {
-        name: "Pricing Review",
-        href: "/orders/pricing-review",
-        icon: DollarSign,
-        requiredAnyPermission: ADMIN_NAV_PERMISSIONS.pricingReview,
-    },
-    {
-        name: "Pending Approval",
-        href: "/orders/pending-approval",
-        icon: AlertCircle,
-        requiredAnyPermission: ADMIN_NAV_PERMISSIONS.pendingApproval,
-    },
-    {
-        name: "Scanning",
-        href: "/scanning",
-        icon: ScanLine,
-        requiredAnyPermission: ADMIN_NAV_PERMISSIONS.scanning,
-    },
-    {
-        name: "Conditions",
-        href: "/conditions",
-        icon: AlertCircle,
-        requiredAnyPermission: ADMIN_NAV_PERMISSIONS.conditions,
-    },
-    {
-        name: "Invoices",
-        href: "/invoices",
-        icon: Receipt,
-        requiredAnyPermission: ADMIN_NAV_PERMISSIONS.invoices,
-    },
-    {
-        name: "Notifications",
-        href: "/notifications",
-        icon: Mail,
-        requiredAnyPermission: ADMIN_NAV_PERMISSIONS.notifications,
-    },
-    {
-        name: "Events Calendar",
-        href: "/event-calendar",
-        icon: Calendar,
-        requiredAnyPermission: ADMIN_NAV_PERMISSIONS.eventCalendar,
-    },
-    {
-        name: "Users",
-        href: "/users",
-        icon: Users,
-        requiredAnyPermission: ADMIN_NAV_PERMISSIONS.users,
-    },
-    {
-        name: "Companies",
-        href: "/companies",
-        icon: Building,
-        requiredAnyPermission: ADMIN_NAV_PERMISSIONS.companies,
-    },
-    {
-        name: "Warehouses",
-        href: "/warehouses",
-        icon: Warehouse,
-        requiredAnyPermission: ADMIN_NAV_PERMISSIONS.warehouses,
-    },
-    {
-        name: "Zones",
-        href: "/zones",
-        icon: Grid3x3,
-        requiredAnyPermission: ADMIN_NAV_PERMISSIONS.zones,
-    },
-    {
-        name: "Brands",
-        href: "/brands",
-        icon: Tag,
-        requiredAnyPermission: ADMIN_NAV_PERMISSIONS.brands,
-    },
-    {
-        name: "Assets",
-        href: "/assets",
-        icon: Package,
-        requiredAnyPermission: ADMIN_NAV_PERMISSIONS.assets,
-    },
-    {
-        name: "Collections",
-        href: "/collections",
-        icon: Layers,
-        requiredAnyPermission: ADMIN_NAV_PERMISSIONS.collections,
-    },
-    {
-        name: "Inbound Request",
-        href: "/inbound-request",
-        icon: Package,
-        requiredAnyPermission: ADMIN_NAV_PERMISSIONS.inboundRequest,
-    },
-    {
-        name: "Feature Flags",
-        href: "/feature-flags",
-        icon: Flag,
-        requiredAnyPermission: ADMIN_NAV_PERMISSIONS.featureFlags,
-    },
-    {
-        name: "System Settings",
-        href: "/system-settings",
-        icon: Settings,
-        requiredAnyPermission: ADMIN_NAV_PERMISSIONS.systemSettings,
+        title: "Operations",
         items: [
-            { title: "Country", url: "/countries" },
-            { title: "City", url: "/cities" },
-            { title: "Pricing Config", url: "/settings/pricing/config" },
-            { title: "Service Types", url: "/service-types" },
-            { title: "Vehicle Type", url: "/vehicle-types" },
-            { title: "Transport Rates", url: "/transport-rates" },
-            { title: "Warehouse Ops Rates", url: "/warehouse-opt-rates" },
+            {
+                name: "Orders",
+                href: "/orders",
+                icon: ShoppingCart,
+                requiredAnyPermission: ADMIN_NAV_PERMISSIONS.orders,
+            },
+            {
+                name: "Service Requests",
+                href: "/service-requests",
+                icon: ClipboardList,
+                requiredAnyPermission: ADMIN_NAV_PERMISSIONS.serviceRequests,
+            },
+            {
+                name: "Pricing Review",
+                href: "/orders/pricing-review",
+                icon: DollarSign,
+                requiredAnyPermission: ADMIN_NAV_PERMISSIONS.pricingReview,
+            },
+            {
+                name: "Pending Approval",
+                href: "/orders/pending-approval",
+                icon: AlertCircle,
+                requiredAnyPermission: ADMIN_NAV_PERMISSIONS.pendingApproval,
+            },
+            {
+                name: "Scanning",
+                href: "/scanning",
+                icon: ScanLine,
+                requiredAnyPermission: ADMIN_NAV_PERMISSIONS.scanning,
+            },
+            {
+                name: "Events Calendar",
+                href: "/event-calendar",
+                icon: Calendar,
+                requiredAnyPermission: ADMIN_NAV_PERMISSIONS.eventCalendar,
+            },
         ],
     },
     {
-        name: "Reset Password",
-        href: "/reset-password",
-        icon: Lock,
-        requiredAnyPermission: ADMIN_NAV_PERMISSIONS.resetPassword,
+        title: "Financial",
+        items: [
+            {
+                name: "Invoices",
+                href: "/invoices",
+                icon: Receipt,
+                requiredAnyPermission: ADMIN_NAV_PERMISSIONS.invoices,
+            },
+            {
+                name: "Reports",
+                href: "/reports",
+                icon: BarChart3,
+                requiredAnyPermission: ADMIN_NAV_PERMISSIONS.reports,
+            },
+        ],
+    },
+    {
+        title: "Inventory",
+        items: [
+            {
+                name: "Assets",
+                href: "/assets",
+                icon: Package,
+                requiredAnyPermission: ADMIN_NAV_PERMISSIONS.assets,
+            },
+            {
+                name: "Collections",
+                href: "/collections",
+                icon: Layers,
+                requiredAnyPermission: ADMIN_NAV_PERMISSIONS.collections,
+            },
+            {
+                name: "New Stock Requests",
+                href: "/inbound-request",
+                icon: Package,
+                requiredAnyPermission: ADMIN_NAV_PERMISSIONS.inboundRequest,
+            },
+            {
+                name: "Brands",
+                href: "/brands",
+                icon: Tag,
+                requiredAnyPermission: ADMIN_NAV_PERMISSIONS.brands,
+            },
+            {
+                name: "Conditions",
+                href: "/conditions",
+                icon: AlertCircle,
+                requiredAnyPermission: ADMIN_NAV_PERMISSIONS.conditions,
+            },
+        ],
+    },
+    {
+        title: "Administration",
+        items: [
+            {
+                name: "Analytics",
+                href: "/analytics",
+                icon: BarChart3,
+                requiredAnyPermission: ADMIN_NAV_PERMISSIONS.analytics,
+            },
+            {
+                name: "Users",
+                href: "/users",
+                icon: Users,
+                requiredAnyPermission: ADMIN_NAV_PERMISSIONS.users,
+            },
+            {
+                name: "Companies",
+                href: "/companies",
+                icon: Building,
+                requiredAnyPermission: ADMIN_NAV_PERMISSIONS.companies,
+            },
+            {
+                name: "Warehouses",
+                href: "/warehouses",
+                icon: Warehouse,
+                requiredAnyPermission: ADMIN_NAV_PERMISSIONS.warehouses,
+            },
+            {
+                name: "Zones",
+                href: "/zones",
+                icon: Grid3x3,
+                requiredAnyPermission: ADMIN_NAV_PERMISSIONS.zones,
+            },
+            {
+                name: "Notifications",
+                href: "/notifications",
+                icon: Mail,
+                requiredAnyPermission: ADMIN_NAV_PERMISSIONS.notifications,
+            },
+            {
+                name: "Feature Flags",
+                href: "/feature-flags",
+                icon: Flag,
+                requiredAnyPermission: ADMIN_NAV_PERMISSIONS.featureFlags,
+            },
+            {
+                name: "System Settings",
+                href: "/system-settings",
+                icon: Settings,
+                requiredAnyPermission: ADMIN_NAV_PERMISSIONS.systemSettings,
+                items: [
+                    { title: "Country", url: "/countries" },
+                    { title: "City", url: "/cities" },
+                    { title: "Pricing Config", url: "/settings/pricing/config" },
+                    { title: "Service Types", url: "/service-types" },
+                    { title: "Vehicle Type", url: "/vehicle-types" },
+                    { title: "Transport Rates", url: "/transport-rates" },
+                    { title: "Warehouse Ops Rates", url: "/warehouse-opt-rates" },
+                ],
+            },
+        ],
     },
 ];
 
@@ -222,8 +254,21 @@ function AdminSidebarContent() {
     };
 
     const isCollapsed = state === "collapsed";
-    const visibleNavigation = navigation.filter(
-        (item) => !item.requiredAnyPermission || hasAnyPermission(user, item.requiredAnyPermission)
+    const visibleSections = navigationSections
+        .map((section) => ({
+            ...section,
+            items: section.items.filter(
+                (item) =>
+                    !item.requiredAnyPermission || hasAnyPermission(user, item.requiredAnyPermission)
+            ),
+        }))
+        .filter((section) => section.items.length > 0);
+    const visibleNavigation = visibleSections.flatMap((section) =>
+        section.items.map((item, index) => ({
+            ...item,
+            sectionTitle: section.title,
+            isFirstInSection: index === 0,
+        }))
     );
 
     return (
@@ -270,6 +315,17 @@ function AdminSidebarContent() {
                             matchingRoutes[0]
                         );
                         const isActive = mostSpecificRoute?.href === item.href;
+                        const sectionHeader =
+                            !isCollapsed && item.isFirstInSection ? (
+                                <li
+                                    key={`${item.href}-section`}
+                                    className="px-3 pb-1 pt-3 first:pt-0"
+                                >
+                                    <div className="text-[10px] font-mono text-muted-foreground tracking-[0.18em] uppercase">
+                                        {item.sectionTitle}
+                                    </div>
+                                </li>
+                            ) : null;
 
                         if (item.items && item.items.length > 0) {
                             const isChildActive = item.items.some(
@@ -278,7 +334,8 @@ function AdminSidebarContent() {
                                     pathname.startsWith(subItem.url + "/")
                             );
 
-                            return (
+                            return [
+                                sectionHeader,
                                 <Collapsible
                                     key={item.name}
                                     asChild
@@ -347,11 +404,12 @@ function AdminSidebarContent() {
                                             </SidebarMenuSub>
                                         </CollapsibleContent>
                                     </SidebarMenuItem>
-                                </Collapsible>
-                            );
+                                </Collapsible>,
+                            ];
                         }
 
-                        return (
+                        return [
+                            sectionHeader,
                             <SidebarMenuItem key={item.name}>
                                 <SidebarMenuButton
                                     asChild
@@ -398,8 +456,8 @@ function AdminSidebarContent() {
                                         )}
                                     </Link>
                                 </SidebarMenuButton>
-                            </SidebarMenuItem>
-                        );
+                            </SidebarMenuItem>,
+                        ];
                     })}
                 </SidebarMenu>
             </SidebarContent>
@@ -418,14 +476,43 @@ function AdminSidebarContent() {
                     </div>
                 )}
 
-                {/* User Profile & Sign Out */}
+                {/* User Profile Menu */}
                 <>
                     <div className="flex items-center gap-3 px-2 py-1">
-                        <Avatar className="h-10 w-10 border-2 border-primary/20 shrink-0">
-                            <AvatarFallback className="bg-primary/10 text-primary font-mono text-sm font-bold">
-                                {user?.name?.charAt(0).toUpperCase() || "A"}
-                            </AvatarFallback>
-                        </Avatar>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <button
+                                    type="button"
+                                    className="rounded-full border-2 border-primary/20 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                >
+                                    <Avatar className="h-10 w-10">
+                                        <AvatarFallback className="bg-primary/10 text-primary font-mono text-sm font-bold">
+                                            {user?.name?.charAt(0).toUpperCase() || "A"}
+                                        </AvatarFallback>
+                                    </Avatar>
+                                </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent side="top" align={isCollapsed ? "center" : "start"}>
+                                <DropdownMenuLabel className="font-mono text-xs uppercase tracking-wide">
+                                    {user?.name || "Admin User"}
+                                </DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                    onSelect={() => router.push("/reset-password")}
+                                    className="font-mono text-xs uppercase tracking-wide"
+                                >
+                                    <Lock className="h-3.5 w-3.5 mr-2" />
+                                    Reset Password
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                    onSelect={handleSignOut}
+                                    className="font-mono text-xs uppercase tracking-wide text-destructive focus:text-destructive"
+                                >
+                                    <LogOut className="h-3.5 w-3.5 mr-2" />
+                                    Sign Out
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                         {!isCollapsed && (
                             <div className="flex-1 min-w-0">
                                 <p className="text-sm font-mono font-semibold truncate">
@@ -438,17 +525,6 @@ function AdminSidebarContent() {
                             </div>
                         )}
                     </div>
-                    {!isCollapsed && (
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={handleSignOut}
-                            className="w-full font-mono text-xs uppercase tracking-wide hover:bg-destructive hover:text-destructive-foreground hover:border-destructive transition-colors"
-                        >
-                            <LogOut className="h-3.5 w-3.5 mr-2" />
-                            Sign Out
-                        </Button>
-                    )}
                 </>
 
                 {/* Bottom zone marker */}

@@ -528,7 +528,7 @@ export function CreateInboundRequestDialog({
                 <DialogHeader>
                     <DialogTitle className="font-mono text-xl flex items-center gap-2">
                         <Package className="w-5 h-5 text-primary" />
-                        Create Inbound Request
+                        Create New Stock Request
                     </DialogTitle>
                     <DialogDescription className="font-mono text-xs">
                         Submit a new inbound assets request

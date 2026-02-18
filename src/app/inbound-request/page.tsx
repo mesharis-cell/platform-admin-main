@@ -51,10 +51,10 @@ export default function AssetsInboundPage() {
                 <div>
                     <h1 className="text-2xl font-bold font-mono flex items-center gap-2">
                         <Package className="w-6 h-6 text-primary" />
-                        Inbound Asset Requests
+                        New Stock Requests
                     </h1>
                     <p className="text-muted-foreground font-mono text-sm mt-1">
-                        Manage incoming asset requests
+                        Manage new stock requests
                     </p>
                 </div>
                 <Button size="lg" className="font-mono" onClick={() => setIsCreateOpen(true)}>
@@ -106,7 +106,7 @@ export default function AssetsInboundPage() {
                                     <p className="text-sm text-muted-foreground font-mono">
                                         {search
                                             ? "No requests match your search"
-                                            : "No inbound requests yet"}
+                                            : "No new stock requests yet"}
                                     </p>
                                     {!search && (
                                         <Button

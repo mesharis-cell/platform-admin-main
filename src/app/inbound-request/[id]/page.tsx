@@ -82,7 +82,7 @@ export default function InboundRequestDetailsPage({ params }: { params: Promise<
                     </div>
                     <h2 className="text-2xl font-bold mb-3">Request Not Found</h2>
                     <p className="text-muted-foreground mb-6">
-                        The inbound request you&apos;re looking for doesn&apos;t exist or has been
+                        The new stock request you&apos;re looking for doesn&apos;t exist or has been
                         removed.
                     </p>
                     <Button
@@ -143,7 +143,7 @@ export default function InboundRequestDetailsPage({ params }: { params: Promise<
                                     </div>
                                     <div>
                                         <h3 className="font-semibold text-emerald-700 dark:text-emerald-400">
-                                            Mark inbound request completed
+                                            Mark new stock request completed
                                         </h3>
                                         <p className="text-sm text-muted-foreground">
                                             Create assets for each item and generate invoice

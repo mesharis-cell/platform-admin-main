@@ -122,7 +122,13 @@ export interface UpdateVehicleTypeRequest {
 // Service Types
 // ============================================================
 
-export type ServiceCategory = "ASSEMBLY" | "EQUIPMENT" | "HANDLING" | "RESKIN" | "OTHER";
+export type ServiceCategory =
+    | "ASSEMBLY"
+    | "EQUIPMENT"
+    | "HANDLING"
+    | "RESKIN"
+    | "TRANSPORT"
+    | "OTHER";
 
 export interface ServiceType {
     id: string;
@@ -163,6 +169,25 @@ export interface UpdateServiceTypeRequest {
 
 export type LineItemType = "CATALOG" | "CUSTOM";
 export type PurposeType = "ORDER" | "INBOUND_REQUEST" | "SERVICE_REQUEST";
+export type LineItemBillingMode = "BILLABLE" | "NON_BILLABLE" | "COMPLIMENTARY";
+
+export interface TransportLineItemMetadata {
+    truck_plate?: string;
+    driver_name?: string;
+    driver_contact?: string;
+    truck_size?: string;
+    tailgate_required?: boolean;
+    manpower?: number;
+    city_id?: string;
+    city_name?: string;
+    vehicle_type_id?: string;
+    vehicle_type_name?: string;
+    trip_direction?: "DELIVERY" | "PICKUP" | "ACCESS" | "TRANSFER";
+    delivery_notes?: string;
+    pickup_notes?: string;
+    notes?: string;
+    [key: string]: unknown;
+}
 
 export interface OrderLineItem {
     id: string;
@@ -180,6 +205,8 @@ export interface OrderLineItem {
     addedBy: string;
     addedAt: string;
     notes: string | null;
+    billingMode?: LineItemBillingMode;
+    metadata?: TransportLineItemMetadata | Record<string, unknown> | null;
     isVoided: boolean;
     voidedAt: string | null;
     voidedBy: string | null;
@@ -196,6 +223,8 @@ export interface CreateCatalogLineItemRequest {
     service_type_id: string;
     quantity: number;
     notes?: string;
+    billing_mode?: LineItemBillingMode;
+    metadata?: Record<string, unknown>;
 }
 
 export interface CreateCustomLineItemRequest {
@@ -209,6 +238,8 @@ export interface CreateCustomLineItemRequest {
     unit: string;
     unit_rate: number;
     notes?: string;
+    billing_mode?: LineItemBillingMode;
+    metadata?: Record<string, unknown>;
     reskin_request_id?: string;
 }
 
@@ -217,6 +248,8 @@ export interface UpdateLineItemRequest {
     unit?: string;
     unitRate?: number;
     notes?: string;
+    billingMode?: LineItemBillingMode;
+    metadata?: Record<string, unknown>;
 }
 
 export interface VoidLineItemRequest {

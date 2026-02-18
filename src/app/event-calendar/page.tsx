@@ -96,6 +96,10 @@ const STATUS_CONFIG: Record<
         label: "AWAITING RET.",
         color: "bg-rose-500/10 text-rose-700 border-rose-500/20",
     },
+    RETURN_IN_TRANSIT: {
+        label: "RETURN TRANSIT",
+        color: "bg-orange-500/10 text-orange-700 border-orange-500/20",
+    },
     CLOSED: {
         label: "CLOSED",
         color: "bg-slate-600/10 text-slate-700 border-slate-600/20",
