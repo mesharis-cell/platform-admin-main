@@ -78,7 +78,7 @@ type NavItem = {
 };
 
 type NavSection = {
-    title: "Operations" | "Financial" | "Inventory" | "Administration";
+    title: "Operations" | "Financial" | "Inventory" | "People" | "Platform";
     items: NavItem[];
 };
 
@@ -139,6 +139,12 @@ const navigationSections: NavSection[] = [
                 icon: BarChart3,
                 requiredAnyPermission: ADMIN_NAV_PERMISSIONS.reports,
             },
+            {
+                name: "Analytics",
+                href: "/analytics",
+                icon: BarChart3,
+                requiredAnyPermission: ADMIN_NAV_PERMISSIONS.analytics,
+            },
         ],
     },
     {
@@ -177,14 +183,8 @@ const navigationSections: NavSection[] = [
         ],
     },
     {
-        title: "Administration",
+        title: "People",
         items: [
-            {
-                name: "Analytics",
-                href: "/analytics",
-                icon: BarChart3,
-                requiredAnyPermission: ADMIN_NAV_PERMISSIONS.analytics,
-            },
             {
                 name: "Users",
                 href: "/users",
@@ -197,6 +197,11 @@ const navigationSections: NavSection[] = [
                 icon: Building,
                 requiredAnyPermission: ADMIN_NAV_PERMISSIONS.companies,
             },
+        ],
+    },
+    {
+        title: "Platform",
+        items: [
             {
                 name: "Warehouses",
                 href: "/warehouses",
@@ -222,20 +227,20 @@ const navigationSections: NavSection[] = [
                 requiredAnyPermission: ADMIN_NAV_PERMISSIONS.featureFlags,
             },
             {
-                name: "System Settings",
-                href: "/system-settings",
+                name: "Configuration",
+                href: "/settings",
                 icon: Settings,
                 requiredAnyPermission: ADMIN_NAV_PERMISSIONS.systemSettings,
                 items: [
-                    { title: "Country", url: "/countries" },
-                    { title: "City", url: "/cities" },
+                    { title: "Platform Settings", url: "/settings/platform" },
                     { title: "Pricing Config", url: "/settings/pricing/config" },
                     { title: "Notification Rules", url: "/settings/notifications" },
-                    { title: "Platform Settings", url: "/settings/platform" },
                     { title: "Service Types", url: "/service-types" },
-                    { title: "Vehicle Type", url: "/vehicle-types" },
+                    { title: "Vehicle Types", url: "/vehicle-types" },
                     { title: "Transport Rates", url: "/transport-rates" },
                     { title: "Warehouse Ops Rates", url: "/warehouse-opt-rates" },
+                    { title: "Countries", url: "/countries" },
+                    { title: "Cities", url: "/cities" },
                 ],
             },
         ],
