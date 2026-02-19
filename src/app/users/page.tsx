@@ -299,24 +299,32 @@ export default function UsersManagementPage() {
     const handleOpenEdit = (user: User) => {
         setEditingUser(user);
 
-        // Determine if custom or template
-        const isCustom =
-            !user.permission_template ||
-            !PERMISSION_TEMPLATES[user.permission_template as PermissionTemplate] ||
-            JSON.stringify(user.permissions.sort()) !==
-                JSON.stringify(
-                    PERMISSION_TEMPLATES[
-                        user.permission_template as PermissionTemplate
-                    ].permissions.sort()
-                );
+        const isClientUser = user.role === "CLIENT";
+        const isCustom = isClientUser
+            ? false
+            : !user.permission_template ||
+              !PERMISSION_TEMPLATES[user.permission_template as PermissionTemplate] ||
+              JSON.stringify([...(user.permissions || [])].sort()) !==
+                  JSON.stringify(
+                      [
+                          ...PERMISSION_TEMPLATES[user.permission_template as PermissionTemplate]
+                              .permissions,
+                      ].sort()
+                  );
+        const resolvedTemplate: PermissionTemplate | "CUSTOM" = isClientUser
+            ? "CLIENT_USER"
+            : isCustom
+              ? "CUSTOM"
+              : (user.permission_template as PermissionTemplate);
+        const resolvedPermissions = isClientUser
+            ? [...PERMISSION_TEMPLATES.CLIENT_USER.permissions]
+            : [...(user.permissions || [])];
 
         setEditFormData({
             name: user.name,
             userType: user.role,
-            permissionTemplate: isCustom
-                ? "CUSTOM"
-                : (user.permission_template as PermissionTemplate),
-            customPermissions: user.permissions,
+            permissionTemplate: resolvedTemplate,
+            customPermissions: resolvedPermissions,
             selectedCompany: user.company?.id || null,
             is_super_admin: user.is_super_admin ?? false,
         });
@@ -403,18 +411,24 @@ export default function UsersManagementPage() {
         e.preventDefault();
 
         if (!editingUser) return;
+        const isClientUser = editingUser.role === "CLIENT";
 
         // Validation
-        if (!editFormData.permissionTemplate) {
+        if (!isClientUser && !editFormData.permissionTemplate) {
             toast.error("Please select a permission template or custom");
             return;
         }
 
         if (
+            !isClientUser &&
             editFormData.permissionTemplate === "CUSTOM" &&
             editFormData.customPermissions.length === 0
         ) {
             toast.error("Please select at least one permission for custom user");
+            return;
+        }
+        if (isClientUser && !editFormData.selectedCompany) {
+            toast.error("CLIENT_USER must belong to a company");
             return;
         }
 
@@ -422,16 +436,19 @@ export default function UsersManagementPage() {
             // Build payload
             const payload: any = {
                 name: editFormData.name,
-                company_id: editFormData.selectedCompany,
             };
 
-            // If using template
-            if (editFormData.permissionTemplate !== "CUSTOM") {
-                payload.permission_template = editFormData.permissionTemplate;
+            if (isClientUser) {
+                payload.company_id = editFormData.selectedCompany;
+                payload.permission_template = "CLIENT_USER";
             } else {
-                // Custom permissions
-                payload.permission_template = null;
-                payload.permissions = editFormData.customPermissions;
+                payload.company_id = null;
+                if (editFormData.permissionTemplate !== "CUSTOM") {
+                    payload.permission_template = editFormData.permissionTemplate;
+                } else {
+                    payload.permission_template = null;
+                    payload.permissions = editFormData.customPermissions;
+                }
             }
 
             // Include super admin toggle if current user is super admin
@@ -1441,9 +1458,9 @@ export default function UsersManagementPage() {
                                                 </Label>
                                             </div>
                                             <p className="text-xs text-muted-foreground font-mono">
-                                                {newUser.userType === "admin"
+                                                {editFormData.userType === "ADMIN"
                                                     ? "Admin"
-                                                    : "Logistic"}{" "}
+                                                    : "Logistics"}{" "}
                                                 users have access to all companies by default
                                             </p>
                                         </>
@@ -1470,13 +1487,15 @@ export default function UsersManagementPage() {
                                                             <input
                                                                 type="radio"
                                                                 id={`company-${company.id}`}
-                                                                name="client-company"
+                                                                name="edit-client-company"
                                                                 checked={
-                                                                    newUser.selectedCompany ===
+                                                                    editFormData.selectedCompany ===
                                                                     company.id
                                                                 }
                                                                 onChange={() =>
-                                                                    handleCompanyChange(company.id)
+                                                                    handleCompanyChangeEdit(
+                                                                        company.id
+                                                                    )
                                                                 }
                                                                 className="h-4 w-4"
                                                             />
@@ -1497,7 +1516,7 @@ export default function UsersManagementPage() {
                                                     </p>
                                                 )}
 
-                                                {!newUser.selectedCompany &&
+                                                {!editFormData.selectedCompany &&
                                                     companies.length > 0 && (
                                                         <div className="flex items-center gap-2 text-amber-600 text-xs font-mono mt-2">
                                                             <AlertCircle className="h-4 w-4" />
@@ -1534,11 +1553,14 @@ export default function UsersManagementPage() {
                                                     Permissions:
                                                 </span>
                                                 <span className="font-semibold">
-                                                    {editFormData.permissionTemplate === "CUSTOM"
-                                                        ? `${editFormData.customPermissions.length} custom`
-                                                        : editFormData.permissionTemplate
-                                                          ? `${PERMISSION_TEMPLATES[editFormData.permissionTemplate as PermissionTemplate]?.permissions.length} from template`
-                                                          : "0"}
+                                                    {editingUser?.role === "CLIENT"
+                                                        ? `${PERMISSION_TEMPLATES.CLIENT_USER.permissions.length} fixed`
+                                                        : editFormData.permissionTemplate ===
+                                                            "CUSTOM"
+                                                          ? `${editFormData.customPermissions.length} custom`
+                                                          : editFormData.permissionTemplate
+                                                            ? `${PERMISSION_TEMPLATES[editFormData.permissionTemplate as PermissionTemplate]?.permissions.length} from template`
+                                                            : "0"}
                                                 </span>
                                             </div>
                                             <div className="flex justify-between">
@@ -1546,13 +1568,16 @@ export default function UsersManagementPage() {
                                                     Company Access:
                                                 </span>
                                                 <span className="font-semibold">
-                                                    {editFormData.selectedCompany
-                                                        ? companies.find(
-                                                              (c) =>
-                                                                  c.id ===
-                                                                  editFormData.selectedCompany
-                                                          )?.name || "Unknown"
-                                                        : "All Companies (*)"}
+                                                    {editFormData.userType === "ADMIN" ||
+                                                    editFormData.userType === "LOGISTICS"
+                                                        ? "All Companies (*)"
+                                                        : editFormData.selectedCompany
+                                                          ? companies.find(
+                                                                (c) =>
+                                                                    c.id ===
+                                                                    editFormData.selectedCompany
+                                                            )?.name || "Unknown"
+                                                          : "None"}
                                                 </span>
                                             </div>
                                         </div>
