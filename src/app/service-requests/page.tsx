@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import Link from "next/link";
 import { AdminHeader } from "@/components/admin-header";
 import { Badge } from "@/components/ui/badge";
@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { useCompanies } from "@/hooks/use-companies";
+import { useSearchAssets } from "@/hooks/use-assets";
 import { useCreateServiceRequest, useListServiceRequests } from "@/hooks/use-service-requests";
 import type {
     ServiceRequestBillingMode,
@@ -48,9 +49,27 @@ import {
     Filter,
     Plus,
     Search,
+    Trash2,
     Wrench,
+    X,
 } from "lucide-react";
 import { toast } from "sonner";
+
+interface SRItemDraft {
+    asset_id?: string;
+    asset_name: string;
+    quantity: string;
+    refurb_days_estimate: string;
+    notes: string;
+}
+
+const emptyDraft = (): SRItemDraft => ({
+    asset_id: undefined,
+    asset_name: "",
+    quantity: "1",
+    refurb_days_estimate: "",
+    notes: "",
+});
 
 const REQUEST_TYPES: ServiceRequestType[] = ["MAINTENANCE", "RESKIN", "REFURBISHMENT", "CUSTOM"];
 const BILLING_MODES: ServiceRequestBillingMode[] = ["INTERNAL_ONLY", "CLIENT_BILLABLE"];
@@ -106,10 +125,10 @@ export default function ServiceRequestsPage() {
     const [description, setDescription] = useState("");
     const [requestedStartAt, setRequestedStartAt] = useState("");
     const [requestedDueAt, setRequestedDueAt] = useState("");
-    const [itemName, setItemName] = useState("");
-    const [itemQuantity, setItemQuantity] = useState("1");
-    const [itemRefurbDays, setItemRefurbDays] = useState("");
-    const [itemNotes, setItemNotes] = useState("");
+    const [srItems, setSrItems] = useState<SRItemDraft[]>([emptyDraft()]);
+    const [activeItemIdx, setActiveItemIdx] = useState<number | null>(null);
+    const [itemSearchTerm, setItemSearchTerm] = useState("");
+    const closeDropdownTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const filters = useMemo(
         () => ({
@@ -127,6 +146,34 @@ export default function ServiceRequestsPage() {
     const { data, isLoading, error } = useListServiceRequests(filters);
     const { data: companiesData } = useCompanies({ limit: "200" });
     const createServiceRequest = useCreateServiceRequest();
+    const { data: assetSearchData, isFetching: assetSearching } = useSearchAssets(
+        itemSearchTerm,
+        companyId || undefined
+    );
+    const assetResults = assetSearchData?.data ?? [];
+
+    const updateItem = (idx: number, patch: Partial<SRItemDraft>) =>
+        setSrItems((prev) => prev.map((item, i) => (i === idx ? { ...item, ...patch } : item)));
+    const addItem = () => setSrItems((prev) => [...prev, emptyDraft()]);
+    const removeItem = (idx: number) => setSrItems((prev) => prev.filter((_, i) => i !== idx));
+
+    const openDropdown = (idx: number, term: string) => {
+        if (closeDropdownTimer.current) clearTimeout(closeDropdownTimer.current);
+        setActiveItemIdx(idx);
+        setItemSearchTerm(term);
+    };
+    const scheduleCloseDropdown = () => {
+        closeDropdownTimer.current = setTimeout(() => {
+            setActiveItemIdx(null);
+            setItemSearchTerm("");
+        }, 150);
+    };
+    const selectAsset = (idx: number, assetId: string, assetName: string) => {
+        if (closeDropdownTimer.current) clearTimeout(closeDropdownTimer.current);
+        updateItem(idx, { asset_id: assetId, asset_name: assetName });
+        setActiveItemIdx(null);
+        setItemSearchTerm("");
+    };
 
     const companies = companiesData?.data ?? [];
     const requests = data?.data ?? [];
@@ -166,23 +213,28 @@ export default function ServiceRequestsPage() {
         setDescription("");
         setRequestedStartAt("");
         setRequestedDueAt("");
-        setItemName("");
-        setItemQuantity("1");
-        setItemRefurbDays("");
-        setItemNotes("");
+        setSrItems([emptyDraft()]);
+        setActiveItemIdx(null);
+        setItemSearchTerm("");
     };
 
     const handleCreate = async () => {
-        const quantity = Number(itemQuantity || 1);
-        const refurbDays = itemRefurbDays ? Number(itemRefurbDays) : undefined;
-
         if (!companyId) return toast.error("Company is required");
         if (!title.trim()) return toast.error("Title is required");
-        if (!itemName.trim()) return toast.error("At least one item is required");
-        if (!Number.isFinite(quantity) || quantity <= 0)
-            return toast.error("Quantity must be positive");
-        if (itemRefurbDays && (!Number.isFinite(refurbDays) || refurbDays! < 0))
-            return toast.error("Refurb days must be 0 or greater");
+        if (srItems.length === 0) return toast.error("At least one asset/item is required");
+
+        for (let i = 0; i < srItems.length; i++) {
+            const item = srItems[i];
+            if (!item.asset_name.trim()) return toast.error(`Item ${i + 1}: name is required`);
+            const qty = Number(item.quantity);
+            if (!Number.isFinite(qty) || qty <= 0)
+                return toast.error(`Item ${i + 1}: quantity must be positive`);
+            if (item.refurb_days_estimate) {
+                const days = Number(item.refurb_days_estimate);
+                if (!Number.isFinite(days) || days < 0)
+                    return toast.error(`Item ${i + 1}: refurb days must be 0 or greater`);
+            }
+        }
 
         try {
             await createServiceRequest.mutateAsync({
@@ -197,14 +249,15 @@ export default function ServiceRequestsPage() {
                 requested_due_at: requestedDueAt
                     ? new Date(requestedDueAt).toISOString()
                     : undefined,
-                items: [
-                    {
-                        asset_name: itemName.trim(),
-                        quantity,
-                        refurb_days_estimate: refurbDays,
-                        notes: itemNotes.trim() || undefined,
-                    },
-                ],
+                items: srItems.map((item) => ({
+                    asset_id: item.asset_id,
+                    asset_name: item.asset_name.trim(),
+                    quantity: Number(item.quantity),
+                    refurb_days_estimate: item.refurb_days_estimate
+                        ? Number(item.refurb_days_estimate)
+                        : undefined,
+                    notes: item.notes.trim() || undefined,
+                })),
             });
             toast.success("Service request created");
             setCreateOpen(false);
@@ -334,36 +387,6 @@ export default function ServiceRequestsPage() {
                                     />
                                 </div>
                                 <div>
-                                    <Label>
-                                        Item Name <span className="text-destructive">*</span>
-                                    </Label>
-                                    <Input
-                                        value={itemName}
-                                        onChange={(e) => setItemName(e.target.value)}
-                                        placeholder="Backbar unit"
-                                    />
-                                </div>
-                                <div>
-                                    <Label>
-                                        Quantity <span className="text-destructive">*</span>
-                                    </Label>
-                                    <Input
-                                        type="number"
-                                        min="1"
-                                        value={itemQuantity}
-                                        onChange={(e) => setItemQuantity(e.target.value)}
-                                    />
-                                </div>
-                                <div>
-                                    <Label>Item Refurb Days</Label>
-                                    <Input
-                                        type="number"
-                                        min="0"
-                                        value={itemRefurbDays}
-                                        onChange={(e) => setItemRefurbDays(e.target.value)}
-                                    />
-                                </div>
-                                <div>
                                     <Label>Requested Due</Label>
                                     <Input
                                         type="datetime-local"
@@ -371,14 +394,175 @@ export default function ServiceRequestsPage() {
                                         onChange={(e) => setRequestedDueAt(e.target.value)}
                                     />
                                 </div>
-                                <div className="md:col-span-2">
-                                    <Label>Item Notes</Label>
-                                    <Textarea
-                                        rows={2}
-                                        value={itemNotes}
-                                        onChange={(e) => setItemNotes(e.target.value)}
-                                        placeholder="Damage area, paint code, special handling..."
-                                    />
+                                <div className="md:col-span-2 space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <Label>
+                                            Assets / Items{" "}
+                                            <span className="text-destructive">*</span>
+                                        </Label>
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-7 text-xs gap-1"
+                                            onClick={addItem}
+                                            disabled={!companyId}
+                                        >
+                                            <Plus className="h-3 w-3" /> Add Asset
+                                        </Button>
+                                    </div>
+                                    {srItems.map((item, idx) => (
+                                        <div
+                                            key={idx}
+                                            className="rounded-md border p-3 space-y-2 bg-slate-50/50"
+                                        >
+                                            <div className="relative">
+                                                <div className="flex items-center gap-1 mb-1">
+                                                    <Label className="text-xs text-slate-600">
+                                                        {srItems.length > 1
+                                                            ? `Asset ${idx + 1}`
+                                                            : "Asset / Item"}
+                                                    </Label>
+                                                    {item.asset_id && (
+                                                        <span className="text-xs text-primary font-medium">
+                                                            · linked
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div className="flex gap-1">
+                                                    <div className="relative flex-1">
+                                                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                                                        <Input
+                                                            className="pl-8 pr-8 text-sm"
+                                                            placeholder={
+                                                                companyId
+                                                                    ? "Search existing assets or type name…"
+                                                                    : "Select company first"
+                                                            }
+                                                            disabled={!companyId}
+                                                            value={item.asset_name}
+                                                            onChange={(e) => {
+                                                                updateItem(idx, {
+                                                                    asset_id: undefined,
+                                                                    asset_name: e.target.value,
+                                                                });
+                                                                openDropdown(idx, e.target.value);
+                                                            }}
+                                                            onFocus={() =>
+                                                                openDropdown(idx, item.asset_name)
+                                                            }
+                                                            onBlur={scheduleCloseDropdown}
+                                                        />
+                                                        {item.asset_id && (
+                                                            <button
+                                                                type="button"
+                                                                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-destructive"
+                                                                onMouseDown={(e) => {
+                                                                    e.preventDefault();
+                                                                    updateItem(idx, {
+                                                                        asset_id: undefined,
+                                                                        asset_name: "",
+                                                                    });
+                                                                }}
+                                                            >
+                                                                <X className="h-3.5 w-3.5" />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                    {srItems.length > 1 && (
+                                                        <button
+                                                            type="button"
+                                                            className="p-2 text-destructive hover:bg-destructive/10 rounded"
+                                                            onClick={() => removeItem(idx)}
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                                {activeItemIdx === idx &&
+                                                    itemSearchTerm.length >= 2 && (
+                                                        <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-md max-h-48 overflow-y-auto">
+                                                            {assetSearching ? (
+                                                                <p className="p-3 text-xs text-muted-foreground">
+                                                                    Searching…
+                                                                </p>
+                                                            ) : assetResults.length === 0 ? (
+                                                                <p className="p-3 text-xs text-muted-foreground">
+                                                                    No assets found — name will be
+                                                                    saved as typed.
+                                                                </p>
+                                                            ) : (
+                                                                assetResults.map((asset) => (
+                                                                    <button
+                                                                        key={asset.id}
+                                                                        type="button"
+                                                                        className="w-full text-left px-3 py-2 text-sm hover:bg-accent flex items-center gap-2"
+                                                                        onMouseDown={(e) => {
+                                                                            e.preventDefault();
+                                                                            selectAsset(
+                                                                                idx,
+                                                                                asset.id,
+                                                                                asset.name
+                                                                            );
+                                                                        }}
+                                                                    >
+                                                                        <span className="font-medium flex-1">
+                                                                            {asset.name}
+                                                                        </span>
+                                                                        <span className="text-xs text-muted-foreground">
+                                                                            {asset.qr_code}
+                                                                        </span>
+                                                                    </button>
+                                                                ))
+                                                            )}
+                                                        </div>
+                                                    )}
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <div>
+                                                    <Label className="text-xs text-slate-600">
+                                                        Quantity
+                                                    </Label>
+                                                    <Input
+                                                        type="number"
+                                                        min="1"
+                                                        className="text-sm"
+                                                        value={item.quantity}
+                                                        onChange={(e) =>
+                                                            updateItem(idx, {
+                                                                quantity: e.target.value,
+                                                            })
+                                                        }
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <Label className="text-xs text-slate-600">
+                                                        Refurb Days
+                                                    </Label>
+                                                    <Input
+                                                        type="number"
+                                                        min="0"
+                                                        className="text-sm"
+                                                        value={item.refurb_days_estimate}
+                                                        onChange={(e) =>
+                                                            updateItem(idx, {
+                                                                refurb_days_estimate:
+                                                                    e.target.value,
+                                                            })
+                                                        }
+                                                    />
+                                                </div>
+                                            </div>
+                                            <Input
+                                                className="text-sm"
+                                                placeholder="Notes (damage area, paint code…)"
+                                                value={item.notes}
+                                                onChange={(e) =>
+                                                    updateItem(idx, { notes: e.target.value })
+                                                }
+                                            />
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
 

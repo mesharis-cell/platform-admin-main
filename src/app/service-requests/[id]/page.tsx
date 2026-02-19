@@ -330,7 +330,16 @@ export default function ServiceRequestDetailsPage() {
                                     request.items.map((item) => (
                                         <div key={item.id} className="rounded-md border p-3">
                                             <div className="flex items-center justify-between">
-                                                <p className="font-medium">{item.asset_name}</p>
+                                                {item.asset_id ? (
+                                                    <Link
+                                                        href={`/assets/${item.asset_id}`}
+                                                        className="font-medium hover:underline text-primary"
+                                                    >
+                                                        {item.asset_name}
+                                                    </Link>
+                                                ) : (
+                                                    <p className="font-medium">{item.asset_name}</p>
+                                                )}
                                                 <p className="text-sm text-muted-foreground">
                                                     Qty: {item.quantity}
                                                 </p>

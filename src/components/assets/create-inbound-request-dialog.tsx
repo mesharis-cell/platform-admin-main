@@ -10,10 +10,10 @@
  * 4. Review & Submit
  */
 
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import { useBrands } from "@/hooks/use-brands";
 import { useCreateInboundRequest } from "@/hooks/use-inbound-requests";
-import { useSearchAssets, useUploadImage } from "@/hooks/use-assets";
+import { useUploadImage } from "@/hooks/use-assets";
 import {
     Plus,
     Package,
@@ -26,7 +26,6 @@ import {
     Calendar,
     FileText,
     Upload,
-    Search,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -112,26 +111,11 @@ export function CreateInboundRequestDialog({
         items: [createEmptyItem()],
     });
 
-    // Asset search state per item
-    const [searchQueriesPerItem, setSearchQueriesPerItem] = useState<Map<number, string>>(
-        new Map()
-    );
-    const [showDropdownPerItem, setShowDropdownPerItem] = useState<Map<number, boolean>>(new Map());
-    const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
     // Image upload state - store files locally per item until form submit
     const [selectedImagesPerItem, setSelectedImagesPerItem] = useState<Map<number, File[]>>(
         new Map()
     );
     const [previewUrlsPerItem, setPreviewUrlsPerItem] = useState<Map<number, string[]>>(new Map());
-
-    // Asset search - uses debounced search query for current item
-    const currentSearchQuery = searchQueriesPerItem.get(currentItemIndex) || "";
-    const { data: searchResults, isLoading: isSearching } = useSearchAssets(
-        currentSearchQuery,
-        formData.company_id
-    );
-    const searchedAssets = searchResults?.data || [];
 
     const { data: companiesData } = useCompanies();
     const companies = companiesData?.data || [];
@@ -151,88 +135,6 @@ export function CreateInboundRequestDialog({
             resetForm();
         }
         onOpenChange(open);
-    }
-
-    // Debounced search handler
-    function handleSearchInput(itemIndex: number, value: string) {
-        // Update item name immediately
-        updateItem(itemIndex, { name: value, asset_id: null });
-
-        // Clear previous timeout
-        if (searchTimeoutRef.current) {
-            clearTimeout(searchTimeoutRef.current);
-        }
-
-        // Debounce the search query update
-        searchTimeoutRef.current = setTimeout(() => {
-            setSearchQueriesPerItem((prev) => {
-                const updated = new Map(prev);
-                updated.set(itemIndex, value);
-                return updated;
-            });
-
-            // Show dropdown if query is long enough
-            if (value.length >= 2) {
-                setShowDropdownPerItem((prev) => {
-                    const updated = new Map(prev);
-                    updated.set(itemIndex, true);
-                    return updated;
-                });
-            }
-        }, 300);
-    }
-
-    // Handle asset selection from dropdown
-    function handleSelectAsset(itemIndex: number, asset: (typeof searchedAssets)[0]) {
-        updateItem(itemIndex, {
-            asset_id: asset.id,
-            name: asset.name,
-            description: asset.description || "",
-            category: asset.category,
-            tracking_method: asset.tracking_method,
-            weight_per_unit: asset.weight_per_unit,
-            dimensions: asset.dimensions,
-            volume_per_unit: asset.volume_per_unit || 0,
-            handling_tags: asset.handling_tags || [],
-            images: asset.images || [],
-            brand_id: asset.brand_id || undefined,
-        });
-
-        // Hide dropdown after selection
-        setShowDropdownPerItem((prev) => {
-            const updated = new Map(prev);
-            updated.set(itemIndex, false);
-            return updated;
-        });
-
-        // Clear search query
-        setSearchQueriesPerItem((prev) => {
-            const updated = new Map(prev);
-            updated.set(itemIndex, "");
-            return updated;
-        });
-    }
-
-    // Clear asset selection and enable manual entry
-    function clearAssetSelection(itemIndex: number) {
-        updateItem(itemIndex, {
-            asset_id: null,
-            name: "",
-            description: "",
-            category: "",
-            tracking_method: "INDIVIDUAL",
-            weight_per_unit: 0,
-            dimensions: { length: 0, width: 0, height: 0 },
-            volume_per_unit: 0,
-            handling_tags: [],
-            images: [],
-            brand_id: undefined,
-        });
-    }
-
-    // Check if item has selected asset (fields should be disabled)
-    function isAssetSelected(itemIndex: number): boolean {
-        return !!formData.items[itemIndex]?.asset_id;
     }
 
     // Handle image selection - store files locally, create previews
@@ -439,7 +341,7 @@ export function CreateInboundRequestDialog({
                 items: formData.items.map((item, index) => {
                     const uploadedImages = uploadedImagesPerItem.get(index) || [];
                     return {
-                        asset_id: item.asset_id || undefined,
+                        asset_id: null,
                         brand_id: item.brand_id || undefined,
                         name: item.name || "",
                         description: item.description || undefined,
@@ -693,147 +595,19 @@ export function CreateInboundRequestDialog({
                             {/* Current item form */}
                             {currentItem && (
                                 <div className="space-y-4 p-4 border border-border rounded-lg">
-                                    {/* Item Name / Asset Search */}
+                                    {/* Item Name */}
                                     <div className="space-y-2">
-                                        <Label className="font-mono text-xs">
-                                            Item Name *{" "}
-                                            {isAssetSelected(currentItemIndex) && (
-                                                <span className="text-primary ml-2">
-                                                    (Linked to Asset)
-                                                </span>
-                                            )}
-                                        </Label>
-                                        <div className="relative">
-                                            <div className="relative">
-                                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                                                <Input
-                                                    placeholder="Search existing assets or enter new name..."
-                                                    value={currentItem.name || ""}
-                                                    onChange={(e) =>
-                                                        handleSearchInput(
-                                                            currentItemIndex,
-                                                            e.target.value
-                                                        )
-                                                    }
-                                                    onFocus={() => {
-                                                        if (
-                                                            (currentItem.name?.length || 0) >= 2 &&
-                                                            !isAssetSelected(currentItemIndex)
-                                                        ) {
-                                                            setShowDropdownPerItem((prev) => {
-                                                                const updated = new Map(prev);
-                                                                updated.set(currentItemIndex, true);
-                                                                return updated;
-                                                            });
-                                                        }
-                                                    }}
-                                                    onBlur={() => {
-                                                        // Delay hiding dropdown to allow click on results
-                                                        setTimeout(() => {
-                                                            setShowDropdownPerItem((prev) => {
-                                                                const updated = new Map(prev);
-                                                                updated.set(
-                                                                    currentItemIndex,
-                                                                    false
-                                                                );
-                                                                return updated;
-                                                            });
-                                                        }, 200);
-                                                    }}
-                                                    className="font-mono pl-10 pr-10"
-                                                    disabled={isAssetSelected(currentItemIndex)}
-                                                />
-                                                {isAssetSelected(currentItemIndex) && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() =>
-                                                            clearAssetSelection(currentItemIndex)
-                                                        }
-                                                        className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-destructive/10 rounded text-destructive"
-                                                        title="Clear asset selection"
-                                                    >
-                                                        <X className="w-4 h-4" />
-                                                    </button>
-                                                )}
-                                                {isSearching &&
-                                                    !isAssetSelected(currentItemIndex) && (
-                                                        <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />
-                                                    )}
-                                            </div>
-
-                                            {/* Search results dropdown */}
-                                            {showDropdownPerItem.get(currentItemIndex) &&
-                                                !isAssetSelected(currentItemIndex) && (
-                                                    <div className="absolute z-50 w-full mt-1 bg-background border border-border rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                                                        {isSearching ? (
-                                                            <div className="p-3 text-center text-sm text-muted-foreground font-mono">
-                                                                <Loader2 className="w-4 h-4 animate-spin inline mr-2" />
-                                                                Searching assets...
-                                                            </div>
-                                                        ) : searchedAssets.length > 0 ? (
-                                                            <>
-                                                                <div className="px-3 py-2 text-xs font-mono text-muted-foreground border-b border-border">
-                                                                    Select an existing asset or
-                                                                    continue typing for manual entry
-                                                                </div>
-                                                                {searchedAssets.map((asset) => (
-                                                                    <button
-                                                                        key={asset.id}
-                                                                        type="button"
-                                                                        className="w-full px-3 py-2 text-left hover:bg-muted transition-colors flex items-center gap-3"
-                                                                        onClick={() =>
-                                                                            handleSelectAsset(
-                                                                                currentItemIndex,
-                                                                                asset
-                                                                            )
-                                                                        }
-                                                                    >
-                                                                        {asset.images?.[0] ? (
-                                                                            <img
-                                                                                src={
-                                                                                    asset.images[0]
-                                                                                }
-                                                                                alt={asset.name}
-                                                                                className="w-10 h-10 rounded object-cover border border-border"
-                                                                            />
-                                                                        ) : (
-                                                                            <div className="w-10 h-10 rounded bg-muted flex items-center justify-center">
-                                                                                <Package className="w-5 h-5 text-muted-foreground" />
-                                                                            </div>
-                                                                        )}
-                                                                        <div className="flex-1 min-w-0">
-                                                                            <div className="font-mono text-sm font-medium truncate">
-                                                                                {asset.name}
-                                                                            </div>
-                                                                            <div className="text-xs text-muted-foreground font-mono">
-                                                                                {asset.category} •{" "}
-                                                                                {
-                                                                                    asset.tracking_method
-                                                                                }{" "}
-                                                                                • Qty:{" "}
-                                                                                {
-                                                                                    asset.available_quantity
-                                                                                }
-                                                                            </div>
-                                                                        </div>
-                                                                    </button>
-                                                                ))}
-                                                            </>
-                                                        ) : currentSearchQuery.length >= 2 ? (
-                                                            <div className="p-3 text-center text-sm text-muted-foreground font-mono">
-                                                                No assets found. Continue typing for
-                                                                manual entry.
-                                                            </div>
-                                                        ) : null}
-                                                    </div>
-                                                )}
-                                        </div>
-                                        {isAssetSelected(currentItemIndex) && (
-                                            <p className="text-xs text-muted-foreground font-mono">
-                                                Fields auto-filled from asset. Only quantity can be
-                                                modified.
-                                            </p>
-                                        )}
+                                        <Label className="font-mono text-xs">Item Name *</Label>
+                                        <Input
+                                            placeholder="e.g. Backbar unit, Display shelf..."
+                                            value={currentItem.name || ""}
+                                            onChange={(e) =>
+                                                updateItem(currentItemIndex, {
+                                                    name: e.target.value,
+                                                })
+                                            }
+                                            className="font-mono"
+                                        />
                                     </div>
 
                                     <div className="grid grid-cols-2 gap-4">
@@ -846,7 +620,6 @@ export function CreateInboundRequestDialog({
                                                         category: value,
                                                     })
                                                 }
-                                                disabled={isAssetSelected(currentItemIndex)}
                                             >
                                                 <SelectTrigger className="font-mono">
                                                     <SelectValue placeholder="Select category" />
@@ -872,10 +645,7 @@ export function CreateInboundRequestDialog({
                                                         brand_id: value,
                                                     })
                                                 }
-                                                disabled={
-                                                    !formData.company_id ||
-                                                    isAssetSelected(currentItemIndex)
-                                                }
+                                                disabled={!formData.company_id}
                                             >
                                                 <SelectTrigger className="font-mono">
                                                     <SelectValue placeholder="Select brand" />
@@ -903,7 +673,6 @@ export function CreateInboundRequestDialog({
                                                         tracking_method: value as TrackingMethod,
                                                     })
                                                 }
-                                                disabled={isAssetSelected(currentItemIndex)}
                                             >
                                                 <SelectTrigger className="font-mono">
                                                     <SelectValue placeholder="Select tracking method" />
@@ -950,7 +719,6 @@ export function CreateInboundRequestDialog({
                                                     })
                                                 }
                                                 className="font-mono"
-                                                disabled={isAssetSelected(currentItemIndex)}
                                             />
                                         </div>
                                     )}
@@ -969,7 +737,6 @@ export function CreateInboundRequestDialog({
                                             }
                                             className="font-mono text-sm"
                                             rows={2}
-                                            disabled={isAssetSelected(currentItemIndex)}
                                         />
                                     </div>
 
@@ -988,27 +755,18 @@ export function CreateInboundRequestDialog({
                                                 }
                                                 className="hidden"
                                                 id={`item-image-upload-${currentItemIndex}`}
-                                                disabled={isAssetSelected(currentItemIndex)}
                                             />
                                             <label
                                                 htmlFor={`item-image-upload-${currentItemIndex}`}
-                                                className={`flex flex-col items-center justify-center cursor-pointer ${
-                                                    isAssetSelected(currentItemIndex)
-                                                        ? "opacity-50 cursor-not-allowed"
-                                                        : ""
-                                                }`}
+                                                className="flex flex-col items-center justify-center cursor-pointer"
                                             >
                                                 <Upload className="w-6 h-6 text-muted-foreground mb-2" />
                                                 <span className="text-xs font-mono text-muted-foreground">
-                                                    {isAssetSelected(currentItemIndex)
-                                                        ? "Images linked from asset"
-                                                        : "Click to select images"}
+                                                    Click to select images
                                                 </span>
-                                                {!isAssetSelected(currentItemIndex) && (
-                                                    <span className="text-xs font-mono text-muted-foreground mt-1">
-                                                        JPG, PNG, WEBP up to 5MB
-                                                    </span>
-                                                )}
+                                                <span className="text-xs font-mono text-muted-foreground mt-1">
+                                                    JPG, PNG, WEBP up to 5MB
+                                                </span>
                                             </label>
                                         </div>
                                     </div>
@@ -1036,9 +794,6 @@ export function CreateInboundRequestDialog({
                                                                 )
                                                             }
                                                             className="absolute top-1 right-1 p-1 bg-destructive text-destructive-foreground rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
-                                                            disabled={isAssetSelected(
-                                                                currentItemIndex
-                                                            )}
                                                         >
                                                             <X className="w-3 h-3" />
                                                         </button>
@@ -1095,7 +850,6 @@ export function CreateInboundRequestDialog({
                                                     )
                                                 }
                                                 className="font-mono"
-                                                disabled={isAssetSelected(currentItemIndex)}
                                             />
                                         </div>
                                         <div className="space-y-2">
@@ -1113,7 +867,6 @@ export function CreateInboundRequestDialog({
                                                     )
                                                 }
                                                 className="font-mono"
-                                                disabled={isAssetSelected(currentItemIndex)}
                                             />
                                         </div>
                                         <div className="space-y-2">
@@ -1131,7 +884,6 @@ export function CreateInboundRequestDialog({
                                                     )
                                                 }
                                                 className="font-mono"
-                                                disabled={isAssetSelected(currentItemIndex)}
                                             />
                                         </div>
                                     </div>
@@ -1154,7 +906,6 @@ export function CreateInboundRequestDialog({
                                                     })
                                                 }
                                                 className="font-mono"
-                                                disabled={isAssetSelected(currentItemIndex)}
                                             />
                                         </div>
                                         <div className="space-y-2">
@@ -1174,7 +925,6 @@ export function CreateInboundRequestDialog({
                                                     })
                                                 }
                                                 className="font-mono bg-muted/30"
-                                                disabled={isAssetSelected(currentItemIndex)}
                                             />
                                         </div>
                                     </div>
@@ -1192,13 +942,8 @@ export function CreateInboundRequestDialog({
                                                             ? "default"
                                                             : "outline"
                                                     }
-                                                    className={`font-mono text-xs ${
-                                                        isAssetSelected(currentItemIndex)
-                                                            ? "opacity-50 cursor-not-allowed"
-                                                            : "cursor-pointer"
-                                                    }`}
+                                                    className="font-mono text-xs cursor-pointer"
                                                     onClick={() =>
-                                                        !isAssetSelected(currentItemIndex) &&
                                                         toggleHandlingTag(currentItemIndex, tag)
                                                     }
                                                 >
