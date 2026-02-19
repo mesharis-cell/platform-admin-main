@@ -1686,9 +1686,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                         order?.data?.order_status;
                                     const activeIndex = Math.max(
                                         0,
-                                        history.findIndex(
-                                            (e: any) => e.status === currentStatus
-                                        )
+                                        history.findIndex((e: any) => e.status === currentStatus)
                                     );
                                     const entries = history.map((entry: any, index: number) => {
                                         const cfg = STATUS_CONFIG[entry.status] || {

@@ -46,9 +46,7 @@ export function StatusHistoryTimeline({
                     {/* Dot */}
                     <div
                         className={`absolute left-0 top-0.5 h-4 w-4 rounded-full border-2 ${
-                            entry.isActive
-                                ? "bg-primary border-primary"
-                                : "bg-muted border-border"
+                            entry.isActive ? "bg-primary border-primary" : "bg-muted border-border"
                         }`}
                     />
                     <div>
@@ -68,9 +66,7 @@ export function StatusHistoryTimeline({
                                 minute: "2-digit",
                             })}
                         </p>
-                        {entry.user && (
-                            <p className="font-mono text-[10px] mt-0.5">{entry.user}</p>
-                        )}
+                        {entry.user && <p className="font-mono text-[10px] mt-0.5">{entry.user}</p>}
                         {entry.note && (
                             <p className="font-mono text-[10px] text-muted-foreground italic mt-2 p-2 bg-muted/20 rounded border">
                                 {entry.note}

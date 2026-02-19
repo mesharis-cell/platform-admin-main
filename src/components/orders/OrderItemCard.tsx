@@ -63,14 +63,14 @@ export function OrderItemCard({ item, orderId, orderStatus, onRefresh }: OrderIt
         (item.asset?.images && item.asset.images.length > 0 ? item.asset.images[0] : null);
 
     const isDamaged = item.asset?.condition !== "GREEN" && item.asset?.condition !== undefined;
-    const conditionStyle = isDamaged ? CONDITION_STYLES[item.asset!.condition] ?? CONDITION_STYLES.RED : null;
+    const conditionStyle = isDamaged
+        ? (CONDITION_STYLES[item.asset!.condition] ?? CONDITION_STYLES.RED)
+        : null;
     const ConditionIcon = conditionStyle?.icon;
 
     const showWarning = PRE_FULFILLMENT_STATUSES.includes(orderStatus) && isDamaged;
     const showAction =
-        showWarning &&
-        item.asset?.status !== "MAINTENANCE" &&
-        item.asset?.condition === "RED";
+        showWarning && item.asset?.status !== "MAINTENANCE" && item.asset?.condition === "RED";
 
     const handleCreateLinkedServiceRequest = async () => {
         if (!item?.asset?.id || !item?.order_item?.id) return;
@@ -79,7 +79,9 @@ export function OrderItemCard({ item, orderId, orderStatus, onRefresh }: OrderIt
             await createServiceRequest.mutateAsync({
                 request_type: requestType,
                 billing_mode: "INTERNAL_ONLY",
-                link_mode: ["DRAFT", "PRICING_REVIEW", "PENDING_APPROVAL", "QUOTED"].includes(orderStatus)
+                link_mode: ["DRAFT", "PRICING_REVIEW", "PENDING_APPROVAL", "QUOTED"].includes(
+                    orderStatus
+                )
                     ? "BUNDLED_WITH_ORDER"
                     : "SEPARATE_CHANGE_REQUEST",
                 blocks_fulfillment: item.asset.condition === "RED",
@@ -141,8 +143,8 @@ export function OrderItemCard({ item, orderId, orderStatus, onRefresh }: OrderIt
                 </div>
 
                 <p className="font-mono text-xs text-muted-foreground mt-1">
-                    QTY: {item?.order_item?.quantity} | VOL: {item?.order_item?.total_volume}m³ | WT:{" "}
-                    {item?.order_item?.total_weight}kg
+                    QTY: {item?.order_item?.quantity} | VOL: {item?.order_item?.total_volume}m³ |
+                    WT: {item?.order_item?.total_weight}kg
                 </p>
 
                 {item?.order_item?.handling_tags && item.order_item.handling_tags.length > 0 && (
@@ -190,7 +192,9 @@ export function OrderItemCard({ item, orderId, orderStatus, onRefresh }: OrderIt
                         onClick={handleCreateLinkedServiceRequest}
                         disabled={createServiceRequest.isPending}
                     >
-                        {createServiceRequest.isPending ? "Creating…" : "Create Linked Service Request"}
+                        {createServiceRequest.isPending
+                            ? "Creating…"
+                            : "Create Linked Service Request"}
                     </Button>
                 )}
             </div>
