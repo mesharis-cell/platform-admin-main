@@ -141,9 +141,7 @@ export function PendingApprovalSection({ order, orderId, onRefresh }: HybridPric
                                 </span>
                             </div>
                             <div className="flex justify-between">
-                                <span className="text-muted-foreground">
-                                    Custom (Include Reskin) Services
-                                </span>
+                                <span className="text-muted-foreground">Custom Services</span>
                                 <span className="font-mono">
                                     {Number(order?.order_pricing?.line_items?.custom_total).toFixed(
                                         2
@@ -288,16 +286,15 @@ export function AwaitingFabricationSection({ order, orderId }: HybridPricingSect
         <div className="space-y-6">
             <Card className="border-blue-500 bg-blue-50">
                 <CardHeader>
-                    <CardTitle className="text-blue-500">⏳ Order Awaiting Fabrication</CardTitle>
+                    <CardTitle className="text-blue-500">⏳ Linked Service Requests</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <p className="text-sm text-blue-500">
-                        Complete pending reskin/fabrication requests. When all requests are
-                        resolved, the order auto-progresses to IN_PREPARATION.
+                        Review linked service requests before progressing this order to fulfillment
+                        readiness states.
                     </p>
                     <p className="text-xs text-blue-500 mt-2">
-                        Process/complete actions are available to Admin and Logistics. Cancellation
-                        remains Admin-only.
+                        Blocking linked requests must be commercially cleared or completed first.
                     </p>
                 </CardContent>
             </Card>

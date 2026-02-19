@@ -24,10 +24,6 @@ interface OrderItemCardProps {
             total_volume: number;
             total_weight: number;
             handling_tags?: string[];
-            is_reskin_request?: boolean;
-            reskin_target_brand_name?: string;
-            reskin_target_brand_custom?: string;
-            reskin_notes?: string;
         };
     };
     orderId: string;
@@ -41,15 +37,15 @@ export function OrderItemCard({ item, orderId, orderStatus, onRefresh }: OrderIt
     const handleCreateLinkedServiceRequest = async () => {
         if (!item?.asset?.id || !item?.order_item?.id) return;
         try {
-            const preQuoteStatuses = ["PRICING_REVIEW", "PENDING_APPROVAL", "QUOTED"];
-            const requestType = item?.order_item?.is_reskin_request ? "RESKIN" : "MAINTENANCE";
+            const preQuoteStatuses = ["DRAFT", "PRICING_REVIEW", "PENDING_APPROVAL", "QUOTED"];
+            const requestType = "MAINTENANCE";
             await createServiceRequest.mutateAsync({
                 request_type: requestType,
                 billing_mode: "INTERNAL_ONLY",
                 link_mode: preQuoteStatuses.includes(orderStatus)
                     ? "BUNDLED_WITH_ORDER"
                     : "SEPARATE_CHANGE_REQUEST",
-                blocks_fulfillment: requestType === "RESKIN" || item.asset.condition === "RED",
+                blocks_fulfillment: item.asset.condition === "RED",
                 title: `${requestType} for ${item.asset.name || "asset"}`,
                 description:
                     item.asset.condition === "GREEN"
@@ -123,7 +119,13 @@ export function OrderItemCard({ item, orderId, orderStatus, onRefresh }: OrderIt
                         </div>
                     )}
 
-                {["AWAITING_FABRICATION", "CONFIRMED"].includes(orderStatus) &&
+                {[
+                    "PRICING_REVIEW",
+                    "PENDING_APPROVAL",
+                    "QUOTED",
+                    "CONFIRMED",
+                    "AWAITING_FABRICATION",
+                ].includes(orderStatus) &&
                     item.asset.condition !== "GREEN" &&
                     item.asset.status !== "MAINTENANCE" && (
                         <Button

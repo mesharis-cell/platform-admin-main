@@ -37,7 +37,6 @@ export function LogisticsPricingReview({
     const canManageServiceItems = canManageLineItems(order?.order_status) && canManagePricing;
 
     const pricing = order?.order_pricing as OrderPricing | undefined;
-    const hasRebrandRequests = order?.items?.some((item: any) => item.isReskinRequest);
     const damagedItemCount =
         order?.items?.filter((item: any) => {
             const condition = item?.asset?.condition || item?.condition || "";
@@ -46,21 +45,6 @@ export function LogisticsPricingReview({
 
     return (
         <div className="space-y-6">
-            {/* Rebrand Notice */}
-            {hasRebrandRequests && (
-                <Card className="border-amber-500/30 bg-amber-500/10">
-                    <CardContent className="p-4">
-                        <p className="text-sm font-semibold text-amber-500 mb-1">
-                            🔄 This order includes rebrand requests
-                        </p>
-                        <p className="text-xs text-amber-500">
-                            Admin or Logistics can process rebrand pricing in this phase.
-                            Fabrication completion happens later in AWAITING_FABRICATION.
-                        </p>
-                    </CardContent>
-                </Card>
-            )}
-
             <MaintenancePromptCard
                 damagedItemCount={damagedItemCount}
                 canManage={canManageServiceItems}

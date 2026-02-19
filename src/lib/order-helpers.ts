@@ -41,20 +41,6 @@ export function canManageLineItems(status: OrderStatus): boolean {
 }
 
 /**
- * Check if reskins can be processed
- */
-export function canProcessReskins(status: OrderStatus): boolean {
-    return status === "PENDING_APPROVAL";
-}
-
-/**
- * Check if fabrication can be completed
- */
-export function canCompleteFabrication(status: OrderStatus): boolean {
-    return status === "AWAITING_FABRICATION";
-}
-
-/**
  * Get status badge color
  */
 export function getStatusColor(status: OrderStatus): string {
@@ -85,18 +71,4 @@ export function getStatusColor(status: OrderStatus): string {
  */
 export function formatOrderId(orderId: string): string {
     return orderId; // Already formatted as ORD-YYYYMMDD-XXX
-}
-
-/**
- * Check if order has pending reskins
- */
-export function hasPendingReskins(reskinRequests: any[]): boolean {
-    return reskinRequests?.some((r) => !r.completedAt && !r.cancelledAt) || false;
-}
-
-/**
- * Count pending reskins
- */
-export function countPendingReskins(reskinRequests: any[]): number {
-    return reskinRequests?.filter((r) => !r.completedAt && !r.cancelledAt).length || 0;
 }
