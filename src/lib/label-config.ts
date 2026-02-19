@@ -102,6 +102,18 @@ export const LABEL_SIZES: Record<string, LabelSize> = {
         fonts: { assetName: 5.5, qrCode: 4.5, meta: 4 },
         maxAssetNameChars: 18,
     },
+    a4: {
+        id: "a4",
+        name: "A4 (210 × 297mm)",
+        widthMm: 210,
+        heightMm: 297,
+        orientation: "portrait",
+        printableArea: { widthMm: 190, heightMm: 277 },
+        layout: "qr-top-text-bottom",
+        qrSizeMm: 100,
+        fonts: { assetName: 18, qrCode: 11, meta: 10 },
+        maxAssetNameChars: 80,
+    },
 } as const;
 
 export const DEFAULT_LABEL_SIZE = "50x30";
