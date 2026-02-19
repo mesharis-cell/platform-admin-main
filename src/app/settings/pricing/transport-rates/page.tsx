@@ -26,13 +26,14 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Truck, Plus, Pencil, Trash2 } from "lucide-react";
+import { Truck, Plus, Pencil, Trash2, RefreshCw } from "lucide-react";
 import { AdminHeader } from "@/components/admin-header";
 import {
     useListTransportRates,
     useCreateTransportRate,
     useUpdateTransportRate,
     useDeleteTransportRate,
+    useSyncTransportRateCards,
 } from "@/hooks/use-transport-rates";
 import { useCities } from "@/hooks/use-cities";
 import { useListVehicleTypes } from "@/hooks/use-vehicle-types";
@@ -45,6 +46,7 @@ export default function TransportRatesPage() {
     const createRate = useCreateTransportRate();
     const updateRate = useUpdateTransportRate();
     const deleteRate = useDeleteTransportRate();
+    const syncRates = useSyncTransportRateCards();
 
     const [createDialogOpen, setCreateDialogOpen] = useState(false);
     const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -144,10 +146,32 @@ export default function TransportRatesPage() {
                 title="TRANSPORT RATES"
                 description="Emirate · Trip Type · Vehicle Configuration"
                 actions={
-                    <Button onClick={() => setCreateDialogOpen(true)} className="gap-2">
-                        <Plus className="h-4 w-4" />
-                        Add Rate
-                    </Button>
+                    <div className="flex gap-2">
+                        <Button
+                            variant="outline"
+                            onClick={async () => {
+                                try {
+                                    const result = await syncRates.mutateAsync(false);
+                                    toast.success(
+                                        `Synced: ${result?.created ?? 0} created, ${result?.updated ?? 0} updated, ${result?.skipped ?? 0} skipped`
+                                    );
+                                } catch {
+                                    toast.error("Sync failed");
+                                }
+                            }}
+                            disabled={syncRates.isPending}
+                            className="gap-2"
+                        >
+                            <RefreshCw
+                                className={`h-4 w-4 ${syncRates.isPending ? "animate-spin" : ""}`}
+                            />
+                            {syncRates.isPending ? "Syncing..." : "Sync to Service Catalog"}
+                        </Button>
+                        <Button onClick={() => setCreateDialogOpen(true)} className="gap-2">
+                            <Plus className="h-4 w-4" />
+                            Add Rate
+                        </Button>
+                    </div>
                 }
             />
 

@@ -130,6 +130,33 @@ export function useDeleteTransportRate() {
     });
 }
 
+// Sync transport rates → service catalog
+export function useSyncTransportRateCards() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (includeInactive: boolean = false) => {
+            try {
+                const response = await apiClient.post(
+                    "/operations/v1/pricing/service-types/sync-transport-rates",
+                    { include_inactive_rates: includeInactive ?? false }
+                );
+                return response.data.data as {
+                    created: number;
+                    updated: number;
+                    skipped: number;
+                    total_rates: number;
+                };
+            } catch (error) {
+                throwApiError(error);
+            }
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["service-types"] });
+        },
+    });
+}
+
 // Lookup transport rate
 export function useLookupTransportRate() {
     return useMutation({
