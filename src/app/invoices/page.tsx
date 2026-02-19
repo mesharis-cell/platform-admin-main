@@ -70,6 +70,7 @@ export default function InvoicesPage() {
     const [paymentStatus, setPaymentStatus] = useState<string>("all");
     const [sentInvoice, setSentInvoice] = useState<boolean>(false);
     const { platform } = usePlatform();
+    const invoicingEnabled = platform?.features?.enable_kadence_invoicing === true;
 
     // Modals
     const [confirmPaymentDialogOpen, setConfirmPaymentDialogOpen] = useState(false);
@@ -88,12 +89,15 @@ export default function InvoicesPage() {
 
     // Hooks
     const { data: companies } = useCompanies({});
-    const { data: invoicesData, isLoading } = useInvoices({
-        ...filters,
-        company: selectedCompany || undefined,
-        type: invoiceType || undefined,
-        isPaid: paymentStatus,
-    });
+    const { data: invoicesData, isLoading } = useInvoices(
+        {
+            ...filters,
+            company: selectedCompany || undefined,
+            type: invoiceType || undefined,
+            isPaid: paymentStatus,
+        },
+        invoicingEnabled
+    );
     const confirmPayment = useConfirmPayment();
     const downloadInvoice = useDownloadInvoice();
     const { mutateAsync: sendInvoice, isPending: isSendingInvoice } = useSendInvoice();
@@ -105,6 +109,22 @@ export default function InvoicesPage() {
     );
     const canExport = hasPermission(user, ADMIN_ACTION_PERMISSIONS.ordersExport);
     const exportReconciliation = useExportReconciliation();
+
+    if (!invoicingEnabled) {
+        return (
+            <div className="p-8">
+                <Card className="border-border">
+                    <div className="p-6">
+                        <h2 className="text-lg font-semibold">Invoicing Disabled</h2>
+                        <p className="text-sm text-muted-foreground mt-2">
+                            Kadence invoicing is turned off for this platform. Use Unicorn for
+                            official invoicing and AR.
+                        </p>
+                    </div>
+                </Card>
+            </div>
+        );
+    }
 
     const getInvoiceAmount = (invoice: any) => {
         const pricing =

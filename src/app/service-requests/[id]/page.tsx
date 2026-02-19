@@ -19,6 +19,7 @@ import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { usePlatform } from "@/contexts/platform-context";
 import {
+    useApplyServiceRequestConcession,
     useCancelServiceRequest,
     useDownloadServiceRequestCostEstimate,
     useGenerateServiceRequestInvoice,
@@ -62,10 +63,12 @@ export default function ServiceRequestDetailsPage() {
     const params = useParams<{ id: string }>();
     const routeId = Array.isArray(params?.id) ? params.id[0] : params?.id;
     const { platform } = usePlatform();
+    const invoicingEnabled = platform?.features?.enable_kadence_invoicing === true;
     const { data, isLoading, refetch } = useServiceRequestDetails(routeId || null);
     const updateStatus = useUpdateServiceRequestStatus();
     const updateCommercialStatus = useUpdateServiceRequestCommercialStatus();
     const cancelRequest = useCancelServiceRequest();
+    const applyConcession = useApplyServiceRequestConcession();
     const generateInvoice = useGenerateServiceRequestInvoice();
     const downloadCostEstimate = useDownloadServiceRequestCostEstimate();
     const [addCatalogOpen, setAddCatalogOpen] = useState(false);
@@ -76,6 +79,7 @@ export default function ServiceRequestDetailsPage() {
     const [commercialStatusValue, setCommercialStatusValue] =
         useState<ServiceRequestCommercialStatus>("INTERNAL");
     const [commercialNote, setCommercialNote] = useState("");
+    const [concessionReason, setConcessionReason] = useState("");
     const [cancellationReason, setCancellationReason] = useState("");
 
     const request = data?.data;
@@ -187,6 +191,25 @@ export default function ServiceRequestDetailsPage() {
         }
     };
 
+    const handleApplyConcession = async () => {
+        if (!request) return;
+        if (!concessionReason.trim() || concessionReason.trim().length < 10) {
+            toast.error("Concession reason must be at least 10 characters");
+            return;
+        }
+        try {
+            await applyConcession.mutateAsync({
+                id: request.id,
+                payload: { concession_reason: concessionReason.trim() },
+            });
+            toast.success("Concession applied");
+            setConcessionReason("");
+            refetch();
+        } catch (error: any) {
+            toast.error(error.message || "Failed to apply concession");
+        }
+    };
+
     if (isLoading)
         return <div className="p-6 text-muted-foreground">Loading service request...</div>;
     if (!request) return <div className="p-6 text-destructive">Service request not found.</div>;
@@ -250,6 +273,18 @@ export default function ServiceRequestDetailsPage() {
                                     <p className="text-muted-foreground">Billing</p>
                                     <p className="font-medium">
                                         {request.billing_mode.replace(/_/g, " ")}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="text-muted-foreground">Link Mode</p>
+                                    <p className="font-medium">
+                                        {request.link_mode.replace(/_/g, " ")}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="text-muted-foreground">Blocks Fulfillment</p>
+                                    <p className="font-medium">
+                                        {request.blocks_fulfillment ? "Yes" : "No"}
                                     </p>
                                 </div>
                                 <div>
@@ -456,16 +491,40 @@ export default function ServiceRequestDetailsPage() {
                                             ? "Downloading..."
                                             : "Cost Estimate"}
                                     </Button>
-                                    <Button
-                                        variant="outline"
-                                        onClick={handleGenerateInvoice}
-                                        disabled={generateInvoice.isPending}
-                                    >
-                                        {generateInvoice.isPending
-                                            ? "Generating..."
-                                            : "Generate Invoice"}
-                                    </Button>
+                                    {invoicingEnabled && (
+                                        <Button
+                                            variant="outline"
+                                            onClick={handleGenerateInvoice}
+                                            disabled={generateInvoice.isPending}
+                                        >
+                                            {generateInvoice.isPending
+                                                ? "Generating..."
+                                                : "Generate Invoice"}
+                                        </Button>
+                                    )}
                                 </div>
+                                {request.billing_mode === "CLIENT_BILLABLE" &&
+                                    request.blocks_fulfillment && (
+                                        <div className="space-y-2 border rounded p-3 bg-amber-500/5">
+                                            <Label>Concession Reason (sets client sell to 0)</Label>
+                                            <Textarea
+                                                value={concessionReason}
+                                                onChange={(e) =>
+                                                    setConcessionReason(e.target.value)
+                                                }
+                                                placeholder="Explain why concession is required..."
+                                            />
+                                            <Button
+                                                variant="outline"
+                                                onClick={handleApplyConcession}
+                                                disabled={applyConcession.isPending}
+                                            >
+                                                {applyConcession.isPending
+                                                    ? "Applying..."
+                                                    : "Apply Client Concession"}
+                                            </Button>
+                                        </div>
+                                    )}
                             </CardContent>
                         </Card>
 

@@ -10,7 +10,6 @@ import { AddCustomLineItemModal } from "@/components/orders/AddCustomLineItemMod
 import { CancelOrderModal } from "@/components/orders/CancelOrderModal";
 import { LogisticsPricingReview } from "@/components/orders/LogisticsPricingReview";
 import { OrderLineItemsList } from "@/components/orders/OrderLineItemsList";
-import { ReskinRequestsList } from "@/components/orders/ReskinRequestsList";
 import { ReturnToLogisticsModal } from "@/components/orders/ReturnToLogisticsModal";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,7 +23,7 @@ import { getOrderPrice } from "@/lib/utils/helper";
 import { useToken } from "@/lib/auth/use-token";
 import { hasPermission } from "@/lib/auth/permissions";
 import { ADMIN_ACTION_PERMISSIONS } from "@/lib/auth/permission-map";
-import { DollarSign, Package, Plus } from "lucide-react";
+import { DollarSign, Plus } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -86,23 +85,6 @@ export function PendingApprovalSection({ order, orderId, onRefresh }: HybridPric
 
     return (
         <div className="space-y-6">
-            {/* Reskin Requests */}
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <Package className="h-5 w-5" />
-                        Rebrand Requests
-                    </CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <ReskinRequestsList
-                        orderId={orderId}
-                        order={order}
-                        orderStatus={order.order_status}
-                    />
-                </CardContent>
-            </Card>
-
             {/* Service Line Items */}
             <Card>
                 <CardHeader>
@@ -320,7 +302,29 @@ export function AwaitingFabricationSection({ order, orderId }: HybridPricingSect
                 </CardContent>
             </Card>
 
-            <ReskinRequestsList orderId={orderId} order={order} orderStatus={order.order_status} />
+            <Card>
+                <CardHeader>
+                    <CardTitle className="text-sm">Linked Service Requests</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                    {Array.isArray(order?.linked_service_requests) &&
+                    order.linked_service_requests.length > 0 ? (
+                        order.linked_service_requests.map((sr: any) => (
+                            <div
+                                key={sr.id}
+                                className="text-xs font-mono border rounded p-2 bg-muted/20"
+                            >
+                                {sr.service_request_id} | {sr.request_status} |{" "}
+                                {sr.commercial_status}
+                            </div>
+                        ))
+                    ) : (
+                        <p className="text-xs text-muted-foreground">
+                            No linked service requests yet.
+                        </p>
+                    )}
+                </CardContent>
+            </Card>
         </div>
     );
 }
@@ -362,9 +366,7 @@ export function CancelOrderButton({ order, orderId }: HybridPricingSectionProps)
                 companyName={order.company?.name}
                 currentStatus={order.order_status}
                 itemCount={order.items?.length || 0}
-                pendingReskinCount={
-                    order.reskin_requests?.filter((r: any) => r.status === "pending").length || 0
-                }
+                pendingReskinCount={0}
             />
         </>
     );

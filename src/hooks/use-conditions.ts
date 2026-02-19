@@ -8,8 +8,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type {
     UpdateConditionRequest,
     UpdateConditionResponse,
-    CompleteMaintenanceRequest,
-    CompleteMaintenanceResponse,
     GetConditionHistoryResponse,
     ItemsNeedingAttentionParams,
     ItemsNeedingAttentionResponse,
@@ -39,40 +37,6 @@ export function useUpdateCondition() {
             if (!response.ok) {
                 const error = await response.json();
                 throw new Error(error.error || "Failed to update condition");
-            }
-
-            return response.json();
-        },
-        onSuccess: (data) => {
-            // Invalidate relevant queries
-            queryClient.invalidateQueries({
-                queryKey: ["condition-history", data.asset.id],
-            });
-            queryClient.invalidateQueries({ queryKey: ["items-needing-attention"] });
-            queryClient.invalidateQueries({ queryKey: ["assets"] });
-            queryClient.invalidateQueries({
-                queryKey: ["asset", data.asset.id],
-            });
-        },
-    });
-}
-
-// ===== Complete Maintenance =====
-
-export function useCompleteMaintenance() {
-    const queryClient = useQueryClient();
-
-    return useMutation<CompleteMaintenanceResponse, Error, CompleteMaintenanceRequest>({
-        mutationFn: async (data: CompleteMaintenanceRequest) => {
-            const response = await fetch("/api/conditions/maintenance/complete", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(data),
-            });
-
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.error || "Failed to complete maintenance");
             }
 
             return response.json();

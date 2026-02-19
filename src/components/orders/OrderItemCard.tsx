@@ -2,8 +2,7 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { useCompleteMaintenance, useSendToMaintenance } from "@/hooks/use-assets";
-import { useListReskinRequests } from "@/hooks/use-reskin-requests";
+import { useCreateServiceRequest } from "@/hooks/use-service-requests";
 import { Condition } from "@/types";
 import { PrintQrAction } from "@/components/qr/PrintQrAction";
 import { toast } from "sonner";
@@ -33,72 +32,45 @@ interface OrderItemCardProps {
     };
     orderId: string;
     orderStatus: string;
-    onProcessReskin?: (reskinData: {
-        orderItemId: string;
-        originalAssetName: string;
-        targetBrandName: string;
-        clientNotes: string;
-    }) => void;
-    onRejectReskin?: (orderItemId: string) => void;
     onRefresh?: () => void;
 }
 
-export function OrderItemCard({
-    item,
-    orderId,
-    orderStatus,
-    onProcessReskin,
-    onRejectReskin,
-    onRefresh,
-}: OrderItemCardProps) {
-    const { data: reskinRequests } = useListReskinRequests(orderId || "");
-    const sendToMaintenance = useSendToMaintenance();
-    const completeMaintenance = useCompleteMaintenance();
+export function OrderItemCard({ item, orderId, orderStatus, onRefresh }: OrderItemCardProps) {
+    const createServiceRequest = useCreateServiceRequest();
 
-    const reskinRequest = reskinRequests?.find(
-        (request: any) => request?.orderItemId === item?.order_item?.id
-    );
-
-    const handleProcessReskin = () => {
-        if (onProcessReskin) {
-            onProcessReskin({
-                orderItemId: item?.order_item?.id || "",
-                originalAssetName: item?.asset?.name || "",
-                targetBrandName: item?.order_item?.reskin_target_brand_custom || "Linked Brand",
-                clientNotes: item?.order_item?.reskin_notes || "No notes provided",
+    const handleCreateLinkedServiceRequest = async () => {
+        if (!item?.asset?.id || !item?.order_item?.id) return;
+        try {
+            const preQuoteStatuses = ["PRICING_REVIEW", "PENDING_APPROVAL", "QUOTED"];
+            const requestType = item?.order_item?.is_reskin_request ? "RESKIN" : "MAINTENANCE";
+            await createServiceRequest.mutateAsync({
+                request_type: requestType,
+                billing_mode: "INTERNAL_ONLY",
+                link_mode: preQuoteStatuses.includes(orderStatus)
+                    ? "BUNDLED_WITH_ORDER"
+                    : "SEPARATE_CHANGE_REQUEST",
+                blocks_fulfillment: requestType === "RESKIN" || item.asset.condition === "RED",
+                title: `${requestType} for ${item.asset.name || "asset"}`,
+                description:
+                    item.asset.condition === "GREEN"
+                        ? "Created from order workflow."
+                        : `Asset condition is ${item.asset.condition}. Created from order workflow.`,
+                related_asset_id: item.asset.id,
+                related_order_id: orderId,
+                related_order_item_id: item.order_item.id,
+                items: [
+                    {
+                        asset_id: item.asset.id,
+                        asset_name: item.asset.name || "Asset",
+                        quantity: item.order_item.quantity || 1,
+                    },
+                ],
             });
-        }
-    };
-
-    const handleRejectReskin = () => {
-        if (onRejectReskin && item?.order_item?.id) {
-            onRejectReskin(item.order_item.id);
-        }
-    };
-
-    const handleSendToMaintenance = async () => {
-        try {
-            if (item?.asset?.id) {
-                await sendToMaintenance.mutateAsync({ id: item.asset.id, orderId });
-                if (onRefresh) onRefresh();
-            }
-            toast.success("Asset sent to maintenance");
+            if (onRefresh) onRefresh();
+            toast.success("Linked service request created");
         } catch (error: any) {
-            console.error("Error sending asset to maintenance:", error);
-            toast.error(error.message || "Failed to send asset to maintenance");
-        }
-    };
-
-    const handleCompleteMaintenance = async () => {
-        try {
-            if (item?.asset?.id) {
-                await completeMaintenance.mutateAsync({ id: item.asset.id, orderId });
-                if (onRefresh) onRefresh();
-            }
-            toast.success("Asset completed maintenance");
-        } catch (error: any) {
-            console.error("Error completing asset maintenance:", error);
-            toast.error(error.message || "Failed to complete asset maintenance");
+            console.error("Error creating linked service request:", error);
+            toast.error(error.message || "Failed to create linked service request");
         }
     };
 
@@ -157,49 +129,13 @@ export function OrderItemCard({
                         <Button
                             variant="default"
                             className="text-xs font-mono mt-2"
-                            onClick={handleSendToMaintenance}
-                            disabled={sendToMaintenance.isPending}
+                            onClick={handleCreateLinkedServiceRequest}
+                            disabled={createServiceRequest.isPending}
                         >
-                            {sendToMaintenance.isPending ? "Sending..." : "Send to Maintenance"}
+                            {createServiceRequest.isPending
+                                ? "Creating..."
+                                : "Create Linked Service Request"}
                         </Button>
-                    )}
-
-                {["AWAITING_FABRICATION", "CONFIRMED"].includes(orderStatus) &&
-                    item.asset.condition !== "GREEN" &&
-                    item.asset.status === "MAINTENANCE" && (
-                        <Button
-                            variant="default"
-                            className="text-xs font-mono mt-2"
-                            onClick={handleCompleteMaintenance}
-                            disabled={completeMaintenance.isPending}
-                        >
-                            {completeMaintenance.isPending
-                                ? "Completing..."
-                                : "Complete Maintenance"}
-                        </Button>
-                    )}
-
-                {["PRICING_REVIEW", "PENDING_APPROVAL"].includes(orderStatus) &&
-                    item?.order_item?.is_reskin_request && (
-                        <div className="bg-primary/10 p-2 rounded border border-primary/20 mt-4 font-mono text-xs text-muted-foreground">
-                            <p>Target brand: {item?.order_item?.reskin_target_brand_name}</p>
-                            <p className="mt-2">
-                                Client instructions: {item?.order_item?.reskin_notes}
-                            </p>
-                            <p className="mt-2">Status: ⏳ Awaiting processing</p>
-
-                            {!reskinRequest && (
-                                <div className="mt-4">
-                                    <Button
-                                        variant="default"
-                                        className="text-xs font-mono"
-                                        onClick={handleProcessReskin}
-                                    >
-                                        Rebrand Request
-                                    </Button>
-                                </div>
-                            )}
-                        </div>
                     )}
             </div>
         </div>

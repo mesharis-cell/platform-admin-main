@@ -38,7 +38,7 @@ export default function PendingApprovalPage() {
             <AdminHeader
                 icon={Clock}
                 title="PENDING APPROVAL QUEUE"
-                description="Admin Review · Process Rebrands · Approve Quotes"
+                description="Admin Review · Approve Quotes"
                 stats={
                     data?.data ? { label: "AWAITING APPROVAL", value: data.data.length } : undefined
                 }
@@ -79,9 +79,6 @@ export default function PendingApprovalPage() {
                 ) : (
                     <div className="space-y-4">
                         {data.data.map((order: any) => {
-                            const hasReskins = order.reskin_requests?.length > 0;
-                            const reskinCount = order.reskin_requests?.length || 0;
-
                             return (
                                 <Card
                                     key={order.id}
@@ -99,15 +96,6 @@ export default function PendingApprovalPage() {
                                             </div>
                                             <div className="flex gap-2">
                                                 <Badge>{order.order_status}</Badge>
-                                                {hasReskins && (
-                                                    <Badge
-                                                        variant="outline"
-                                                        className="bg-amber-50 dark:bg-amber-950/20"
-                                                    >
-                                                        {reskinCount} Rebrand
-                                                        {reskinCount > 1 ? "s" : ""}
-                                                    </Badge>
-                                                )}
                                             </div>
                                         </div>
                                     </CardHeader>
@@ -136,17 +124,6 @@ export default function PendingApprovalPage() {
                                                 </p>
                                             </div>
                                         </div>
-
-                                        {/* Rebrand Notice */}
-                                        {hasReskins && (
-                                            <div className="bg-red-500/10 border border-red-200 rounded-md p-3">
-                                                <p className="text-xs text-red-500">
-                                                    🔄 This order includes {reskinCount} rebrand
-                                                    request{reskinCount > 1 ? "s" : ""} that need
-                                                    processing
-                                                </p>
-                                            </div>
-                                        )}
 
                                         {/* Pricing Info */}
                                         {order.pricing && (

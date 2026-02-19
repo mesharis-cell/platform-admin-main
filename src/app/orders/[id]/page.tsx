@@ -28,7 +28,6 @@ import {
     AwaitingFabricationSection,
     CancelOrderButton,
 } from "./hybrid-sections";
-import { ProcessReskinModal } from "@/components/orders/ProcessReskinModal";
 import { OrderApprovalRequestSubmitBtn } from "@/components/orders/OrderApprovalRequestSubmitBtn";
 import { OrderItemCard } from "@/components/orders/OrderItemCard";
 import { Button } from "@/components/ui/button";
@@ -70,6 +69,7 @@ import {
     Loader2,
     ImagePlus,
     Trash2,
+    Wrench,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
@@ -226,8 +226,6 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
     const { user } = useToken();
     const [progressLoading, setProgressLoading] = useState(false);
     const { data: order, isLoading, refetch } = useAdminOrderDetails(id);
-    const [processModalOpen, setProcessModalOpen] = useState(false);
-    const [selectedReskinData, setSelectedReskinData] = useState<any>(null);
 
     const { data: statusHistory, isLoading: statusHistoryLoading } = useAdminOrderStatusHistory(
         order?.data?.id ? order?.data?.id : ""
@@ -1552,6 +1550,53 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                             </CardContent>
                         </Card>
 
+                        {/* Linked Service Requests */}
+                        {Array.isArray(order?.data?.linked_service_requests) &&
+                            order.data.linked_service_requests.length > 0 && (
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle className="font-mono text-sm flex items-center gap-2">
+                                            <Wrench className="h-4 w-4 text-primary" />
+                                            LINKED SERVICE REQUESTS (
+                                            {order.data.linked_service_requests.length})
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="space-y-2">
+                                        {order.data.linked_service_requests.map((sr: any) => (
+                                            <div
+                                                key={sr.id}
+                                                className="border rounded p-3 bg-muted/20 space-y-2"
+                                            >
+                                                <div className="flex items-center justify-between gap-3">
+                                                    <Link
+                                                        href={`/service-requests/${sr.id}`}
+                                                        className="font-mono text-xs text-primary hover:underline"
+                                                    >
+                                                        {sr.service_request_id}
+                                                    </Link>
+                                                    <div className="flex items-center gap-2">
+                                                        <Badge className="font-mono text-[10px] border">
+                                                            {sr.request_status}
+                                                        </Badge>
+                                                        <Badge className="font-mono text-[10px] border">
+                                                            {sr.commercial_status}
+                                                        </Badge>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center justify-between font-mono text-xs text-muted-foreground">
+                                                    <span>{sr.request_type}</span>
+                                                    <span>
+                                                        {sr.total
+                                                            ? `AED ${Number(sr.total).toFixed(2)}`
+                                                            : "AED —"}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </CardContent>
+                                </Card>
+                            )}
+
                         {/* Order Items */}
                         <Card>
                             <CardHeader>
@@ -1567,17 +1612,6 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                         item={item}
                                         orderId={order?.data?.id}
                                         orderStatus={order?.data?.order_status}
-                                        onProcessReskin={(reskinData) => {
-                                            setSelectedReskinData(reskinData);
-                                            setProcessModalOpen(true);
-                                        }}
-                                        onRejectReskin={(orderItemId) => {
-                                            // TODO: Implement reject and contact client logic
-                                            console.log(
-                                                "Reject reskin for order item:",
-                                                orderItemId
-                                            );
-                                        }}
                                         onRefresh={refetch}
                                     />
                                 ))}
@@ -1721,18 +1755,6 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                     </div>
                 </div>
             </div>
-
-            {selectedReskinData && (
-                <ProcessReskinModal
-                    open={processModalOpen}
-                    onOpenChange={setProcessModalOpen}
-                    orderId={order?.data?.id}
-                    orderItemId={selectedReskinData.orderItemId}
-                    originalAssetName={selectedReskinData.originalAssetName}
-                    targetBrandName={selectedReskinData.targetBrandName}
-                    clientNotes={selectedReskinData.clientNotes}
-                />
-            )}
         </div>
     );
 }

@@ -260,6 +260,7 @@ function AdminSidebarContent() {
     const { state } = useSidebar();
     const { logout, user } = useToken();
     const { platform } = usePlatform();
+    const invoicingEnabled = platform?.features?.enable_kadence_invoicing === true;
 
     const handleSignOut = () => {
         logout();
@@ -273,8 +274,10 @@ function AdminSidebarContent() {
             ...section,
             items: section.items.filter(
                 (item) =>
-                    !item.requiredAnyPermission ||
-                    hasAnyPermission(user, item.requiredAnyPermission)
+                    ((item.href !== "/invoices" || invoicingEnabled) &&
+                        !item.requiredAnyPermission) ||
+                    ((item.href !== "/invoices" || invoicingEnabled) &&
+                        hasAnyPermission(user, item.requiredAnyPermission))
             ),
         }))
         .filter((section) => section.items.length > 0);

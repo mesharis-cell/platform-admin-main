@@ -186,58 +186,6 @@ export function useDeleteAsset() {
     });
 }
 
-export function useSendToMaintenance() {
-    const queryClient = useQueryClient();
-
-    return useMutation({
-        mutationFn: async ({ id }: { id: string; orderId?: string }) => {
-            try {
-                const response = await apiClient.patch(
-                    `/operations/v1/asset/${id}/sent-to-maintenance`
-                );
-                return response.data;
-            } catch (error) {
-                throwApiError(error);
-            }
-        },
-        onSuccess: (_, { id, orderId }) => {
-            queryClient.invalidateQueries({ queryKey: assetKeys.lists() });
-            queryClient.invalidateQueries({ queryKey: assetKeys.detail(id) });
-            if (orderId) {
-                queryClient.invalidateQueries({
-                    queryKey: ["orders", "admin-detail", orderId],
-                });
-            }
-        },
-    });
-}
-
-export function useCompleteMaintenance() {
-    const queryClient = useQueryClient();
-
-    return useMutation({
-        mutationFn: async ({ id }: { id: string; orderId?: string }) => {
-            try {
-                const response = await apiClient.patch(
-                    `/operations/v1/asset/${id}/complete-maintenance`
-                );
-                return response.data;
-            } catch (error) {
-                throwApiError(error);
-            }
-        },
-        onSuccess: (_, { id, orderId }) => {
-            queryClient.invalidateQueries({ queryKey: assetKeys.lists() });
-            queryClient.invalidateQueries({ queryKey: assetKeys.detail(id) });
-            if (orderId) {
-                queryClient.invalidateQueries({
-                    queryKey: ["orders", "admin-detail", orderId],
-                });
-            }
-        },
-    });
-}
-
 export function useAssetVersions(assetId: string | null) {
     return useQuery({
         queryKey: ["asset-versions", assetId],

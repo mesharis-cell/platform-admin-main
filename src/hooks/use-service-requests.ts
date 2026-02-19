@@ -3,6 +3,7 @@
 import { apiClient } from "@/lib/api/api-client";
 import { throwApiError } from "@/lib/utils/throw-api-error";
 import type {
+    ApplyServiceRequestConcessionPayload,
     CancelServiceRequestPayload,
     CreateServiceRequestPayload,
     ListServiceRequestsParams,
@@ -211,6 +212,34 @@ export function useGenerateServiceRequestInvoice() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["invoices"] });
             queryClient.invalidateQueries({ queryKey: serviceRequestKeys.all() });
+        },
+    });
+}
+
+export function useApplyServiceRequestConcession() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({
+            id,
+            payload,
+        }: {
+            id: string;
+            payload: ApplyServiceRequestConcessionPayload;
+        }) => {
+            try {
+                const response = await apiClient.post(
+                    `/operations/v1/service-request/${id}/concession`,
+                    payload
+                );
+                return response.data;
+            } catch (error) {
+                throwApiError(error);
+            }
+        },
+        onSuccess: (_, variables) => {
+            queryClient.invalidateQueries({ queryKey: serviceRequestKeys.detail(variables.id) });
+            queryClient.invalidateQueries({ queryKey: serviceRequestKeys.lists() });
         },
     });
 }

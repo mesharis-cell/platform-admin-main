@@ -52,7 +52,6 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { ConditionHistoryTimeline } from "@/components/conditions/condition-history-timeline";
-import { MaintenanceCompletionDialog } from "@/components/conditions/maintenance-completion-dialog";
 import { AddNotesDialog } from "@/components/conditions/add-notes-dialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EditAssetDialog, type EditAssetTab } from "@/components/assets/edit-asset-dialog";
@@ -819,12 +818,6 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                                         <AddNotesDialog
                                             assetId={asset.id}
                                             assetName={asset.name}
-                                            onSuccess={() => {}}
-                                        />
-                                        <MaintenanceCompletionDialog
-                                            assetId={asset.id}
-                                            assetName={asset.name}
-                                            currentCondition={asset.condition}
                                             onSuccess={() => {}}
                                         />
                                     </div>

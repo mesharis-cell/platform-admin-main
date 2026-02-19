@@ -98,7 +98,7 @@ export function useInvoice(orderId: string) {
 /**
  * List invoices with filtering
  */
-export function useInvoices(params: InvoiceListParams = {}) {
+export function useInvoices(params: InvoiceListParams = {}, enabled: boolean = true) {
     const queryParams = new URLSearchParams();
 
     if (params.company) queryParams.set("company", params.company);
@@ -129,6 +129,7 @@ export function useInvoices(params: InvoiceListParams = {}) {
                 throwApiError(error);
             }
         },
+        enabled,
     });
 }
 
