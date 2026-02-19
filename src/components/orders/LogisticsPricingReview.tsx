@@ -17,7 +17,6 @@ import type { OrderPricing } from "@/types/hybrid-pricing";
 import { useToken } from "@/lib/auth/use-token";
 import { hasPermission } from "@/lib/auth/permissions";
 import { ADMIN_ACTION_PERMISSIONS } from "@/lib/auth/permission-map";
-import { MaintenancePromptCard } from "./MaintenancePromptCard";
 
 interface LogisticsPricingReviewProps {
     orderId: string;
@@ -37,20 +36,8 @@ export function LogisticsPricingReview({
     const canManageServiceItems = canManageLineItems(order?.order_status) && canManagePricing;
 
     const pricing = order?.order_pricing as OrderPricing | undefined;
-    const damagedItemCount =
-        order?.items?.filter((item: any) => {
-            const condition = item?.asset?.condition || item?.condition || "";
-            return condition === "ORANGE" || condition === "RED";
-        }).length || 0;
-
     return (
         <div className="space-y-6">
-            <MaintenancePromptCard
-                damagedItemCount={damagedItemCount}
-                canManage={canManageServiceItems}
-                onAddCustomLine={() => setAddCustomOpen(true)}
-            />
-
             {/* Service Line Items */}
             <Card>
                 <CardHeader>

@@ -30,6 +30,7 @@ import {
 } from "./hybrid-sections";
 import { OrderApprovalRequestSubmitBtn } from "@/components/orders/OrderApprovalRequestSubmitBtn";
 import { OrderItemCard } from "@/components/orders/OrderItemCard";
+import { StatusHistoryTimeline } from "@/components/orders/StatusHistoryTimeline";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -1678,78 +1679,39 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                 </CardTitle>
                             </CardHeader>
                             <CardContent>
-                                {statusHistoryLoading ? (
-                                    <Skeleton className="h-40 w-full" />
-                                ) : (
-                                    <div className="space-y-1 relative">
-                                        {(() => {
-                                            const history = statusHistory?.data?.history || [];
-                                            const currentStatus =
-                                                statusHistory?.data?.current_status ||
-                                                order?.data?.order_status;
-                                            const currentStatusIndex = history.findIndex(
-                                                (entry: any) => entry.status === currentStatus
-                                            );
-                                            const activeIndex =
-                                                currentStatusIndex >= 0 ? currentStatusIndex : 0;
-
-                                            return history.map((entry: any, index: number) => {
-                                                const statusConfig = STATUS_CONFIG[
-                                                    entry.status as keyof typeof STATUS_CONFIG
-                                                ] || {
-                                                    label: entry.status,
-                                                    color: "bg-slate-500/10 text-slate-600 border-slate-500/20",
-                                                    nextStates: [],
-                                                };
-                                                const isLatest = index === activeIndex;
-
-                                                return (
-                                                    <div
-                                                        key={entry.id}
-                                                        className="relative pl-6 pb-4 last:pb-0"
-                                                    >
-                                                        {index < history.length - 1 && (
-                                                            <div className="absolute left-[7px] top-5 bottom-0 w-px bg-border" />
-                                                        )}
-                                                        <div
-                                                            className={`absolute left-0 top-0.5 h-4 w-4 rounded-full border-2 ${
-                                                                isLatest
-                                                                    ? "bg-primary border-primary"
-                                                                    : "bg-muted border-border"
-                                                            }`}
-                                                        />
-                                                        <div>
-                                                            <Badge
-                                                                className={`${statusConfig.color} border font-mono text-[10px] px-2 py-0.5`}
-                                                            >
-                                                                {statusConfig.label}
-                                                            </Badge>
-                                                            <p className="font-mono text-[10px] text-muted-foreground mt-1">
-                                                                {new Date(
-                                                                    entry.timestamp
-                                                                ).toLocaleString("en-US", {
-                                                                    month: "short",
-                                                                    day: "numeric",
-                                                                    hour: "2-digit",
-                                                                    minute: "2-digit",
-                                                                })}
-                                                            </p>
-                                                            <p className="font-mono text-[10px] mt-0.5">
-                                                                {entry.updated_by_user?.name ||
-                                                                    "System"}
-                                                            </p>
-                                                            {entry.notes && (
-                                                                <p className="font-mono text-[10px] text-muted-foreground italic mt-2 p-2 bg-muted/20 rounded border">
-                                                                    {entry.notes}
-                                                                </p>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                );
-                                            });
-                                        })()}
-                                    </div>
-                                )}
+                                {(() => {
+                                    const history = statusHistory?.data?.history || [];
+                                    const currentStatus =
+                                        statusHistory?.data?.current_status ||
+                                        order?.data?.order_status;
+                                    const activeIndex = Math.max(
+                                        0,
+                                        history.findIndex(
+                                            (e: any) => e.status === currentStatus
+                                        )
+                                    );
+                                    const entries = history.map((entry: any, index: number) => {
+                                        const cfg = STATUS_CONFIG[entry.status] || {
+                                            label: entry.status,
+                                            color: "bg-slate-500/10 text-slate-600 border-slate-500/20",
+                                        };
+                                        return {
+                                            id: entry.id,
+                                            label: cfg.label,
+                                            badgeClassName: cfg.color,
+                                            timestamp: entry.timestamp,
+                                            user: entry.updated_by_user?.name || "System",
+                                            note: entry.notes || null,
+                                            isActive: index === activeIndex,
+                                        };
+                                    });
+                                    return (
+                                        <StatusHistoryTimeline
+                                            entries={entries}
+                                            loading={statusHistoryLoading}
+                                        />
+                                    );
+                                })()}
                             </CardContent>
                         </Card>
                     </div>

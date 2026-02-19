@@ -1,5 +1,6 @@
 "use client";
 
+import { StatusHistoryTimeline } from "@/components/orders/StatusHistoryTimeline";
 import { AddCatalogLineItemModal } from "@/components/orders/AddCatalogLineItemModal";
 import { AddCustomLineItemModal } from "@/components/orders/AddCustomLineItemModal";
 import { OrderLineItemsList } from "@/components/orders/OrderLineItemsList";
