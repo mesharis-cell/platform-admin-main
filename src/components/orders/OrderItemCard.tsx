@@ -114,7 +114,7 @@ export function OrderItemCard({ item, orderId, orderStatus, onRefresh }: OrderIt
             }`}
         >
             {/* Thumbnail */}
-            <Link href={`/assets/${item.asset?.id}`} className="flex-shrink-0 block">
+            <Link href={`/assets/${item.asset?.id}`} className="shrink-0 block">
                 <div className="w-14 h-14 rounded overflow-hidden border border-border bg-muted flex items-center justify-center">
                     {thumbnail ? (
                         <img
@@ -163,7 +163,7 @@ export function OrderItemCard({ item, orderId, orderStatus, onRefresh }: OrderIt
                     <div
                         className={`flex items-start gap-2 rounded border p-2 mt-3 font-mono text-xs ${conditionStyle.banner}`}
                     >
-                        <ConditionIcon className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+                        <ConditionIcon className="h-3.5 w-3.5 mt-0.5 shrink-0" />
                         <div>
                             <span className="font-semibold">
                                 {item.asset?.condition === "RED" ? "Damaged" : "Needs attention"}

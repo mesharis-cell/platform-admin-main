@@ -571,35 +571,24 @@ export default function ServiceRequestDetailsPage() {
                                     Status History
                                 </CardTitle>
                             </CardHeader>
-                            <CardContent className="space-y-3">
-                                {request.status_history?.length ? (
-                                    request.status_history.map((entry) => (
-                                        <div key={entry.id} className="rounded-md border p-3">
-                                            <div className="flex items-center justify-between text-sm">
-                                                <p className="font-medium">
-                                                    {(entry.from_status || "NONE").replace(
-                                                        /_/g,
-                                                        " "
-                                                    )}
-                                                    {" -> "}
-                                                    {entry.to_status.replace(/_/g, " ")}
-                                                </p>
-                                                <p className="text-muted-foreground">
-                                                    {new Date(entry.changed_at).toLocaleString()}
-                                                </p>
-                                            </div>
-                                            {entry.note && (
-                                                <p className="text-sm mt-1">{entry.note}</p>
-                                            )}
-                                            <p className="text-xs text-muted-foreground mt-1">
-                                                By:{" "}
-                                                {entry.changed_by_user?.name || entry.changed_by}
-                                            </p>
-                                        </div>
-                                    ))
-                                ) : (
-                                    <p className="text-muted-foreground">No history yet.</p>
-                                )}
+                            <CardContent>
+                                <StatusHistoryTimeline
+                                    entries={(request.status_history || []).map(
+                                        (entry, idx, arr) => ({
+                                            id: entry.id,
+                                            label: entry.from_status
+                                                ? `${entry.from_status.replace(/_/g, " ")} → ${entry.to_status.replace(/_/g, " ")}`
+                                                : entry.to_status.replace(/_/g, " "),
+                                            timestamp: entry.changed_at,
+                                            user:
+                                                entry.changed_by_user?.name ||
+                                                entry.changed_by ||
+                                                null,
+                                            note: entry.note || null,
+                                            isActive: idx === arr.length - 1,
+                                        })
+                                    )}
+                                />
                             </CardContent>
                         </Card>
                     </div>
