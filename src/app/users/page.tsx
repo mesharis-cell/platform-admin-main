@@ -299,26 +299,20 @@ export default function UsersManagementPage() {
     const handleOpenEdit = (user: User) => {
         setEditingUser(user);
 
-        const isClientUser = user.role === "CLIENT";
-        const isCustom = isClientUser
-            ? false
-            : !user.permission_template ||
-              !PERMISSION_TEMPLATES[user.permission_template as PermissionTemplate] ||
-              JSON.stringify([...(user.permissions || [])].sort()) !==
-                  JSON.stringify(
-                      [
-                          ...PERMISSION_TEMPLATES[user.permission_template as PermissionTemplate]
-                              .permissions,
-                      ].sort()
-                  );
-        const resolvedTemplate: PermissionTemplate | "CUSTOM" = isClientUser
-            ? "CLIENT_USER"
-            : isCustom
-              ? "CUSTOM"
-              : (user.permission_template as PermissionTemplate);
-        const resolvedPermissions = isClientUser
-            ? [...PERMISSION_TEMPLATES.CLIENT_USER.permissions]
-            : [...(user.permissions || [])];
+        const isCustom =
+            !user.permission_template ||
+            !PERMISSION_TEMPLATES[user.permission_template as PermissionTemplate] ||
+            JSON.stringify([...(user.permissions || [])].sort()) !==
+                JSON.stringify(
+                    [
+                        ...PERMISSION_TEMPLATES[user.permission_template as PermissionTemplate]
+                            .permissions,
+                    ].sort()
+                );
+        const resolvedTemplate: PermissionTemplate | "CUSTOM" = isCustom
+            ? "CUSTOM"
+            : (user.permission_template as PermissionTemplate);
+        const resolvedPermissions = [...(user.permissions || [])];
 
         setEditFormData({
             name: user.name,
@@ -440,7 +434,12 @@ export default function UsersManagementPage() {
 
             if (isClientUser) {
                 payload.company_id = editFormData.selectedCompany;
-                payload.permission_template = "CLIENT_USER";
+                if (editFormData.permissionTemplate !== "CUSTOM") {
+                    payload.permission_template = editFormData.permissionTemplate;
+                } else {
+                    payload.permission_template = null;
+                    payload.permissions = editFormData.customPermissions;
+                }
             } else {
                 payload.company_id = null;
                 if (editFormData.permissionTemplate !== "CUSTOM") {
@@ -1218,9 +1217,10 @@ export default function UsersManagementPage() {
 
                                     <Separator />
 
-                                    {/* Permission Template - Only for ADMIN/LOGISTICS */}
+                                    {/* Permission Template */}
                                     {(editingUser?.role === "ADMIN" ||
-                                        editingUser?.role === "LOGISTICS") && (
+                                        editingUser?.role === "LOGISTICS" ||
+                                        editingUser?.role === "CLIENT") && (
                                         <div className="space-y-4">
                                             <h3 className="font-semibold text-sm font-mono uppercase flex items-center gap-2">
                                                 <Filter className="h-4 w-4" />
@@ -1251,6 +1251,12 @@ export default function UsersManagementPage() {
                                                             <SelectItem value="LOGISTICS_STAFF">
                                                                 Logistics Template (Operations
                                                                 Access with ★)
+                                                            </SelectItem>
+                                                        )}
+                                                        {editingUser?.role === "CLIENT" && (
+                                                            <SelectItem value="CLIENT_USER">
+                                                                Client Template (Catalog &amp;
+                                                                Orders)
                                                             </SelectItem>
                                                         )}
                                                         <SelectItem value="CUSTOM">
@@ -1420,21 +1426,6 @@ export default function UsersManagementPage() {
                                                         </p>
                                                     </div>
                                                 )}
-                                        </div>
-                                    )}
-
-                                    {/* CLIENT user - No permissions needed */}
-                                    {editingUser?.role === "CLIENT" && (
-                                        <div className="bg-muted/50 rounded-lg p-4 border border-border">
-                                            <h3 className="font-semibold text-sm font-mono uppercase flex items-center gap-2 mb-2">
-                                                <Filter className="h-4 w-4" />
-                                                Permission Configuration
-                                            </h3>
-                                            <p className="text-xs font-mono text-muted-foreground">
-                                                Client users have a fixed set of permissions for
-                                                catalog browsing and ordering. No additional
-                                                configuration needed.
-                                            </p>
                                         </div>
                                     )}
 
