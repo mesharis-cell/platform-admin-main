@@ -4,6 +4,7 @@ import { useState, type ComponentProps, type MouseEvent } from "react";
 import { Printer, ChevronDown, Check } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -12,7 +13,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
-import { printLabel } from "@/lib/label-renderer";
+import { printLabels } from "@/lib/label-renderer";
 import { LABEL_SIZES, getPreferredLabelSize, setPreferredLabelSize } from "@/lib/label-config";
 
 type ButtonProps = ComponentProps<typeof Button>;
@@ -42,6 +43,7 @@ export function PrintQrAction({
 }: PrintQrActionProps) {
     const [isPrinting, setIsPrinting] = useState(false);
     const [selectedSize, setSelectedSize] = useState<string>(getPreferredLabelSize);
+    const [copies, setCopies] = useState<number>(1);
 
     const shouldShowSelector = showSizeSelector ?? !iconOnly;
 
@@ -55,10 +57,14 @@ export function PrintQrAction({
         setIsPrinting(true);
 
         try {
-            await printLabel(
-                { qrCode, assetName: assetName || "Asset", meta },
-                { labelSize: currentLabelSize }
-            );
+            const printCopies = Math.min(20, Math.max(1, Math.floor(copies || 1)));
+            const labels = Array.from({ length: printCopies }, () => ({
+                qrCode,
+                assetName: assetName || "Asset",
+                meta,
+            }));
+
+            await printLabels(labels, { labelSize: currentLabelSize });
         } catch (error) {
             if (error instanceof Error && error.message === "popup_blocked")
                 toast.error("Please allow pop-ups to print QR labels");
@@ -66,6 +72,17 @@ export function PrintQrAction({
         } finally {
             setIsPrinting(false);
         }
+    };
+
+    const handleCopiesChange = (value: string) => {
+        if (!value) {
+            setCopies(1);
+            return;
+        }
+
+        const parsed = Number(value);
+        if (Number.isNaN(parsed)) return;
+        setCopies(Math.min(20, Math.max(1, Math.floor(parsed))));
     };
 
     const handleSizeChange = (sizeId: string) => {
@@ -102,9 +119,21 @@ export function PrintQrAction({
             >
                 <Printer className="h-4 w-4" />
                 {!iconOnly && (
-                    <span className="ml-2">{isPrinting ? "Printing…" : "Print Label"}</span>
+                    <span className="ml-2">{isPrinting ? "Printing…" : "Print Label(s)"}</span>
                 )}
             </Button>
+
+            <Input
+                type="number"
+                min={1}
+                max={20}
+                step={1}
+                value={copies}
+                onChange={(e) => handleCopiesChange(e.target.value)}
+                className="h-9 w-16 px-2 font-mono text-xs"
+                title="Number of copies"
+                disabled={isPrinting}
+            />
 
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
