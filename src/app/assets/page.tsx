@@ -302,7 +302,7 @@ export default function AssetsPage() {
                                     <div className="relative aspect-4/3 bg-muted overflow-hidden">
                                         {asset.images.length > 0 ? (
                                             <Image
-                                                src={asset.images[0]}
+                                                src={asset.images[0].url}
                                                 alt={asset.name}
                                                 fill
                                                 className="object-cover group-hover:scale-105 transition-transform duration-300"
@@ -374,7 +374,7 @@ export default function AssetsPage() {
                                             <div className="relative w-20 h-20 bg-muted rounded-lg overflow-hidden shrink-0">
                                                 {asset.images.length > 0 ? (
                                                     <Image
-                                                        src={asset.images[0]}
+                                                        src={asset.images[0].url}
                                                         alt={asset.name}
                                                         fill
                                                         className="object-cover"

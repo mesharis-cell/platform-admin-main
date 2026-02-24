@@ -204,6 +204,12 @@ const navigationSections: NavSection[] = [
                 icon: Building,
                 requiredAnyPermission: ADMIN_NAV_PERMISSIONS.companies,
             },
+            {
+                name: "Teams",
+                href: "/teams",
+                icon: Users,
+                requiredAnyPermission: ADMIN_NAV_PERMISSIONS.users,
+            },
         ],
     },
     {

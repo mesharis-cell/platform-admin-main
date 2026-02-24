@@ -244,7 +244,7 @@ export function EditAssetDialog({
                     name: formData.name,
                     description: formData.description || null,
                     category: formData.category,
-                    images: [...formData.images, ...newImageUrls],
+                    images: [...formData.images, ...newImageUrls.map((url) => ({ url }))],
                     weight_per_unit: Number(formData.weight_per_unit),
                     dimensions: formData.dimensions,
                     volume_per_unit: Number(formData.volume_per_unit),
@@ -515,23 +515,47 @@ export function EditAssetDialog({
                                     <Label className="font-mono text-xs text-muted-foreground">
                                         Current Photos ({formData.images.length})
                                     </Label>
-                                    <div className="grid grid-cols-3 gap-3">
-                                        {formData.images.map((url, index) => (
+                                    <div className="grid grid-cols-2 gap-3">
+                                        {formData.images.map((img, index) => (
                                             <div
                                                 key={`existing-${index}`}
-                                                className="relative group aspect-square rounded-lg overflow-hidden border border-border"
+                                                className="relative group rounded-lg border border-border overflow-hidden"
                                             >
-                                                <img
-                                                    src={url}
-                                                    alt={`Photo ${index + 1}`}
-                                                    className="w-full h-full object-cover"
+                                                <div className="relative aspect-square">
+                                                    <img
+                                                        src={img.url}
+                                                        alt={`Photo ${index + 1}`}
+                                                        className="w-full h-full object-cover"
+                                                    />
+                                                    <button
+                                                        onClick={() => removeExistingImage(index)}
+                                                        className="absolute top-2 right-2 p-1.5 bg-destructive text-destructive-foreground rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    >
+                                                        <X className="w-3 h-3" />
+                                                    </button>
+                                                </div>
+                                                <input
+                                                    type="text"
+                                                    value={img.note || ""}
+                                                    onChange={(e) =>
+                                                        setFormData((prev) => ({
+                                                            ...prev,
+                                                            images: prev.images.map((im, i) =>
+                                                                i === index
+                                                                    ? {
+                                                                          ...im,
+                                                                          note:
+                                                                              e.target.value ||
+                                                                              undefined,
+                                                                      }
+                                                                    : im
+                                                            ),
+                                                        }))
+                                                    }
+                                                    placeholder="Add a note for this photo..."
+                                                    className="w-full px-2 py-1 text-xs border-t border-border bg-muted/30 focus:outline-none focus:bg-background"
+                                                    maxLength={500}
                                                 />
-                                                <button
-                                                    onClick={() => removeExistingImage(index)}
-                                                    className="absolute top-2 right-2 p-1.5 bg-destructive text-destructive-foreground rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
-                                                >
-                                                    <X className="w-3 h-3" />
-                                                </button>
                                             </div>
                                         ))}
                                     </div>

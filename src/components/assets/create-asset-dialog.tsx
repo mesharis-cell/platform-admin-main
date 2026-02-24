@@ -245,7 +245,7 @@ export function CreateAssetDialog({ open, onOpenChange, onSuccess }: CreateAsset
             // Create asset with uploaded image URLs
             await createMutation.mutateAsync({
                 ...formData,
-                images: imageUrls,
+                images: imageUrls.map((url) => ({ url })),
             } as CreateAssetRequest);
 
             toast.success("Asset created successfully");
