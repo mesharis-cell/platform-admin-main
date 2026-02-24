@@ -69,7 +69,7 @@ export const setPlatformId = (platformId: string | null) => {
 };
 
 export const apiClient = axios.create({
-    // baseURL: "http://localhost:6001/api",
+    // baseURL: "http://localhost:6001",
     baseURL: process.env.NEXT_PUBLIC_API_URL,
     headers: {
         "Content-Type": "application/json",
@@ -142,7 +142,7 @@ apiClient.interceptors.response.use(
             try {
                 // Attempt to refresh the token
                 const response = await axios.post(
-                    `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:6001/api"}/auth/refresh`,
+                    `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:6001"}/auth/refresh`,
                     { refresh_token: refreshToken },
                     { headers: { "Content-Type": "application/json" } }
                 );
