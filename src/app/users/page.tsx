@@ -1,0 +1,1811 @@
+"use client";
+
+import { AdminHeader } from "@/components/admin-header";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
+import { useCompanies } from "@/hooks/use-companies";
+import { useCreateUser, useUpdateUser, useUsers } from "@/hooks/use-users";
+import { cn } from "@/lib/utils";
+import { hasPermission } from "@/lib/auth/permissions";
+import { capitalizeFirstLetter, removeUnderScore } from "@/lib/utils/helper";
+import {
+    PERMISSION_TEMPLATES,
+    PermissionTemplate,
+    User,
+    ADMIN_PERMISSION_GROUPS,
+    LOGISTICS_PERMISSION_GROUPS,
+} from "@/types/auth";
+import {
+    AlertCircle,
+    Ban,
+    CheckCircle,
+    Edit,
+    Filter,
+    Package,
+    Search,
+    UserPlus,
+    Users,
+} from "lucide-react";
+import { useMemo, useState } from "react";
+import { toast } from "sonner";
+import { useToken } from "@/lib/auth/use-token";
+
+export default function UsersManagementPage() {
+    const [searchQuery, setSearchQuery] = useState("");
+    const [role, setRole] = useState<string>("all");
+    const [filterActive, setFilterActive] = useState<string>("all");
+    const { user: AuthUser } = useToken();
+
+    // Create user dialog state
+    const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+    const [newUser, setNewUser] = useState({
+        name: "",
+        email: "",
+        password: "",
+        userType: "" as "admin" | "logistic" | "client" | "",
+        permissionTemplate: "" as PermissionTemplate | "CUSTOM" | "",
+        customPermissions: [] as string[],
+        selectedCompany: null as string | null,
+    });
+
+    // Edit user dialog state
+    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+    const [editingUser, setEditingUser] = useState<User | null>(null);
+    const [editFormData, setEditFormData] = useState({
+        name: "",
+        userType: "" as "ADMIN" | "LOGISTICS" | "CLIENT" | "",
+        permissionTemplate: "" as PermissionTemplate | "CUSTOM" | "",
+        customPermissions: [] as string[],
+        selectedCompany: null as string | null,
+        is_super_admin: false,
+    });
+
+    // Build query params
+    const queryParams = useMemo(() => {
+        const params: Record<string, string> = {};
+        params.limit = "100";
+        if (role !== "all") params.role = role;
+        if (filterActive !== "all") params.is_active = filterActive === "active" ? "true" : "false";
+        if (searchQuery) params.search_term = searchQuery;
+        return params;
+    }, [role, filterActive, searchQuery]);
+
+    // Fetch data
+    const { data: usersData, isLoading: loading } = useUsers(queryParams);
+    const users = usersData?.data || [];
+    const { data: companiesData } = useCompanies({});
+    const companies = companiesData?.data || [];
+
+    // Mutations
+    const createMutation = useCreateUser();
+    const updateMutation = useUpdateUser();
+
+    // Toggle permission
+    const togglePermission = (permission: string) => {
+        setNewUser((prev) => ({
+            ...prev,
+            customPermissions: prev.customPermissions.includes(permission)
+                ? prev.customPermissions.filter((p) => p !== permission)
+                : [...prev.customPermissions, permission],
+        }));
+    };
+
+    // Apply company (for create)
+    const handleCompanyChange = (companyId: string) => {
+        setNewUser((prev) => ({
+            ...prev,
+            selectedCompany: companyId,
+        }));
+    };
+
+    // Apply company (for edit)
+    const handleCompanyChangeEdit = (companyId: string) => {
+        setEditFormData((prev) => ({
+            ...prev,
+            selectedCompany: companyId,
+        }));
+    };
+
+    // Toggle permission (for edit)
+    const togglePermissionEdit = (permission: string) => {
+        setEditFormData((prev) => ({
+            ...prev,
+            customPermissions: prev.customPermissions.includes(permission)
+                ? prev.customPermissions.filter((p) => p !== permission)
+                : [...prev.customPermissions, permission],
+        }));
+    };
+
+    // Get permission groups based on user type
+    const getPermissionGroupsForRole = (userType: "admin" | "logistic" | "client" | "") => {
+        if (userType === "admin") return ADMIN_PERMISSION_GROUPS;
+        if (userType === "logistic") return LOGISTICS_PERMISSION_GROUPS;
+        return {}; // CLIENT has no permissions
+    };
+
+    // Get non-wildcard permissions from a group
+    const getNonWildcardPermissions = (permissions: string[]) => {
+        return permissions.filter((p) => !p.endsWith(":*"));
+    };
+
+    // Get all non-wildcard permissions from role groups
+    const getAllPermissionsForRole = (userType: "admin" | "logistic" | "client" | "") => {
+        const groups = getPermissionGroupsForRole(userType);
+        const allPerms: string[] = [];
+        Object.values(groups).forEach((permissions) => {
+            allPerms.push(...getNonWildcardPermissions(permissions));
+        });
+        return allPerms;
+    };
+
+    // Check if all permissions in a module are selected
+    const isModuleAllSelected = (
+        moduleName: string,
+        permissions: string[],
+        selectedPermissions: string[]
+    ) => {
+        const nonWildcard = getNonWildcardPermissions(permissions);
+        const wildcardPerm = permissions.find((p) => p.endsWith(":*"));
+        // If wildcard is selected, module is "all"
+        if (wildcardPerm && selectedPermissions.includes(wildcardPerm)) return true;
+        // Otherwise check if all non-wildcard perms are selected
+        return nonWildcard.every((p) => selectedPermissions.includes(p));
+    };
+
+    // Toggle all permissions in a module
+    const toggleModuleAll = (
+        moduleName: string,
+        permissions: string[],
+        isCurrentlyAll: boolean
+    ) => {
+        const wildcardPerm = permissions.find((p) => p.endsWith(":*"));
+        const nonWildcard = getNonWildcardPermissions(permissions);
+
+        setNewUser((prev) => {
+            let newPerms = [...prev.customPermissions];
+
+            if (isCurrentlyAll) {
+                // Unselect all in module
+                newPerms = newPerms.filter((p) => !permissions.includes(p));
+            } else {
+                // Select all - add wildcard if exists, otherwise add all individual permissions
+                if (wildcardPerm) {
+                    // Remove individual perms, add wildcard
+                    newPerms = newPerms.filter((p) => !nonWildcard.includes(p));
+                    if (!newPerms.includes(wildcardPerm)) newPerms.push(wildcardPerm);
+                } else {
+                    // Add all non-wildcard permissions
+                    nonWildcard.forEach((p) => {
+                        if (!newPerms.includes(p)) newPerms.push(p);
+                    });
+                }
+            }
+            return { ...prev, customPermissions: newPerms };
+        });
+    };
+
+    // Toggle all permissions in a module (for edit)
+    const toggleModuleAllEdit = (
+        moduleName: string,
+        permissions: string[],
+        isCurrentlyAll: boolean
+    ) => {
+        const wildcardPerm = permissions.find((p) => p.endsWith(":*"));
+        const nonWildcard = getNonWildcardPermissions(permissions);
+
+        setEditFormData((prev) => {
+            let newPerms = [...prev.customPermissions];
+
+            if (isCurrentlyAll) {
+                // Unselect all in module
+                newPerms = newPerms.filter((p) => !permissions.includes(p));
+            } else {
+                // Select all - add wildcard if exists
+                if (wildcardPerm) {
+                    newPerms = newPerms.filter((p) => !nonWildcard.includes(p));
+                    if (!newPerms.includes(wildcardPerm)) newPerms.push(wildcardPerm);
+                } else {
+                    nonWildcard.forEach((p) => {
+                        if (!newPerms.includes(p)) newPerms.push(p);
+                    });
+                }
+            }
+            return { ...prev, customPermissions: newPerms };
+        });
+    };
+
+    // Apply template (for create)
+    const handleTemplateChange = (value: string) => {
+        setNewUser((prev) => {
+            let newCustomPermissions = prev.customPermissions;
+
+            if (value === "CUSTOM") {
+                // Populate with all permissions for the role (all selected by default)
+                newCustomPermissions = getAllPermissionsForRole(prev.userType);
+            } else if (value !== "") {
+                // Load template permissions (wildcards for each module)
+                const groups = getPermissionGroupsForRole(prev.userType);
+                const wildcards = Object.values(groups)
+                    .map((perms) => perms.find((p) => p.endsWith(":*")))
+                    .filter(Boolean) as string[];
+                newCustomPermissions = wildcards;
+            }
+
+            return {
+                ...prev,
+                permissionTemplate: value as PermissionTemplate | "CUSTOM",
+                customPermissions: newCustomPermissions,
+            };
+        });
+    };
+
+    // Apply template (for edit)
+    const handleTemplateChangeEdit = (value: string) => {
+        setEditFormData((prev) => {
+            let newCustomPermissions = prev.customPermissions;
+            const role = editingUser?.role;
+            const userType =
+                role === "ADMIN" ? "admin" : role === "LOGISTICS" ? "logistic" : "client";
+
+            if (value === "CUSTOM") {
+                // Populate with all permissions for the role (all selected by default)
+                newCustomPermissions = getAllPermissionsForRole(userType);
+            } else if (value !== "") {
+                // Load template permissions (wildcards for each module)
+                const groups = getPermissionGroupsForRole(userType);
+                const wildcards = Object.values(groups)
+                    .map((perms) => perms.find((p) => p.endsWith(":*")))
+                    .filter(Boolean) as string[];
+                newCustomPermissions = wildcards;
+            }
+
+            return {
+                ...prev,
+                permissionTemplate: value as PermissionTemplate | "CUSTOM",
+                customPermissions: newCustomPermissions,
+            };
+        });
+    };
+
+    // Open edit dialog
+    const handleOpenEdit = (user: User) => {
+        setEditingUser(user);
+
+        const isCustom =
+            !user.permission_template ||
+            !PERMISSION_TEMPLATES[user.permission_template as PermissionTemplate] ||
+            JSON.stringify([...(user.permissions || [])].sort()) !==
+                JSON.stringify(
+                    [
+                        ...PERMISSION_TEMPLATES[user.permission_template as PermissionTemplate]
+                            .permissions,
+                    ].sort()
+                );
+        const resolvedTemplate: PermissionTemplate | "CUSTOM" = isCustom
+            ? "CUSTOM"
+            : (user.permission_template as PermissionTemplate);
+        const resolvedPermissions = [...(user.permissions || [])];
+
+        setEditFormData({
+            name: user.name,
+            userType: user.role,
+            permissionTemplate: resolvedTemplate,
+            customPermissions: resolvedPermissions,
+            selectedCompany: user.company?.id || null,
+            is_super_admin: user.is_super_admin ?? false,
+        });
+        setIsEditDialogOpen(true);
+    };
+
+    // Create user
+    const handleCreateUser = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        // Validation
+        if (!newUser.userType) {
+            toast.error("Please select user type (Admin, Logistic, or Client)");
+            return;
+        }
+
+        if (newUser.userType === "admin" || newUser.userType === "logistic") {
+            if (newUser.permissionTemplate === "CUSTOM" && newUser.customPermissions.length === 0) {
+                toast.error("Please select at least one permission for custom user");
+                return;
+            }
+        }
+
+        if (newUser.userType === "client") {
+            if (!newUser.selectedCompany) {
+                toast.error("CLIENT_USER must belong to a company");
+                return;
+            }
+        }
+
+        try {
+            // Build payload
+            const payload: any = {
+                name: newUser.name,
+                email: newUser.email,
+                password: newUser.password,
+                role:
+                    newUser.userType === "admin"
+                        ? "ADMIN"
+                        : newUser.userType === "logistic"
+                          ? "LOGISTICS"
+                          : "CLIENT",
+                is_active: true,
+            };
+
+            // If using template
+            if (newUser.permissionTemplate !== "CUSTOM") {
+                payload.permission_template = newUser.permissionTemplate;
+                // For companies: Use form selection
+                payload.company_id =
+                    newUser.userType === "admin" || newUser.userType === "logistic"
+                        ? null
+                        : newUser.selectedCompany;
+            } else {
+                // Custom permissions
+                payload.permission_template = null;
+                payload.permissions = newUser.customPermissions;
+                payload.company_id =
+                    newUser.userType === "admin" || newUser.userType === "logistic"
+                        ? null
+                        : newUser.selectedCompany;
+            }
+
+            await createMutation.mutateAsync(payload);
+            toast.success("User created successfully");
+            setIsCreateDialogOpen(false);
+            // Reset form
+            setNewUser({
+                name: "",
+                email: "",
+                password: "",
+                userType: "",
+                permissionTemplate: "",
+                customPermissions: [],
+                selectedCompany: null,
+            });
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Failed to create user");
+        }
+    };
+
+    // Update user
+    const handleUpdateUser = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        if (!editingUser) return;
+        const isClientUser = editingUser.role === "CLIENT";
+
+        // Validation
+        if (!isClientUser && !editFormData.permissionTemplate) {
+            toast.error("Please select a permission template or custom");
+            return;
+        }
+
+        if (
+            !isClientUser &&
+            editFormData.permissionTemplate === "CUSTOM" &&
+            editFormData.customPermissions.length === 0
+        ) {
+            toast.error("Please select at least one permission for custom user");
+            return;
+        }
+        if (isClientUser && !editFormData.selectedCompany) {
+            toast.error("CLIENT_USER must belong to a company");
+            return;
+        }
+
+        try {
+            // Build payload
+            const payload: any = {
+                name: editFormData.name,
+            };
+
+            if (isClientUser) {
+                payload.company_id = editFormData.selectedCompany;
+                if (editFormData.permissionTemplate !== "CUSTOM") {
+                    payload.permission_template = editFormData.permissionTemplate;
+                } else {
+                    payload.permission_template = null;
+                    payload.permissions = editFormData.customPermissions;
+                }
+            } else {
+                payload.company_id = null;
+                if (editFormData.permissionTemplate !== "CUSTOM") {
+                    payload.permission_template = editFormData.permissionTemplate;
+                } else {
+                    payload.permission_template = null;
+                    payload.permissions = editFormData.customPermissions;
+                }
+            }
+
+            // Include super admin toggle if current user is super admin
+            if (AuthUser?.is_super_admin) {
+                payload.is_super_admin = editFormData.is_super_admin;
+            }
+
+            await updateMutation.mutateAsync({ userId: editingUser.id, data: payload });
+            toast.success("User updated successfully");
+            setIsEditDialogOpen(false);
+            setEditingUser(null);
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Failed to update user");
+        }
+    };
+
+    // Deactivate user
+    const handleDeactivate = async (userId: string) => {
+        try {
+            await updateMutation.mutateAsync({ userId, data: { is_active: false } });
+            toast.success("User deactivated successfully");
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Failed to deactivate user");
+        }
+    };
+
+    // Reactivate user
+    const handleReactivate = async (userId: string) => {
+        try {
+            await updateMutation.mutateAsync({ userId, data: { is_active: true } });
+            toast.success("User reactivated successfully");
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Failed to reactivate user");
+        }
+    };
+
+    return (
+        <div className="min-h-screen bg-background">
+            <AdminHeader
+                icon={Users}
+                title="USER MANAGEMENT"
+                description="Create · Permissions · Access Control"
+                stats={
+                    usersData ? { label: "TOTAL USERS", value: usersData.meta.total } : undefined
+                }
+            />
+
+            {/* Main Content */}
+            <main className="container mx-auto px-6 py-8">
+                {/* Controls Bar */}
+                <div className="flex flex-col lg:flex-row gap-4 mb-8">
+                    {/* Search */}
+                    <div className="flex-1 relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            placeholder="Search by name or email..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="pl-10 font-mono"
+                        />
+                    </div>
+
+                    {/* Filters */}
+                    <div className="flex gap-2">
+                        <Select value={role} onValueChange={setRole}>
+                            <SelectTrigger className="w-[180px] font-mono">
+                                <SelectValue placeholder="Filter by role" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Roles</SelectItem>
+                                <SelectItem value="ADMIN">Admin</SelectItem>
+                                <SelectItem value="LOGISTICS">Logistics</SelectItem>
+                                <SelectItem value="CLIENT">Client</SelectItem>
+                            </SelectContent>
+                        </Select>
+
+                        <Select value={filterActive} onValueChange={setFilterActive}>
+                            <SelectTrigger className="w-[150px] font-mono">
+                                <SelectValue placeholder="Filter by status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Status</SelectItem>
+                                <SelectItem value="active">Active</SelectItem>
+                                <SelectItem value="inactive">Inactive</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    {/* Create User Button */}
+                    <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+                        <DialogTrigger asChild>
+                            <Button className="font-mono uppercase tracking-wider gap-2">
+                                <UserPlus className="h-4 w-4" />
+                                Create User
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-3xl max-h-[90vh]">
+                            <DialogHeader>
+                                <DialogTitle className="font-mono uppercase">
+                                    Create New User
+                                </DialogTitle>
+                                <DialogDescription className="font-mono text-xs">
+                                    Configure user account, permissions, and company access
+                                </DialogDescription>
+                            </DialogHeader>
+
+                            <ScrollArea className="max-h-[calc(90vh-120px)]">
+                                <form onSubmit={handleCreateUser} className="space-y-6 px-1">
+                                    {/* Basic Information */}
+                                    <div className="space-y-4">
+                                        <h3 className="font-semibold text-sm font-mono uppercase flex items-center gap-2">
+                                            <UserPlus className="h-4 w-4" />
+                                            Basic Information
+                                        </h3>
+
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <Label
+                                                    htmlFor="name"
+                                                    className="font-mono uppercase text-xs"
+                                                >
+                                                    Full Name *
+                                                </Label>
+                                                <Input
+                                                    id="name"
+                                                    value={newUser.name}
+                                                    onChange={(e) =>
+                                                        setNewUser({
+                                                            ...newUser,
+                                                            name: e.target.value,
+                                                        })
+                                                    }
+                                                    required
+                                                    className="font-mono"
+                                                    placeholder="John Doe"
+                                                />
+                                            </div>
+                                            <div>
+                                                <Label
+                                                    htmlFor="email"
+                                                    className="font-mono uppercase text-xs"
+                                                >
+                                                    Email Address *
+                                                </Label>
+                                                <Input
+                                                    id="email"
+                                                    type="email"
+                                                    value={newUser.email}
+                                                    onChange={(e) =>
+                                                        setNewUser({
+                                                            ...newUser,
+                                                            email: e.target.value,
+                                                        })
+                                                    }
+                                                    required
+                                                    className="font-mono"
+                                                    placeholder="user@company.com"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <Label
+                                                htmlFor="password"
+                                                className="font-mono uppercase text-xs"
+                                            >
+                                                Temporary Password *
+                                            </Label>
+                                            <Input
+                                                id="password"
+                                                type="password"
+                                                value={newUser.password}
+                                                onChange={(e) =>
+                                                    setNewUser({
+                                                        ...newUser,
+                                                        password: e.target.value,
+                                                    })
+                                                }
+                                                required
+                                                minLength={8}
+                                                className="font-mono"
+                                                placeholder="Min 8 characters"
+                                            />
+                                            <p className="text-xs text-muted-foreground mt-1 font-mono">
+                                                User should change this password after first login
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <Separator />
+
+                                    {/* User Type Selector */}
+                                    <div className="space-y-4">
+                                        <h3 className="font-semibold text-sm font-mono uppercase flex items-center gap-2">
+                                            <Filter className="h-4 w-4" />
+                                            User Type
+                                        </h3>
+
+                                        <div className="grid grid-cols-3 gap-4">
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setNewUser((prev) => ({
+                                                        ...prev,
+                                                        userType: "admin",
+                                                        // Default for Admin
+                                                        permissionTemplate: "PLATFORM_ADMIN",
+                                                        selectedCompany: null,
+                                                    }));
+                                                }}
+                                                className={cn(
+                                                    "p-4 border-2 rounded-lg text-left transition-all",
+                                                    newUser.userType === "admin"
+                                                        ? "border-primary bg-primary/5"
+                                                        : "border-border hover:border-primary/50"
+                                                )}
+                                            >
+                                                <div className="font-mono font-bold text-sm mb-1">
+                                                    ADMIN USER
+                                                </div>
+                                                <div className="text-xs text-muted-foreground">
+                                                    Platform Admin or A2 Staff with wildcard access
+                                                </div>
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setNewUser((prev) => ({
+                                                        ...prev,
+                                                        userType: "logistic",
+                                                        // Default for Logistic
+                                                        permissionTemplate: "LOGISTICS_STAFF",
+                                                        selectedCompany: null,
+                                                    }));
+                                                }}
+                                                className={cn(
+                                                    "p-4 border-2 rounded-lg text-left transition-all",
+                                                    newUser.userType === "logistic"
+                                                        ? "border-primary bg-primary/5"
+                                                        : "border-border hover:border-primary/50"
+                                                )}
+                                            >
+                                                <div className="font-mono font-bold text-sm mb-1">
+                                                    LOGISTICS USER
+                                                </div>
+                                                <div className="text-xs text-muted-foreground">
+                                                    Warehouse & Inventory Staff
+                                                </div>
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setNewUser((prev) => ({
+                                                        ...prev,
+                                                        userType: "client",
+                                                        permissionTemplate: "CLIENT_USER",
+                                                        selectedCompany: null,
+                                                    }));
+                                                }}
+                                                className={cn(
+                                                    "p-4 border-2 rounded-lg text-left transition-all",
+                                                    newUser.userType === "client"
+                                                        ? "border-primary bg-primary/5"
+                                                        : "border-border hover:border-primary/50"
+                                                )}
+                                            >
+                                                <div className="font-mono font-bold text-sm mb-1">
+                                                    CLIENT USER
+                                                </div>
+                                                <div className="text-xs text-muted-foreground">
+                                                    Company-specific user with limited access
+                                                </div>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {newUser.userType && (
+                                        <>
+                                            {/* Permission Configuration Section - Only for ADMIN and LOGISTICS */}
+                                            {(newUser.userType === "admin" ||
+                                                newUser.userType === "logistic") && (
+                                                <div className="space-y-4">
+                                                    <h3 className="font-semibold text-sm font-mono uppercase flex items-center gap-2">
+                                                        <Filter className="h-4 w-4" />
+                                                        Permission Configuration
+                                                    </h3>
+
+                                                    <div>
+                                                        <Label
+                                                            htmlFor="template"
+                                                            className="font-mono uppercase text-xs"
+                                                        >
+                                                            Permission Template *
+                                                        </Label>
+                                                        <Select
+                                                            key={newUser.userType}
+                                                            value={newUser.permissionTemplate}
+                                                            onValueChange={handleTemplateChange}
+                                                        >
+                                                            <SelectTrigger className="font-mono">
+                                                                <SelectValue placeholder="Select template or custom" />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                {newUser.userType === "admin" && (
+                                                                    <SelectItem value="PLATFORM_ADMIN">
+                                                                        Admin Template (Full Access
+                                                                        with ★)
+                                                                    </SelectItem>
+                                                                )}
+                                                                {newUser.userType ===
+                                                                    "logistic" && (
+                                                                    <SelectItem value="LOGISTICS_STAFF">
+                                                                        Logistics Template
+                                                                        (Operations Access with ★)
+                                                                    </SelectItem>
+                                                                )}
+                                                                <SelectItem value="CUSTOM">
+                                                                    Custom (Select Individual
+                                                                    Permissions)
+                                                                </SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
+
+                                                    {/* Custom Permissions Selector - Only show for CUSTOM */}
+                                                    {newUser.permissionTemplate === "CUSTOM" && (
+                                                        <div className="space-y-4 border border-border rounded-lg p-4 bg-muted/30">
+                                                            <div className="flex items-center justify-between">
+                                                                <Label className="font-mono uppercase text-xs">
+                                                                    Select Permissions by Module
+                                                                </Label>
+                                                                <Badge
+                                                                    variant="outline"
+                                                                    className="font-mono text-xs"
+                                                                >
+                                                                    {
+                                                                        newUser.customPermissions
+                                                                            .length
+                                                                    }{" "}
+                                                                    selected
+                                                                </Badge>
+                                                            </div>
+
+                                                            <ScrollArea className="h-[300px] pr-4">
+                                                                <div className="space-y-4">
+                                                                    {Object.entries(
+                                                                        getPermissionGroupsForRole(
+                                                                            newUser.userType
+                                                                        )
+                                                                    ).map(
+                                                                        ([
+                                                                            moduleName,
+                                                                            permissions,
+                                                                        ]) => {
+                                                                            const nonWildcard =
+                                                                                getNonWildcardPermissions(
+                                                                                    permissions
+                                                                                );
+                                                                            const isAllSelected =
+                                                                                isModuleAllSelected(
+                                                                                    moduleName,
+                                                                                    permissions,
+                                                                                    newUser.customPermissions
+                                                                                );
+                                                                            const wildcardPerm =
+                                                                                permissions.find(
+                                                                                    (p) =>
+                                                                                        p.endsWith(
+                                                                                            ":*"
+                                                                                        )
+                                                                                );
+
+                                                                            return (
+                                                                                <div
+                                                                                    key={moduleName}
+                                                                                    className="space-y-2 border-b border-border pb-3 last:border-0"
+                                                                                >
+                                                                                    {/* Module header with "All" checkbox */}
+                                                                                    <div className="flex items-center justify-between">
+                                                                                        <h4 className="font-mono text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                                                                                            {
+                                                                                                moduleName
+                                                                                            }
+                                                                                            {isAllSelected &&
+                                                                                                wildcardPerm && (
+                                                                                                    <span className="text-primary">
+                                                                                                        ★
+                                                                                                    </span>
+                                                                                                )}
+                                                                                        </h4>
+                                                                                        <div className="flex items-center gap-2">
+                                                                                            <Checkbox
+                                                                                                id={`all-${moduleName}`}
+                                                                                                checked={
+                                                                                                    isAllSelected
+                                                                                                }
+                                                                                                onCheckedChange={() =>
+                                                                                                    toggleModuleAll(
+                                                                                                        moduleName,
+                                                                                                        permissions,
+                                                                                                        isAllSelected
+                                                                                                    )
+                                                                                                }
+                                                                                            />
+                                                                                            <Label
+                                                                                                htmlFor={`all-${moduleName}`}
+                                                                                                className="text-xs font-mono cursor-pointer text-primary"
+                                                                                            >
+                                                                                                All
+                                                                                            </Label>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                    {/* Individual permissions */}
+                                                                                    <div className="grid grid-cols-2 gap-2 ml-2">
+                                                                                        {nonWildcard.map(
+                                                                                            (
+                                                                                                permission
+                                                                                            ) => (
+                                                                                                <div
+                                                                                                    key={
+                                                                                                        permission
+                                                                                                    }
+                                                                                                    className="flex items-center space-x-2"
+                                                                                                >
+                                                                                                    <Checkbox
+                                                                                                        id={
+                                                                                                            permission
+                                                                                                        }
+                                                                                                        checked={
+                                                                                                            newUser.customPermissions.includes(
+                                                                                                                permission
+                                                                                                            ) ||
+                                                                                                            (wildcardPerm &&
+                                                                                                                newUser.customPermissions.includes(
+                                                                                                                    wildcardPerm
+                                                                                                                ))
+                                                                                                        }
+                                                                                                        onCheckedChange={() =>
+                                                                                                            togglePermission(
+                                                                                                                permission
+                                                                                                            )
+                                                                                                        }
+                                                                                                        disabled={
+                                                                                                            wildcardPerm &&
+                                                                                                            newUser.customPermissions.includes(
+                                                                                                                wildcardPerm
+                                                                                                            )
+                                                                                                        }
+                                                                                                    />
+                                                                                                    <Label
+                                                                                                        htmlFor={
+                                                                                                            permission
+                                                                                                        }
+                                                                                                        className={cn(
+                                                                                                            "text-xs font-mono cursor-pointer",
+                                                                                                            wildcardPerm &&
+                                                                                                                newUser.customPermissions.includes(
+                                                                                                                    wildcardPerm
+                                                                                                                ) &&
+                                                                                                                "text-muted-foreground"
+                                                                                                        )}
+                                                                                                    >
+                                                                                                        {removeUnderScore(
+                                                                                                            permission.split(
+                                                                                                                ":"
+                                                                                                            )[1]
+                                                                                                        )}
+                                                                                                    </Label>
+                                                                                                </div>
+                                                                                            )
+                                                                                        )}
+                                                                                    </div>
+                                                                                </div>
+                                                                            );
+                                                                        }
+                                                                    )}
+                                                                </div>
+                                                            </ScrollArea>
+
+                                                            {newUser.customPermissions.length ===
+                                                                0 && (
+                                                                <div className="flex items-center gap-2 text-amber-600 text-xs font-mono">
+                                                                    <AlertCircle className="h-4 w-4" />
+                                                                    No permissions selected - user
+                                                                    won't be able to access anything
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
+
+                                                    {/* Template Preview - for non-custom */}
+                                                    {newUser.permissionTemplate &&
+                                                        newUser.permissionTemplate !== "CUSTOM" && (
+                                                            <div className="bg-muted/50 rounded-lg p-3 border border-border">
+                                                                <p className="text-xs font-mono text-muted-foreground">
+                                                                    <span className="text-primary">
+                                                                        ★
+                                                                    </span>{" "}
+                                                                    Template includes full access
+                                                                    (wildcard) for all modules
+                                                                </p>
+                                                            </div>
+                                                        )}
+                                                </div>
+                                            )}
+
+                                            {/* CLIENT user - No permissions needed */}
+                                            {newUser.userType === "client" && (
+                                                <div className="bg-muted/50 rounded-lg p-4 border border-border">
+                                                    <h3 className="font-semibold text-sm font-mono uppercase flex items-center gap-2 mb-2">
+                                                        <Filter className="h-4 w-4" />
+                                                        Permission Configuration
+                                                    </h3>
+                                                    <p className="text-xs font-mono text-muted-foreground">
+                                                        Client users have a fixed set of permissions
+                                                        for catalog browsing and ordering. No
+                                                        additional configuration needed.
+                                                    </p>
+                                                </div>
+                                            )}
+
+                                            {/* Separator between sections */}
+                                            <Separator />
+
+                                            {/* Summary */}
+                                            {/* Company Access - Both Admin and Client */}
+                                            <div className="space-y-4">
+                                                <h3 className="font-semibold text-sm font-mono uppercase flex items-center gap-2">
+                                                    <Package className="h-4 w-4" />
+                                                    Company Access Scope
+                                                </h3>
+
+                                                {newUser.userType === "admin" ||
+                                                newUser.userType === "logistic" ? (
+                                                    <>
+                                                        <div className="flex items-center space-x-2">
+                                                            <Checkbox
+                                                                id="allCompanies"
+                                                                checked={true}
+                                                                disabled={true}
+                                                            />
+                                                            <Label
+                                                                htmlFor="allCompanies"
+                                                                className="font-mono text-sm cursor-pointer"
+                                                            >
+                                                                All Companies (*) - Full Platform
+                                                                Access
+                                                            </Label>
+                                                        </div>
+                                                        <p className="text-xs text-muted-foreground font-mono">
+                                                            {newUser.userType === "admin"
+                                                                ? "Admin"
+                                                                : "Logistic"}{" "}
+                                                            users have access to all companies by
+                                                            default
+                                                        </p>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                                                            <div className="flex items-center gap-2 text-yellow-700">
+                                                                <AlertCircle className="h-4 w-4" />
+                                                                <p className="text-xs font-mono font-semibold">
+                                                                    CLIENT_USER must belong to a
+                                                                    company
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                        <div className="space-y-2 border border-border rounded-lg p-4 bg-muted/30">
+                                                            <Label className="font-mono uppercase text-xs">
+                                                                Select Company *
+                                                            </Label>
+                                                            <div className="space-y-2">
+                                                                {companies.map((company) => (
+                                                                    <div
+                                                                        key={company.id}
+                                                                        className="flex items-center space-x-2"
+                                                                    >
+                                                                        <input
+                                                                            type="radio"
+                                                                            id={`company-${company.id}`}
+                                                                            name="client-company"
+                                                                            checked={
+                                                                                newUser.selectedCompany ===
+                                                                                company.id
+                                                                            }
+                                                                            onChange={() =>
+                                                                                handleCompanyChange(
+                                                                                    company.id
+                                                                                )
+                                                                            }
+                                                                            className="h-4 w-4"
+                                                                        />
+                                                                        <Label
+                                                                            htmlFor={`company-${company.id}`}
+                                                                            className="text-sm font-mono cursor-pointer flex-1"
+                                                                        >
+                                                                            {company.name}
+                                                                        </Label>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+
+                                                            {companies.length === 0 && (
+                                                                <p className="text-xs text-muted-foreground font-mono italic">
+                                                                    No companies available. Create
+                                                                    companies first.
+                                                                </p>
+                                                            )}
+
+                                                            {!newUser.selectedCompany &&
+                                                                companies.length > 0 && (
+                                                                    <div className="flex items-center gap-2 text-amber-600 text-xs font-mono mt-2">
+                                                                        <AlertCircle className="h-4 w-4" />
+                                                                        Please select a company
+                                                                    </div>
+                                                                )}
+                                                        </div>
+                                                    </>
+                                                )}
+                                            </div>
+
+                                            <Separator />
+
+                                            {/* Summary */}
+                                            <div className="bg-muted/50 rounded-lg p-4 border border-border">
+                                                <h4 className="font-mono text-xs font-semibold uppercase mb-3">
+                                                    Configuration Summary
+                                                </h4>
+                                                <div className="space-y-2 text-xs font-mono">
+                                                    <div className="flex justify-between">
+                                                        <span className="text-muted-foreground">
+                                                            User Type:
+                                                        </span>
+                                                        <span className="font-semibold">
+                                                            {newUser.userType
+                                                                ? newUser.userType.toUpperCase()
+                                                                : "Not selected"}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex justify-between">
+                                                        <span className="text-muted-foreground">
+                                                            Template:
+                                                        </span>
+                                                        <span className="font-semibold">
+                                                            {newUser.permissionTemplate || "None"}
+                                                        </span>
+                                                    </div>
+
+                                                    {newUser.userType !== "client" && (
+                                                        <div className="flex justify-between">
+                                                            <span className="text-muted-foreground">
+                                                                Permissions:
+                                                            </span>
+                                                            <span className="font-semibold">
+                                                                {newUser.permissionTemplate ===
+                                                                "CUSTOM"
+                                                                    ? `${newUser.customPermissions.length} custom`
+                                                                    : newUser.permissionTemplate
+                                                                      ? `${PERMISSION_TEMPLATES[newUser.permissionTemplate as PermissionTemplate]?.permissions.length} from template`
+                                                                      : "0"}
+                                                            </span>
+                                                        </div>
+                                                    )}
+
+                                                    <div className="flex justify-between">
+                                                        <span className="text-muted-foreground">
+                                                            Company Access:
+                                                        </span>
+                                                        <span className="font-semibold">
+                                                            {newUser.userType === "admin" ||
+                                                            newUser.userType === "logistic"
+                                                                ? "All Companies (*)"
+                                                                : newUser.selectedCompany
+                                                                  ? companies.find(
+                                                                        (c) =>
+                                                                            c.id ===
+                                                                            newUser.selectedCompany
+                                                                    )?.name || "Unknown"
+                                                                  : "None"}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Actions */}
+                                            <div className="flex gap-2 pt-4">
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    onClick={() => setIsCreateDialogOpen(false)}
+                                                    disabled={createMutation.isPending}
+                                                    className="flex-1 font-mono"
+                                                >
+                                                    Cancel
+                                                </Button>
+                                                <Button
+                                                    type="submit"
+                                                    disabled={createMutation.isPending}
+                                                    className="flex-1 font-mono uppercase tracking-wider"
+                                                >
+                                                    {createMutation.isPending
+                                                        ? "Creating..."
+                                                        : "Create User"}
+                                                </Button>
+                                            </div>
+                                        </>
+                                    )}
+                                </form>
+                            </ScrollArea>
+                        </DialogContent>
+                    </Dialog>
+
+                    {/* Edit User Dialog */}
+                    <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+                        <DialogContent className="max-w-3xl max-h-[90vh]">
+                            <DialogHeader>
+                                <DialogTitle className="font-mono uppercase">
+                                    Edit User: {editingUser?.name}
+                                </DialogTitle>
+                                <DialogDescription className="font-mono text-xs">
+                                    Update permissions and company access for {editingUser?.email}
+                                </DialogDescription>
+                            </DialogHeader>
+
+                            <ScrollArea className="max-h-[calc(90vh-120px)]">
+                                <form onSubmit={handleUpdateUser} className="space-y-6 px-1">
+                                    {/* Basic Information */}
+                                    <div className="space-y-4">
+                                        <h3 className="font-semibold text-sm font-mono uppercase flex items-center gap-2">
+                                            <UserPlus className="h-4 w-4" />
+                                            Basic Information
+                                        </h3>
+
+                                        <div>
+                                            <Label
+                                                htmlFor="edit-name"
+                                                className="font-mono uppercase text-xs"
+                                            >
+                                                Full Name
+                                            </Label>
+                                            <Input
+                                                id="edit-name"
+                                                value={editFormData.name}
+                                                onChange={(e) =>
+                                                    setEditFormData({
+                                                        ...editFormData,
+                                                        name: e.target.value,
+                                                    })
+                                                }
+                                                required
+                                                className="font-mono"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <Label className="font-mono uppercase text-xs text-muted-foreground">
+                                                Email Address (Cannot be changed)
+                                            </Label>
+                                            <Input
+                                                value={editingUser?.email || ""}
+                                                disabled
+                                                className="font-mono bg-muted"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <Separator />
+
+                                    {/* Permission Template */}
+                                    {(editingUser?.role === "ADMIN" ||
+                                        editingUser?.role === "LOGISTICS" ||
+                                        editingUser?.role === "CLIENT") && (
+                                        <div className="space-y-4">
+                                            <h3 className="font-semibold text-sm font-mono uppercase flex items-center gap-2">
+                                                <Filter className="h-4 w-4" />
+                                                Permission Configuration
+                                            </h3>
+
+                                            <div>
+                                                <Label
+                                                    htmlFor="edit-template"
+                                                    className="font-mono uppercase text-xs"
+                                                >
+                                                    Permission Template *
+                                                </Label>
+                                                <Select
+                                                    value={editFormData.permissionTemplate}
+                                                    onValueChange={handleTemplateChangeEdit}
+                                                >
+                                                    <SelectTrigger className="font-mono">
+                                                        <SelectValue placeholder="Select template or custom" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {editingUser?.role === "ADMIN" && (
+                                                            <SelectItem value="PLATFORM_ADMIN">
+                                                                Admin Template (Full Access with ★)
+                                                            </SelectItem>
+                                                        )}
+                                                        {editingUser?.role === "LOGISTICS" && (
+                                                            <SelectItem value="LOGISTICS_STAFF">
+                                                                Logistics Template (Operations
+                                                                Access with ★)
+                                                            </SelectItem>
+                                                        )}
+                                                        {editingUser?.role === "CLIENT" && (
+                                                            <SelectItem value="CLIENT_USER">
+                                                                Client Template (Catalog &amp;
+                                                                Orders)
+                                                            </SelectItem>
+                                                        )}
+                                                        <SelectItem value="CUSTOM">
+                                                            Custom (Select Individual Permissions)
+                                                        </SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+
+                                            {/* Custom Permissions Selector */}
+                                            {editFormData.permissionTemplate === "CUSTOM" && (
+                                                <div className="space-y-4 border border-border rounded-lg p-4 bg-muted/30">
+                                                    <div className="flex items-center justify-between">
+                                                        <Label className="font-mono uppercase text-xs">
+                                                            Select Permissions by Module
+                                                        </Label>
+                                                        <Badge
+                                                            variant="outline"
+                                                            className="font-mono text-xs"
+                                                        >
+                                                            {editFormData.customPermissions.length}{" "}
+                                                            selected
+                                                        </Badge>
+                                                    </div>
+
+                                                    <ScrollArea className="h-[300px] pr-4">
+                                                        <div className="space-y-4">
+                                                            {Object.entries(
+                                                                getPermissionGroupsForRole(
+                                                                    editingUser?.role === "ADMIN"
+                                                                        ? "admin"
+                                                                        : "logistic"
+                                                                )
+                                                            ).map(([moduleName, permissions]) => {
+                                                                const nonWildcard =
+                                                                    getNonWildcardPermissions(
+                                                                        permissions
+                                                                    );
+                                                                const isAllSelected =
+                                                                    isModuleAllSelected(
+                                                                        moduleName,
+                                                                        permissions,
+                                                                        editFormData.customPermissions
+                                                                    );
+                                                                const wildcardPerm =
+                                                                    permissions.find((p) =>
+                                                                        p.endsWith(":*")
+                                                                    );
+
+                                                                return (
+                                                                    <div
+                                                                        key={moduleName}
+                                                                        className="space-y-2 border-b border-border pb-3 last:border-0"
+                                                                    >
+                                                                        {/* Module header with "All" checkbox */}
+                                                                        <div className="flex items-center justify-between">
+                                                                            <h4 className="font-mono text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                                                                                {moduleName}
+                                                                                {isAllSelected &&
+                                                                                    wildcardPerm && (
+                                                                                        <span className="text-primary">
+                                                                                            ★
+                                                                                        </span>
+                                                                                    )}
+                                                                            </h4>
+                                                                            <div className="flex items-center gap-2">
+                                                                                <Checkbox
+                                                                                    id={`edit-all-${moduleName}`}
+                                                                                    checked={
+                                                                                        isAllSelected
+                                                                                    }
+                                                                                    onCheckedChange={() =>
+                                                                                        toggleModuleAllEdit(
+                                                                                            moduleName,
+                                                                                            permissions,
+                                                                                            isAllSelected
+                                                                                        )
+                                                                                    }
+                                                                                />
+                                                                                <Label
+                                                                                    htmlFor={`edit-all-${moduleName}`}
+                                                                                    className="text-xs font-mono cursor-pointer text-primary"
+                                                                                >
+                                                                                    All
+                                                                                </Label>
+                                                                            </div>
+                                                                        </div>
+                                                                        {/* Individual permissions */}
+                                                                        <div className="grid grid-cols-2 gap-2 ml-2">
+                                                                            {nonWildcard.map(
+                                                                                (permission) => (
+                                                                                    <div
+                                                                                        key={
+                                                                                            permission
+                                                                                        }
+                                                                                        className="flex items-center space-x-2"
+                                                                                    >
+                                                                                        <Checkbox
+                                                                                            id={`edit-${permission}`}
+                                                                                            checked={
+                                                                                                editFormData.customPermissions.includes(
+                                                                                                    permission
+                                                                                                ) ||
+                                                                                                (wildcardPerm &&
+                                                                                                    editFormData.customPermissions.includes(
+                                                                                                        wildcardPerm
+                                                                                                    ))
+                                                                                            }
+                                                                                            onCheckedChange={() =>
+                                                                                                togglePermissionEdit(
+                                                                                                    permission
+                                                                                                )
+                                                                                            }
+                                                                                            disabled={
+                                                                                                wildcardPerm &&
+                                                                                                editFormData.customPermissions.includes(
+                                                                                                    wildcardPerm
+                                                                                                )
+                                                                                            }
+                                                                                        />
+                                                                                        <Label
+                                                                                            htmlFor={`edit-${permission}`}
+                                                                                            className={cn(
+                                                                                                "text-xs font-mono cursor-pointer",
+                                                                                                wildcardPerm &&
+                                                                                                    editFormData.customPermissions.includes(
+                                                                                                        wildcardPerm
+                                                                                                    ) &&
+                                                                                                    "text-muted-foreground"
+                                                                                            )}
+                                                                                        >
+                                                                                            {removeUnderScore(
+                                                                                                permission.split(
+                                                                                                    ":"
+                                                                                                )[1]
+                                                                                            )}
+                                                                                        </Label>
+                                                                                    </div>
+                                                                                )
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </ScrollArea>
+
+                                                    {editFormData.customPermissions.length ===
+                                                        0 && (
+                                                        <div className="flex items-center gap-2 text-amber-600 text-xs font-mono">
+                                                            <AlertCircle className="h-4 w-4" />
+                                                            No permissions selected - user won't be
+                                                            able to access anything
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+
+                                            {/* Template Preview - for non-custom */}
+                                            {editFormData.permissionTemplate &&
+                                                editFormData.permissionTemplate !== "CUSTOM" && (
+                                                    <div className="bg-muted/50 rounded-lg p-3 border border-border">
+                                                        <p className="text-xs font-mono text-muted-foreground">
+                                                            <span className="text-primary">★</span>{" "}
+                                                            Template includes full access (wildcard)
+                                                            for all modules
+                                                        </p>
+                                                    </div>
+                                                )}
+                                        </div>
+                                    )}
+
+                                    <Separator />
+
+                                    {/* Company Access */}
+                                    {editFormData.userType === "ADMIN" ||
+                                    editFormData.userType === "LOGISTICS" ? (
+                                        <>
+                                            <div className="flex items-center space-x-2">
+                                                <Checkbox
+                                                    id="allCompanies"
+                                                    checked={true}
+                                                    disabled={true}
+                                                />
+                                                <Label
+                                                    htmlFor="allCompanies"
+                                                    className="font-mono text-sm cursor-pointer"
+                                                >
+                                                    All Companies (*) - Full Platform Access
+                                                </Label>
+                                            </div>
+                                            <p className="text-xs text-muted-foreground font-mono">
+                                                {editFormData.userType === "ADMIN"
+                                                    ? "Admin"
+                                                    : "Logistics"}{" "}
+                                                users have access to all companies by default
+                                            </p>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                                                <div className="flex items-center gap-2 text-yellow-700">
+                                                    <AlertCircle className="h-4 w-4" />
+                                                    <p className="text-xs font-mono font-semibold">
+                                                        CLIENT_USER must belong to a company
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="space-y-2 border border-border rounded-lg p-4 bg-muted/30">
+                                                <Label className="font-mono uppercase text-xs">
+                                                    Select Company *
+                                                </Label>
+                                                <div className="space-y-2">
+                                                    {companies.map((company) => (
+                                                        <div
+                                                            key={company.id}
+                                                            className="flex items-center space-x-2"
+                                                        >
+                                                            <input
+                                                                type="radio"
+                                                                id={`company-${company.id}`}
+                                                                name="edit-client-company"
+                                                                checked={
+                                                                    editFormData.selectedCompany ===
+                                                                    company.id
+                                                                }
+                                                                onChange={() =>
+                                                                    handleCompanyChangeEdit(
+                                                                        company.id
+                                                                    )
+                                                                }
+                                                                className="h-4 w-4"
+                                                            />
+                                                            <Label
+                                                                htmlFor={`company-${company.id}`}
+                                                                className="text-sm font-mono cursor-pointer flex-1"
+                                                            >
+                                                                {company.name}
+                                                            </Label>
+                                                        </div>
+                                                    ))}
+                                                </div>
+
+                                                {companies.length === 0 && (
+                                                    <p className="text-xs text-muted-foreground font-mono italic">
+                                                        No companies available. Create companies
+                                                        first.
+                                                    </p>
+                                                )}
+
+                                                {!editFormData.selectedCompany &&
+                                                    companies.length > 0 && (
+                                                        <div className="flex items-center gap-2 text-amber-600 text-xs font-mono mt-2">
+                                                            <AlertCircle className="h-4 w-4" />
+                                                            Please select a company
+                                                        </div>
+                                                    )}
+                                            </div>
+                                        </>
+                                    )}
+                                    <Separator />
+
+                                    {/* Summary */}
+                                    <div className="bg-muted/50 rounded-lg p-4 border border-border">
+                                        <h4 className="font-mono text-xs font-semibold uppercase mb-3">
+                                            Configuration Summary
+                                        </h4>
+                                        <div className="space-y-2 text-xs font-mono">
+                                            <div className="flex justify-between">
+                                                <span className="text-muted-foreground">User:</span>
+                                                <span className="font-semibold">
+                                                    {editingUser?.email}
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-muted-foreground">
+                                                    Template:
+                                                </span>
+                                                <span className="font-semibold">
+                                                    {editFormData.permissionTemplate || "None"}
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-muted-foreground">
+                                                    Permissions:
+                                                </span>
+                                                <span className="font-semibold">
+                                                    {editingUser?.role === "CLIENT"
+                                                        ? `${PERMISSION_TEMPLATES.CLIENT_USER.permissions.length} fixed`
+                                                        : editFormData.permissionTemplate ===
+                                                            "CUSTOM"
+                                                          ? `${editFormData.customPermissions.length} custom`
+                                                          : editFormData.permissionTemplate
+                                                            ? `${PERMISSION_TEMPLATES[editFormData.permissionTemplate as PermissionTemplate]?.permissions.length} from template`
+                                                            : "0"}
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-muted-foreground">
+                                                    Company Access:
+                                                </span>
+                                                <span className="font-semibold">
+                                                    {editFormData.userType === "ADMIN" ||
+                                                    editFormData.userType === "LOGISTICS"
+                                                        ? "All Companies (*)"
+                                                        : editFormData.selectedCompany
+                                                          ? companies.find(
+                                                                (c) =>
+                                                                    c.id ===
+                                                                    editFormData.selectedCompany
+                                                            )?.name || "Unknown"
+                                                          : "None"}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Super Admin toggle — only super admins can grant/revoke */}
+                                    {AuthUser?.is_super_admin && (
+                                        <>
+                                            <Separator />
+                                            <div className="flex items-center justify-between p-3 bg-amber-500/5 border border-amber-500/20 rounded-lg">
+                                                <div>
+                                                    <p className="font-mono font-semibold text-sm text-amber-600">
+                                                        Super Admin
+                                                    </p>
+                                                    <p className="font-mono text-xs text-muted-foreground mt-0.5">
+                                                        Bypasses all permission checks. Grant with
+                                                        care.
+                                                    </p>
+                                                </div>
+                                                <Checkbox
+                                                    checked={editFormData.is_super_admin}
+                                                    onCheckedChange={(checked) =>
+                                                        setEditFormData((p) => ({
+                                                            ...p,
+                                                            is_super_admin: !!checked,
+                                                        }))
+                                                    }
+                                                />
+                                            </div>
+                                        </>
+                                    )}
+
+                                    {/* Actions */}
+                                    <div className="flex gap-2 pt-4">
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            onClick={() => setIsEditDialogOpen(false)}
+                                            disabled={updateMutation.isPending}
+                                            className="flex-1 font-mono"
+                                        >
+                                            Cancel
+                                        </Button>
+                                        <Button
+                                            type="submit"
+                                            disabled={updateMutation.isPending}
+                                            className="flex-1 font-mono uppercase tracking-wider"
+                                        >
+                                            {updateMutation.isPending
+                                                ? "Saving..."
+                                                : "Save Changes"}
+                                        </Button>
+                                    </div>
+                                </form>
+                            </ScrollArea>
+                        </DialogContent>
+                    </Dialog>
+                </div>
+
+                {/* Users Table */}
+                <div className="bg-card border border-border rounded-xl overflow-hidden">
+                    <Table>
+                        <TableHeader>
+                            <TableRow className="border-border/50">
+                                <TableHead className="font-mono uppercase text-xs">User</TableHead>
+                                <TableHead className="font-mono uppercase text-xs">
+                                    Template
+                                </TableHead>
+                                <TableHead className="font-mono uppercase text-xs">
+                                    Permissions
+                                </TableHead>
+                                <TableHead className="font-mono uppercase text-xs">
+                                    Company
+                                </TableHead>
+                                <TableHead className="font-mono uppercase text-xs">
+                                    Status
+                                </TableHead>
+                                <TableHead className="font-mono uppercase text-xs">
+                                    Last Login
+                                </TableHead>
+                                <TableHead className="font-mono uppercase text-xs text-right">
+                                    Actions
+                                </TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {loading ? (
+                                <TableRow>
+                                    <TableCell colSpan={7} className="text-center py-12">
+                                        <p className="text-muted-foreground font-mono">
+                                            Loading users...
+                                        </p>
+                                    </TableCell>
+                                </TableRow>
+                            ) : users.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={7} className="text-center py-12">
+                                        <p className="text-muted-foreground font-mono">
+                                            No users found
+                                        </p>
+                                    </TableCell>
+                                </TableRow>
+                            ) : (
+                                users.map((user) => (
+                                    <TableRow key={user.id} className="border-border/50">
+                                        <TableCell>
+                                            <div>
+                                                <div className="flex items-center gap-2">
+                                                    <p className="font-mono font-semibold">
+                                                        {user.name}
+                                                    </p>
+                                                    {user.is_super_admin && (
+                                                        <Badge
+                                                            className="font-mono text-xs bg-amber-500/10 text-amber-600 border-amber-500/30 py-0"
+                                                            variant="outline"
+                                                        >
+                                                            ⚡ Super Admin
+                                                        </Badge>
+                                                    )}
+                                                    {user.id === AuthUser?.id && (
+                                                        <Badge
+                                                            className="font-mono text-xs py-0"
+                                                            variant="outline"
+                                                        >
+                                                            You
+                                                        </Badge>
+                                                    )}
+                                                </div>
+                                                <p className="text-xs text-muted-foreground font-mono">
+                                                    {user.email}
+                                                </p>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Badge
+                                                variant="outline"
+                                                className="font-mono text-xs border-border/50 text-muted-foreground bg-muted/10"
+                                            >
+                                                {capitalizeFirstLetter(
+                                                    user.permission_template || "Custom"
+                                                )}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell>
+                                            <span className="text-xs font-mono text-muted-foreground">
+                                                {user.permissions.length} permissions
+                                            </span>
+                                        </TableCell>
+                                        <TableCell>
+                                            <span className="font-mono text-xs">
+                                                {user.company ? user.company.name : "-"}
+                                            </span>
+                                        </TableCell>
+                                        <TableCell>
+                                            {user.is_active ? (
+                                                <Badge
+                                                    variant="outline"
+                                                    className="font-mono text-xs border-primary/30 text-primary"
+                                                >
+                                                    Active
+                                                </Badge>
+                                            ) : (
+                                                <Badge
+                                                    variant="outline"
+                                                    className="font-mono text-xs border-destructive/30 text-destructive"
+                                                >
+                                                    Inactive
+                                                </Badge>
+                                            )}
+                                        </TableCell>
+                                        <TableCell>
+                                            <span className="text-xs text-muted-foreground font-mono">
+                                                {user.last_login_at
+                                                    ? new Date(
+                                                          user.last_login_at
+                                                      ).toLocaleDateString()
+                                                    : "Never"}
+                                            </span>
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                            <div className="flex justify-end gap-2">
+                                                {hasPermission(AuthUser, "users:update") && (
+                                                    <Button
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        onClick={() => handleOpenEdit(user)}
+                                                        className="font-mono text-xs"
+                                                    >
+                                                        <Edit className="h-3 w-3 mr-1" />
+                                                        Edit
+                                                    </Button>
+                                                )}
+
+                                                {hasPermission(AuthUser, "users:deactivate") &&
+                                                    (user.is_active ? (
+                                                        <Button
+                                                            size="sm"
+                                                            variant="ghost"
+                                                            onClick={() =>
+                                                                handleDeactivate(user.id)
+                                                            }
+                                                            className="font-mono text-xs"
+                                                        >
+                                                            <Ban className="h-3 w-3 mr-1" />
+                                                            Deactivate
+                                                        </Button>
+                                                    ) : (
+                                                        <Button
+                                                            size="sm"
+                                                            variant="ghost"
+                                                            onClick={() =>
+                                                                handleReactivate(user.id)
+                                                            }
+                                                            className="font-mono text-xs"
+                                                        >
+                                                            <CheckCircle className="h-3 w-3 mr-1" />
+                                                            Reactivate
+                                                        </Button>
+                                                    ))}
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            )}
+                        </TableBody>
+                    </Table>
+                </div>
+
+                {/* Summary */}
+                <div className="mt-6 flex items-center justify-between text-xs text-muted-foreground font-mono">
+                    <p>Total users: {users.length}</p>
+                    <p>
+                        Active: {users.filter((u) => u.is_active).length} • Inactive:{" "}
+                        {users.filter((u) => !u.is_active).length}
+                    </p>
+                </div>
+            </main>
+        </div>
+    );
+}

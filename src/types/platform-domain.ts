@@ -7,4 +7,7 @@ export interface PlatformDomain {
     primary_color: string;
     secondary_color: string;
     currency: string;
+    features?: Record<string, boolean>;
+    platform_features?: Record<string, boolean>;
+    company_features?: Record<string, boolean>;
 }

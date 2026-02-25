@@ -51,5 +51,9 @@ storybook-static/
 *.tsbuildinfo
 .next/types/
 
+# CI/CD config
+*.yml
+*.yaml
+
 # Public assets (optional - remove if you want to format)
 public/

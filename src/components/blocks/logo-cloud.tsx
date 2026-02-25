@@ -1,5 +1,5 @@
-import { InfiniteSlider } from '@/components/ui/infinite-slider'
-import { ProgressiveBlur } from '@/components/ui/progressive-blur'
+import { InfiniteSlider } from "@/components/ui/infinite-slider";
+import { ProgressiveBlur } from "@/components/ui/progressive-blur";
 
 export default function LogoCloud() {
     return (
@@ -10,10 +10,7 @@ export default function LogoCloud() {
                         <p className="text-end text-sm">Powering the best teams</p>
                     </div>
                     <div className="relative py-6 md:w-[calc(100%-11rem)]">
-                        <InfiniteSlider
-                            speedOnHover={20}
-                            speed={40}
-                            gap={112}>
+                        <InfiniteSlider speedOnHover={20} speed={40} gap={112}>
                             <div className="flex">
                                 <img
                                     className="mx-auto h-5 w-fit dark:invert"
@@ -106,5 +103,5 @@ export default function LogoCloud() {
                 </div>
             </div>
         </section>
-    )
+    );
 }

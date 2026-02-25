@@ -12,55 +12,54 @@
 // Enums
 // ============================================================
 
-export type ScanType = 'OUTBOUND' | 'INBOUND'
-export type DiscrepancyReason = 'BROKEN' | 'LOST' | 'OTHER'
-
-// Condition enum is already defined in asset.ts but re-exported here for convenience
-export type { Condition } from './asset'
+export type ScanType = "OUTBOUND" | "INBOUND";
+export type DiscrepancyReason = "BROKEN" | "LOST" | "OTHER";
 
 // ============================================================
 // Scan Event Types (Database Records)
 // ============================================================
 
 export interface ScanEvent {
-	id: string
-	order: string // orderId (uuid)
-	asset: string // assetId (uuid)
-	scanType: ScanType
-	quantity: number
-	condition: 'GREEN' | 'ORANGE' | 'RED'
-	notes: string | null
-	photos: string[] // Array of photo URLs
-	discrepancyReason: DiscrepancyReason | null
-	scannedBy: string // userId
-	scannedAt: Date
+    id: string;
+    order: string; // orderId (uuid)
+    asset: string; // assetId (uuid)
+    scanType: ScanType;
+    quantity: number;
+    condition: "GREEN" | "ORANGE" | "RED";
+    notes: string | null;
+    photos: string[]; // Array of photo URLs
+    damage_report_entries?: Array<{ url: string; description?: string }>;
+    discrepancyReason: DiscrepancyReason | null;
+    scannedBy: string; // userId
+    scannedAt: Date;
 }
 
 export interface ScanEventWithDetails {
-	id: string
-	scan_type: ScanType
-	quantity: number
-	condition: 'GREEN' | 'ORANGE' | 'RED'
-	notes: string | null
-	photos: string[] // Array of photo URLs
-	discrepancy_reason: DiscrepancyReason | null
-	scanned_by: string // userId
-	scanned_at: Date
-	// Extended details
-	asset: {
-		id: string
-		name: string
-		qr_code: string
-		tracking_method: 'INDIVIDUAL' | 'BATCH'
-	}
-	scanned_by_user: {
-		userId: string
-		name: string
-	}
-	order: {
-		id: string
-		order_id: string // Human-readable (ORD-20241109-001)
-	}
+    id: string;
+    scan_type: ScanType;
+    quantity: number;
+    condition: "GREEN" | "ORANGE" | "RED";
+    notes: string | null;
+    photos: string[]; // Array of photo URLs
+    damage_report_entries?: Array<{ url: string; description?: string }>;
+    discrepancy_reason: DiscrepancyReason | null;
+    scanned_by: string; // userId
+    scanned_at: Date;
+    // Extended details
+    asset: {
+        id: string;
+        name: string;
+        qr_code: string;
+        tracking_method: "INDIVIDUAL" | "BATCH";
+    };
+    scanned_by_user: {
+        userId: string;
+        name: string;
+    };
+    order: {
+        id: string;
+        order_id: string; // Human-readable (ORD-20241109-001)
+    };
 }
 
 // ============================================================
@@ -68,19 +67,19 @@ export interface ScanEventWithDetails {
 // ============================================================
 
 export interface ScanningSession {
-	sessionId: string
-	orderId: string
-	scan_type: ScanType
-	started_at: Date
-	started_by: string // userId
-	itemsScanned: ScannedItemProgress[]
-	expiresAt: Date
+    sessionId: string;
+    orderId: string;
+    scan_type: ScanType;
+    started_at: Date;
+    started_by: string; // userId
+    itemsScanned: ScannedItemProgress[];
+    expiresAt: Date;
 }
 
 export interface ScannedItemProgress {
-	assetId: string
-	scannedQuantity: number
-	requiredQuantity: number
+    assetId: string;
+    scannedQuantity: number;
+    requiredQuantity: number;
 }
 
 // ============================================================
@@ -88,13 +87,13 @@ export interface ScannedItemProgress {
 // ============================================================
 
 export interface AssetToScan {
-	assetId: string
-	assetName: string
-	qrCode: string
-	trackingMethod: 'INDIVIDUAL' | 'BATCH'
-	requiredQuantity: number // For outbound: quantity in order, For inbound: quantity that went out
-	scannedQuantity: number
-	remainingQuantity: number // requiredQuantity - scannedQuantity
+    assetId: string;
+    assetName: string;
+    qrCode: string;
+    trackingMethod: "INDIVIDUAL" | "BATCH";
+    requiredQuantity: number; // For outbound: quantity in order, For inbound: quantity that went out
+    scannedQuantity: number;
+    remainingQuantity: number; // requiredQuantity - scannedQuantity
 }
 
 // ============================================================
@@ -104,147 +103,151 @@ export interface AssetToScan {
 // Outbound Scanning
 
 export interface StartOutboundScanRequest {
-	orderId: string
+    orderId: string;
 }
 
 export interface StartOutboundScanResponse {
-	sessionId: string
-	orderId: string
-	totalItems: number // Total quantity of all items
-	itemsScanned: number // 0 at start
-	assets: AssetToScan[]
+    sessionId: string;
+    orderId: string;
+    totalItems: number; // Total quantity of all items
+    itemsScanned: number; // 0 at start
+    assets: AssetToScan[];
 }
 
 export interface OutboundScanRequest {
-	sessionId: string
-	qrCode: string
-	quantity?: number // Required for BATCH tracking, optional for INDIVIDUAL (defaults to 1)
+    sessionId: string;
+    qrCode: string;
+    quantity?: number; // Required for BATCH tracking, optional for INDIVIDUAL (defaults to 1)
 }
 
 export interface OutboundScanResponse {
-	success: true
-	asset: {
-		assetId: string
-		assetName: string
-		trackingMethod: 'INDIVIDUAL' | 'BATCH'
-		scannedQuantity: number
-		requiredQuantity: number
-		remainingQuantity: number
-	}
-	progress: ScanProgress
+    success: true;
+    asset: {
+        assetId: string;
+        assetName: string;
+        trackingMethod: "INDIVIDUAL" | "BATCH";
+        scannedQuantity: number;
+        requiredQuantity: number;
+        remainingQuantity: number;
+    };
+    progress: ScanProgress;
 }
 
 export interface UploadTruckPhotosRequest {
-	sessionId: string
-	photos: string[] // Base64-encoded images
+    sessionId: string;
+    photos: string[]; // Base64-encoded images
 }
 
 export interface UploadTruckPhotosResponse {
-	success: true
-	uploadedPhotos: string[] // URLs of uploaded photos
+    success: true;
+    uploadedPhotos: string[]; // URLs of uploaded photos
 }
 
 export interface CompleteOutboundScanRequest {
-	sessionId: string
+    sessionId: string;
 }
 
 export interface CompleteOutboundScanResponse {
-	success: true
-	orderId: string
-	newStatus: 'READY_FOR_DELIVERY'
-	totalItemsScanned: number
-	truckPhotosUploaded: number
+    success: true;
+    orderId: string;
+    newStatus: "READY_FOR_DELIVERY";
+    totalItemsScanned: number;
+    truckPhotosUploaded: number;
 }
 
 // Inbound Scanning
 
 export interface StartInboundScanRequest {
-	orderId: string
+    orderId: string;
 }
 
 export interface StartInboundScanResponse {
-	sessionId: string
-	orderId: string
-	totalItems: number // Total quantity that went out
-	itemsScanned: number // 0 at start
-	assets: AssetToScan[]
+    sessionId: string;
+    orderId: string;
+    totalItems: number; // Total quantity that went out
+    itemsScanned: number; // 0 at start
+    assets: AssetToScan[];
 }
 
 export interface InboundScanRequest {
-	sessionId: string
-	qrCode: string
-	quantity?: number // Required for BATCH tracking
-	condition: 'GREEN' | 'ORANGE' | 'RED'
-	notes?: string // Required if condition is ORANGE or RED
-	photos?: string[] // Base64-encoded images (required if RED)
-	refurbDaysEstimate?: number // Feedback #2: Required for ORANGE/RED
-	discrepancyReason?: DiscrepancyReason // If quantity < expected
+    sessionId: string;
+    qrCode: string;
+    quantity?: number; // Required for BATCH tracking
+    condition: "GREEN" | "ORANGE" | "RED";
+    notes?: string; // Required if condition is ORANGE or RED
+    latestReturnImages: string[]; // Base64-encoded latest return images (min 2)
+    damageReportEntries?: Array<{
+        url: string;
+        description?: string;
+    }>;
+    refurbDaysEstimate?: number; // Feedback #2: Required for ORANGE/RED
+    discrepancyReason?: DiscrepancyReason; // If quantity < expected
 }
 
 export interface InboundScanResponse {
-	success: true
-	asset: {
-		assetId: string
-		assetName: string
-		trackingMethod: 'INDIVIDUAL' | 'BATCH'
-		scannedQuantity: number
-		expectedQuantity: number
-		remainingQuantity: number
-		condition: 'GREEN' | 'ORANGE' | 'RED'
-		status: 'AVAILABLE' | 'IN_MAINTENANCE' // GREEN/ORANGE → AVAILABLE, RED → IN_MAINTENANCE
-	}
-	progress: ScanProgress
+    success: true;
+    asset: {
+        assetId: string;
+        assetName: string;
+        trackingMethod: "INDIVIDUAL" | "BATCH";
+        scannedQuantity: number;
+        expectedQuantity: number;
+        remainingQuantity: number;
+        condition: "GREEN" | "ORANGE" | "RED";
+        status: "AVAILABLE" | "IN_MAINTENANCE"; // GREEN/ORANGE → AVAILABLE, RED → IN_MAINTENANCE
+    };
+    progress: ScanProgress;
 }
 
 export interface CompleteInboundScanRequest {
-	sessionId: string
+    sessionId: string;
 }
 
 export interface CompleteInboundScanResponse {
-	success: true
-	orderId: string
-	newStatus: 'CLOSED'
-	totalItemsScanned: number
-	itemsWithDiscrepancies: number
-	itemsNeedingMaintenance: number
+    success: true;
+    orderId: string;
+    newStatus: "CLOSED";
+    totalItemsScanned: number;
+    itemsWithDiscrepancies: number;
+    itemsNeedingMaintenance: number;
 }
 
 // Session Progress
 
 export interface ScanProgress {
-	totalItems: number
-	itemsScanned: number
-	percentComplete: number
+    totalItems: number;
+    itemsScanned: number;
+    percentComplete: number;
 }
 
 export interface GetSessionProgressResponse {
-	sessionId: string
-	orderId: string
-	scanType: ScanType
-	startedAt: string // ISO timestamp
-	startedBy: {
-		userId: string
-		name: string
-	}
-	totalItems: number
-	itemsScanned: number
-	percentComplete: number
-	assets: AssetToScan[]
+    sessionId: string;
+    orderId: string;
+    scanType: ScanType;
+    startedAt: string; // ISO timestamp
+    startedBy: {
+        userId: string;
+        name: string;
+    };
+    totalItems: number;
+    itemsScanned: number;
+    percentComplete: number;
+    assets: AssetToScan[];
 }
 
 // Scan History
 
 export interface GetScanEventsResponse {
-	// orderId: string
-	// scanEvents: ScanEventWithDetails[]
-	data: ScanEventWithDetails[]
+    // orderId: string
+    // scanEvents: ScanEventWithDetails[]
+    data: ScanEventWithDetails[];
 }
 
 export interface GetAssetScanHistoryResponse {
-	assetId: string
-	assetName: string
-	qrCode: string
-	scanHistory: ScanEventWithDetails[]
+    assetId: string;
+    assetName: string;
+    qrCode: string;
+    scanHistory: ScanEventWithDetails[];
 }
 
 // ============================================================
@@ -252,67 +255,67 @@ export interface GetAssetScanHistoryResponse {
 // ============================================================
 
 export interface ReserveAssetRequest {
-	orderId: string
-	quantity: number
+    orderId: string;
+    quantity: number;
 }
 
 export interface ReserveAssetResponse {
-	success: true
-	assetId: string
-	bookedQuantity: number
-	availableQuantity: number
+    success: true;
+    assetId: string;
+    bookedQuantity: number;
+    availableQuantity: number;
 }
 
 export interface ReleaseAssetRequest {
-	orderId: string
-	quantity: number
+    orderId: string;
+    quantity: number;
 }
 
 export interface ReleaseAssetResponse {
-	success: true
-	assetId: string
-	bookedQuantity: number
-	availableQuantity: number
+    success: true;
+    assetId: string;
+    bookedQuantity: number;
+    availableQuantity: number;
 }
 
 export interface InventoryAvailabilityParams {
-	company?: string // Filter by company UUID
-	warehouse?: string // Filter by warehouse UUID
-	zone?: string // Filter by zone UUID
-	status?: 'AVAILABLE' | 'BOOKED' | 'OUT' | 'IN_MAINTENANCE'
+    company?: string; // Filter by company UUID
+    warehouse?: string; // Filter by warehouse UUID
+    zone?: string; // Filter by zone UUID
+    status?: "AVAILABLE" | "BOOKED" | "OUT" | "IN_MAINTENANCE";
 }
 
 export interface AssetAvailability {
-	assetId: string
-	assetName: string
-	company: {
-		companyId: string
-		companyName: string
-	}
-	warehouse: {
-		warehouseId: string
-		warehouseName: string
-	}
-	zone: {
-		zoneId: string
-		zoneName: string
-	}
-	trackingMethod: 'INDIVIDUAL' | 'BATCH'
-	totalQuantity: number
-	availableQuantity: number
-	bookedQuantity: number
-	outQuantity: number
-	inMaintenanceQuantity: number
-	status: 'AVAILABLE' | 'BOOKED' | 'OUT' | 'IN_MAINTENANCE'
-	lastScannedAt: Date | null
-	lastScannedBy: {
-		userId: string
-		name: string
-	} | null
+    assetId: string;
+    assetName: string;
+    company: {
+        companyId: string;
+        companyName: string;
+    };
+    warehouse: {
+        warehouseId: string;
+        warehouseName: string;
+    };
+    zone: {
+        zoneId: string;
+        zoneName: string;
+    };
+    trackingMethod: "INDIVIDUAL" | "BATCH";
+    totalQuantity: number;
+    availableQuantity: number;
+    bookedQuantity: number;
+    outQuantity: number;
+    inMaintenanceQuantity: number;
+    status: "AVAILABLE" | "BOOKED" | "OUT" | "IN_MAINTENANCE";
+    lastScannedAt: Date | null;
+    lastScannedBy: {
+        userId: string;
+        name: string;
+    } | null;
 }
 
 export interface GetInventoryAvailabilityResponse {
-	assets: AssetAvailability[]
+    assets: AssetAvailability[];
 }
 
 // ============================================================
@@ -320,11 +323,11 @@ export interface GetInventoryAvailabilityResponse {
 // ============================================================
 
 export interface ScanningError {
-	error: string
-	details?: {
-		field?: string
-		issue?: string
-	}
+    error: string;
+    details?: {
+        field?: string;
+        issue?: string;
+    };
 }
 
 // ============================================================
@@ -332,51 +335,51 @@ export interface ScanningError {
 // ============================================================
 
 export interface APIOutboundAsset {
-	asset_id: string
-	asset_name: string
-	qr_code: string
-	tracking_method: 'INDIVIDUAL' | 'BATCH'
-	required_quantity: number
-	scanned_quantity: number
-	is_complete: boolean
+    asset_id: string;
+    asset_name: string;
+    qr_code: string;
+    tracking_method: "INDIVIDUAL" | "BATCH";
+    required_quantity: number;
+    scanned_quantity: number;
+    is_complete: boolean;
 }
 
 export interface APIOutboundProgressData {
-	order_id: string
-	order_status: string
-	total_items: number
-	items_scanned: number
-	percent_complete: number
-	assets: APIOutboundAsset[]
+    order_id: string;
+    order_status: string;
+    total_items: number;
+    items_scanned: number;
+    percent_complete: number;
+    assets: APIOutboundAsset[];
 }
 
 export interface APIOutboundProgressResponse {
-	data: APIOutboundProgressData
-	message: string
-	success: boolean
+    data: APIOutboundProgressData;
+    message: string;
+    success: boolean;
 }
 
 export interface APIInboundAsset {
-	asset_id: string
-	asset_name: string
-	qr_code: string
-	tracking_method: 'INDIVIDUAL' | 'BATCH'
-	required_quantity: number // This is often "total expected to return"
-	scanned_quantity: number
-	is_complete: boolean
+    asset_id: string;
+    asset_name: string;
+    qr_code: string;
+    tracking_method: "INDIVIDUAL" | "BATCH";
+    required_quantity: number; // This is often "total expected to return"
+    scanned_quantity: number;
+    is_complete: boolean;
 }
 
 export interface APIInboundProgressData {
-	order_id: string
-	order_status: string
-	total_items: number
-	items_scanned: number
-	percent_complete: number
-	assets: APIInboundAsset[]
+    order_id: string;
+    order_status: string;
+    total_items: number;
+    items_scanned: number;
+    percent_complete: number;
+    assets: APIInboundAsset[];
 }
 
 export interface APIInboundProgressResponse {
-	data: APIInboundProgressData
-	message: string
-	success: boolean
+    data: APIInboundProgressData;
+    message: string;
+    success: boolean;
 }
