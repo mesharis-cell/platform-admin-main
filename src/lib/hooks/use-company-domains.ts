@@ -17,6 +17,7 @@ export interface CompanyDomain {
     type: "VANITY" | "CUSTOM";
     is_verified: boolean | null;
     is_active: boolean | null;
+    is_primary: boolean | null;
     created_at: string;
     updated_at: string;
 }
@@ -27,6 +28,7 @@ export interface CreateCompanyDomainPayload {
     type: "VANITY" | "CUSTOM";
     is_verified?: boolean;
     is_active?: boolean;
+    is_primary?: boolean;
 }
 
 export interface UpdateCompanyDomainPayload {
@@ -34,6 +36,7 @@ export interface UpdateCompanyDomainPayload {
     type?: "VANITY" | "CUSTOM";
     is_verified?: boolean;
     is_active?: boolean;
+    is_primary?: boolean;
 }
 
 export function useCompanyDomains() {

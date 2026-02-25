@@ -41,6 +41,7 @@ const CATEGORIES: { value: ServiceCategory; label: string }[] = [
     { value: "ASSEMBLY", label: "Assembly" },
     { value: "EQUIPMENT", label: "Equipment" },
     { value: "HANDLING", label: "Handling" },
+    { value: "TRANSPORT", label: "Transport (System Managed)" },
     { value: "RESKIN", label: "Reskin/Rebrand" },
     { value: "OTHER", label: "Other" },
 ];
@@ -134,6 +135,12 @@ export default function ServiceTypesPage() {
     };
 
     const openEdit = (service: ServiceType) => {
+        const isTransportManaged =
+            service.category === "TRANSPORT" || Boolean((service as any).transport_rate_id);
+        if (isTransportManaged) {
+            toast.error("Transport service rows are system-managed via transport rate sync");
+            return;
+        }
         setSelectedService(service);
         setFormData({
             name: service.name,
@@ -169,6 +176,10 @@ export default function ServiceTypesPage() {
                 <Card>
                     <CardHeader>
                         <CardTitle>Service Catalog</CardTitle>
+                        <p className="text-xs text-muted-foreground">
+                            Default rates here are logistics base rates. Margin is applied
+                            separately in order pricing and is never embedded in these base values.
+                        </p>
                     </CardHeader>
                     <CardContent>
                         {isLoading ? (
@@ -179,50 +190,66 @@ export default function ServiceTypesPage() {
                             </p>
                         ) : (
                             <div className="space-y-2">
-                                {data.data.map((service: ServiceType) => (
-                                    <div
-                                        key={service.id}
-                                        className="flex items-center justify-between p-3 border border-border rounded-md hover:bg-muted/50"
-                                    >
-                                        <div className="flex-1">
-                                            <div className="flex items-center gap-3">
-                                                <span className="font-semibold">
-                                                    {service.name}
-                                                </span>
-                                                <Badge variant="outline">{service.category}</Badge>
-                                                {!service.is_active && (
-                                                    <Badge variant="destructive">Inactive</Badge>
+                                {data.data.map((service: ServiceType) => {
+                                    const isTransportManaged =
+                                        service.category === "TRANSPORT" ||
+                                        Boolean((service as any).transport_rate_id);
+                                    return (
+                                        <div
+                                            key={service.id}
+                                            className="flex items-center justify-between p-3 border border-border rounded-md hover:bg-muted/50"
+                                        >
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-3">
+                                                    <span className="font-semibold">
+                                                        {service.name}
+                                                    </span>
+                                                    <Badge variant="outline">
+                                                        {service.category}
+                                                    </Badge>
+                                                    {isTransportManaged && (
+                                                        <Badge variant="secondary">
+                                                            System-managed
+                                                        </Badge>
+                                                    )}
+                                                    {!service.is_active && (
+                                                        <Badge variant="destructive">
+                                                            Inactive
+                                                        </Badge>
+                                                    )}
+                                                </div>
+                                                <p className="text-sm text-muted-foreground mt-1">
+                                                    Unit: {service.unit}
+                                                    {service.default_rate &&
+                                                        ` · Default rate: ${service.default_rate.toFixed(2)} AED`}
+                                                </p>
+                                                {service.description && (
+                                                    <p className="text-xs text-muted-foreground mt-1">
+                                                        {service.description}
+                                                    </p>
                                                 )}
                                             </div>
-                                            <p className="text-sm text-muted-foreground mt-1">
-                                                Unit: {service.unit}
-                                                {service.default_rate &&
-                                                    ` · Default rate: ${service.default_rate.toFixed(2)} AED`}
-                                            </p>
-                                            {service.description && (
-                                                <p className="text-xs text-muted-foreground mt-1">
-                                                    {service.description}
-                                                </p>
-                                            )}
+                                            <div className="flex gap-2">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => openEdit(service)}
+                                                    disabled={isTransportManaged}
+                                                >
+                                                    <Pencil className="h-4 w-4" />
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => handleDelete(service)}
+                                                    disabled={isTransportManaged}
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </div>
                                         </div>
-                                        <div className="flex gap-2">
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => openEdit(service)}
-                                            >
-                                                <Pencil className="h-4 w-4" />
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => handleDelete(service)}
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                        </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         )}
                     </CardContent>
@@ -270,11 +297,13 @@ export default function ServiceTypesPage() {
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {CATEGORIES.map((cat) => (
-                                        <SelectItem key={cat.value} value={cat.value}>
-                                            {cat.label}
-                                        </SelectItem>
-                                    ))}
+                                    {CATEGORIES.filter((cat) => cat.value !== "TRANSPORT").map(
+                                        (cat) => (
+                                            <SelectItem key={cat.value} value={cat.value}>
+                                                {cat.label}
+                                            </SelectItem>
+                                        )
+                                    )}
                                 </SelectContent>
                             </Select>
                         </div>

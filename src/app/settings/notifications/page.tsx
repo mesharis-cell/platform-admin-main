@@ -47,6 +47,7 @@ import {
     useDeleteNotificationRule,
     useResetEventRules,
 } from "@/lib/hooks/use-notification-rules";
+import { useCompanies } from "@/hooks/use-companies";
 import type {
     NotificationRule,
     NotificationMeta,
@@ -57,15 +58,13 @@ import type {
 const EMPTY_META: NotificationMeta = { event_groups: [], templates_by_event: {} };
 
 // ─── Infer the natural recipient from a template key's suffix ────────────────
-// Template naming convention: *_admin, *_logistics, *_warehouse, *_client
+// Template naming convention: *_admin, *_logistics, *_client
 // _client → ENTITY_OWNER (the user who created the entity — typically the client
 //           for orders/IRs/SRs, or the requesting user for auth events)
 function inferRecipient(key: string): { type: RecipientType; value: string | null; label: string } {
     if (key.endsWith("_admin")) return { type: "ROLE", value: "ADMIN", label: "Admin role" };
     if (key.endsWith("_logistics"))
         return { type: "ROLE", value: "LOGISTICS", label: "Logistics role" };
-    if (key.endsWith("_warehouse"))
-        return { type: "ROLE", value: "WAREHOUSE", label: "Warehouse role" };
     if (key.endsWith("_client"))
         return { type: "ENTITY_OWNER", value: null, label: "Entity creator" };
     return { type: "ROLE", value: "ADMIN", label: "Admin role" };
@@ -100,12 +99,14 @@ function AddRuleDialog({
     eventType,
     availableTemplates,
     existingRules,
+    scopeCompanyId,
     open,
     onClose,
 }: {
     eventType: string;
     availableTemplates: TemplateMeta[];
     existingRules: NotificationRule[];
+    scopeCompanyId: string | null;
     open: boolean;
     onClose: () => void;
 }) {
@@ -142,6 +143,7 @@ function AddRuleDialog({
                     recipient_type: type,
                     recipient_value: value ?? undefined,
                     template_key: t.key,
+                    company_id: scopeCompanyId,
                 })
             );
         }
@@ -153,6 +155,7 @@ function AddRuleDialog({
                     recipient_type: "EMAIL",
                     recipient_value: customEmail,
                     template_key: customTemplate,
+                    company_id: scopeCompanyId,
                 })
             );
         }
@@ -285,10 +288,12 @@ function AddRuleDialog({
 // ─── Reset confirmation ───────────────────────────────────────────────────────
 function ResetConfirmDialog({
     eventType,
+    scopeCompanyId,
     open,
     onClose,
 }: {
     eventType: string;
+    scopeCompanyId: string | null;
     open: boolean;
     onClose: () => void;
 }) {
@@ -315,7 +320,10 @@ function ResetConfirmDialog({
                         variant="destructive"
                         size="sm"
                         onClick={async () => {
-                            await resetRules.mutateAsync({ event_type: eventType });
+                            await resetRules.mutateAsync({
+                                event_type: eventType,
+                                company_id: scopeCompanyId,
+                            });
                             onClose();
                         }}
                         disabled={resetRules.isPending}
@@ -408,17 +416,30 @@ function RuleRow({
 export default function NotificationSettingsPage() {
     const { data: meta } = useNotificationMeta();
     const { event_groups, templates_by_event } = meta ?? EMPTY_META;
+    const { data: companiesData } = useCompanies({ limit: "200" });
+    const companies = companiesData?.data ?? [];
 
     const firstEventKey = event_groups[0]?.events[0]?.key ?? "";
     const [selectedEvent, setSelectedEvent] = useState<string>("");
     const [search, setSearch] = useState("");
+    const [scope, setScope] = useState<"platform" | "company">("platform");
+    const [scopeCompanyId, setScopeCompanyId] = useState<string>("");
     const [addDialogOpen, setAddDialogOpen] = useState(false);
     const [resetDialogOpen, setResetDialogOpen] = useState(false);
 
     const activeEvent = selectedEvent || firstEventKey;
+    const scopeReady = scope === "platform" || Boolean(scopeCompanyId);
+    const effectiveCompanyScope = scope === "platform" ? null : scopeCompanyId || undefined;
 
-    const { data: rules, isLoading } = useNotificationRules({ event_type: activeEvent });
-    const { data: allRules } = useNotificationRules({});
+    const { data: rules, isLoading } = useNotificationRules({
+        event_type: activeEvent,
+        company_id: effectiveCompanyScope,
+        enabled: scopeReady && Boolean(activeEvent),
+    });
+    const { data: allRules } = useNotificationRules({
+        company_id: effectiveCompanyScope,
+        enabled: scopeReady,
+    });
     const updateRule = useUpdateNotificationRule();
 
     const ruleCountByEvent = useMemo(
@@ -481,6 +502,51 @@ export default function NotificationSettingsPage() {
                     <div className="grid grid-cols-[260px_1fr] gap-6 items-start">
                         {/* Left: sticky event list */}
                         <div className="sticky top-6 space-y-3">
+                            <div className="space-y-2">
+                                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest px-1">
+                                    Scope
+                                </p>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <Button
+                                        size="sm"
+                                        variant={scope === "platform" ? "default" : "outline"}
+                                        className="h-8 text-xs"
+                                        onClick={() => setScope("platform")}
+                                    >
+                                        Platform
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        variant={scope === "company" ? "default" : "outline"}
+                                        className="h-8 text-xs"
+                                        onClick={() => setScope("company")}
+                                    >
+                                        Company
+                                    </Button>
+                                </div>
+                                {scope === "company" && (
+                                    <Select
+                                        value={scopeCompanyId}
+                                        onValueChange={setScopeCompanyId}
+                                    >
+                                        <SelectTrigger className="h-8 text-xs">
+                                            <SelectValue placeholder="Select company" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {companies.map((company: any) => (
+                                                <SelectItem
+                                                    key={company.id}
+                                                    value={company.id}
+                                                    className="text-xs"
+                                                >
+                                                    {company.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                )}
+                            </div>
+
                             <div className="relative">
                                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
                                 <Input
@@ -563,6 +629,16 @@ export default function NotificationSettingsPage() {
                                         <p className="font-mono text-[10px] text-muted-foreground mt-0.5">
                                             {activeEvent}
                                         </p>
+                                        <p className="text-[10px] text-muted-foreground mt-1">
+                                            Scope:{" "}
+                                            <span className="font-semibold">
+                                                {scope === "platform"
+                                                    ? "Platform Defaults"
+                                                    : companies.find(
+                                                          (c: any) => c.id === scopeCompanyId
+                                                      )?.name || "Select company"}
+                                            </span>
+                                        </p>
                                     </div>
                                     <div className="flex items-center gap-2 shrink-0">
                                         {totalCount > 0 && (
@@ -619,6 +695,7 @@ export default function NotificationSettingsPage() {
                                             size="sm"
                                             className="gap-1"
                                             onClick={() => setAddDialogOpen(true)}
+                                            disabled={!scopeReady}
                                         >
                                             <Plus className="h-3.5 w-3.5" />
                                             Add rules
@@ -627,7 +704,13 @@ export default function NotificationSettingsPage() {
                                 </div>
                             </CardHeader>
                             <CardContent>
-                                {isLoading ? (
+                                {!scopeReady ? (
+                                    <div className="py-10 text-center border-2 border-dashed rounded-lg">
+                                        <p className="text-sm text-muted-foreground font-medium">
+                                            Select a company to edit company-level overrides
+                                        </p>
+                                    </div>
+                                ) : isLoading ? (
                                     <div className="space-y-2">
                                         <Skeleton className="h-14 w-full" />
                                         <Skeleton className="h-14 w-full" />
@@ -671,11 +754,13 @@ export default function NotificationSettingsPage() {
                     eventType={activeEvent}
                     availableTemplates={availableTemplates}
                     existingRules={rules ?? []}
+                    scopeCompanyId={effectiveCompanyScope ?? null}
                     open={addDialogOpen}
                     onClose={() => setAddDialogOpen(false)}
                 />
                 <ResetConfirmDialog
                     eventType={activeEvent}
+                    scopeCompanyId={effectiveCompanyScope ?? null}
                     open={resetDialogOpen}
                     onClose={() => setResetDialogOpen(false)}
                 />

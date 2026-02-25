@@ -20,7 +20,7 @@ export interface NotificationMeta {
     templates_by_event: Record<string, TemplateMeta[]>;
 }
 export type NotificationStatus = "QUEUED" | "SENT" | "FAILED" | "RETRYING";
-export type EntityType = "ORDER" | "INBOUND_REQUEST" | "SERVICE_REQUEST" | "USER";
+export type EntityType = "ORDER" | "INBOUND_REQUEST" | "SERVICE_REQUEST" | "USER" | "SELF_BOOKING";
 
 export interface SystemEvent {
     id: string;

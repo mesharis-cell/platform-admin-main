@@ -11,17 +11,14 @@ export interface PlatformConfig {
     logo_url?: string;
     primary_color?: string;
     secondary_color?: string;
-    logistics_partner_name?: string;
-    support_email?: string;
     from_email?: string;
     currency?: string;
 }
 
 export interface PlatformFeatures {
-    collections?: boolean;
-    bulk_import?: boolean;
-    advanced_reporting?: boolean;
-    api_access?: boolean;
+    enable_inbound_requests?: boolean;
+    show_estimate_on_order_creation?: boolean;
+    enable_kadence_invoicing?: boolean;
 }
 
 export interface Platform {
@@ -57,5 +54,27 @@ export function useUpdatePlatformConfig() {
             qc.invalidateQueries({ queryKey: ["platform"] });
         },
         onError: (err: any) => throwApiError(err),
+    });
+}
+
+export interface PlatformUrlDiagnostics {
+    platform_domain: string;
+    admin_url: string;
+    warehouse_url: string;
+    company_urls: {
+        company_id: string;
+        company_name: string;
+        client_url: string | null;
+        status: "OK" | "MISSING_PRIMARY_DOMAIN";
+    }[];
+}
+
+export function usePlatformUrlDiagnostics() {
+    return useQuery<PlatformUrlDiagnostics>({
+        queryKey: ["platform-url-diagnostics"],
+        queryFn: async () => {
+            const res = await apiClient.get(`${BASE}/url-diagnostics`);
+            return res.data.data;
+        },
     });
 }

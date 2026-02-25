@@ -10,7 +10,8 @@ const BASE = "/operations/v1/notification-rules";
 
 interface ListParams {
     event_type?: string;
-    company_id?: string;
+    company_id?: string | null;
+    enabled?: boolean;
 }
 
 interface CreateInput {
@@ -18,7 +19,7 @@ interface CreateInput {
     recipient_type: string;
     recipient_value?: string;
     template_key: string;
-    company_id?: string;
+    company_id?: string | null;
     sort_order?: number;
     is_enabled?: boolean;
 }
@@ -43,7 +44,8 @@ export function useNotificationMeta() {
 export function useNotificationRules(params?: ListParams) {
     const query = new URLSearchParams();
     if (params?.event_type) query.set("event_type", params.event_type);
-    if (params?.company_id) query.set("company_id", params.company_id);
+    if (params?.company_id === null) query.set("company_id", "null");
+    else if (params?.company_id) query.set("company_id", params.company_id);
 
     return useQuery<NotificationRule[]>({
         queryKey: ["notification-rules", params],
@@ -51,6 +53,7 @@ export function useNotificationRules(params?: ListParams) {
             const res = await apiClient.get(`${BASE}?${query}`);
             return res.data.data;
         },
+        enabled: params?.enabled ?? true,
     });
 }
 
@@ -112,9 +115,14 @@ export function useResetEventRules() {
             company_id,
         }: {
             event_type: string;
-            company_id?: string;
+            company_id?: string | null;
         }) => {
-            const query = company_id ? `?company_id=${company_id}` : "";
+            const query =
+                company_id === null
+                    ? "?company_id=null"
+                    : company_id
+                      ? `?company_id=${company_id}`
+                      : "";
             await apiClient.post(`${BASE}/reset/${event_type}${query}`);
         },
         onSuccess: () => {

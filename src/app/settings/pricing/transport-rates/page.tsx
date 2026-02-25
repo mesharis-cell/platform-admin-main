@@ -1,33 +1,5 @@
 "use client";
 
-/**
- * Transport Rates Management
- * Manage location/trip/vehicle-based transport pricing
- */
-
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogFooter,
-} from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
-import { toast } from "sonner";
-import { Truck, Plus, Pencil, Trash2, RefreshCw } from "lucide-react";
-import { AdminHeader } from "@/components/admin-header";
 import {
     useListTransportRates,
     useCreateTransportRate,
@@ -36,365 +8,713 @@ import {
     useSyncTransportRateCards,
 } from "@/hooks/use-transport-rates";
 import { useCities } from "@/hooks/use-cities";
+import { useCompanies } from "@/hooks/use-companies";
+import { Plus, Truck, Edit, Trash2, Power, PowerOff, RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
+import { useMemo, useState } from "react";
+import { AdminHeader } from "@/components/admin-header";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog";
+import { TransportRate, TripType, CreateTransportRateRequest } from "@/types/hybrid-pricing";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { formatDate } from "date-fns";
+import { toast } from "sonner";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import { removeUnderScore } from "@/lib/utils/helper";
 import { useListVehicleTypes } from "@/hooks/use-vehicle-types";
-import type { TransportRate, TripType } from "@/types/hybrid-pricing";
 
-export default function TransportRatesPage() {
-    const { data, isLoading } = useListTransportRates({});
-    const { data: citiesData } = useCities();
-    const { data: vehicleTypesData } = useListVehicleTypes({ include_inactive: true });
+const TRIP_TYPES: TripType[] = ["ONE_WAY", "ROUND_TRIP"];
+
+export default function TransportRates() {
+    const [isCreateOpen, setIsCreateOpen] = useState(false);
+    const [editingRate, setEditingRate] = useState<TransportRate | null>(null);
+    const [confirmToggle, setConfirmToggle] = useState<{
+        id: string;
+        name: string;
+        currentStatus: boolean;
+    } | null>(null);
+
+    // Filters
+    const [selectedEmirate, setSelectedEmirate] = useState<string>("all");
+    const [selectedTripType, setSelectedTripType] = useState<string>("all");
+    const [selectedVehicleType, setSelectedVehicleType] = useState<string>("all");
+    const [selectedCompany, setSelectedCompany] = useState<string>("all");
+    const [includeInactive, setIncludeInactive] = useState(false);
+
+    // Form state
+    const [formData, setFormData] = useState<Partial<CreateTransportRateRequest>>({
+        company_id: null,
+        city_id: "",
+        area: "",
+        trip_type: "ONE_WAY",
+        vehicle_type_id: "",
+        rate: 0,
+    });
+
+    const { data: vehicleTypesData } = useListVehicleTypes({ limit: "100" });
+    const vehicleTypes = vehicleTypesData?.data || [];
+
     const createRate = useCreateTransportRate();
     const updateRate = useUpdateTransportRate();
     const deleteRate = useDeleteTransportRate();
     const syncRates = useSyncTransportRateCards();
 
-    const [createDialogOpen, setCreateDialogOpen] = useState(false);
-    const [editDialogOpen, setEditDialogOpen] = useState(false);
-    const [selectedRate, setSelectedRate] = useState<TransportRate | null>(null);
+    // Reference data hooks
+    const { data: citiesData } = useCities({ limit: "100" });
+    const cities = citiesData?.data || [];
 
-    const [formData, setFormData] = useState({
-        city_id: "",
-        area: "",
-        trip_type: "ROUND_TRIP" as TripType,
-        vehicle_type_id: "",
-        rate: "",
-    });
+    const { data: companiesData } = useCompanies({ limit: "100" });
+    const companies = companiesData?.data || [];
 
-    const handleCreate = async () => {
-        const rateNum = parseFloat(formData.rate);
-        if (!formData.city_id || !formData.vehicle_type_id || isNaN(rateNum) || rateNum < 0) {
-            toast.error("Please fill all required fields with valid values");
-            return;
-        }
+    // Query params
+    const queryParams = useMemo(() => {
+        const params: Record<string, string> = {};
+        if (selectedEmirate && selectedEmirate !== "all") params.city = selectedEmirate;
+        if (selectedTripType && selectedTripType !== "all") params.trip_type = selectedTripType;
+        if (selectedVehicleType && selectedVehicleType !== "all")
+            params.vehicle_type_id = selectedVehicleType;
+        if (selectedCompany && selectedCompany !== "all") params.company_id = selectedCompany;
+        if (includeInactive) params.include_inactive = "true";
+        return params;
+    }, [selectedEmirate, selectedTripType, selectedVehicleType, selectedCompany, includeInactive]);
 
-        try {
-            await createRate.mutateAsync({
-                city_id: formData.city_id,
-                area: formData.area || null,
-                trip_type: formData.trip_type,
-                vehicle_type_id: formData.vehicle_type_id,
-                rate: rateNum,
-            });
-            toast.success("Transport rate created successfully");
-            setCreateDialogOpen(false);
-            setFormData({
-                city_id: "",
-                area: "",
-                trip_type: "ROUND_TRIP",
-                vehicle_type_id: "",
-                rate: "",
-            });
-        } catch (error: any) {
-            toast.error(error.message || "Failed to create rate");
-        }
-    };
+    const { data: ratesData, isLoading, error } = useListTransportRates(queryParams);
+    const rates = ratesData?.data || [];
 
-    const handleEdit = async () => {
-        if (!selectedRate) return;
-        const rateNum = parseFloat(formData.rate);
-        if (isNaN(rateNum) || rateNum < 0) {
-            toast.error("Please enter a valid rate");
-            return;
-        }
-
-        try {
-            await updateRate.mutateAsync({
-                id: selectedRate.id,
-                data: { rate: rateNum },
-            });
-            toast.success("Transport rate updated successfully");
-            setEditDialogOpen(false);
-            setSelectedRate(null);
-        } catch (error: any) {
-            toast.error(error.message || "Failed to update rate");
-        }
-    };
-
-    const handleDelete = async (rate: TransportRate) => {
-        if (
-            !confirm(
-                `Deactivate transport rate for ${rate.city.name}${rate.area ? ` (${rate.area})` : ""} (${rate.trip_type}, ${rate.vehicle_type.name})?`
-            )
-        ) {
-            return;
-        }
-
-        try {
-            await deleteRate.mutateAsync(rate.id);
-            toast.success("Transport rate deactivated");
-        } catch (error: any) {
-            toast.error(error.message || "Failed to deactivate rate");
-        }
-    };
-
-    const openEdit = (rate: TransportRate) => {
-        setSelectedRate(rate);
+    const resetForm = () => {
+        setEditingRate(null);
+        setIsCreateOpen(false);
         setFormData({
-            city_id: rate.city.id,
-            area: rate.area || "",
-            trip_type: rate.trip_type,
-            vehicle_type_id: rate.vehicle_type.id,
-            rate: rate.rate.toString(),
+            company_id: null,
+            city_id: "",
+            area: "",
+            trip_type: "ONE_WAY",
+            vehicle_type_id: "",
+            rate: 0,
         });
-        setEditDialogOpen(true);
     };
+
+    const openEditDialog = (rate: TransportRate) => {
+        setEditingRate(rate);
+        setFormData({
+            company_id: rate?.company?.id,
+            city_id: rate?.city?.id, // This will be the city ID based on requirement "emirate means city id"
+            area: rate?.area || "",
+            trip_type: rate?.trip_type,
+            vehicle_type_id: rate?.vehicle_type.id,
+            rate: rate?.rate,
+        });
+        setIsCreateOpen(true);
+    };
+
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+
+        if (
+            !formData.city_id ||
+            !formData.trip_type ||
+            !formData.vehicle_type_id ||
+            formData.rate === undefined
+        ) {
+            toast.error("Please fill in all required fields");
+            return;
+        }
+
+        const payload: CreateTransportRateRequest = {
+            company_id:
+                formData.company_id === "all" || formData.company_id === ""
+                    ? null
+                    : formData.company_id,
+            city_id: formData.city_id,
+            area: formData.area || null,
+            trip_type: formData.trip_type,
+            vehicle_type_id: formData.vehicle_type_id,
+            rate: Number(formData.rate),
+        };
+
+        try {
+            if (editingRate) {
+                await updateRate.mutateAsync({
+                    id: editingRate.id,
+                    data: {
+                        rate: payload.rate,
+                        // Assuming we only update rate and active status generally, but full update might be supported
+                        // Based on types UpdateTransportRateRequest only has rate and isActive
+                        // If the user wants to update other fields, the backend must support it or we might need to recreate
+                        // For now, consistent with Type definition:
+                    },
+                });
+                toast.success("Transport rate updated successfully");
+                resetForm();
+            } else {
+                await createRate.mutateAsync(payload);
+                toast.success("Transport rate created successfully");
+                resetForm();
+            }
+        } catch (error: any) {
+            toast.error(error.message || "An error occurred");
+        }
+    };
+
+    const handleToggleStatus = async () => {
+        try {
+            if (confirmToggle) {
+                if (confirmToggle.currentStatus) {
+                    await deleteRate.mutateAsync(confirmToggle.id);
+                } else {
+                    await updateRate.mutateAsync({
+                        id: confirmToggle.id,
+                        data: {
+                            isActive: true,
+                        },
+                    });
+                }
+                toast.success(
+                    `Rate ${!confirmToggle.currentStatus ? "activated" : "deactivated"} successfully`
+                );
+                setConfirmToggle(null);
+            }
+        } catch (error: any) {
+            toast.error(error.message || "An error occurred");
+        }
+    };
+
+    if (error) {
+        return (
+            <div className="text-center py-12 space-y-3">
+                <Truck className="h-12 w-12 mx-auto text-muted-foreground opacity-50" />
+                <p className="font-mono text-sm text-muted-foreground">AN ERROR OCCURRED</p>
+            </div>
+        );
+    }
 
     return (
-        <div className="min-h-screen bg-background">
+        <div>
             <AdminHeader
                 icon={Truck}
                 title="TRANSPORT RATES"
-                description="Emirate · Trip Type · Vehicle Configuration"
+                description="Manage logistics and transport pricing"
+                stats={{ label: "TOTAL RATES", value: rates.length }}
                 actions={
                     <div className="flex gap-2">
                         <Button
                             variant="outline"
+                            className="gap-2 font-mono"
                             onClick={async () => {
                                 try {
                                     const result = await syncRates.mutateAsync(false);
                                     toast.success(
-                                        `Synced: ${result?.created ?? 0} created, ${result?.updated ?? 0} updated, ${result?.skipped ?? 0} skipped`
+                                        `Synced ${result?.created ?? 0} created, ${result?.updated ?? 0} updated`
                                     );
                                 } catch {
                                     toast.error("Sync failed");
                                 }
                             }}
                             disabled={syncRates.isPending}
-                            className="gap-2"
                         >
                             <RefreshCw
                                 className={`h-4 w-4 ${syncRates.isPending ? "animate-spin" : ""}`}
                             />
-                            {syncRates.isPending ? "Syncing..." : "Sync to Service Catalog"}
+                            {syncRates.isPending ? "SYNCING..." : "SYNC CATALOG"}
                         </Button>
-                        <Button onClick={() => setCreateDialogOpen(true)} className="gap-2">
-                            <Plus className="h-4 w-4" />
-                            Add Rate
-                        </Button>
+                        <Dialog
+                            open={isCreateOpen}
+                            onOpenChange={(open) => {
+                                setIsCreateOpen(open);
+                                if (!open) {
+                                    resetForm();
+                                }
+                            }}
+                        >
+                            <DialogTrigger asChild>
+                                <Button className="gap-2 font-mono">
+                                    <Plus className="h-4 w-4" />
+                                    NEW RATE
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-2xl">
+                                <DialogHeader>
+                                    <DialogTitle className="font-mono">
+                                        {editingRate ? "EDIT RATE" : "CREATE NEW RATE"}
+                                    </DialogTitle>
+                                    <DialogDescription className="font-mono text-xs">
+                                        {editingRate
+                                            ? "Update transport pricing details"
+                                            : "Add new transport rate configuration"}
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <form onSubmit={handleSubmit} className="space-y-6">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="company" className="font-mono text-xs">
+                                                COMPANY (OPTIONAL)
+                                            </Label>
+                                            <Select
+                                                value={formData.company_id || "all"}
+                                                onValueChange={(value) =>
+                                                    setFormData({
+                                                        ...formData,
+                                                        company_id: value === "all" ? null : value,
+                                                    })
+                                                }
+                                                disabled={!!editingRate} // Assuming ID fields shouldn't change on edit per types
+                                            >
+                                                <SelectTrigger className="font-mono">
+                                                    <SelectValue placeholder="All Companies" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="all" className="font-mono">
+                                                        All Companies
+                                                    </SelectItem>
+                                                    {companies.map((company) => (
+                                                        <SelectItem
+                                                            key={company.id}
+                                                            value={company.id}
+                                                            className="font-mono"
+                                                        >
+                                                            {company.name}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="city" className="font-mono text-xs">
+                                                CITY (EMIRATE) *
+                                            </Label>
+                                            <Select
+                                                value={formData.city_id}
+                                                onValueChange={(value) =>
+                                                    setFormData({
+                                                        ...formData,
+                                                        city_id: value,
+                                                    })
+                                                }
+                                                disabled={!!editingRate}
+                                                required
+                                            >
+                                                <SelectTrigger className="font-mono">
+                                                    <SelectValue placeholder="Select City" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {cities.map((city) => (
+                                                        <SelectItem
+                                                            key={city.id}
+                                                            value={city.id}
+                                                            className="font-mono"
+                                                        >
+                                                            {city.name}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
+
+                                    {/* Area is optional and text based */}
+                                    <div className="space-y-2">
+                                        <Label htmlFor="area" className="font-mono text-xs">
+                                            AREA (OPTIONAL)
+                                        </Label>
+                                        <Input
+                                            id="area"
+                                            value={formData.area || ""}
+                                            onChange={(e) =>
+                                                setFormData({
+                                                    ...formData,
+                                                    area: e.target.value,
+                                                })
+                                            }
+                                            placeholder="Specific area or district"
+                                            className="font-mono"
+                                            disabled={!!editingRate}
+                                        />
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="tripType" className="font-mono text-xs">
+                                                TRIP TYPE *
+                                            </Label>
+                                            <Select
+                                                value={formData.trip_type}
+                                                onValueChange={(value) =>
+                                                    setFormData({
+                                                        ...formData,
+                                                        trip_type: value as TripType,
+                                                    })
+                                                }
+                                                disabled={!!editingRate}
+                                            >
+                                                <SelectTrigger className="font-mono">
+                                                    <SelectValue placeholder="Select Type" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {TRIP_TYPES.map((type) => (
+                                                        <SelectItem
+                                                            key={type}
+                                                            value={type}
+                                                            className="font-mono"
+                                                        >
+                                                            {type.replace("_", " ")}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label
+                                                htmlFor="vehicle_type"
+                                                className="font-mono text-xs"
+                                            >
+                                                VEHICLE TYPE *
+                                            </Label>
+                                            <Select
+                                                value={formData.vehicle_type_id}
+                                                onValueChange={(value) =>
+                                                    setFormData({
+                                                        ...formData,
+                                                        vehicle_type_id: value,
+                                                    })
+                                                }
+                                                disabled={!!editingRate}
+                                            >
+                                                <SelectTrigger className="font-mono">
+                                                    <SelectValue placeholder="Select Vehicle" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {vehicleTypes.map((type) => (
+                                                        <SelectItem
+                                                            key={type.id}
+                                                            value={type.id}
+                                                            className="font-mono"
+                                                        >
+                                                            {type.name} ({type.vehicle_size})
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label htmlFor="rate" className="font-mono text-xs">
+                                            RATE (AED) *
+                                        </Label>
+                                        <Input
+                                            id="rate"
+                                            type="number"
+                                            min="0"
+                                            step="1"
+                                            value={formData.rate}
+                                            onChange={(e) =>
+                                                setFormData({
+                                                    ...formData,
+                                                    rate: parseFloat(e.target.value),
+                                                })
+                                            }
+                                            placeholder="0.00"
+                                            className="font-mono"
+                                            required
+                                        />
+                                    </div>
+
+                                    <div className="flex justify-end gap-3 pt-4 border-t border-border">
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            onClick={resetForm}
+                                            className="font-mono"
+                                            disabled={createRate.isPending || updateRate.isPending}
+                                        >
+                                            CANCEL
+                                        </Button>
+                                        <Button
+                                            type="submit"
+                                            disabled={createRate.isPending || updateRate.isPending}
+                                            className="font-mono"
+                                        >
+                                            {createRate.isPending || updateRate.isPending
+                                                ? "PROCESSING..."
+                                                : editingRate
+                                                  ? "UPDATE RATE"
+                                                  : "CREATE RATE"}
+                                        </Button>
+                                    </div>
+                                </form>
+                            </DialogContent>
+                        </Dialog>
                     </div>
                 }
             />
 
-            <div className="container mx-auto px-4 py-8">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Transport Rates</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        {isLoading ? (
-                            <p className="text-muted-foreground">Loading...</p>
-                        ) : !data?.data || data.data.length === 0 ? (
-                            <p className="text-muted-foreground text-center py-8">
-                                No transport rates configured
-                            </p>
-                        ) : (
-                            <div className="space-y-2">
-                                {data.data.map((rate: TransportRate) => (
-                                    <div
-                                        key={rate.id}
-                                        className="flex items-center justify-between p-3 border border-border rounded-md hover:bg-muted/50"
-                                    >
-                                        <div className="flex-1">
-                                            <div className="flex items-center gap-3">
-                                                <span className="font-semibold">
-                                                    {rate.city.name}
-                                                </span>
-                                                {rate.area && (
-                                                    <Badge
-                                                        variant="outline"
-                                                        className="max-w-[140px] truncate"
-                                                    >
-                                                        {rate.area}
-                                                    </Badge>
-                                                )}
-                                                <Badge variant="outline">{rate.trip_type}</Badge>
-                                                <Badge variant="outline">
-                                                    {rate.vehicle_type.name}
-                                                </Badge>
-                                                {!rate.is_active && (
-                                                    <Badge variant="destructive">Inactive</Badge>
-                                                )}
-                                            </div>
-                                            {rate.company?.id && (
-                                                <p className="text-xs text-muted-foreground mt-1">
-                                                    Company-specific override: {rate.company.name}
-                                                </p>
-                                            )}
-                                        </div>
-                                        <div className="flex items-center gap-4">
-                                            <span className="text-lg font-bold font-mono">
-                                                {rate.rate.toFixed(2)} AED
-                                            </span>
-                                            <div className="flex gap-2">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => openEdit(rate)}
-                                                >
-                                                    <Pencil className="h-4 w-4" />
-                                                </Button>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => handleDelete(rate)}
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
+            {/* Control Panel */}
+            <div className="border-b border-border bg-card px-8 py-4">
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-center">
+                    {/* Filter: City */}
+                    <Select value={selectedEmirate} onValueChange={setSelectedEmirate}>
+                        <SelectTrigger className="font-mono text-xs">
+                            <SelectValue placeholder="All Cities" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all" className="font-mono text-xs">
+                                ALL CITIES
+                            </SelectItem>
+                            {cities.map((city) => (
+                                <SelectItem
+                                    key={city.id}
+                                    value={city.id}
+                                    className="font-mono text-xs"
+                                >
+                                    {city.name}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+
+                    {/* Filter: Trip Type */}
+                    <Select value={selectedTripType} onValueChange={setSelectedTripType}>
+                        <SelectTrigger className="font-mono text-xs">
+                            <SelectValue placeholder="All Trip Types" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all" className="font-mono text-xs">
+                                ALL TRIPS
+                            </SelectItem>
+                            {TRIP_TYPES.map((type) => (
+                                <SelectItem key={type} value={type} className="font-mono text-xs">
+                                    {removeUnderScore(type)}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+
+                    {/* Filter: Vehicle Type */}
+                    <Select value={selectedVehicleType} onValueChange={setSelectedVehicleType}>
+                        <SelectTrigger className="font-mono text-xs">
+                            <SelectValue placeholder="All Vehicles" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all" className="font-mono text-xs">
+                                ALL VEHICLES
+                            </SelectItem>
+                            {vehicleTypes?.map((type) => (
+                                <SelectItem
+                                    key={type.id}
+                                    value={type.id}
+                                    className="font-mono text-xs"
+                                >
+                                    {type.name} ({type.vehicle_size})
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+
+                    {/* Filter: Company */}
+                    <Select value={selectedCompany} onValueChange={setSelectedCompany}>
+                        <SelectTrigger className="font-mono text-xs">
+                            <SelectValue placeholder="All Companies" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all" className="font-mono text-xs">
+                                ALL COMPANIES
+                            </SelectItem>
+                            {companies.map((company) => (
+                                <SelectItem
+                                    key={company.id}
+                                    value={company.id}
+                                    className="font-mono text-xs"
+                                >
+                                    {company.name}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+
+                    <Button
+                        variant={includeInactive ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setIncludeInactive(!includeInactive)}
+                        className="gap-2 font-mono text-xs w-full"
+                    >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        {includeInactive ? "HIDE INACTIVE" : "SHOW INACTIVE"}
+                    </Button>
+                </div>
             </div>
 
-            {/* Create Dialog */}
-            <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Add Transport Rate</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                        <div>
-                            <Label>
-                                City <span className="text-destructive">*</span>
-                            </Label>
-                            <Select
-                                value={formData.city_id}
-                                onValueChange={(v) => setFormData({ ...formData, city_id: v })}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select city" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {(citiesData?.data || []).map((city) => (
-                                        <SelectItem key={city.id} value={city.id}>
-                                            {city.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div>
-                            <Label>Area (Optional)</Label>
-                            <Input
-                                value={formData.area}
-                                onChange={(e) => setFormData({ ...formData, area: e.target.value })}
-                                placeholder="e.g. Downtown, Marina"
-                            />
-                        </div>
-                        <div>
-                            <Label>
-                                Trip Type <span className="text-destructive">*</span>
-                            </Label>
-                            <Select
-                                value={formData.trip_type}
-                                onValueChange={(v: TripType) =>
-                                    setFormData({ ...formData, trip_type: v })
-                                }
-                            >
-                                <SelectTrigger>
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="ONE_WAY">One-way</SelectItem>
-                                    <SelectItem value="ROUND_TRIP">Round-trip</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div>
-                            <Label>
-                                Vehicle Type <span className="text-destructive">*</span>
-                            </Label>
-                            <Select
-                                value={formData.vehicle_type_id}
-                                onValueChange={(v) =>
-                                    setFormData({ ...formData, vehicle_type_id: v })
-                                }
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select vehicle type" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {(vehicleTypesData?.data || []).map((vehicleType) => (
-                                        <SelectItem key={vehicleType.id} value={vehicleType.id}>
-                                            {vehicleType.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div>
-                            <Label>
-                                Rate (AED) <span className="text-destructive">*</span>
-                            </Label>
-                            <Input
-                                type="number"
-                                step="1"
-                                min="0"
-                                value={formData.rate}
-                                onChange={(e) => setFormData({ ...formData, rate: e.target.value })}
-                                placeholder="500.00"
-                            />
+            <div className="px-8 py-6">
+                {isLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                        <div className="text-sm font-mono text-muted-foreground animate-pulse">
+                            LOADING RATES...
                         </div>
                     </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
-                            Cancel
+                ) : rates.length === 0 ? (
+                    <div className="text-center py-12 space-y-3">
+                        <Truck className="h-12 w-12 mx-auto text-muted-foreground opacity-50" />
+                        <p className="font-mono text-sm text-muted-foreground">NO RATES FOUND</p>
+                        <Button
+                            onClick={() => setIsCreateOpen(true)}
+                            variant="outline"
+                            className="font-mono text-xs"
+                        >
+                            <Plus className="h-3.5 w-3.5 mr-2" />
+                            CREATE FIRST RATE
                         </Button>
-                        <Button onClick={handleCreate} disabled={createRate.isPending}>
-                            {createRate.isPending ? "Creating..." : "Create"}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+                    </div>
+                ) : (
+                    <div className="border border-border rounded-lg overflow-hidden bg-card">
+                        <Table>
+                            <TableHeader>
+                                <TableRow className="bg-muted/50 border-border/50">
+                                    <TableHead className="font-mono text-xs font-bold">
+                                        COMPANY
+                                    </TableHead>
+                                    <TableHead className="font-mono text-xs font-bold">
+                                        CITY
+                                    </TableHead>
+                                    <TableHead className="font-mono text-xs font-bold">
+                                        AREA
+                                    </TableHead>
+                                    <TableHead className="font-mono text-xs font-bold">
+                                        VEHICLE TYPE
+                                    </TableHead>
+                                    <TableHead className="font-mono text-xs font-bold">
+                                        TRIP TYPE
+                                    </TableHead>
+                                    <TableHead className="font-mono text-xs font-bold">
+                                        RATE
+                                    </TableHead>
+                                    <TableHead className="font-mono text-xs font-bold">
+                                        CREATED AT
+                                    </TableHead>
+                                    <TableHead className="w-12"></TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {rates.map((rate: TransportRate, index: number) => (
+                                    <TableRow
+                                        key={rate.id}
+                                        className="group hover:bg-muted/30 transition-colors border-border/50"
+                                        style={{
+                                            animationDelay: `${index * 50}ms`,
+                                        }}
+                                    >
+                                        <TableCell className="font-mono">
+                                            <span className="text-xs">
+                                                {rate?.company?.name || "All Companies"}
+                                            </span>
+                                        </TableCell>
+                                        <TableCell className="font-mono">
+                                            <div className="flex flex-col">
+                                                <span className="font-semibold text-sm">
+                                                    {rate?.city?.name}
+                                                </span>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="font-mono">
+                                            <div className="flex flex-col">
+                                                <span className="font-semibold text-sm">
+                                                    {rate?.area}
+                                                </span>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="font-mono">
+                                            <span className="font-mono font-medium w-fit">
+                                                {removeUnderScore(rate.vehicle_type.name)}
+                                            </span>
+                                        </TableCell>
+                                        <TableCell className="font-mono">
+                                            <span className="font-mono font-medium w-fit">
+                                                {removeUnderScore(rate.trip_type)}
+                                            </span>
+                                        </TableCell>
+                                        <TableCell className="font-mono text-sm font-bold">
+                                            {rate.rate} AED
+                                        </TableCell>
+                                        <TableCell className="font-mono text-xs text-muted-foreground">
+                                            {formatDate(rate.created_at, "dd/MM/yyyy")}
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="flex items-center gap-2">
+                                                <Button
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    onClick={() => openEditDialog(rate)}
+                                                    className="font-mono text-xs"
+                                                >
+                                                    <Edit className="h-3 w-3 mr-1" />
+                                                    Edit
+                                                </Button>
+                                                <Button
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    onClick={() =>
+                                                        setConfirmToggle({
+                                                            id: rate.id,
+                                                            name: `${rate.rate} AED`,
+                                                            currentStatus: rate.is_active,
+                                                        })
+                                                    }
+                                                    className={`font-mono text-xs ${rate.is_active ? "text-destructive" : "text-green-600"}`}
+                                                >
+                                                    {rate.is_active ? (
+                                                        <>
+                                                            <PowerOff className="h-3.5 w-3.5 mr-2" />
+                                                            Deactivate
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Power className="h-3.5 w-3.5 mr-2" />
+                                                            Activate
+                                                        </>
+                                                    )}
+                                                </Button>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
+                )}
+            </div>
 
-            {/* Edit Dialog */}
-            <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Edit Transport Rate</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                        <div className="p-3 bg-muted rounded-md text-sm">
-                            <p>
-                                <strong>City:</strong> {selectedRate?.city?.name}
-                            </p>
-                            <p>
-                                <strong>Area:</strong> {selectedRate?.area || "N/A"}
-                            </p>
-                            <p>
-                                <strong>Trip Type:</strong> {selectedRate?.trip_type}
-                            </p>
-                            <p>
-                                <strong>Vehicle:</strong> {selectedRate?.vehicle_type?.name}
-                            </p>
-                        </div>
-                        <div>
-                            <Label>
-                                Rate (AED) <span className="text-destructive">*</span>
-                            </Label>
-                            <Input
-                                type="number"
-                                step="1"
-                                min="0"
-                                value={formData.rate}
-                                onChange={(e) => setFormData({ ...formData, rate: e.target.value })}
-                            />
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
-                            Cancel
-                        </Button>
-                        <Button onClick={handleEdit} disabled={updateRate.isPending}>
-                            {updateRate.isPending ? "Updating..." : "Update"}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            {/* Confirm Toggle Dialog */}
+            <ConfirmDialog
+                open={!!confirmToggle}
+                onOpenChange={(open) => !open && setConfirmToggle(null)}
+                onConfirm={handleToggleStatus}
+                title={confirmToggle?.currentStatus ? "Deactivate Rate" : "Activate Rate"}
+                description={`Are you sure you want to ${confirmToggle?.currentStatus ? "deactivate" : "activate"} this rate?`}
+                confirmText={confirmToggle?.currentStatus ? "Deactivate" : "Activate"}
+                cancelText="Cancel"
+                variant={confirmToggle?.currentStatus ? "destructive" : "default"}
+            />
         </div>
     );
 }

@@ -20,9 +20,12 @@ export const transportRatesKeys = {
 // List transport rates
 export function useListTransportRates(filters: Record<string, any> = {}) {
     const queryParams = new URLSearchParams();
-    if (filters.emirate) queryParams.append("emirate", filters.emirate);
+    if (filters.city || filters.emirate)
+        queryParams.append("city", filters.city || filters.emirate);
     if (filters.trip_type) queryParams.append("trip_type", filters.trip_type);
-    if (filters.vehicle_type) queryParams.append("vehicle_type", filters.vehicle_type);
+    if (filters.vehicle_type_id || filters.vehicle_type) {
+        queryParams.append("vehicle_type_id", filters.vehicle_type_id || filters.vehicle_type);
+    }
     if (filters.company_id !== undefined) queryParams.append("company_id", filters.company_id);
     if (filters.include_inactive) queryParams.append("include_inactive", "true");
 
@@ -160,15 +163,15 @@ export function useSyncTransportRateCards() {
 // Lookup transport rate
 export function useLookupTransportRate() {
     return useMutation({
-        mutationFn: async (params: { emirate: string; tripType: string; vehicleType: string }) => {
+        mutationFn: async (params: { city: string; trip_type: string; vehicle_type: string }) => {
             try {
                 const queryParams = new URLSearchParams({
-                    emirate: params.emirate,
-                    trip_type: params.tripType,
-                    vehicle_type: params.vehicleType,
+                    city: params.city,
+                    trip_type: params.trip_type,
+                    vehicle_type: params.vehicle_type,
                 });
                 const response = await apiClient.get(
-                    `/operations/v1/pricing/transport-rate/lookup?${queryParams}`
+                    `/operations/v1/pricing/transport-rates/lookup?${queryParams}`
                 );
                 return response.data.data;
             } catch (error) {
