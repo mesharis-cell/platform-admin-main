@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, type UIEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Html5Qrcode } from "html5-qrcode";
@@ -37,6 +37,16 @@ interface ScannedItem {
 
 type Phase = "items" | "meta";
 
+interface AssetSearchResult {
+    id: string;
+    name: string;
+    qr_code: string;
+    tracking_method: string;
+    category?: string;
+}
+
+const SEARCH_PAGE_SIZE = 12;
+
 export default function NewSelfBookingPage() {
     const router = useRouter();
     const [phase, setPhase] = useState<Phase>("items");
@@ -50,11 +60,15 @@ export default function NewSelfBookingPage() {
         qty: number;
     } | null>(null);
     const [searchQuery, setSearchQuery] = useState("");
-    const [searchResults, setSearchResults] = useState<any[]>([]);
+    const [searchResults, setSearchResults] = useState<AssetSearchResult[]>([]);
     const [isSearching, setIsSearching] = useState(false);
+    const [isFetchingMoreSearch, setIsFetchingMoreSearch] = useState(false);
+    const [searchPage, setSearchPage] = useState(1);
+    const [hasMoreSearch, setHasMoreSearch] = useState(false);
     const qrScannerRef = useRef<Html5Qrcode | null>(null);
     const lastScanRef = useRef<number>(0);
     const isScanningRef = useRef(false);
+    const searchRequestIdRef = useRef(0);
 
     // Meta phase
     const [bookedFor, setBookedFor] = useState("");
@@ -64,27 +78,40 @@ export default function NewSelfBookingPage() {
 
     const createMutation = useCreateSelfBooking();
 
+    const clearScannerContainer = useCallback(() => {
+        // eslint-disable-next-line creatr/no-browser-globals-in-ssr
+        const scannerEl = document.getElementById("qr-scanner-new-booking");
+        if (scannerEl) scannerEl.innerHTML = "";
+    }, []);
+
     const stopScanner = useCallback(async () => {
-        if (qrScannerRef.current) {
+        const scanner = qrScannerRef.current;
+        qrScannerRef.current = null;
+
+        if (scanner) {
             try {
-                await qrScannerRef.current.stop();
-                await qrScannerRef.current.clear();
+                if (scanner.isScanning) {
+                    await scanner.stop();
+                }
             } catch {
                 /* ignore stop errors */
             }
-            qrScannerRef.current = null;
         }
+
+        clearScannerContainer();
         setCameraActive(false);
-    }, []);
+    }, [clearScannerContainer]);
 
     const startScanner = useCallback(async () => {
-        if (qrScannerRef.current) return;
+        if (qrScannerRef.current || cameraActive) return;
         // eslint-disable-next-line creatr/no-browser-globals-in-ssr
         const el = document.getElementById("qr-scanner-new-booking");
         if (!el) return;
+
+        clearScannerContainer();
         try {
-            qrScannerRef.current = new Html5Qrcode("qr-scanner-new-booking");
-            await qrScannerRef.current.start(
+            const scanner = new Html5Qrcode("qr-scanner-new-booking");
+            await scanner.start(
                 { facingMode: "environment" },
                 { fps: 10, qrbox: { width: 250, height: 250 } },
                 (decodedText) => {
@@ -96,17 +123,20 @@ export default function NewSelfBookingPage() {
                 },
                 undefined
             );
+            qrScannerRef.current = scanner;
             setCameraActive(true);
         } catch (err) {
+            clearScannerContainer();
+            setCameraActive(false);
             toast.error("Camera failed to start", {
                 description: err instanceof Error ? err.message : "Unknown error",
             });
         }
-    }, []);
+    }, [cameraActive, clearScannerContainer]);
 
     useEffect(
         () => () => {
-            stopScanner();
+            void stopScanner();
         },
         [stopScanner]
     );
@@ -167,26 +197,124 @@ export default function NewSelfBookingPage() {
         setScannedItems((prev) => prev.filter((i) => i.asset_id !== assetId));
     }
 
-    async function handleSearch(q: string) {
-        setSearchQuery(q);
-        if (!q.trim()) {
+    const fetchSearchResults = useCallback(
+        async (query: string, page: number, mode: "replace" | "append" = "replace") => {
+            const trimmedQuery = query.trim();
+            if (!trimmedQuery) {
+                searchRequestIdRef.current += 1;
+                setSearchResults([]);
+                setSearchPage(1);
+                setHasMoreSearch(false);
+                setIsSearching(false);
+                setIsFetchingMoreSearch(false);
+                return;
+            }
+
+            const requestId = ++searchRequestIdRef.current;
+            const isAppend = mode === "append";
+
+            if (isAppend) {
+                setIsFetchingMoreSearch(true);
+            } else {
+                setIsSearching(true);
+            }
+
+            try {
+                const res = await apiClient.get("/operations/v1/asset", {
+                    params: {
+                        search_term: trimmedQuery,
+                        page: String(page),
+                        limit: String(SEARCH_PAGE_SIZE),
+                        sort_by: "name",
+                        sort_order: "asc",
+                    },
+                });
+
+                if (requestId !== searchRequestIdRef.current) return;
+
+                const rows = (res.data?.data || []) as AssetSearchResult[];
+                const total = Number(res.data?.meta?.total || rows.length);
+                const resolvedPage = Number(res.data?.meta?.page || page);
+                const resolvedLimit = Number(res.data?.meta?.limit || SEARCH_PAGE_SIZE);
+
+                setSearchPage(resolvedPage);
+
+                if (isAppend) {
+                    setSearchResults((prev) => {
+                        const mergedById = new Map(prev.map((asset) => [asset.id, asset]));
+                        rows.forEach((asset) => mergedById.set(asset.id, asset));
+                        return Array.from(mergedById.values());
+                    });
+                } else {
+                    setSearchResults(rows);
+                }
+
+                setHasMoreSearch(resolvedPage * resolvedLimit < total);
+            } catch {
+                if (requestId !== searchRequestIdRef.current) return;
+                if (!isAppend) {
+                    setSearchResults([]);
+                }
+                setHasMoreSearch(false);
+            } finally {
+                const isLatestRequest = requestId === searchRequestIdRef.current;
+                if (isLatestRequest) {
+                    setIsSearching(false);
+                    setIsFetchingMoreSearch(false);
+                }
+            }
+        },
+        []
+    );
+
+    useEffect(() => {
+        const trimmedQuery = searchQuery.trim();
+        if (!trimmedQuery) {
+            searchRequestIdRef.current += 1;
             setSearchResults([]);
+            setSearchPage(1);
+            setHasMoreSearch(false);
+            setIsSearching(false);
+            setIsFetchingMoreSearch(false);
             return;
         }
-        setIsSearching(true);
-        try {
-            const res = await apiClient.get("/operations/v1/asset", {
-                params: { search: q, limit: "8" },
-            });
-            setSearchResults(res.data?.data || []);
-        } catch {
-            setSearchResults([]);
-        } finally {
-            setIsSearching(false);
-        }
+
+        const timer = setTimeout(() => {
+            void fetchSearchResults(trimmedQuery, 1, "replace");
+        }, 300);
+
+        return () => clearTimeout(timer);
+    }, [fetchSearchResults, searchQuery]);
+
+    const loadMoreSearchResults = useCallback(() => {
+        const trimmedQuery = searchQuery.trim();
+        if (!trimmedQuery || !hasMoreSearch || isSearching || isFetchingMoreSearch) return;
+        void fetchSearchResults(trimmedQuery, searchPage + 1, "append");
+    }, [
+        fetchSearchResults,
+        hasMoreSearch,
+        isFetchingMoreSearch,
+        isSearching,
+        searchPage,
+        searchQuery,
+    ]);
+
+    function handleSearchChange(q: string) {
+        setSearchQuery(q);
     }
 
-    function addFromSearch(asset: any) {
+    const handleSearchListScroll = useCallback(
+        (e: UIEvent<HTMLDivElement>) => {
+            const target = e.currentTarget;
+            const pxFromBottom = target.scrollHeight - target.scrollTop - target.clientHeight;
+            if (pxFromBottom <= 80) {
+                loadMoreSearchResults();
+            }
+        },
+        [loadMoreSearchResults]
+    );
+
+    function addFromSearch(asset: AssetSearchResult) {
         const item: Omit<ScannedItem, "quantity"> = {
             asset_id: asset.id,
             asset_name: asset.name,
@@ -289,12 +417,13 @@ export default function NewSelfBookingPage() {
                                     </Button>
                                 </CardHeader>
                                 <CardContent>
-                                    <div
-                                        id="qr-scanner-new-booking"
-                                        className="w-full aspect-4/3 bg-muted rounded-lg overflow-hidden flex items-center justify-center"
-                                    >
+                                    <div className="relative w-full aspect-4/3 bg-muted rounded-lg overflow-hidden">
+                                        <div
+                                            id="qr-scanner-new-booking"
+                                            className="absolute inset-0"
+                                        />
                                         {!cameraActive && (
-                                            <div className="text-center text-muted-foreground">
+                                            <div className="absolute inset-0 flex items-center justify-center text-center text-muted-foreground pointer-events-none">
                                                 <Camera className="w-12 h-12 mx-auto mb-2 opacity-20" />
                                                 <p className="text-sm font-mono">Camera off</p>
                                             </div>
@@ -368,7 +497,7 @@ export default function NewSelfBookingPage() {
                                             className="pl-9 font-mono"
                                             placeholder="Asset name…"
                                             value={searchQuery}
-                                            onChange={(e) => handleSearch(e.target.value)}
+                                            onChange={(e) => handleSearchChange(e.target.value)}
                                         />
                                     </div>
                                     {isSearching && (
@@ -377,27 +506,47 @@ export default function NewSelfBookingPage() {
                                         </p>
                                     )}
                                     {searchResults.length > 0 && (
-                                        <div className="border border-border rounded-lg divide-y divide-border max-h-60 overflow-y-auto">
-                                            {searchResults.map((asset: any) => (
+                                        <div
+                                            className="border border-border rounded-lg divide-y divide-border max-h-72 overflow-y-auto"
+                                            onScroll={handleSearchListScroll}
+                                        >
+                                            {searchResults.map((asset) => (
                                                 <button
                                                     key={asset.id}
                                                     onClick={() => addFromSearch(asset)}
                                                     className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-muted/30 transition-colors text-left"
                                                 >
-                                                    <div>
-                                                        <p className="text-sm font-mono font-medium">
-                                                            {asset.name}
-                                                        </p>
-                                                        <p className="text-xs text-muted-foreground font-mono">
-                                                            {asset.category} ·{" "}
-                                                            {asset.tracking_method}
-                                                        </p>
+                                                    <div className="flex items-start gap-2">
+                                                        <Package className="w-3.5 h-3.5 text-muted-foreground mt-0.5" />
+                                                        <div>
+                                                            <p className="text-sm font-mono font-medium">
+                                                                {asset.name}
+                                                            </p>
+                                                            <p className="text-xs text-muted-foreground font-mono">
+                                                                {asset.category || "Uncategorized"}{" "}
+                                                                · {asset.tracking_method}
+                                                            </p>
+                                                        </div>
                                                     </div>
                                                     <Plus className="w-4 h-4 text-muted-foreground" />
                                                 </button>
                                             ))}
+                                            {isFetchingMoreSearch && (
+                                                <div className="px-3 py-2.5 text-xs text-muted-foreground font-mono flex items-center gap-2">
+                                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                                    Loading more…
+                                                </div>
+                                            )}
                                         </div>
                                     )}
+                                    {!isSearching &&
+                                        !isFetchingMoreSearch &&
+                                        searchQuery.trim().length > 0 &&
+                                        searchResults.length === 0 && (
+                                            <p className="text-xs text-muted-foreground font-mono">
+                                                No assets found
+                                            </p>
+                                        )}
                                 </CardContent>
                             </Card>
                         </div>
@@ -425,20 +574,23 @@ export default function NewSelfBookingPage() {
                                     {scannedItems.map((item) => (
                                         <Card key={item.asset_id}>
                                             <CardContent className="flex items-center justify-between p-4">
-                                                <div className="flex-1">
-                                                    <p className="font-mono font-medium text-sm">
-                                                        {item.asset_name}
-                                                    </p>
-                                                    <div className="flex gap-2 mt-1">
-                                                        <Badge
-                                                            variant="outline"
-                                                            className="font-mono text-xs"
-                                                        >
-                                                            {item.tracking_method}
-                                                        </Badge>
-                                                        <span className="text-xs text-muted-foreground font-mono">
-                                                            {item.qr_code}
-                                                        </span>
+                                                <div className="flex-1 flex items-start gap-2">
+                                                    <Package className="w-3.5 h-3.5 text-muted-foreground mt-0.5" />
+                                                    <div>
+                                                        <p className="font-mono font-medium text-sm">
+                                                            {item.asset_name}
+                                                        </p>
+                                                        <div className="flex gap-2 mt-1">
+                                                            <Badge
+                                                                variant="outline"
+                                                                className="font-mono text-xs"
+                                                            >
+                                                                {item.tracking_method}
+                                                            </Badge>
+                                                            <span className="text-xs text-muted-foreground font-mono">
+                                                                {item.qr_code}
+                                                            </span>
+                                                        </div>
                                                     </div>
                                                 </div>
                                                 <div className="flex items-center gap-3">
@@ -491,8 +643,8 @@ export default function NewSelfBookingPage() {
                             )}
 
                             <Button
-                                onClick={() => {
-                                    stopScanner();
+                                onClick={async () => {
+                                    await stopScanner();
                                     setPhase("meta");
                                 }}
                                 disabled={scannedItems.length === 0}

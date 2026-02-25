@@ -30,9 +30,10 @@ import {
     Calendar,
     ChevronRight,
     Settings,
-    Flag,
     ClipboardList,
     BookmarkPlus,
+    Globe,
+    MapPin,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -79,7 +80,7 @@ type NavItem = {
 };
 
 type NavSection = {
-    title: "Operations" | "Financial" | "Inventory" | "People" | "Platform";
+    title: "Operations" | "Financial" | "Inventory" | "People" | "Platform Settings";
     items: NavItem[];
 };
 
@@ -176,16 +177,22 @@ const navigationSections: NavSection[] = [
                 requiredAnyPermission: ADMIN_NAV_PERMISSIONS.inboundRequest,
             },
             {
-                name: "Brands",
-                href: "/brands",
-                icon: Tag,
-                requiredAnyPermission: ADMIN_NAV_PERMISSIONS.brands,
-            },
-            {
                 name: "Conditions",
                 href: "/conditions",
                 icon: AlertCircle,
                 requiredAnyPermission: ADMIN_NAV_PERMISSIONS.conditions,
+            },
+            {
+                name: "Warehouses",
+                href: "/warehouses",
+                icon: Warehouse,
+                requiredAnyPermission: ADMIN_NAV_PERMISSIONS.warehouses,
+            },
+            {
+                name: "Zones",
+                href: "/zones",
+                icon: Grid3x3,
+                requiredAnyPermission: ADMIN_NAV_PERMISSIONS.zones,
             },
         ],
     },
@@ -205,6 +212,12 @@ const navigationSections: NavSection[] = [
                 requiredAnyPermission: ADMIN_NAV_PERMISSIONS.companies,
             },
             {
+                name: "Brands",
+                href: "/brands",
+                icon: Tag,
+                requiredAnyPermission: ADMIN_NAV_PERMISSIONS.brands,
+            },
+            {
                 name: "Teams",
                 href: "/teams",
                 icon: Users,
@@ -213,48 +226,55 @@ const navigationSections: NavSection[] = [
         ],
     },
     {
-        title: "Platform",
+        title: "Platform Settings",
         items: [
             {
-                name: "Warehouses",
-                href: "/warehouses",
-                icon: Warehouse,
-                requiredAnyPermission: ADMIN_NAV_PERMISSIONS.warehouses,
-            },
-            {
-                name: "Zones",
-                href: "/zones",
-                icon: Grid3x3,
-                requiredAnyPermission: ADMIN_NAV_PERMISSIONS.zones,
-            },
-            {
-                name: "Notifications",
-                href: "/notifications",
-                icon: Mail,
-                requiredAnyPermission: ADMIN_NAV_PERMISSIONS.notifications,
-            },
-            {
-                name: "Feature Flags",
-                href: "/feature-flags",
-                icon: Flag,
-                requiredAnyPermission: ADMIN_NAV_PERMISSIONS.featureFlags,
-            },
-            {
-                name: "Configuration",
-                href: "/settings",
+                name: "Platform Settings",
+                href: "/settings/platform",
                 icon: Settings,
                 requiredAnyPermission: ADMIN_NAV_PERMISSIONS.systemSettings,
-                items: [
-                    { title: "Platform Settings", url: "/settings/platform" },
-                    { title: "Pricing Config", url: "/settings/pricing/config" },
-                    { title: "Notification Rules", url: "/settings/notifications" },
-                    { title: "Service Types", url: "/settings/pricing/service-types" },
-                    { title: "Vehicle Types", url: "/settings/pricing/vehicle-types" },
-                    { title: "Transport Rates", url: "/settings/pricing/transport-rates" },
-                    { title: "Warehouse Ops Rates", url: "/settings/pricing/warehouse-opt-rates" },
-                    { title: "Countries", url: "/settings/locations/countries" },
-                    { title: "Cities", url: "/settings/locations/cities" },
-                ],
+            },
+            {
+                name: "Notification Rules",
+                href: "/settings/notifications",
+                icon: Mail,
+                requiredAnyPermission: ADMIN_NAV_PERMISSIONS.systemSettings,
+            },
+            {
+                name: "Service Types",
+                href: "/settings/pricing/service-types",
+                icon: ClipboardList,
+                requiredAnyPermission: ADMIN_NAV_PERMISSIONS.systemSettings,
+            },
+            {
+                name: "Vehicle Types",
+                href: "/settings/pricing/vehicle-types",
+                icon: Package,
+                requiredAnyPermission: ADMIN_NAV_PERMISSIONS.systemSettings,
+            },
+            {
+                name: "Transport Rates",
+                href: "/settings/pricing/transport-rates",
+                icon: DollarSign,
+                requiredAnyPermission: ADMIN_NAV_PERMISSIONS.systemSettings,
+            },
+            {
+                name: "Warehouse Ops Rates",
+                href: "/settings/pricing/warehouse-opt-rates",
+                icon: Warehouse,
+                requiredAnyPermission: ADMIN_NAV_PERMISSIONS.systemSettings,
+            },
+            {
+                name: "Countries",
+                href: "/settings/locations/countries",
+                icon: Globe,
+                requiredAnyPermission: ADMIN_NAV_PERMISSIONS.systemSettings,
+            },
+            {
+                name: "Cities",
+                href: "/settings/locations/cities",
+                icon: MapPin,
+                requiredAnyPermission: ADMIN_NAV_PERMISSIONS.systemSettings,
             },
         ],
     },

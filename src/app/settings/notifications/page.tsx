@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useMemo } from "react";
 import {
     Bell,
@@ -496,6 +497,14 @@ export default function NotificationSettingsPage() {
                     icon={Bell}
                     title="NOTIFICATION RULES"
                     description="Configure who receives emails for each event"
+                    actions={
+                        <Link href="/notifications">
+                            <Button variant="outline" size="sm" className="h-8 text-xs">
+                                <Mail className="h-3.5 w-3.5 mr-1.5" />
+                                Notification Logs
+                            </Button>
+                        </Link>
+                    }
                 />
 
                 <div className="container mx-auto px-6 py-8">
