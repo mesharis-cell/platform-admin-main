@@ -146,7 +146,7 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
             const newUrls: string[] = result.data?.imageUrls || [];
             await updateAssetMutation.mutateAsync({
                 id: asset.id,
-                data: { images: [...asset.images, ...newUrls] } as any,
+                data: { images: [...asset.images, ...newUrls.map((url) => ({ url }))] } as any,
             });
             toast.success(`${newUrls.length} photo${newUrls.length > 1 ? "s" : ""} added`);
         } catch {

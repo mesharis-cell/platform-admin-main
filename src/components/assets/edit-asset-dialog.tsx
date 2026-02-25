@@ -6,7 +6,8 @@ import { useWarehouses } from "@/hooks/use-warehouses";
 import { useZones } from "@/hooks/use-zones";
 import { useBrands } from "@/hooks/use-brands";
 import { useUpdateAsset, useUploadImage } from "@/hooks/use-assets";
-import { Upload, X, Loader2, Save, AlertCircle, Check } from "lucide-react";
+import { X, Loader2, Save, AlertCircle, Check } from "lucide-react";
+import { PhotoCaptureStrip, PhotoEntry } from "@/components/shared/photo-capture-strip";
 import { Button } from "@/components/ui/button";
 import {
     Dialog,
@@ -82,8 +83,9 @@ export function EditAssetDialog({
 
     const [customCategory, setCustomCategory] = useState("");
     const [customHandlingTag, setCustomHandlingTag] = useState("");
-    const [selectedImages, setSelectedImages] = useState<File[]>([]);
-    const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+    const [stripPhotos, setStripPhotos] = useState<PhotoEntry[]>(
+        asset.images.map((img) => ({ previewUrl: img.url, note: img.note ?? "" }))
+    );
 
     useEffect(() => {
         if (open && asset) {
@@ -109,9 +111,9 @@ export function EditAssetDialog({
             setActiveTab(defaultTab);
             setCustomCategory("");
             setCustomHandlingTag("");
-            previewUrls.forEach((url) => URL.revokeObjectURL(url));
-            setSelectedImages([]);
-            setPreviewUrls([]);
+            setStripPhotos(
+                asset.images.map((img) => ({ previewUrl: img.url, note: img.note ?? "" }))
+            );
         }
     }, [open, asset]);
 
@@ -131,23 +133,6 @@ export function EditAssetDialog({
 
     const updateMutation = useUpdateAsset();
     const imageUploadMutation = useUploadImage();
-
-    function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
-        const files = Array.from(e.target.files || []);
-        if (files.length === 0) return;
-        setSelectedImages((prev) => [...prev, ...files]);
-        setPreviewUrls((prev) => [...prev, ...files.map((f) => URL.createObjectURL(f))]);
-    }
-
-    function removeExistingImage(index: number) {
-        setFormData((prev) => ({ ...prev, images: prev.images.filter((_, i) => i !== index) }));
-    }
-
-    function removeNewImage(index: number) {
-        URL.revokeObjectURL(previewUrls[index]);
-        setSelectedImages((prev) => prev.filter((_, i) => i !== index));
-        setPreviewUrls((prev) => prev.filter((_, i) => i !== index));
-    }
 
     function toggleHandlingTag(tag: string) {
         setFormData((prev) => ({
@@ -226,14 +211,22 @@ export function EditAssetDialog({
         }
 
         try {
-            let newImageUrls: string[] = [];
-            if (selectedImages.length > 0) {
+            const existingPhotos = stripPhotos.filter((p) => !p.file);
+            const newPhotos = stripPhotos.filter((p) => !!p.file);
+
+            let uploadedUrls: string[] = [];
+            if (newPhotos.length > 0) {
                 const fd = new FormData();
                 fd.append("companyId", formData.company);
-                selectedImages.forEach((file) => fd.append("files", file));
+                newPhotos.forEach((p) => fd.append("files", p.file!));
                 const uploadResult = await imageUploadMutation.mutateAsync(fd);
-                newImageUrls = uploadResult.data?.imageUrls || [];
+                uploadedUrls = uploadResult.data?.imageUrls || [];
             }
+
+            const finalImages = [
+                ...existingPhotos.map((p) => ({ url: p.previewUrl, note: p.note || undefined })),
+                ...uploadedUrls.map((url, i) => ({ url, note: newPhotos[i]?.note || undefined })),
+            ];
 
             await updateMutation.mutateAsync({
                 id: asset.id,
@@ -244,7 +237,7 @@ export function EditAssetDialog({
                     name: formData.name,
                     description: formData.description || null,
                     category: formData.category,
-                    images: [...formData.images, ...newImageUrls.map((url) => ({ url }))],
+                    images: finalImages,
                     weight_per_unit: Number(formData.weight_per_unit),
                     dimensions: formData.dimensions,
                     volume_per_unit: Number(formData.volume_per_unit),
@@ -258,9 +251,6 @@ export function EditAssetDialog({
                 } as any,
             });
 
-            previewUrls.forEach((url) => URL.revokeObjectURL(url));
-            setSelectedImages([]);
-            setPreviewUrls([]);
             toast.success("Asset updated");
             onSuccess();
         } catch (error) {
@@ -269,6 +259,7 @@ export function EditAssetDialog({
     }
 
     const isSaving = updateMutation.isPending || imageUploadMutation.isPending;
+    const totalPhotos = stripPhotos.length;
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -291,9 +282,9 @@ export function EditAssetDialog({
                         </TabsTrigger>
                         <TabsTrigger value="photos" className="font-mono text-xs">
                             Photos
-                            {(formData.images.length > 0 || selectedImages.length > 0) && (
+                            {totalPhotos > 0 && (
                                 <span className="ml-1.5 text-muted-foreground">
-                                    ({formData.images.length + selectedImages.length})
+                                    ({totalPhotos})
                                 </span>
                             )}
                         </TabsTrigger>
@@ -486,115 +477,14 @@ export function EditAssetDialog({
 
                     {/* Photos */}
                     <TabsContent value="photos" className="flex-1 overflow-y-auto mt-0 px-1">
-                        <div className="space-y-4 py-4">
-                            <div className="border-2 border-dashed border-border rounded-lg p-6 hover:border-primary/50 transition-colors">
-                                <input
-                                    type="file"
-                                    accept="image/*"
-                                    multiple
-                                    onChange={handleImageSelect}
-                                    className="hidden"
-                                    id="image-upload-edit"
-                                />
-                                <label
-                                    htmlFor="image-upload-edit"
-                                    className="flex flex-col items-center justify-center cursor-pointer"
-                                >
-                                    <Upload className="w-8 h-8 text-muted-foreground mb-2" />
-                                    <span className="text-sm font-mono text-muted-foreground">
-                                        Click to add photos
-                                    </span>
-                                    <span className="text-xs font-mono text-muted-foreground mt-1">
-                                        JPG, PNG, WEBP up to 5MB
-                                    </span>
-                                </label>
-                            </div>
-
-                            {formData.images.length > 0 && (
-                                <div className="space-y-2">
-                                    <Label className="font-mono text-xs text-muted-foreground">
-                                        Current Photos ({formData.images.length})
-                                    </Label>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        {formData.images.map((img, index) => (
-                                            <div
-                                                key={`existing-${index}`}
-                                                className="relative group rounded-lg border border-border overflow-hidden"
-                                            >
-                                                <div className="relative aspect-square">
-                                                    <img
-                                                        src={img.url}
-                                                        alt={`Photo ${index + 1}`}
-                                                        className="w-full h-full object-cover"
-                                                    />
-                                                    <button
-                                                        onClick={() => removeExistingImage(index)}
-                                                        className="absolute top-2 right-2 p-1.5 bg-destructive text-destructive-foreground rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
-                                                    >
-                                                        <X className="w-3 h-3" />
-                                                    </button>
-                                                </div>
-                                                <input
-                                                    type="text"
-                                                    value={img.note || ""}
-                                                    onChange={(e) =>
-                                                        setFormData((prev) => ({
-                                                            ...prev,
-                                                            images: prev.images.map((im, i) =>
-                                                                i === index
-                                                                    ? {
-                                                                          ...im,
-                                                                          note:
-                                                                              e.target.value ||
-                                                                              undefined,
-                                                                      }
-                                                                    : im
-                                                            ),
-                                                        }))
-                                                    }
-                                                    placeholder="Add a note for this photo..."
-                                                    className="w-full px-2 py-1 text-xs border-t border-border bg-muted/30 focus:outline-none focus:bg-background"
-                                                    maxLength={500}
-                                                />
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-
-                            {previewUrls.length > 0 && (
-                                <div className="space-y-2">
-                                    <Label className="font-mono text-xs text-muted-foreground">
-                                        New Photos ({previewUrls.length}) — will upload on save
-                                    </Label>
-                                    <div className="grid grid-cols-3 gap-3">
-                                        {previewUrls.map((url, index) => (
-                                            <div
-                                                key={`new-${index}`}
-                                                className="relative group aspect-square rounded-lg overflow-hidden border-2 border-primary/50"
-                                            >
-                                                <img
-                                                    src={url}
-                                                    alt={`New ${index + 1}`}
-                                                    className="w-full h-full object-cover"
-                                                />
-                                                <button
-                                                    onClick={() => removeNewImage(index)}
-                                                    className="absolute top-2 right-2 p-1.5 bg-destructive text-destructive-foreground rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
-                                                >
-                                                    <X className="w-3 h-3" />
-                                                </button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-
-                            {formData.images.length === 0 && previewUrls.length === 0 && (
-                                <p className="text-center text-sm text-muted-foreground font-mono py-4">
-                                    No photos yet — add some above
-                                </p>
-                            )}
+                        <div className="py-4">
+                            <PhotoCaptureStrip
+                                photos={stripPhotos}
+                                onChange={setStripPhotos}
+                                label="Asset Photos"
+                                companyId={formData.company}
+                                disabled={isSaving}
+                            />
                         </div>
                     </TabsContent>
 
