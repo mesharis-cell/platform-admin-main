@@ -13,6 +13,7 @@ import {
     useGenerateQRCode,
     useDeleteAsset,
     useAssetVersions,
+    useAssetOrderHistory,
     useUploadImage,
     useUpdateAsset,
 } from "@/hooks/use-assets";
@@ -72,6 +73,8 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
 
     // Fetch version history
     const { data: versions } = useAssetVersions(asset?.id || null);
+    const { data: orderHistory } = useAssetOrderHistory(asset?.id || null);
+    const orderHistoryData: any[] = orderHistory || [];
 
     // Fetch availability stats
     const { data: availabilityStats, isLoading: statsLoading } = useAssetAvailabilityStats(id);
@@ -913,6 +916,141 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                                     <p className="text-xs text-muted-foreground py-4 text-center">
                                         No version history yet
                                     </p>
+                                )}
+                            </CardContent>
+                        </Card>
+
+                        {/* Order History */}
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2 font-mono text-sm">
+                                    <Package className="h-4 w-4 text-primary" />
+                                    Order History
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                {orderHistoryData.length === 0 ? (
+                                    <p className="text-xs text-muted-foreground py-4 text-center">
+                                        No order history for this asset yet
+                                    </p>
+                                ) : (
+                                    <div className="space-y-3">
+                                        {orderHistoryData.map((record: any) => (
+                                            <details
+                                                key={record.order_id}
+                                                className="rounded-lg border border-border overflow-hidden"
+                                            >
+                                                <summary className="flex items-center justify-between gap-2 p-3 cursor-pointer hover:bg-muted/30 transition-colors list-none">
+                                                    <div className="flex items-center gap-2 flex-wrap min-w-0">
+                                                        <span className="font-mono text-xs font-bold shrink-0">
+                                                            #{record.order_readable_id}
+                                                        </span>
+                                                        <span className="text-xs text-muted-foreground shrink-0">
+                                                            {record.event_start
+                                                                ? new Date(
+                                                                      record.event_start
+                                                                  ).toLocaleDateString()
+                                                                : "—"}
+                                                        </span>
+                                                        <span className="text-xs px-1.5 py-0.5 rounded bg-muted font-mono shrink-0">
+                                                            {record.order_status?.replace(
+                                                                /_/g,
+                                                                " "
+                                                            )}
+                                                        </span>
+                                                        <span className="text-xs text-muted-foreground truncate">
+                                                            {record.company_name}
+                                                        </span>
+                                                    </div>
+                                                </summary>
+                                                <div className="px-3 pb-3 space-y-2 border-t border-border bg-muted/10">
+                                                    <div className="flex gap-3 pt-2">
+                                                        <div className="flex-1 space-y-1">
+                                                            <p className="text-xs font-mono font-bold text-muted-foreground uppercase">
+                                                                Scanned Out
+                                                            </p>
+                                                            {record.outbound_scan ? (
+                                                                <p className="text-xs">
+                                                                    {new Date(
+                                                                        record.outbound_scan.scanned_at
+                                                                    ).toLocaleString()}
+                                                                </p>
+                                                            ) : (
+                                                                <p className="text-xs text-muted-foreground italic">
+                                                                    Not recorded
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                        <div className="flex-1 space-y-1">
+                                                            <p className="text-xs font-mono font-bold text-muted-foreground uppercase">
+                                                                Returned
+                                                            </p>
+                                                            {record.inbound_scan ? (
+                                                                <div>
+                                                                    <p className="text-xs">
+                                                                        {new Date(
+                                                                            record.inbound_scan.scanned_at
+                                                                        ).toLocaleString()}
+                                                                    </p>
+                                                                    <span
+                                                                        className={`text-xs font-mono font-bold ${record.inbound_scan.condition === "RED" ? "text-destructive" : record.inbound_scan.condition === "ORANGE" ? "text-orange-500" : "text-green-600"}`}
+                                                                    >
+                                                                        {
+                                                                            record.inbound_scan
+                                                                                .condition
+                                                                        }
+                                                                    </span>
+                                                                </div>
+                                                            ) : (
+                                                                <p className="text-xs text-muted-foreground italic">
+                                                                    Not yet returned
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    {record.derig_capture &&
+                                                        record.derig_capture.photos?.length > 0 && (
+                                                            <div className="space-y-1">
+                                                                <p className="text-xs font-mono font-bold text-muted-foreground uppercase">
+                                                                    Derig (
+                                                                    {
+                                                                        record.derig_capture.photos
+                                                                            .length
+                                                                    }{" "}
+                                                                    photos)
+                                                                </p>
+                                                                {record.derig_capture.notes && (
+                                                                    <p className="text-xs text-muted-foreground italic">
+                                                                        {record.derig_capture.notes}
+                                                                    </p>
+                                                                )}
+                                                                <div className="flex gap-2 overflow-x-auto pb-1">
+                                                                    {record.derig_capture.photos.map(
+                                                                        (
+                                                                            url: string,
+                                                                            i: number
+                                                                        ) => (
+                                                                            <a
+                                                                                key={i}
+                                                                                href={url}
+                                                                                target="_blank"
+                                                                                rel="noopener noreferrer"
+                                                                            >
+                                                                                <img
+                                                                                    src={url}
+                                                                                    alt={`Derig ${i + 1}`}
+                                                                                    className="w-16 h-16 shrink-0 rounded object-cover border border-border hover:ring-2 hover:ring-primary/40"
+                                                                                />
+                                                                            </a>
+                                                                        )
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                </div>
+                                            </details>
+                                        ))}
+                                    </div>
                                 )}
                             </CardContent>
                         </Card>

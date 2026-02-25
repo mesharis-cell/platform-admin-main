@@ -16,7 +16,6 @@ export function canCancelOrder(status: OrderStatus): boolean {
         "PENDING_APPROVAL",
         "QUOTED",
         "CONFIRMED",
-        "AWAITING_FABRICATION",
         "IN_PREPARATION",
     ];
     return CANCELLABLE.includes(status);
@@ -52,12 +51,12 @@ export function getStatusColor(status: OrderStatus): string {
         QUOTED: "bg-purple-500",
         DECLINED: "bg-red-500",
         CONFIRMED: "bg-green-500",
-        AWAITING_FABRICATION: "bg-blue-600",
         IN_PREPARATION: "bg-cyan-500",
         READY_FOR_DELIVERY: "bg-indigo-500",
         IN_TRANSIT: "bg-violet-500",
         DELIVERED: "bg-emerald-500",
         IN_USE: "bg-teal-500",
+        DERIG: "bg-purple-600",
         AWAITING_RETURN: "bg-amber-500",
         RETURN_IN_TRANSIT: "bg-orange-500",
         CLOSED: "bg-gray-600",

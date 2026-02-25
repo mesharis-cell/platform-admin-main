@@ -1,16 +1,7 @@
 "use client";
 
-/**
- * Condition History Timeline Component (Phase 12)
- * Industrial audit trail visualization
- */
-
 import { useState } from "react";
-import Image from "next/image";
 import { format } from "date-fns";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import {
     AlertTriangle,
     AlertCircle,
@@ -22,7 +13,6 @@ import {
     ChevronDown,
     ChevronUp,
 } from "lucide-react";
-import type { ConditionHistoryEntry } from "@/types/condition";
 import type { Condition } from "@/types/asset";
 
 interface ConditionHistoryTimelineProps {
@@ -38,226 +28,196 @@ interface ConditionHistoryTimelineProps {
     assetName: string;
 }
 
-export function ConditionHistoryTimeline({ history, assetName }: ConditionHistoryTimelineProps) {
-    const [expandedEntries, setExpandedEntries] = useState<Set<string>>(new Set());
+const CONDITION_DOT: Record<Condition, string> = {
+    RED: "bg-destructive",
+    ORANGE: "bg-orange-500",
+    GREEN: "bg-green-500",
+};
 
-    const toggleEntry = (id: string) => {
-        setExpandedEntries((prev) => {
-            const newSet = new Set(prev);
-            if (newSet.has(id)) {
-                newSet.delete(id);
+const CONDITION_BORDER: Record<Condition, string> = {
+    RED: "border-l-destructive bg-destructive/5",
+    ORANGE: "border-l-orange-500 bg-orange-500/5",
+    GREEN: "border-l-green-500 bg-green-500/5",
+};
+
+const CONDITION_LABEL: Record<Condition, { text: string; cls: string }> = {
+    RED: { text: "Critical", cls: "text-destructive" },
+    ORANGE: { text: "Flagged", cls: "text-orange-500" },
+    GREEN: { text: "Good", cls: "text-green-500" },
+};
+
+const CONDITION_ICON: Record<Condition, React.ReactNode> = {
+    RED: <AlertTriangle className="h-5 w-5 text-white" />,
+    ORANGE: <AlertCircle className="h-5 w-5 text-white" />,
+    GREEN: <CheckCircle2 className="h-5 w-5 text-white" />,
+};
+
+export function ConditionHistoryTimeline({ history }: ConditionHistoryTimelineProps) {
+    const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+    const toggle = (key: string) =>
+        setExpanded((prev) => {
+            const next = new Set(prev);
+            if (next.has(key)) {
+                next.delete(key);
             } else {
-                newSet.add(id);
+                next.add(key);
             }
-            return newSet;
+            return next;
         });
-    };
 
-    const getConditionIcon = (condition: Condition) => {
-        switch (condition) {
-            case "RED":
-                return <AlertTriangle className="h-5 w-5 text-destructive" />;
-            case "ORANGE":
-                return <AlertCircle className="h-5 w-5 text-orange-500" />;
-            case "GREEN":
-                return <CheckCircle2 className="h-5 w-5 text-green-500" />;
-        }
-    };
-
-    const getConditionBadge = (condition: Condition) => {
-        const baseClasses = "font-mono text-xs uppercase tracking-wider";
-
-        switch (condition) {
-            case "RED":
-                return <span className={`${baseClasses} text-destructive`}>Critical</span>;
-            case "ORANGE":
-                return <span className={`${baseClasses} text-orange-500`}>Flagged</span>;
-            case "GREEN":
-                return <span className={`${baseClasses} text-green-500`}>Good</span>;
-        }
-    };
-
-    const getConditionColor = (condition: Condition) => {
-        switch (condition) {
-            case "RED":
-                return "border-l-destructive bg-destructive/5";
-            case "ORANGE":
-                return "border-l-orange-500 bg-orange-500/5";
-            case "GREEN":
-                return "border-l-green-500 bg-green-500/5";
-        }
-    };
-
-    const getDamageEntries = (
-        entry: ConditionHistoryTimelineProps["history"][number]
-    ): Array<{ url: string; description?: string }> => {
+    const getPhotos = (entry: ConditionHistoryTimelineProps["history"][number]) => {
         if (Array.isArray(entry.damage_report_entries) && entry.damage_report_entries.length > 0) {
             return entry.damage_report_entries
-                .map((item) => {
-                    if (!item?.url) return null;
-                    return item.description
-                        ? { url: item.url, description: item.description }
-                        : { url: item.url };
-                })
-                .filter((item): item is NonNullable<typeof item> => item !== null);
+                .filter((d) => !!d?.url)
+                .map((d) => ({ url: d.url, description: d.description }));
         }
-        return (entry.photos || []).map((url) => ({ url }));
+        return (entry.photos ?? []).map((url) => ({ url, description: undefined }));
     };
 
-    if (history.length === 0) {
+    if (history.length === 0)
         return (
             <div className="rounded-lg border border-dashed p-8 text-center">
-                <Clock className="mx-auto mb-2 h-8 w-8 text-muted-foreground opacity-50" />
+                <Clock className="mx-auto mb-2 h-8 w-8 text-muted-foreground opacity-40" />
                 <p className="text-sm text-muted-foreground">No condition history recorded yet</p>
             </div>
         );
-    }
 
     return (
-        <div className="space-y-4">
-            {/* Timeline Container */}
-            <div className="relative space-y-6">
-                {/* Vertical Timeline Line */}
-                <div className="absolute bottom-0 left-[18px] top-6 w-[2px] bg-border" />
+        <div className="relative space-y-5">
+            {/* Vertical line */}
+            <div className="absolute bottom-0 left-[22px] top-7 w-[2px] bg-border" />
 
-                {history.map((entry, index) => {
-                    const isExpanded = expandedEntries.has(entry.timestamp);
-                    const isFirst = index === 0;
-                    const damageEntries = getDamageEntries(entry);
+            {history.map((entry, idx) => {
+                const key = entry.timestamp;
+                const isOpen = expanded.has(key);
+                const isFirst = idx === 0;
+                const photos = getPhotos(entry);
+                const hasDetail = !!entry.notes || photos.length > 0;
+                const label = CONDITION_LABEL[entry.condition];
 
-                    return (
-                        <div key={entry.timestamp} className="relative">
-                            {/* Timeline Dot */}
+                return (
+                    <div key={key} className="relative flex gap-5">
+                        {/* Dot */}
+                        <div
+                            className={`relative z-10 mt-1 flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-4 border-background ${CONDITION_DOT[entry.condition]} ${isFirst ? "ring-4 ring-primary/20" : ""}`}
+                        >
+                            {CONDITION_ICON[entry.condition]}
+                        </div>
+
+                        {/* Card */}
+                        <div
+                            className={`flex-1 rounded-lg border-l-4 bg-card shadow-sm ${CONDITION_BORDER[entry.condition]}`}
+                        >
+                            {/* Header — fully clickable */}
                             <div
-                                className={`absolute left-0 top-1 flex h-10 w-10 items-center justify-center rounded-full border-4 border-background ${
-                                    entry.condition === "RED"
-                                        ? "bg-destructive"
-                                        : entry.condition === "ORANGE"
-                                          ? "bg-orange-500"
-                                          : "bg-green-500"
-                                } ${isFirst ? "ring-4 ring-primary/20" : ""}`}
+                                className={`flex items-start justify-between gap-3 px-4 py-3 ${hasDetail ? "cursor-pointer hover:bg-muted/30 transition-colors rounded-t-lg" : ""}`}
+                                onClick={() => hasDetail && toggle(key)}
                             >
-                                {getConditionIcon(entry.condition)}
-                            </div>
-
-                            {/* Entry Card */}
-                            <div className="ml-16">
-                                <div
-                                    className={`rounded-lg border-l-4 bg-card transition-colors ${getConditionColor(
-                                        entry.condition
-                                    )}`}
-                                >
-                                    {/* Header */}
-                                    <div className="flex items-start justify-between p-4">
-                                        <div className="space-y-2">
-                                            <div className="flex items-center gap-3">
-                                                {getConditionBadge(entry.condition)}
-                                                {isFirst && (
-                                                    <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono text-xs uppercase tracking-wider text-primary">
-                                                        Current
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                                <User className="h-3 w-3" />
-                                                <span>{entry.updated_by}</span>
-                                                <span>•</span>
-                                                <Clock className="h-3 w-3" />
-                                                <span>
-                                                    {format(
-                                                        new Date(entry.timestamp),
-                                                        "MMM dd, yyyy 'at' HH:mm"
-                                                    )}
-                                                </span>
-                                            </div>
-                                        </div>
-
-                                        {(entry.notes || damageEntries.length > 0) && (
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => toggleEntry(entry.timestamp)}
-                                                className="font-mono text-xs"
-                                            >
-                                                {isExpanded ? (
-                                                    <>
-                                                        <ChevronUp className="mr-1 h-3 w-3" />
-                                                        Collapse
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <ChevronDown className="mr-1 h-3 w-3" />
-                                                        Details
-                                                    </>
-                                                )}
-                                            </Button>
+                                <div className="space-y-1.5 min-w-0">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <span
+                                            className={`font-mono text-sm font-semibold ${label.cls}`}
+                                        >
+                                            {label.text}
+                                        </span>
+                                        {isFirst && (
+                                            <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono text-xs text-primary">
+                                                Current
+                                            </span>
+                                        )}
+                                        {photos.length > 0 && !isOpen && (
+                                            <span className="flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 font-mono text-xs text-muted-foreground">
+                                                <ImageIcon className="h-3 w-3" />
+                                                {photos.length}
+                                            </span>
                                         )}
                                     </div>
-
-                                    {/* Expanded Details */}
-                                    {isExpanded && (
-                                        <div className="border-t bg-muted/30 p-4">
-                                            {entry.notes && (
-                                                <div className="mb-4 space-y-2">
-                                                    <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
-                                                        <FileText className="h-3 w-3" />
-                                                        Notes
-                                                    </div>
-                                                    <p className="whitespace-pre-wrap text-sm">
-                                                        {entry.notes}
-                                                    </p>
-                                                </div>
+                                    <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
+                                        <User className="h-3 w-3 shrink-0" />
+                                        <span className="truncate">{entry.updated_by}</span>
+                                        <span>·</span>
+                                        <Clock className="h-3 w-3 shrink-0" />
+                                        <span>
+                                            {format(
+                                                new Date(entry.timestamp),
+                                                "MMM d, yyyy · HH:mm"
                                             )}
+                                        </span>
+                                    </div>
+                                    {/* Notes preview when collapsed */}
+                                    {!isOpen && entry.notes && (
+                                        <p className="text-sm text-muted-foreground line-clamp-2 italic">
+                                            {entry.notes}
+                                        </p>
+                                    )}
+                                </div>
 
-                                            {damageEntries.length > 0 && (
-                                                <div className="space-y-2">
-                                                    <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
-                                                        <ImageIcon className="h-3 w-3" />
-                                                        Damage Photos ({damageEntries.length})
-                                                    </div>
-                                                    <div className="grid gap-2 sm:grid-cols-3">
-                                                        {damageEntries.map((photo, photoIndex) => (
-                                                            <Dialog key={photoIndex}>
-                                                                <DialogTrigger asChild>
-                                                                    <button className="group relative aspect-square overflow-hidden rounded-md border bg-muted transition-all hover:border-primary hover:ring-2 hover:ring-primary/20">
-                                                                        <Image
-                                                                            src={photo.url}
-                                                                            alt={`Damage photo ${photoIndex + 1}`}
-                                                                            fill
-                                                                            className="object-cover transition-transform group-hover:scale-110"
-                                                                        />
-                                                                    </button>
-                                                                </DialogTrigger>
-                                                                <DialogContent className="max-w-3xl">
-                                                                    <div className="space-y-2">
-                                                                        <div className="relative aspect-video w-full overflow-hidden rounded-lg">
-                                                                            <Image
-                                                                                src={photo.url}
-                                                                                alt={`Damage photo ${photoIndex + 1}`}
-                                                                                fill
-                                                                                className="object-contain"
-                                                                            />
-                                                                        </div>
-                                                                        {photo.description && (
-                                                                            <p className="text-sm text-muted-foreground">
-                                                                                {photo.description}
-                                                                            </p>
-                                                                        )}
-                                                                    </div>
-                                                                </DialogContent>
-                                                            </Dialog>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            )}
+                                {hasDetail && (
+                                    <div className="shrink-0 mt-0.5">
+                                        {isOpen ? (
+                                            <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                                        ) : (
+                                            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Expanded details */}
+                            {isOpen && (
+                                <div className="border-t bg-muted/20 px-4 py-4 space-y-4 rounded-b-lg">
+                                    {entry.notes && (
+                                        <div className="space-y-1.5">
+                                            <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                                                <FileText className="h-3.5 w-3.5" />
+                                                Notes
+                                            </p>
+                                            <p className="text-sm whitespace-pre-wrap leading-relaxed">
+                                                {entry.notes}
+                                            </p>
+                                        </div>
+                                    )}
+
+                                    {photos.length > 0 && (
+                                        <div className="space-y-2">
+                                            <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                                                <ImageIcon className="h-3.5 w-3.5" />
+                                                Photos ({photos.length})
+                                            </p>
+                                            {/* Horizontal scrollable photo strip */}
+                                            <div className="flex gap-3 overflow-x-auto pb-2">
+                                                {photos.map((photo, i) => (
+                                                    <a
+                                                        key={i}
+                                                        href={photo.url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="shrink-0 group"
+                                                    >
+                                                        <div className="w-28 h-28 rounded-lg overflow-hidden border border-border bg-muted relative group-hover:ring-2 group-hover:ring-primary/40 transition-all">
+                                                            <img
+                                                                src={photo.url}
+                                                                alt={`Photo ${i + 1}`}
+                                                                className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                                                            />
+                                                        </div>
+                                                        {photo.description && (
+                                                            <p className="text-xs text-muted-foreground mt-1 w-28 truncate">
+                                                                {photo.description}
+                                                            </p>
+                                                        )}
+                                                    </a>
+                                                ))}
+                                            </div>
                                         </div>
                                     )}
                                 </div>
-                            </div>
+                            )}
                         </div>
-                    );
-                })}
-            </div>
+                    </div>
+                );
+            })}
         </div>
     );
 }

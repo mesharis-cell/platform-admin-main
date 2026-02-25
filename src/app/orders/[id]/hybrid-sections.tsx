@@ -279,54 +279,6 @@ export function PricingReviewSection({ order, orderId, onRefresh }: HybridPricin
 }
 
 /**
- * AWAITING_FABRICATION Section
- */
-export function AwaitingFabricationSection({ order, orderId }: HybridPricingSectionProps) {
-    return (
-        <div className="space-y-6">
-            <Card className="border-blue-500 bg-blue-50">
-                <CardHeader>
-                    <CardTitle className="text-blue-500">⏳ Linked Service Requests</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <p className="text-sm text-blue-500">
-                        Review linked service requests before progressing this order to fulfillment
-                        readiness states.
-                    </p>
-                    <p className="text-xs text-blue-500 mt-2">
-                        Blocking linked requests must be commercially cleared or completed first.
-                    </p>
-                </CardContent>
-            </Card>
-
-            <Card>
-                <CardHeader>
-                    <CardTitle className="text-sm">Linked Service Requests</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                    {Array.isArray(order?.linked_service_requests) &&
-                    order.linked_service_requests.length > 0 ? (
-                        order.linked_service_requests.map((sr: any) => (
-                            <div
-                                key={sr.id}
-                                className="text-xs font-mono border rounded p-2 bg-muted/20"
-                            >
-                                {sr.service_request_id} | {sr.request_status} |{" "}
-                                {sr.commercial_status}
-                            </div>
-                        ))
-                    ) : (
-                        <p className="text-xs text-muted-foreground">
-                            No linked service requests yet.
-                        </p>
-                    )}
-                </CardContent>
-            </Card>
-        </div>
-    );
-}
-
-/**
  * Cancel Order Button (shows if order can be cancelled)
  */
 export function CancelOrderButton({ order, orderId }: HybridPricingSectionProps) {
@@ -340,7 +292,6 @@ export function CancelOrderButton({ order, orderId }: HybridPricingSectionProps)
         "PENDING_APPROVAL",
         "QUOTED",
         "CONFIRMED",
-        "AWAITING_FABRICATION",
         "IN_PREPARATION",
     ];
 
