@@ -36,6 +36,7 @@ export function LogisticsPricingReview({
     const [addCustomOpen, setAddCustomOpen] = useState(false);
     const canManagePricing = hasPermission(user, ADMIN_ACTION_PERMISSIONS.ordersPricingAdjust);
     const canManageServiceItems = canManageLineItems(order?.order_status) && canManagePricing;
+    const canRecalculate = ["PRICING_REVIEW", "PENDING_APPROVAL"].includes(order?.order_status);
     const recalculate = useRecalculateBaseOps();
     const volume = parseFloat(order?.calculated_totals?.volume || "0");
 
@@ -130,18 +131,22 @@ export function LogisticsPricingReview({
                                         </span>
                                     )}
                                     {volume > 0 && <span />}
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-6 text-xs text-primary gap-1"
-                                        onClick={handleRecalculate}
-                                        disabled={recalculate.isPending}
-                                    >
-                                        <RefreshCw
-                                            className={`h-3 w-3 ${recalculate.isPending ? "animate-spin" : ""}`}
-                                        />
-                                        {recalculate.isPending ? "Recalculating..." : "Recalculate"}
-                                    </Button>
+                                    {canRecalculate && (
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-6 text-xs text-primary gap-1"
+                                            onClick={handleRecalculate}
+                                            disabled={recalculate.isPending}
+                                        >
+                                            <RefreshCw
+                                                className={`h-3 w-3 ${recalculate.isPending ? "animate-spin" : ""}`}
+                                            />
+                                            {recalculate.isPending
+                                                ? "Recalculating..."
+                                                : "Recalculate"}
+                                        </Button>
+                                    )}
                                 </div>
                             </div>
                             {pricing.line_items?.catalog_total ? (
@@ -152,11 +157,40 @@ export function LogisticsPricingReview({
                                     </span>
                                 </div>
                             ) : null}
+                            {pricing.line_items?.custom_total ? (
+                                <div className="flex justify-between p-2 bg-muted/30 rounded">
+                                    <span className="text-muted-foreground">Custom Charges</span>
+                                    <span className="font-mono">
+                                        {Number(pricing.line_items.custom_total).toFixed(2)} AED
+                                    </span>
+                                </div>
+                            ) : null}
+                            {pricing.margin && (
+                                <div className="flex justify-between p-2 bg-muted/30 rounded">
+                                    <span className="text-muted-foreground">
+                                        Platform Margin ({pricing.margin.percent}%)
+                                    </span>
+                                    <span className="font-mono">
+                                        {Number(pricing.margin.amount || 0).toFixed(2)} AED
+                                    </span>
+                                </div>
+                            )}
                             <div className="border-t border-border my-2"></div>
                             <div className="flex justify-between font-semibold">
-                                <span>Estimated Total</span>
-                                <span className="font-mono">{pricing.final_total || 0} AED</span>
+                                <span>Client Total</span>
+                                <span className="font-mono">
+                                    {Number(
+                                        pricing.sell?.final_total ?? pricing.final_total ?? 0
+                                    ).toFixed(2)}{" "}
+                                    AED
+                                </span>
                             </div>
+                            {pricing.calculated_at && (
+                                <p className="text-xs text-muted-foreground text-right">
+                                    Last calculated:{" "}
+                                    {new Date(pricing.calculated_at).toLocaleString()}
+                                </p>
+                            )}
                             {/* <p className="text-xs text-muted-foreground">
                                 + Platform margin ({pricing.margin?.percent || 25}%) will be added
                                 by Admin
