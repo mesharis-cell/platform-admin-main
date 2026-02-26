@@ -18,9 +18,20 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+    Command,
+    CommandEmpty,
+    CommandGroup,
+    CommandInput,
+    CommandItem,
+    CommandList,
+} from "@/components/ui/command";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { useListServiceTypes } from "@/hooks/use-service-types";
 import { useCreateCatalogLineItem } from "@/hooks/use-order-line-items";
 import type { LineItemBillingMode, TransportLineItemMetadata } from "@/types/hybrid-pricing";
@@ -38,6 +49,7 @@ export function AddCatalogLineItemModal({
     targetId,
     purposeType = "ORDER",
 }: AddCatalogLineItemModalProps) {
+    const [serviceOpen, setServiceOpen] = useState(false);
     const [serviceSearch, setServiceSearch] = useState("");
     const [debouncedSearch, setDebouncedSearch] = useState("");
     const debounceRef = useRef<ReturnType<typeof setTimeout>>();
@@ -154,35 +166,63 @@ export function AddCatalogLineItemModal({
                         <Label>
                             Service <span className="text-destructive">*</span>
                         </Label>
-                        <Input
-                            placeholder="Search services..."
-                            value={serviceSearch}
-                            onChange={(e) => setServiceSearch(e.target.value)}
-                            className="mb-2"
-                        />
-                        <Select value={serviceTypeId} onValueChange={handleServiceChange}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select service..." />
-                            </SelectTrigger>
-                            <SelectContent className="max-h-[250px]">
-                                {servicesFetching && (
-                                    <div className="p-2 text-xs text-muted-foreground text-center">
-                                        Loading...
-                                    </div>
-                                )}
-                                {!servicesFetching &&
-                                    (!serviceTypes?.data || serviceTypes.data.length === 0) && (
-                                        <div className="p-2 text-xs text-muted-foreground text-center">
-                                            No services found
-                                        </div>
-                                    )}
-                                {serviceTypes?.data?.map((service: any) => (
-                                    <SelectItem key={service.id} value={service.id}>
-                                        {service.name} ({service.unit})
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                        <Popover open={serviceOpen} onOpenChange={setServiceOpen}>
+                            <PopoverTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    role="combobox"
+                                    aria-expanded={serviceOpen}
+                                    className="w-full justify-between font-normal"
+                                >
+                                    {selectedService
+                                        ? `${selectedService.name} (${selectedService.unit})`
+                                        : "Select service..."}
+                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent
+                                className="w-[--radix-popover-trigger-width] p-0"
+                                align="start"
+                            >
+                                <Command shouldFilter={false}>
+                                    <CommandInput
+                                        placeholder="Search services..."
+                                        value={serviceSearch}
+                                        onValueChange={setServiceSearch}
+                                    />
+                                    <CommandList>
+                                        {servicesFetching && (
+                                            <div className="p-3 text-xs text-muted-foreground text-center">
+                                                Loading...
+                                            </div>
+                                        )}
+                                        <CommandEmpty>No services found</CommandEmpty>
+                                        <CommandGroup>
+                                            {serviceTypes?.data?.map((service: any) => (
+                                                <CommandItem
+                                                    key={service.id}
+                                                    value={service.id}
+                                                    onSelect={() => {
+                                                        handleServiceChange(service.id);
+                                                        setServiceOpen(false);
+                                                    }}
+                                                >
+                                                    <Check
+                                                        className={cn(
+                                                            "mr-2 h-4 w-4",
+                                                            serviceTypeId === service.id
+                                                                ? "opacity-100"
+                                                                : "opacity-0"
+                                                        )}
+                                                    />
+                                                    {service.name} ({service.unit})
+                                                </CommandItem>
+                                            ))}
+                                        </CommandGroup>
+                                    </CommandList>
+                                </Command>
+                            </PopoverContent>
+                        </Popover>
                     </div>
 
                     {selectedService && (

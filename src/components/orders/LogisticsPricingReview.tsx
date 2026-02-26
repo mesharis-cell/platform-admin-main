@@ -8,7 +8,9 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { DollarSign, Plus } from "lucide-react";
+import { DollarSign, Plus, RefreshCw } from "lucide-react";
+import { toast } from "sonner";
+import { useRecalculateBaseOps } from "@/hooks/use-orders";
 import { OrderLineItemsList } from "./OrderLineItemsList";
 import { AddCatalogLineItemModal } from "./AddCatalogLineItemModal";
 import { AddCustomLineItemModal } from "./AddCustomLineItemModal";
@@ -34,6 +36,18 @@ export function LogisticsPricingReview({
     const [addCustomOpen, setAddCustomOpen] = useState(false);
     const canManagePricing = hasPermission(user, ADMIN_ACTION_PERMISSIONS.ordersPricingAdjust);
     const canManageServiceItems = canManageLineItems(order?.order_status) && canManagePricing;
+    const recalculate = useRecalculateBaseOps();
+    const volume = parseFloat(order?.calculated_totals?.volume || "0");
+
+    const handleRecalculate = async () => {
+        try {
+            await recalculate.mutateAsync(order.id);
+            toast.success("Base operations recalculated");
+            _onSubmitSuccess?.();
+        } catch (error: any) {
+            toast.error(error.message || "Failed to recalculate");
+        }
+    };
 
     const pricing = order?.order_pricing as OrderPricing | undefined;
     return (
@@ -100,11 +114,36 @@ export function LogisticsPricingReview({
                     )}
                     {pricing && (
                         <div className="space-y-2 text-sm">
-                            <div className="flex justify-between p-2 bg-muted/30 rounded">
-                                <span className="text-muted-foreground">
-                                    Base Operations ({order?.calculated_totals?.volume || 0} m³)
-                                </span>
-                                <span className="font-mono">{pricing.base_ops_total || 0} AED</span>
+                            <div className="p-2 bg-muted/30 rounded space-y-1">
+                                <div className="flex justify-between">
+                                    <span className="text-muted-foreground">
+                                        Base Operations ({volume.toFixed(3)} m³)
+                                    </span>
+                                    <span className="font-mono">
+                                        {pricing.base_ops_total || 0} AED
+                                    </span>
+                                </div>
+                                {volume === 0 && (
+                                    <div className="flex items-center justify-between pt-1">
+                                        <span className="text-xs text-amber-600">
+                                            Update asset dimensions if needed
+                                        </span>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-6 text-xs text-primary gap-1"
+                                            onClick={handleRecalculate}
+                                            disabled={recalculate.isPending}
+                                        >
+                                            <RefreshCw
+                                                className={`h-3 w-3 ${recalculate.isPending ? "animate-spin" : ""}`}
+                                            />
+                                            {recalculate.isPending
+                                                ? "Recalculating..."
+                                                : "Recalculate"}
+                                        </Button>
+                                    </div>
+                                )}
                             </div>
                             {pricing.line_items?.catalog_total ? (
                                 <div className="flex justify-between p-2 bg-muted/30 rounded">
