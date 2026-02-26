@@ -18,12 +18,12 @@ export type OrderStatus =
     | "QUOTED"
     | "DECLINED"
     | "CONFIRMED"
-    | "AWAITING_FABRICATION"
     | "IN_PREPARATION"
     | "READY_FOR_DELIVERY"
     | "IN_TRANSIT"
     | "DELIVERED"
     | "IN_USE"
+    | "DERIG"
     | "AWAITING_RETURN"
     | "RETURN_IN_TRANSIT"
     | "CLOSED"
@@ -72,7 +72,6 @@ export interface Order {
     venueCountry?: string | null;
     venueCity?: string | null;
     venue_city_id: string;
-    vehicle_type_id: string;
     venueAddress?: string | null;
     venueAccessNotes?: string | null;
     // Special instructions

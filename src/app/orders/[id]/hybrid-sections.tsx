@@ -20,6 +20,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAdminApproveQuote } from "@/hooks/use-orders";
 import { canManageLineItems } from "@/lib/order-helpers";
 import { getOrderPrice } from "@/lib/utils/helper";
+
+const roundCurrency = (v: number) => Math.round((v + Number.EPSILON) * 100) / 100;
 import { useToken } from "@/lib/auth/use-token";
 import { hasPermission } from "@/lib/auth/permissions";
 import { ADMIN_ACTION_PERMISSIONS } from "@/lib/auth/permission-map";
@@ -56,7 +58,21 @@ export function PendingApprovalSection({ order, orderId, onRefresh }: HybridPric
     const effectiveMarginPercent = marginOverride
         ? Number(marginPercent || 0)
         : currentMarginPercent;
-    const { total, marginAmount } = getOrderPrice(order?.order_pricing, effectiveMarginPercent);
+    const pricing = order?.order_pricing;
+    const baseSubtotal =
+        Number(pricing?.base_ops_total ?? 0) +
+        Number(pricing?.line_items?.catalog_total ?? 0) +
+        Number(pricing?.line_items?.custom_total ?? 0);
+    const total = marginOverride
+        ? roundCurrency(baseSubtotal * (1 + effectiveMarginPercent / 100))
+        : Number(
+              pricing?.sell?.final_total ?? pricing?.final_total ?? getOrderPrice(pricing).total
+          );
+    const marginAmount = marginOverride
+        ? roundCurrency(total - baseSubtotal)
+        : pricing?.margin?.amount != null
+          ? Number(pricing.margin.amount)
+          : roundCurrency(total - baseSubtotal);
 
     const handleApprove = async () => {
         if (!canApproveQuote) return;
@@ -279,54 +295,6 @@ export function PricingReviewSection({ order, orderId, onRefresh }: HybridPricin
 }
 
 /**
- * AWAITING_FABRICATION Section
- */
-export function AwaitingFabricationSection({ order, orderId }: HybridPricingSectionProps) {
-    return (
-        <div className="space-y-6">
-            <Card className="border-blue-500 bg-blue-50">
-                <CardHeader>
-                    <CardTitle className="text-blue-500">⏳ Linked Service Requests</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <p className="text-sm text-blue-500">
-                        Review linked service requests before progressing this order to fulfillment
-                        readiness states.
-                    </p>
-                    <p className="text-xs text-blue-500 mt-2">
-                        Blocking linked requests must be commercially cleared or completed first.
-                    </p>
-                </CardContent>
-            </Card>
-
-            <Card>
-                <CardHeader>
-                    <CardTitle className="text-sm">Linked Service Requests</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                    {Array.isArray(order?.linked_service_requests) &&
-                    order.linked_service_requests.length > 0 ? (
-                        order.linked_service_requests.map((sr: any) => (
-                            <div
-                                key={sr.id}
-                                className="text-xs font-mono border rounded p-2 bg-muted/20"
-                            >
-                                {sr.service_request_id} | {sr.request_status} |{" "}
-                                {sr.commercial_status}
-                            </div>
-                        ))
-                    ) : (
-                        <p className="text-xs text-muted-foreground">
-                            No linked service requests yet.
-                        </p>
-                    )}
-                </CardContent>
-            </Card>
-        </div>
-    );
-}
-
-/**
  * Cancel Order Button (shows if order can be cancelled)
  */
 export function CancelOrderButton({ order, orderId }: HybridPricingSectionProps) {
@@ -340,7 +308,6 @@ export function CancelOrderButton({ order, orderId }: HybridPricingSectionProps)
         "PENDING_APPROVAL",
         "QUOTED",
         "CONFIRMED",
-        "AWAITING_FABRICATION",
         "IN_PREPARATION",
     ];
 

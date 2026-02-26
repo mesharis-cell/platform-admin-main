@@ -68,6 +68,7 @@ const ORDER_STATUS_CONFIG = {
     IN_TRANSIT: { label: "In Transit", color: "bg-violet-100 text-violet-700 border-violet-300" },
     DELIVERED: { label: "Delivered", color: "bg-fuchsia-100 text-fuchsia-700 border-fuchsia-300" },
     IN_USE: { label: "In Use", color: "bg-pink-100 text-pink-700 border-pink-300" },
+    DERIG: { label: "Derigging", color: "bg-purple-100 text-purple-700 border-purple-300" },
     AWAITING_RETURN: {
         label: "Awaiting Return",
         color: "bg-rose-100 text-rose-700 border-rose-300",

@@ -197,3 +197,15 @@ export function useAssetVersions(assetId: string | null) {
         enabled: !!assetId,
     });
 }
+
+export function useAssetOrderHistory(assetId: string | null) {
+    return useQuery({
+        queryKey: ["asset-order-history", assetId],
+        queryFn: async () => {
+            if (!assetId) return [];
+            const res = await apiClient.get(`/operations/v1/asset/${assetId}/order-history`);
+            return res.data?.data || [];
+        },
+        enabled: !!assetId,
+    });
+}

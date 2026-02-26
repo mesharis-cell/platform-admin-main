@@ -247,18 +247,6 @@ const navigationSections: NavSection[] = [
                 requiredAnyPermission: ADMIN_NAV_PERMISSIONS.systemSettings,
             },
             {
-                name: "Vehicle Types",
-                href: "/settings/pricing/vehicle-types",
-                icon: Package,
-                requiredAnyPermission: ADMIN_NAV_PERMISSIONS.systemSettings,
-            },
-            {
-                name: "Transport Rates",
-                href: "/settings/pricing/transport-rates",
-                icon: DollarSign,
-                requiredAnyPermission: ADMIN_NAV_PERMISSIONS.systemSettings,
-            },
-            {
                 name: "Warehouse Ops Rates",
                 href: "/settings/pricing/warehouse-opt-rates",
                 icon: Warehouse,

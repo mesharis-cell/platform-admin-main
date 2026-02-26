@@ -22,12 +22,7 @@ import {
 } from "@/hooks/use-orders";
 import { useUploadImage } from "@/hooks/use-assets";
 import { ScanActivityTimeline } from "@/components/scanning/scan-activity-timeline";
-import {
-    PricingReviewSection,
-    PendingApprovalSection,
-    AwaitingFabricationSection,
-    CancelOrderButton,
-} from "./hybrid-sections";
+import { PricingReviewSection, PendingApprovalSection, CancelOrderButton } from "./hybrid-sections";
 import { OrderApprovalRequestSubmitBtn } from "@/components/orders/OrderApprovalRequestSubmitBtn";
 import { OrderItemCard } from "@/components/orders/OrderItemCard";
 import { StatusHistoryTimeline } from "@/components/orders/StatusHistoryTimeline";
@@ -83,49 +78,6 @@ import { useToken } from "@/lib/auth/use-token";
 import { hasPermission } from "@/lib/auth/permissions";
 import { ADMIN_ACTION_PERMISSIONS } from "@/lib/auth/permission-map";
 
-const FINANCIAL_STATUS = {
-    PENDING_QUOTE: {
-        label: "PENDING_QUOTE",
-        color: "bg-slate-500/10 text-slate-600 border-slate-500/20",
-        nextStates: ["QUOTE_SENT"],
-    },
-    QUOTE_SENT: {
-        label: "QUOTE_SENT",
-        color: "bg-blue-500/10 text-blue-600 border-blue-500/20",
-        nextStates: ["QUOTE_ACCEPTED"],
-    },
-    QUOTE_ACCEPTED: {
-        label: "QUOTE_ACCEPTED",
-        color: "bg-yellow-500/10 text-yellow-700 border-yellow-500/20",
-        nextStates: ["PENDING_INVOICE"],
-    },
-    QUOTE_REVISED: {
-        label: "QUOTE_REVISED",
-        color: "bg-yellow-500/10 text-yellow-700 border-yellow-500/20",
-        nextStates: ["PENDING_INVOICE"],
-    },
-    PENDING_INVOICE: {
-        label: "PENDING_INVOICE",
-        color: "bg-orange-500/10 text-orange-700 border-orange-500/20",
-        nextStates: ["INVOICED"],
-    },
-    INVOICED: {
-        label: "INVOICED",
-        color: "bg-purple-500/10 text-purple-700 border-purple-500/20",
-        nextStates: ["PAID"],
-    },
-    PAID: {
-        label: "PAID",
-        color: "bg-teal-500/10 text-teal-700 border-teal-500/20",
-        nextStates: [],
-    },
-    CANCELLED: {
-        label: "CANCELLED",
-        color: "bg-red-500/10 text-red-700 border-red-500/20",
-        nextStates: [],
-    },
-};
-
 // Status configuration with next states for state machine (Feedback #1: Updated for new flow)
 const STATUS_CONFIG: Record<
     string,
@@ -170,11 +122,6 @@ const STATUS_CONFIG: Record<
         color: "bg-teal-500/10 text-teal-700 border-teal-500/20",
         nextStates: ["IN_PREPARATION"],
     },
-    AWAITING_FABRICATION: {
-        label: "AWAITING FABRICATION",
-        color: "bg-cyan-500/10 text-cyan-700 border-cyan-500/20",
-        nextStates: ["IN_PREPARATION"],
-    },
     IN_PREPARATION: {
         label: "IN PREP",
         color: "bg-cyan-500/10 text-cyan-700 border-cyan-500/20",
@@ -198,6 +145,11 @@ const STATUS_CONFIG: Record<
     IN_USE: {
         label: "IN USE",
         color: "bg-pink-500/10 text-pink-700 border-pink-500/20",
+        nextStates: ["DERIG"],
+    },
+    DERIG: {
+        label: "DERIGGING",
+        color: "bg-purple-500/10 text-purple-700 border-purple-500/20",
         nextStates: ["AWAITING_RETURN"],
     },
     AWAITING_RETURN: {
@@ -244,15 +196,8 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
     const [deliveryPhotoFiles, setDeliveryPhotoFiles] = useState<File[]>([]);
     const [deliveryPhotoPreviews, setDeliveryPhotoPreviews] = useState<string[]>([]);
     const [timeWindowsOpen, setTimeWindowsOpen] = useState(false);
-    const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
     const [updateTimeWindowsLoading, setUpdateTimeWindowsLoading] = useState(false);
 
-    const [paymentDetails, setPaymentDetails] = useState({
-        paymentMethod: "",
-        paymentReference: "",
-        paymentDate: new Date(),
-        notes: "",
-    });
     const [timeWindows, setTimeWindows] = useState<{
         deliveryWindowStart: Date | undefined;
         deliveryWindowEnd: Date | undefined;
@@ -275,10 +220,6 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
     const canSubmitForApproval = hasPermission(
         user,
         ADMIN_ACTION_PERMISSIONS.ordersSubmitForApproval
-    );
-    const canConfirmInvoicePayment = hasPermission(
-        user,
-        ADMIN_ACTION_PERMISSIONS.invoicesConfirmPayment
     );
 
     // Initialize states when order loads
@@ -439,50 +380,6 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
         }
     };
 
-    const handleConfirmPayment = async () => {
-        if (!order?.data) return;
-
-        // Validate required fields
-        if (
-            !paymentDetails.paymentMethod ||
-            !paymentDetails.paymentReference ||
-            !paymentDetails.paymentDate
-        ) {
-            toast.error("Payment method, reference, and date are required");
-            return;
-        }
-
-        try {
-            const response = await fetch(`/api/invoices/${order.data.id}/confirm-payment`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    paymentMethod: paymentDetails.paymentMethod,
-                    paymentReference: paymentDetails.paymentReference,
-                    paymentDate: paymentDetails.paymentDate.toISOString(),
-                    notes: paymentDetails.notes || undefined,
-                }),
-            });
-
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.error || "Failed to confirm payment");
-            }
-
-            toast.success("Payment confirmed successfully");
-            setPaymentDialogOpen(false);
-            setPaymentDetails({
-                paymentMethod: "",
-                paymentReference: "",
-                paymentDate: new Date(),
-                notes: "",
-            });
-            window.location.reload();
-        } catch (error: any) {
-            toast.error(error.message);
-        }
-    };
-
     if (isLoading) {
         return (
             <div className="p-8">
@@ -554,13 +451,6 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
 
                         <div className="flex items-center gap-3">
                             <Badge
-                                className={`${FINANCIAL_STATUS[order?.data?.financial_status]?.color} border font-mono text-xs px-3 py-1`}
-                            >
-                                {removeUnderScore(
-                                    FINANCIAL_STATUS[order?.data?.financial_status]?.label
-                                )}
-                            </Badge>
-                            <Badge
                                 className={`${currentStatusConfig.color} border font-mono text-xs px-3 py-1`}
                             >
                                 {removeUnderScore(currentStatusConfig.label)}
@@ -596,10 +486,8 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                             disabled={
                                                 progressLoading ||
                                                 order.data.order_status === "PENDING_APPROVAL" ||
-                                                // order.data.order_status === "AWAITING_FABRICATION" ||
                                                 order.data.order_status === "PRICING_REVIEW" ||
                                                 order.data.order_status === "IN_PREPARATION" ||
-                                                order.data.order_status === "AWAITING_RETURN" ||
                                                 order.data.order_status === "QUOTED" ||
                                                 (order.data.order_status === "CONFIRMED" &&
                                                     (!order?.data?.delivery_window?.start ||
@@ -731,7 +619,6 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                                     progressLoading ||
                                                     uploadImage.isPending ||
                                                     order.data.order_status === "IN_PREPARATION" ||
-                                                    order.data.order_status === "AWAITING_RETURN" ||
                                                     order.data.order_status === "QUOTED" ||
                                                     (order.data.order_status === "CONFIRMED" &&
                                                         (!order?.data?.delivery_window?.start ||
@@ -756,8 +643,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     {/* Main Content */}
                     <div className="lg:col-span-2 space-y-6">
-                        {(order?.data?.order_status === "CONFIRMED" ||
-                            order?.data?.order_status === "AWAITING_FABRICATION") &&
+                        {order?.data?.order_status === "CONFIRMED" &&
                             !order?.data?.delivery_window?.start && (
                                 <Card className="p-4 bg-orange-500/5 border-orange-500/30">
                                     <div className="flex items-start gap-3">
@@ -774,14 +660,6 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                     </div>
                                 </Card>
                             )}
-
-                        {/* NEW: AWAITING_FABRICATION - Fabrication Tracking */}
-                        {order.data.order_status === "AWAITING_FABRICATION" && (
-                            <AwaitingFabricationSection
-                                order={order.data}
-                                orderId={order.data.id}
-                            />
-                        )}
 
                         {order.data.order_status === "IN_PREPARATION" && (
                             <Card className="bg-red-500/5 border-red-500/30">
@@ -971,285 +849,10 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                 </CardContent>
                             </Card>
                         )}
-                        {/* Payment Status Card - PMG Admin Only (Feedback #1: Financial status separate) */}
-                        {order.invoice?.invoice_id && (
-                            <Card className="border-2 border-indigo-500/20 bg-indigo-500/5">
-                                <CardHeader>
-                                    <CardTitle className="font-mono text-sm flex items-center gap-2">
-                                        <FileText className="h-4 w-4 text-indigo-600" />
-                                        INVOICE & PAYMENT
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent className="space-y-3">
-                                    <div className="flex justify-between items-center">
-                                        <Label className="font-mono text-xs text-muted-foreground">
-                                            INVOICE NUMBER
-                                        </Label>
-                                        <p className="font-mono text-sm font-bold">
-                                            {order?.data?.invoice?.invoice_id || (
-                                                <span className="text-muted-foreground">
-                                                    Pending...
-                                                </span>
-                                            )}
-                                        </p>
-                                    </div>
-                                    {/* Amount with Breakdown - PMG Admin sees breakdown */}
-                                    <div className="flex justify-between items-center">
-                                        <Label className="font-mono text-xs text-muted-foreground">
-                                            AMOUNT
-                                        </Label>
-                                        <p className="font-mono text-lg font-bold text-primary">
-                                            {total} AED
-                                        </p>
-                                    </div>
-                                    <Separator />
-                                    <div className="flex justify-between items-center">
-                                        <Label className="font-mono text-xs text-muted-foreground">
-                                            PAYMENT STATUS
-                                        </Label>
-                                        <Badge
-                                            className={`font-mono text-xs ${
-                                                order?.data?.financial_status === "PAID"
-                                                    ? "bg-green-500/10 text-green-700 border-green-500/30"
-                                                    : order?.data?.financial_status === "INVOICED"
-                                                      ? "bg-amber-500/10 text-amber-700 border-amber-500/30"
-                                                      : "bg-slate-500/10 text-slate-600 border-slate-500/20"
-                                            }`}
-                                        >
-                                            {order?.data?.financial_status === "PAID"
-                                                ? "PAID"
-                                                : order?.data?.financial_status === "INVOICED"
-                                                  ? "PENDING"
-                                                  : order?.data?.financial_status || "N/A"}
-                                        </Badge>
-                                    </div>
-                                    {order?.data?.invoice?.invoice_paid_at && (
-                                        <>
-                                            <div className="flex justify-between items-center">
-                                                <Label className="font-mono text-xs text-muted-foreground">
-                                                    PAID ON
-                                                </Label>
-                                                <p className="font-mono text-xs">
-                                                    {new Date(
-                                                        order?.data?.invoice?.invoice_paid_at
-                                                    ).toLocaleDateString()}
-                                                </p>
-                                            </div>
-                                            {order?.data?.payment_method && (
-                                                <div className="flex justify-between items-center">
-                                                    <Label className="font-mono text-xs text-muted-foreground">
-                                                        METHOD
-                                                    </Label>
-                                                    <p className="font-mono text-xs">
-                                                        {order?.data?.payment_method}
-                                                    </p>
-                                                </div>
-                                            )}
-                                            {order?.data?.payment_reference && (
-                                                <div className="flex justify-between items-center">
-                                                    <Label className="font-mono text-xs text-muted-foreground">
-                                                        REFERENCE
-                                                    </Label>
-                                                    <p className="font-mono text-xs">
-                                                        {order?.data?.payment_reference}
-                                                    </p>
-                                                </div>
-                                            )}
-                                        </>
-                                    )}
-                                    {/* Payment Confirmation Section - PMG Admin Only */}
-                                    {canConfirmInvoicePayment &&
-                                        order?.data?.financial_status === "INVOICED" &&
-                                        !order?.data?.invoice?.invoice_paid_at && (
-                                            <>
-                                                <Separator />
-                                                <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-md space-y-3">
-                                                    <div className="flex items-start gap-2">
-                                                        <AlertCircle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-                                                        <div className="flex-1">
-                                                            <p className="text-xs font-mono font-bold text-amber-700">
-                                                                AWAITING PAYMENT CONFIRMATION
-                                                            </p>
-                                                            <p className="text-xs font-mono text-muted-foreground mt-1">
-                                                                Invoice sent to client. Confirm
-                                                                payment when received.
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                    <Dialog
-                                                        open={paymentDialogOpen}
-                                                        onOpenChange={setPaymentDialogOpen}
-                                                    >
-                                                        <DialogTrigger asChild>
-                                                            <Button
-                                                                size="sm"
-                                                                className="w-full gap-2 font-mono text-xs bg-green-600 hover:bg-green-700"
-                                                            >
-                                                                <CheckCircle className="h-3.5 w-3.5" />
-                                                                CONFIRM PAYMENT RECEIVED
-                                                            </Button>
-                                                        </DialogTrigger>
-                                                        <DialogContent className="sm:max-w-md">
-                                                            <DialogHeader>
-                                                                <DialogTitle className="font-mono">
-                                                                    CONFIRM PAYMENT
-                                                                </DialogTitle>
-                                                                <DialogDescription className="font-mono text-xs">
-                                                                    Record external payment details
-                                                                    for invoice{" "}
-                                                                    {
-                                                                        order?.data?.invoice
-                                                                            ?.invoice_id
-                                                                    }
-                                                                </DialogDescription>
-                                                            </DialogHeader>
-
-                                                            <div className="space-y-4 py-4">
-                                                                <div className="space-y-2">
-                                                                    <Label className="font-mono text-xs">
-                                                                        PAYMENT METHOD *
-                                                                    </Label>
-                                                                    <select
-                                                                        className="w-full border rounded px-3 py-2 bg-background font-mono text-sm"
-                                                                        value={
-                                                                            paymentDetails.paymentMethod
-                                                                        }
-                                                                        onChange={(e) =>
-                                                                            setPaymentDetails(
-                                                                                (prev) => ({
-                                                                                    ...prev,
-                                                                                    paymentMethod:
-                                                                                        e.target
-                                                                                            .value,
-                                                                                })
-                                                                            )
-                                                                        }
-                                                                    >
-                                                                        <option value="">
-                                                                            Select method...
-                                                                        </option>
-                                                                        <option value="Bank Transfer">
-                                                                            Bank Transfer
-                                                                        </option>
-                                                                        <option value="Wire Transfer">
-                                                                            Wire Transfer
-                                                                        </option>
-                                                                        <option value="Check">
-                                                                            Check
-                                                                        </option>
-                                                                        <option value="Cash">
-                                                                            Cash
-                                                                        </option>
-                                                                        <option value="Other">
-                                                                            Other
-                                                                        </option>
-                                                                    </select>
-                                                                </div>
-
-                                                                <div className="space-y-2">
-                                                                    <Label className="font-mono text-xs">
-                                                                        PAYMENT REFERENCE *
-                                                                    </Label>
-                                                                    <Input
-                                                                        placeholder="Transaction ID, Check #, etc."
-                                                                        value={
-                                                                            paymentDetails.paymentReference
-                                                                        }
-                                                                        onChange={(e) =>
-                                                                            setPaymentDetails(
-                                                                                (prev) => ({
-                                                                                    ...prev,
-                                                                                    paymentReference:
-                                                                                        e.target
-                                                                                            .value,
-                                                                                })
-                                                                            )
-                                                                        }
-                                                                        className="font-mono text-sm"
-                                                                    />
-                                                                </div>
-
-                                                                <div className="space-y-2">
-                                                                    <Label className="font-mono text-xs">
-                                                                        PAYMENT DATE *
-                                                                    </Label>
-                                                                    <DateTimePicker
-                                                                        value={
-                                                                            paymentDetails.paymentDate
-                                                                        }
-                                                                        onChange={(date) =>
-                                                                            setPaymentDetails(
-                                                                                (prev) => ({
-                                                                                    ...prev,
-                                                                                    paymentDate:
-                                                                                        date ||
-                                                                                        new Date(),
-                                                                                })
-                                                                            )
-                                                                        }
-                                                                        placeholder="Select payment date"
-                                                                    />
-                                                                </div>
-
-                                                                <div className="space-y-2">
-                                                                    <Label className="font-mono text-xs">
-                                                                        NOTES (Optional)
-                                                                    </Label>
-                                                                    <Textarea
-                                                                        placeholder="Additional payment notes..."
-                                                                        value={paymentDetails.notes}
-                                                                        onChange={(e) =>
-                                                                            setPaymentDetails(
-                                                                                (prev) => ({
-                                                                                    ...prev,
-                                                                                    notes: e.target
-                                                                                        .value,
-                                                                                })
-                                                                            )
-                                                                        }
-                                                                        className="font-mono text-sm"
-                                                                        rows={3}
-                                                                    />
-                                                                </div>
-                                                            </div>
-
-                                                            <DialogFooter>
-                                                                <Button
-                                                                    variant="outline"
-                                                                    onClick={() =>
-                                                                        setPaymentDialogOpen(false)
-                                                                    }
-                                                                    className="font-mono text-xs"
-                                                                >
-                                                                    CANCEL
-                                                                </Button>
-                                                                <Button
-                                                                    onClick={handleConfirmPayment}
-                                                                    disabled={
-                                                                        !paymentDetails.paymentMethod ||
-                                                                        !paymentDetails.paymentReference
-                                                                    }
-                                                                    className="font-mono text-xs bg-green-600 hover:bg-green-700"
-                                                                >
-                                                                    CONFIRM PAYMENT
-                                                                </Button>
-                                                            </DialogFooter>
-                                                        </DialogContent>
-                                                    </Dialog>
-                                                </div>
-                                            </>
-                                        )}
-                                </CardContent>
-                            </Card>
-                        )}
-
-                        {/* Delivery Schedule Card - Show for CONFIRMED+ states (Feedback #1: Independent from payment) */}
-                        {[
-                            "AWAITING_FABRICATION",
-                            "CONFIRMED",
-                            "IN_PREPARATION",
-                            "READY_FOR_DELIVERY",
-                        ].includes(order?.data?.order_status) && (
+                        {/* Delivery Schedule Card - Show for CONFIRMED+ states */}
+                        {["CONFIRMED", "IN_PREPARATION", "READY_FOR_DELIVERY"].includes(
+                            order?.data?.order_status
+                        ) && (
                             <Card>
                                 <CardHeader>
                                     <div className="flex items-center justify-between">

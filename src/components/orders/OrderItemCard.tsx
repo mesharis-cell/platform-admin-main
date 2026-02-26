@@ -36,13 +36,7 @@ interface OrderItemCardProps {
     onRefresh?: () => void;
 }
 
-const PRE_FULFILLMENT_STATUSES = [
-    "PRICING_REVIEW",
-    "PENDING_APPROVAL",
-    "QUOTED",
-    "CONFIRMED",
-    "AWAITING_FABRICATION",
-];
+const PRE_FULFILLMENT_STATUSES = ["PRICING_REVIEW", "PENDING_APPROVAL", "QUOTED", "CONFIRMED"];
 
 const CONDITION_STYLES: Record<string, { banner: string; icon: typeof AlertTriangle }> = {
     RED: {
