@@ -144,7 +144,7 @@ export function PendingApprovalSection({
                             <div className="flex justify-between">
                                 <span className="text-muted-foreground">Logistics Sub-total</span>
                                 <span className="font-mono">
-                                    {Number(pricing.logistics_sub_total).toFixed(2)} AED
+                                    {Number(pricing.base_ops_total).toFixed(2)} AED
                                 </span>
                             </div>
                             <div className="flex justify-between">

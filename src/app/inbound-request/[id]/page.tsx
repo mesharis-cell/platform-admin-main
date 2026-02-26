@@ -262,7 +262,7 @@ export default function InboundRequestDetailsPage({ params }: { params: Promise<
                                                 <div className="flex justify-between font-semibold">
                                                     <span>Estimated Subtotal</span>
                                                     <span className="font-mono">
-                                                        {pricing.logistics_sub_total || 0} AED
+                                                        {pricing.base_ops_total || 0} AED
                                                     </span>
                                                 </div>
                                             </div>
