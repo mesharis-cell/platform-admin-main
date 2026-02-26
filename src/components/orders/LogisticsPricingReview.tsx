@@ -123,27 +123,26 @@ export function LogisticsPricingReview({
                                         {pricing.base_ops_total || 0} AED
                                     </span>
                                 </div>
-                                {volume === 0 && (
-                                    <div className="flex items-center justify-between pt-1">
+                                <div className="flex items-center justify-between pt-1">
+                                    {volume === 0 && (
                                         <span className="text-xs text-amber-600">
                                             Update asset dimensions if needed
                                         </span>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="h-6 text-xs text-primary gap-1"
-                                            onClick={handleRecalculate}
-                                            disabled={recalculate.isPending}
-                                        >
-                                            <RefreshCw
-                                                className={`h-3 w-3 ${recalculate.isPending ? "animate-spin" : ""}`}
-                                            />
-                                            {recalculate.isPending
-                                                ? "Recalculating..."
-                                                : "Recalculate"}
-                                        </Button>
-                                    </div>
-                                )}
+                                    )}
+                                    {volume > 0 && <span />}
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-6 text-xs text-primary gap-1"
+                                        onClick={handleRecalculate}
+                                        disabled={recalculate.isPending}
+                                    >
+                                        <RefreshCw
+                                            className={`h-3 w-3 ${recalculate.isPending ? "animate-spin" : ""}`}
+                                        />
+                                        {recalculate.isPending ? "Recalculating..." : "Recalculate"}
+                                    </Button>
+                                </div>
                             </div>
                             {pricing.line_items?.catalog_total ? (
                                 <div className="flex justify-between p-2 bg-muted/30 rounded">
@@ -155,10 +154,8 @@ export function LogisticsPricingReview({
                             ) : null}
                             <div className="border-t border-border my-2"></div>
                             <div className="flex justify-between font-semibold">
-                                <span>Estimated Subtotal</span>
-                                <span className="font-mono">
-                                    {pricing.logistics_sub_total || 0} AED
-                                </span>
+                                <span>Estimated Total</span>
+                                <span className="font-mono">{pricing.final_total || 0} AED</span>
                             </div>
                             {/* <p className="text-xs text-muted-foreground">
                                 + Platform margin ({pricing.margin?.percent || 25}%) will be added
