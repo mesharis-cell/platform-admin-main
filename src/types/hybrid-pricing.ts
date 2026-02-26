@@ -110,6 +110,10 @@ export interface OrderLineItem {
     unit: string | null;
     unitRate: number | null;
     total: number;
+    buy_unit_rate?: number;
+    buy_total?: number;
+    sell_unit_rate?: number;
+    sell_total?: number;
     addedBy: string;
     addedAt: string;
     notes: string | null;
@@ -170,6 +174,11 @@ export interface VoidLineItemRequest {
 export interface OrderPricing {
     warehouse_ops_rate?: number;
     base_ops_total: number;
+    sell?: {
+        base_ops_total: number;
+        service_fee: number;
+        final_total: number;
+    };
     logistics_sub_total: number;
     base_operations?: {
         volume: number;

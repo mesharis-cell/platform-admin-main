@@ -20,6 +20,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAdminApproveQuote } from "@/hooks/use-orders";
 import { canManageLineItems } from "@/lib/order-helpers";
 import { getOrderPrice } from "@/lib/utils/helper";
+
+const roundCurrency = (v: number) => Math.round((v + Number.EPSILON) * 100) / 100;
 import { useToken } from "@/lib/auth/use-token";
 import { hasPermission } from "@/lib/auth/permissions";
 import { ADMIN_ACTION_PERMISSIONS } from "@/lib/auth/permission-map";
@@ -56,7 +58,21 @@ export function PendingApprovalSection({ order, orderId, onRefresh }: HybridPric
     const effectiveMarginPercent = marginOverride
         ? Number(marginPercent || 0)
         : currentMarginPercent;
-    const { total, marginAmount } = getOrderPrice(order?.order_pricing, effectiveMarginPercent);
+    const pricing = order?.order_pricing;
+    const baseSubtotal =
+        Number(pricing?.base_ops_total ?? 0) +
+        Number(pricing?.line_items?.catalog_total ?? 0) +
+        Number(pricing?.line_items?.custom_total ?? 0);
+    const total = marginOverride
+        ? roundCurrency(baseSubtotal * (1 + effectiveMarginPercent / 100))
+        : Number(
+              pricing?.sell?.final_total ?? pricing?.final_total ?? getOrderPrice(pricing).total
+          );
+    const marginAmount = marginOverride
+        ? roundCurrency(total - baseSubtotal)
+        : pricing?.margin?.amount != null
+          ? Number(pricing.margin.amount)
+          : roundCurrency(total - baseSubtotal);
 
     const handleApprove = async () => {
         if (!canApproveQuote) return;
