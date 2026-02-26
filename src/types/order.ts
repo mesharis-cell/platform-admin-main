@@ -72,7 +72,6 @@ export interface Order {
     venueCountry?: string | null;
     venueCity?: string | null;
     venue_city_id: string;
-    vehicle_type_id: string;
     venueAddress?: string | null;
     venueAccessNotes?: string | null;
     // Special instructions

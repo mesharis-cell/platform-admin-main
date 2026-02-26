@@ -26,97 +26,6 @@ export interface SetPricingConfigRequest {
 // ============================================================
 
 export type TripType = "ONE_WAY" | "ROUND_TRIP";
-export interface VehicleType {
-    id: string;
-    name: string;
-    vehicle_size: number | null;
-    platform_id: string | null;
-    is_default: boolean;
-    is_active: boolean;
-    display_order: number;
-    description: string | null;
-    created_at: string;
-    updated_at: string;
-}
-export type VehicleTypeRef = string | VehicleType;
-
-export interface TransportRate {
-    id: string;
-    platform_id: string;
-    company: {
-        id: string;
-        name: string;
-    };
-    city: {
-        id: string;
-        name: string;
-    };
-    area: string | null;
-    trip_type: TripType;
-    vehicle_type: {
-        id: string;
-        name: string;
-    };
-    rate: number;
-    is_active: boolean;
-    created_at: string;
-    updated_at: string;
-}
-
-export interface CreateTransportRateRequest {
-    company_id?: string | null;
-    city_id: string;
-    area?: string | null;
-    trip_type: TripType;
-    vehicle_type_id: string;
-    rate: number;
-}
-
-export interface UpdateTransportRateRequest {
-    rate?: number;
-    isActive?: boolean;
-}
-
-export interface TransportRateLookup {
-    emirate: string;
-    tripType: TripType;
-    vehicleType: VehicleTypeRef;
-    rate: number;
-}
-
-// ============================================================
-// Vehicle Types (Entity)
-// ============================================================
-
-export interface VehicleTypeEntity {
-    id: string;
-    platform_id: string;
-    name: string;
-    vehicle_size: number;
-    display_order: number;
-    description: string | null;
-    is_active: boolean;
-    is_default: boolean;
-    created_at: string;
-    updated_at: string;
-}
-
-export interface CreateVehicleTypeRequest {
-    name: string;
-    vehicle_size: number | null;
-    display_order?: number;
-    description?: string;
-    isDefault?: boolean;
-}
-
-export interface UpdateVehicleTypeRequest {
-    name?: string;
-    vehicle_size?: number;
-    display_order?: number;
-    description?: string;
-    isActive?: boolean;
-    isDefault?: boolean;
-}
 
 // ============================================================
 // Service Types
@@ -270,7 +179,7 @@ export interface OrderPricing {
     transport: {
         emirate?: string;
         trip_type?: TripType;
-        vehicle_type?: VehicleTypeRef;
+        vehicle_type?: string;
         system_rate: number;
         final_rate: number;
         vehicle_changed?: boolean;

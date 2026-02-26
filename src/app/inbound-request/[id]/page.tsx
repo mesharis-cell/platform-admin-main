@@ -226,13 +226,12 @@ export default function InboundRequestDetailsPage({ params }: { params: Promise<
                                                     ⚠️ Pricing calculation failed
                                                 </p>
                                                 <p className="text-xs text-muted-foreground mb-3">
-                                                    This order may be missing required configuration
-                                                    (e.g., transport rate for the emirate, trip
-                                                    type, or vehicle type).
+                                                    This request may be missing pricing
+                                                    configuration.
                                                 </p>
                                                 <p className="text-xs text-muted-foreground">
-                                                    Please contact your Platform Admin to add the
-                                                    missing transport rate configuration.
+                                                    Please contact your Platform Admin to review the
+                                                    pricing setup.
                                                 </p>
                                             </div>
                                         )}
