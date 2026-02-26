@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
     Dialog,
     DialogContent,
@@ -38,7 +38,20 @@ export function AddCatalogLineItemModal({
     targetId,
     purposeType = "ORDER",
 }: AddCatalogLineItemModalProps) {
-    const { data: serviceTypes } = useListServiceTypes({});
+    const [serviceSearch, setServiceSearch] = useState("");
+    const [debouncedSearch, setDebouncedSearch] = useState("");
+    const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+
+    useEffect(() => {
+        debounceRef.current = setTimeout(() => setDebouncedSearch(serviceSearch), 300);
+        return () => clearTimeout(debounceRef.current);
+    }, [serviceSearch]);
+
+    const serviceFilters: Record<string, string> = { limit: "100" };
+    if (debouncedSearch.trim()) serviceFilters.search_term = debouncedSearch.trim();
+
+    const { data: serviceTypes, isFetching: servicesFetching } =
+        useListServiceTypes(serviceFilters);
     const createLineItem = useCreateCatalogLineItem(targetId, purposeType);
 
     const [serviceTypeId, setServiceTypeId] = useState("");
@@ -141,11 +154,28 @@ export function AddCatalogLineItemModal({
                         <Label>
                             Service <span className="text-destructive">*</span>
                         </Label>
+                        <Input
+                            placeholder="Search services..."
+                            value={serviceSearch}
+                            onChange={(e) => setServiceSearch(e.target.value)}
+                            className="mb-2"
+                        />
                         <Select value={serviceTypeId} onValueChange={handleServiceChange}>
                             <SelectTrigger>
                                 <SelectValue placeholder="Select service..." />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="max-h-[250px]">
+                                {servicesFetching && (
+                                    <div className="p-2 text-xs text-muted-foreground text-center">
+                                        Loading...
+                                    </div>
+                                )}
+                                {!servicesFetching &&
+                                    (!serviceTypes?.data || serviceTypes.data.length === 0) && (
+                                        <div className="p-2 text-xs text-muted-foreground text-center">
+                                            No services found
+                                        </div>
+                                    )}
                                 {serviceTypes?.data?.map((service: any) => (
                                     <SelectItem key={service.id} value={service.id}>
                                         {service.name} ({service.unit})

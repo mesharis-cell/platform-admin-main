@@ -16,6 +16,8 @@ export const serviceTypesKeys = {
 // List service types
 export function useListServiceTypes(filters: Record<string, any> = {}) {
     const queryParams = new URLSearchParams();
+    if (filters.page) queryParams.append("page", filters.page);
+    if (filters.limit) queryParams.append("limit", filters.limit);
     if (filters.category) queryParams.append("category", filters.category);
     if (filters.search_term) queryParams.append("search_term", filters.search_term);
     if (filters.include_inactive) queryParams.append("include_inactive", "true");
