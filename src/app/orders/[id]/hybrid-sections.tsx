@@ -59,20 +59,33 @@ export function PendingApprovalSection({ order, orderId, onRefresh }: HybridPric
         ? Number(marginPercent || 0)
         : currentMarginPercent;
     const pricing = order?.order_pricing;
-    const baseSubtotal =
-        Number(pricing?.base_ops_total ?? 0) +
-        Number(pricing?.line_items?.catalog_total ?? 0) +
-        Number(pricing?.line_items?.custom_total ?? 0);
+    const breakdownLines = Array.isArray(pricing?.breakdown_lines)
+        ? pricing.breakdown_lines.filter(
+              (line: any) => !line.is_voided && (line.billing_mode || "BILLABLE") === "BILLABLE"
+          )
+        : [];
+    const baseSubtotal = Number(
+        pricing?.totals?.buy_total ??
+            Number(pricing?.base_ops_total ?? 0) +
+                Number(pricing?.line_items?.catalog_total ?? 0) +
+                Number(pricing?.line_items?.custom_total ?? 0)
+    );
     const total = marginOverride
         ? roundCurrency(baseSubtotal * (1 + effectiveMarginPercent / 100))
         : Number(
-              pricing?.sell?.final_total ?? pricing?.final_total ?? getOrderPrice(pricing).total
+              pricing?.totals?.sell_total ??
+                  pricing?.sell?.final_total ??
+                  pricing?.final_total ??
+                  getOrderPrice(pricing).total
           );
     const marginAmount = marginOverride
         ? roundCurrency(total - baseSubtotal)
-        : pricing?.margin?.amount != null
-          ? Number(pricing.margin.amount)
-          : roundCurrency(total - baseSubtotal);
+        : Number(
+              pricing?.totals?.margin_amount ??
+                  (pricing?.margin?.amount != null
+                      ? Number(pricing.margin.amount)
+                      : roundCurrency(total - baseSubtotal))
+          );
 
     const handleApprove = async () => {
         if (!canApproveQuote) return;
@@ -165,6 +178,37 @@ export function PendingApprovalSection({ order, orderId, onRefresh }: HybridPric
                                     AED
                                 </span>
                             </div>
+                            {breakdownLines.length > 0 && (
+                                <div className="rounded border border-border/60 overflow-hidden mt-2">
+                                    <div className="grid grid-cols-12 bg-muted/30 px-3 py-2 text-xs font-medium">
+                                        <span className="col-span-6">Line</span>
+                                        <span className="col-span-3 text-right">Buy</span>
+                                        <span className="col-span-3 text-right">Sell</span>
+                                    </div>
+                                    {breakdownLines.map((line: any) => (
+                                        <div
+                                            key={line.line_id}
+                                            className="grid grid-cols-12 px-3 py-2 text-xs border-t border-border/40"
+                                        >
+                                            <span className="col-span-6 truncate">
+                                                {line.label} ({line.quantity} {line.unit})
+                                            </span>
+                                            <span className="col-span-3 text-right font-mono">
+                                                {Number(line.buy_total ?? line.total ?? 0).toFixed(
+                                                    2
+                                                )}{" "}
+                                                AED
+                                            </span>
+                                            <span className="col-span-3 text-right font-mono">
+                                                {Number(line.sell_total ?? line.total ?? 0).toFixed(
+                                                    2
+                                                )}{" "}
+                                                AED
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                             <div className="flex justify-between">
                                 <span className="text-muted-foreground">
                                     Margin ({effectiveMarginPercent}%)

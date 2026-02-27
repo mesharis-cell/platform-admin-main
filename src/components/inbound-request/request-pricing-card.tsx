@@ -5,7 +5,7 @@ import { DollarSign } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
 interface RequestPricingCardProps {
-    finalTotal: string;
+    finalTotal: string | number;
 }
 
 export function RequestPricingCard({ finalTotal }: RequestPricingCardProps) {
@@ -28,7 +28,7 @@ export function RequestPricingCard({ finalTotal }: RequestPricingCardProps) {
                                     Estimated Total Cost
                                 </p>
                                 <p className="text-3xl font-bold font-mono text-primary">
-                                    AED {parseFloat(finalTotal || "0").toLocaleString()}
+                                    AED {parseFloat(String(finalTotal || "0")).toLocaleString()}
                                 </p>
                             </div>
                         </div>

@@ -119,20 +119,39 @@ export interface InboundRequestDetails {
         email: string;
     };
     request_pricing: {
-        warehouse_ops_rate: string;
-        base_ops_total: string;
-        logistics_sub_total: string;
-        final_total: string;
-        line_items: {
+        breakdown_lines?: Array<{
+            line_id: string;
+            line_kind?: "BASE_OPS" | "RATE_CARD" | "CUSTOM";
+            label: string;
+            quantity: number;
+            unit: string;
+            buy_unit_price?: number;
+            buy_total?: number;
+            sell_unit_price?: number;
+            sell_total?: number;
+            billing_mode?: string;
+            is_voided?: boolean;
+        }>;
+        base_ops_total?: string | number;
+        logistics_sub_total?: string | number;
+        service_fee?: string | number;
+        final_total: string | number;
+        line_items?: {
             custom_total: number;
             catalog_total: number;
         };
-        margin: {
+        margin?: {
             amount: number;
-            percent: string;
+            percent: string | number;
             is_override: boolean;
             override_reason: string | null;
         };
+        margin_policy?: {
+            percent: number;
+            is_override: boolean;
+            override_reason: string | null;
+        };
+        totals?: Record<string, number>;
         calculated_by: string;
         calculated_at: string;
     };

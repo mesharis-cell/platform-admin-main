@@ -34,6 +34,11 @@ export default function InboundRequestDetailsPage({ params }: { params: Promise<
 
     const request = data?.data;
     const pricing = request?.request_pricing;
+    const breakdownLines = Array.isArray(pricing?.breakdown_lines)
+        ? pricing.breakdown_lines.filter(
+              (line: any) => !line.is_voided && (line.billing_mode || "BILLABLE") === "BILLABLE"
+          )
+        : [];
     const [addCatalogOpen, setAddCatalogOpen] = useState(false);
     const [addCustomOpen, setAddCustomOpen] = useState(false);
     const [completeDialogOpen, setCompleteDialogOpen] = useState(false);
@@ -258,11 +263,54 @@ export default function InboundRequestDetailsPage({ params }: { params: Promise<
                                                         </span>
                                                     </div>
                                                 ) : null}
+                                                {breakdownLines.length > 0 && (
+                                                    <div className="rounded border border-border/60 overflow-hidden mt-2">
+                                                        <div className="grid grid-cols-12 bg-muted/30 px-3 py-2 text-xs font-medium">
+                                                            <span className="col-span-6">Line</span>
+                                                            <span className="col-span-3 text-right">
+                                                                Buy
+                                                            </span>
+                                                            <span className="col-span-3 text-right">
+                                                                Sell
+                                                            </span>
+                                                        </div>
+                                                        {breakdownLines.map((line: any) => (
+                                                            <div
+                                                                key={line.line_id}
+                                                                className="grid grid-cols-12 px-3 py-2 text-xs border-t border-border/40"
+                                                            >
+                                                                <span className="col-span-6 truncate">
+                                                                    {line.label} ({line.quantity}{" "}
+                                                                    {line.unit})
+                                                                </span>
+                                                                <span className="col-span-3 text-right font-mono">
+                                                                    {Number(
+                                                                        line.buy_total ??
+                                                                            line.total ??
+                                                                            0
+                                                                    ).toFixed(2)}{" "}
+                                                                    AED
+                                                                </span>
+                                                                <span className="col-span-3 text-right font-mono">
+                                                                    {Number(
+                                                                        line.sell_total ??
+                                                                            line.total ??
+                                                                            0
+                                                                    ).toFixed(2)}{" "}
+                                                                    AED
+                                                                </span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
                                                 <div className="border-t border-border my-2"></div>
                                                 <div className="flex justify-between font-semibold">
-                                                    <span>Estimated Subtotal</span>
+                                                    <span>Estimated Total</span>
                                                     <span className="font-mono">
-                                                        {pricing.base_ops_total || 0} AED
+                                                        {Number(pricing.final_total || 0).toFixed(
+                                                            2
+                                                        )}{" "}
+                                                        AED
                                                     </span>
                                                 </div>
                                             </div>

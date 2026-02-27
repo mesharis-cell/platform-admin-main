@@ -369,24 +369,51 @@ export interface InvoiceListParams {
 }
 
 export interface OrderPricing {
-    warehouse_ops_rate: number;
-    base_ops_total: number;
-    logistics_sub_total: number;
-    transport: {
+    breakdown_lines?: Array<{
+        line_id: string;
+        line_kind?: "BASE_OPS" | "RATE_CARD" | "CUSTOM";
+        category?: string;
+        label: string;
+        quantity: number;
+        unit: string;
+        buy_unit_price?: number;
+        buy_total?: number;
+        sell_unit_price?: number;
+        sell_total?: number;
+        unit_price?: number;
+        total?: number;
+        billing_mode?: string;
+        is_voided?: boolean;
+    }>;
+    totals?: Record<string, number>;
+    margin_policy?: {
+        percent: number;
+        is_override: boolean;
+        override_reason: string | null;
+    };
+    warehouse_ops_rate?: number;
+    base_ops_total?: number;
+    logistics_sub_total?: number;
+    transport?: {
         final_rate: number;
         system_rate: number;
     };
-    line_items: {
+    line_items?: {
         custom_total: number;
         catalog_total: number;
     };
-    margin: {
+    margin?: {
         amount: number;
         percent: number;
         is_override: boolean;
         override_reason: string | null;
     };
-    final_total: number;
+    sell?: {
+        base_ops_total: number;
+        service_fee: number;
+        final_total: number;
+    };
+    final_total: number | string;
     calculated_at: string;
 }
 
