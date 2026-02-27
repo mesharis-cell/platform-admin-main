@@ -51,6 +51,11 @@ export function LogisticsPricingReview({
     };
 
     const pricing = order?.order_pricing as OrderPricing | undefined;
+    const breakdownLines = Array.isArray(pricing?.breakdown_lines)
+        ? pricing.breakdown_lines.filter(
+              (line) => !line.is_voided && (line.billing_mode || "BILLABLE") === "BILLABLE"
+          )
+        : [];
     return (
         <div className="space-y-6">
             {/* Service Line Items */}
@@ -173,6 +178,37 @@ export function LogisticsPricingReview({
                                     <span className="font-mono">
                                         {Number(pricing.margin.amount || 0).toFixed(2)} AED
                                     </span>
+                                </div>
+                            )}
+                            {breakdownLines.length > 0 && (
+                                <div className="rounded border border-border/60 overflow-hidden mt-3">
+                                    <div className="grid grid-cols-12 bg-muted/30 px-3 py-2 text-xs font-medium">
+                                        <span className="col-span-6">Line</span>
+                                        <span className="col-span-3 text-right">Buy</span>
+                                        <span className="col-span-3 text-right">Sell</span>
+                                    </div>
+                                    {breakdownLines.map((line) => (
+                                        <div
+                                            key={line.line_id}
+                                            className="grid grid-cols-12 px-3 py-2 text-xs border-t border-border/40"
+                                        >
+                                            <span className="col-span-6 truncate">
+                                                {line.label} ({line.quantity} {line.unit})
+                                            </span>
+                                            <span className="col-span-3 text-right font-mono">
+                                                {Number(line.buy_total ?? line.total ?? 0).toFixed(
+                                                    2
+                                                )}{" "}
+                                                AED
+                                            </span>
+                                            <span className="col-span-3 text-right font-mono">
+                                                {Number(line.sell_total ?? line.total ?? 0).toFixed(
+                                                    2
+                                                )}{" "}
+                                                AED
+                                            </span>
+                                        </div>
+                                    ))}
                                 </div>
                             )}
                             <div className="border-t border-border my-2"></div>

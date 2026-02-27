@@ -172,6 +172,45 @@ export interface VoidLineItemRequest {
 // ============================================================
 
 export interface OrderPricing {
+    breakdown_lines?: Array<{
+        line_id: string;
+        line_kind?: "BASE_OPS" | "RATE_CARD" | "CUSTOM";
+        category?: string;
+        label: string;
+        quantity: number;
+        unit: string;
+        buy_unit_price?: number;
+        buy_total?: number;
+        sell_unit_price?: number;
+        sell_total?: number;
+        unit_price?: number;
+        total?: number;
+        billing_mode?: string;
+        is_voided?: boolean;
+        notes?: string | null;
+    }>;
+    totals?: {
+        buy_base_ops_total?: number;
+        buy_rate_card_total?: number;
+        buy_custom_total?: number;
+        buy_total?: number;
+        sell_base_ops_total?: number;
+        sell_rate_card_total?: number;
+        sell_custom_total?: number;
+        sell_total?: number;
+        margin_amount?: number;
+        service_fee_buy?: number;
+        service_fee_sell?: number;
+        base_ops_total?: number;
+        rate_card_total?: number;
+        custom_total?: number;
+        total?: number;
+    };
+    margin_policy?: {
+        percent: number;
+        is_override: boolean;
+        override_reason: string | null;
+    };
     warehouse_ops_rate?: number;
     base_ops_total: number;
     sell?: {
@@ -179,35 +218,19 @@ export interface OrderPricing {
         service_fee: number;
         final_total: number;
     };
-    logistics_sub_total: number;
-    base_operations?: {
-        volume: number;
-        rate: number;
-        total: number;
-    };
-    transport: {
-        emirate?: string;
-        trip_type?: TripType;
-        vehicle_type?: string;
-        system_rate: number;
-        final_rate: number;
-        vehicle_changed?: boolean;
-        vehicle_change_reason?: string | null;
-    };
-    line_items: {
+    line_items?: {
         catalog_total: number;
         custom_total: number;
     };
-    logistics_subtotal?: number;
-    margin: {
+    margin?: {
         percent: number;
         amount: number;
         is_override: boolean;
         override_reason: string | null;
     };
-    final_total: number;
-    calculated_at: string;
-    calculated_by?: string;
+    margin_percent?: number;
+    final_total: number | string;
+    calculated_at?: string;
 }
 
 // ============================================================

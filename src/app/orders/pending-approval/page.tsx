@@ -132,7 +132,9 @@ export default function PendingApprovalPage() {
                                                     Estimated Total
                                                 </p>
                                                 <p className="text-xl font-bold font-mono">
-                                                    {order.pricing.final_total?.toFixed(2) || "TBD"}{" "}
+                                                    {Number(order.pricing.final_total || 0).toFixed(
+                                                        2
+                                                    )}{" "}
                                                     AED
                                                 </p>
                                             </div>
