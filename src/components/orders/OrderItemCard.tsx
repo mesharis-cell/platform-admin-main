@@ -3,13 +3,16 @@
 import Link from "next/link";
 import { AlertTriangle, Package, XCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { useCreateServiceRequest } from "@/hooks/use-service-requests";
 import { Condition } from "@/types";
 import { PrintQrAction } from "@/components/qr/PrintQrAction";
-import { toast } from "sonner";
 
 interface OrderItemCardProps {
+    linkedSr?: {
+        id: string;
+        service_request_id: string;
+        request_status: string;
+        blocks_fulfillment: boolean;
+    } | null;
     item: {
         id: string;
         asset?: {
@@ -29,6 +32,7 @@ interface OrderItemCardProps {
             total_volume: number;
             total_weight: number;
             handling_tags?: string[];
+            maintenance_decision?: string | null;
         };
     };
     orderId: string;
@@ -49,9 +53,13 @@ const CONDITION_STYLES: Record<string, { banner: string; icon: typeof AlertTrian
     },
 };
 
-export function OrderItemCard({ item, orderId, orderStatus, onRefresh }: OrderItemCardProps) {
-    const createServiceRequest = useCreateServiceRequest();
-
+export function OrderItemCard({
+    item,
+    orderId,
+    orderStatus,
+    linkedSr,
+    onRefresh,
+}: OrderItemCardProps) {
     const thumbnail =
         item.asset?.on_display_image ||
         (item.asset?.images && item.asset.images.length > 0 ? item.asset.images[0] : null);
@@ -63,41 +71,10 @@ export function OrderItemCard({ item, orderId, orderStatus, onRefresh }: OrderIt
     const ConditionIcon = conditionStyle?.icon;
 
     const showWarning = PRE_FULFILLMENT_STATUSES.includes(orderStatus) && isDamaged;
-    const showAction =
-        showWarning && item.asset?.status !== "MAINTENANCE" && item.asset?.condition === "RED";
-
-    const handleCreateLinkedServiceRequest = async () => {
-        if (!item?.asset?.id || !item?.order_item?.id) return;
-        try {
-            const requestType = "MAINTENANCE";
-            await createServiceRequest.mutateAsync({
-                request_type: requestType,
-                billing_mode: "INTERNAL_ONLY",
-                link_mode: ["DRAFT", "PRICING_REVIEW", "PENDING_APPROVAL", "QUOTED"].includes(
-                    orderStatus
-                )
-                    ? "BUNDLED_WITH_ORDER"
-                    : "SEPARATE_CHANGE_REQUEST",
-                blocks_fulfillment: item.asset.condition === "RED",
-                title: `${requestType} for ${item.asset.name || "asset"}`,
-                description: `Asset condition is ${item.asset.condition}. Created from order workflow.`,
-                related_asset_id: item.asset.id,
-                related_order_id: orderId,
-                related_order_item_id: item.order_item.id,
-                items: [
-                    {
-                        asset_id: item.asset.id,
-                        asset_name: item.asset.name || "Asset",
-                        quantity: item.order_item.quantity || 1,
-                    },
-                ],
-            });
-            if (onRefresh) onRefresh();
-            toast.success("Linked service request created");
-        } catch (error: any) {
-            toast.error(error.message || "Failed to create linked service request");
-        }
-    };
+    const canNeedSR =
+        item.asset?.condition === "RED" ||
+        (item.asset?.condition === "ORANGE" &&
+            item.order_item?.maintenance_decision === "FIX_IN_ORDER");
 
     return (
         <div
@@ -178,18 +155,30 @@ export function OrderItemCard({ item, orderId, orderStatus, onRefresh }: OrderIt
                     </div>
                 )}
 
-                {showAction && (
-                    <Button
-                        variant="destructive"
-                        size="sm"
-                        className="text-xs font-mono mt-2 h-7"
-                        onClick={handleCreateLinkedServiceRequest}
-                        disabled={createServiceRequest.isPending}
-                    >
-                        {createServiceRequest.isPending
-                            ? "Creating…"
-                            : "Create Linked Service Request"}
-                    </Button>
+                {linkedSr && showWarning && (
+                    <div className="flex items-center gap-2 mt-2 pt-2 border-t border-border/50 flex-wrap">
+                        <Link
+                            href={`/service-requests/${linkedSr.id}`}
+                            className="font-mono text-xs text-primary hover:underline"
+                        >
+                            {linkedSr.service_request_id}
+                        </Link>
+                        <Badge variant="outline" className="font-mono text-[10px]">
+                            {linkedSr.request_status.replace(/_/g, " ")}
+                        </Badge>
+                        {linkedSr.blocks_fulfillment &&
+                            !["COMPLETED", "CANCELLED"].includes(linkedSr.request_status) && (
+                                <Badge variant="destructive" className="font-mono text-[10px]">
+                                    Blocking
+                                </Badge>
+                            )}
+                    </div>
+                )}
+
+                {showWarning && canNeedSR && !linkedSr && (
+                    <p className="font-mono text-[11px] text-muted-foreground mt-2">
+                        Maintenance service request will be auto-created for this item.
+                    </p>
                 )}
             </div>
         </div>

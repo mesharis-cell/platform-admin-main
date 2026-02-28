@@ -206,7 +206,7 @@ export default function WarehouseOptRates() {
                                 id="name"
                                 value={formData.name}
                                 disabled
-                                placeholder="e.g., Pernod Ricard"
+                                placeholder="e.g., Client Company"
                                 required
                                 className="font-mono"
                             />

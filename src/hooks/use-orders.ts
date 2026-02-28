@@ -195,7 +195,7 @@ export function useAdminOrderDetails(orderId: string | null) {
 }
 
 /**
- * Get order status history (PMG Admin only)
+ * Get order status history (Platform Admin only)
  */
 export function useAdminOrderStatusHistory(orderId: string | null) {
     return useQuery({
@@ -236,7 +236,7 @@ export function useSendInvoice() {
 }
 
 /**
- * Update job number (PMG Admin only)
+ * Update job number (Platform Admin only)
  */
 export function useUpdateJobNumber() {
     const queryClient = useQueryClient();
@@ -330,7 +330,7 @@ export function useDownloadGoodsForm() {
 // ============================================================
 
 /**
- * List orders in PRICING_REVIEW status (A2 Staff)
+ * List orders in PRICING_REVIEW status (Logistics Staff)
  */
 export function usePricingReviewOrders() {
     return useQuery({
@@ -361,129 +361,6 @@ export function usePendingApprovalOrders() {
             } catch (error) {
                 throwApiError(error);
             }
-        },
-    });
-}
-
-/**
- * A2 approve standard pricing
- */
-export function useA2ApproveStandard() {
-    const queryClient = useQueryClient();
-
-    return useMutation({
-        mutationFn: async ({ orderId, notes }: { orderId: string; notes?: string }) => {
-            try {
-                const response = await apiClient.patch(
-                    `/client/v1/order/${orderId}/approve-standard-pricing`,
-                    { notes }
-                );
-                return response.data;
-            } catch (error) {
-                throwApiError(error);
-            }
-        },
-        onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({
-                queryKey: ["orders", "pricing-review"],
-            });
-            queryClient.invalidateQueries({
-                queryKey: ["orders", "admin-list"],
-            });
-            queryClient.invalidateQueries({
-                queryKey: ["orders", "admin-detail", variables.orderId],
-            });
-        },
-    });
-}
-
-/**
- * Adjust pricing
- */
-export function useAdjustPricing() {
-    const queryClient = useQueryClient();
-
-    return useMutation({
-        mutationFn: async ({
-            orderId,
-            adjustedPrice,
-            adjustmentReason,
-        }: {
-            orderId: string;
-            adjustedPrice: number;
-            adjustmentReason: string;
-        }) => {
-            try {
-                const response = await apiClient.patch(
-                    `/client/v1/order/${orderId}/adjust-pricing`,
-                    {
-                        adjusted_price: adjustedPrice,
-                        adjustment_reason: adjustmentReason,
-                    }
-                );
-
-                return response.data;
-            } catch (error) {
-                throwApiError(error);
-            }
-        },
-        onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({
-                queryKey: ["orders", "pricing-review"],
-            });
-            queryClient.invalidateQueries({
-                queryKey: ["orders", "admin-list"],
-            });
-            queryClient.invalidateQueries({
-                queryKey: ["orders", "admin-detail", variables.orderId],
-            });
-        },
-    });
-}
-
-/**
- * PMG approve pricing
- */
-export function usePMGApprovePricing() {
-    const queryClient = useQueryClient();
-
-    return useMutation({
-        mutationFn: async ({
-            orderId,
-            a2BasePrice,
-            pmgMarginPercent,
-            pmgReviewNotes,
-        }: {
-            orderId: string;
-            a2BasePrice: number;
-            pmgMarginPercent: number;
-            pmgReviewNotes?: string;
-        }) => {
-            try {
-                const response = await apiClient.patch(
-                    `/client/v1/order/${orderId}/approve-platform-pricing`,
-                    {
-                        logistics_base_price: a2BasePrice,
-                        platform_margin_percent: pmgMarginPercent,
-                        notes: pmgReviewNotes,
-                    }
-                );
-
-                return response.data;
-            } catch (error) {
-                throwApiError(error);
-            }
-        },
-        onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({
-                queryKey: ["orders", "pending-approval"],
-            });
-            queryClient.invalidateQueries({
-                queryKey: ["orders", "admin-list"],
-            });
-            queryClient.invalidateQueries({
-                queryKey: ["orders", "admin-detail", variables.orderId],
-            });
         },
     });
 }
@@ -748,8 +625,10 @@ export function useRecalculateBaseOps() {
                 throwApiError(error);
             }
         },
-        onSuccess: () => {
+        onSuccess: (_data, orderId) => {
             queryClient.invalidateQueries({ queryKey: ["orders"] });
+            queryClient.invalidateQueries({ queryKey: ["orders", "admin-detail", orderId] });
+            queryClient.invalidateQueries({ queryKey: ["line-items"] });
         },
     });
 }

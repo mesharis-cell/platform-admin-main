@@ -64,6 +64,10 @@ export function PendingApprovalSection({ order, orderId, onRefresh }: HybridPric
               (line: any) => !line.is_voided && (line.billing_mode || "BILLABLE") === "BILLABLE"
           )
         : [];
+    const linesTotal = breakdownLines.reduce(
+        (sum: number, line: any) => sum + Number(line.buy_total ?? line.total ?? 0),
+        0
+    );
     const baseSubtotal = Number(
         pricing?.totals?.buy_total ??
             Number(pricing?.base_ops_total ?? 0) +
@@ -141,7 +145,11 @@ export function PendingApprovalSection({ order, orderId, onRefresh }: HybridPric
                     </div>
                 </CardHeader>
                 <CardContent>
-                    <OrderLineItemsList targetId={orderId} canManage={canManageServiceItems} />
+                    <OrderLineItemsList
+                        targetId={orderId}
+                        canManage={canManageServiceItems}
+                        allowClientVisibilityControls
+                    />
                 </CardContent>
             </Card>
 
@@ -154,30 +162,6 @@ export function PendingApprovalSection({ order, orderId, onRefresh }: HybridPric
                     {/* Display current pricing if available */}
                     {order.order_pricing && (
                         <div className="space-y-2 text-sm">
-                            <div className="flex justify-between">
-                                <span className="text-muted-foreground">Base Operations</span>
-                                <span className="font-mono">
-                                    {Number(order?.order_pricing?.base_ops_total).toFixed(2)} AED
-                                </span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-muted-foreground">Catalog Services</span>
-                                <span className="font-mono">
-                                    {Number(
-                                        order?.order_pricing?.line_items?.catalog_total
-                                    ).toFixed(2)}{" "}
-                                    AED
-                                </span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-muted-foreground">Custom Services</span>
-                                <span className="font-mono">
-                                    {Number(order?.order_pricing?.line_items?.custom_total).toFixed(
-                                        2
-                                    )}{" "}
-                                    AED
-                                </span>
-                            </div>
                             {breakdownLines.length > 0 && (
                                 <div className="rounded border border-border/60 overflow-hidden mt-2">
                                     <div className="grid grid-cols-12 bg-muted/30 px-3 py-2 text-xs font-medium">
@@ -209,6 +193,12 @@ export function PendingApprovalSection({ order, orderId, onRefresh }: HybridPric
                                     ))}
                                 </div>
                             )}
+                            <div className="flex justify-between">
+                                <span className="text-muted-foreground">Total of lines</span>
+                                <span className="font-mono">
+                                    {Number(linesTotal).toFixed(2)} AED
+                                </span>
+                            </div>
                             <div className="flex justify-between">
                                 <span className="text-muted-foreground">
                                     Margin ({effectiveMarginPercent}%)

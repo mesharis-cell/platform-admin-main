@@ -119,6 +119,10 @@ export interface OrderLineItem {
     notes: string | null;
     billingMode?: LineItemBillingMode;
     metadata?: TransportLineItemMetadata | Record<string, unknown> | null;
+    clientPriceVisible?: boolean;
+    canEditPricingFields?: boolean;
+    canEditMetadataFields?: boolean;
+    lockReason?: string | null;
     isVoided: boolean;
     voidedAt: string | null;
     voidedBy: string | null;
@@ -161,6 +165,25 @@ export interface UpdateLineItemRequest {
     notes?: string;
     billingMode?: LineItemBillingMode;
     metadata?: Record<string, unknown>;
+    clientPriceVisible?: boolean;
+}
+
+export interface PatchLineItemMetadataRequest {
+    notes?: string;
+    metadata?: Record<string, unknown>;
+}
+
+export interface PatchLineItemClientVisibilityRequest {
+    clientPriceVisible: boolean;
+}
+
+export interface PatchEntityLineItemClientVisibilityRequest {
+    purposeType: PurposeType;
+    orderId?: string;
+    inboundRequestId?: string;
+    serviceRequestId?: string;
+    clientPriceVisible: boolean;
+    lineItemIds?: string[];
 }
 
 export interface VoidLineItemRequest {
@@ -186,6 +209,7 @@ export interface OrderPricing {
         unit_price?: number;
         total?: number;
         billing_mode?: string;
+        client_price_visible?: boolean;
         is_voided?: boolean;
         notes?: string | null;
     }>;

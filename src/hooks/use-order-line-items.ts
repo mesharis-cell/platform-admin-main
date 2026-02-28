@@ -8,6 +8,9 @@ import type {
     CreateCatalogLineItemRequest,
     CreateCustomLineItemRequest,
     UpdateLineItemRequest,
+    PatchLineItemMetadataRequest,
+    PatchLineItemClientVisibilityRequest,
+    PatchEntityLineItemClientVisibilityRequest,
     VoidLineItemRequest,
 } from "@/types/hybrid-pricing";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -21,6 +24,23 @@ export const lineItemsKeys = {
 // For backward compatibility
 export const orderLineItemsKeys = {
     list: (orderId: string) => lineItemsKeys.list(orderId, "ORDER"),
+};
+
+const invalidateLineItemRelatedQueries = (
+    queryClient: ReturnType<typeof useQueryClient>,
+    targetId: string,
+    purposeType: "ORDER" | "INBOUND_REQUEST" | "SERVICE_REQUEST"
+) => {
+    queryClient.invalidateQueries({ queryKey: lineItemsKeys.list(targetId, purposeType) });
+
+    if (purposeType === "ORDER") {
+        queryClient.invalidateQueries({ queryKey: ["orders"] });
+    } else if (purposeType === "INBOUND_REQUEST") {
+        queryClient.invalidateQueries({ queryKey: ["inbound-requests"] });
+        queryClient.invalidateQueries({ queryKey: inboundRequestKeys.detail(targetId) });
+    } else {
+        queryClient.invalidateQueries({ queryKey: ["service-requests"] });
+    }
 };
 
 // List line items (works for both orders and inbound requests)
@@ -86,16 +106,7 @@ export function useCreateCatalogLineItem(
             }
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: lineItemsKeys.list(targetId, purposeType) });
-
-            if (purposeType === "ORDER") {
-                queryClient.invalidateQueries({ queryKey: ["orders"] });
-            } else if (purposeType === "INBOUND_REQUEST") {
-                queryClient.invalidateQueries({ queryKey: ["inbound-requests"] });
-                queryClient.invalidateQueries({ queryKey: inboundRequestKeys.detail(targetId) });
-            } else {
-                queryClient.invalidateQueries({ queryKey: ["service-requests"] });
-            }
+            invalidateLineItemRelatedQueries(queryClient, targetId, purposeType);
         },
     });
 }
@@ -131,16 +142,7 @@ export function useCreateCustomLineItem(
             }
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: lineItemsKeys.list(targetId, purposeType) });
-
-            if (purposeType === "ORDER") {
-                queryClient.invalidateQueries({ queryKey: ["orders"] });
-            } else if (purposeType === "INBOUND_REQUEST") {
-                queryClient.invalidateQueries({ queryKey: ["inbound-requests"] });
-                queryClient.invalidateQueries({ queryKey: inboundRequestKeys.detail(targetId) });
-            } else {
-                queryClient.invalidateQueries({ queryKey: ["service-requests"] });
-            }
+            invalidateLineItemRelatedQueries(queryClient, targetId, purposeType);
         },
     });
 }
@@ -164,16 +166,108 @@ export function useUpdateLineItem(
             }
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: lineItemsKeys.list(targetId, purposeType) });
+            invalidateLineItemRelatedQueries(queryClient, targetId, purposeType);
+        },
+    });
+}
 
-            if (purposeType === "ORDER") {
-                queryClient.invalidateQueries({ queryKey: ["orders"] });
-            } else if (purposeType === "INBOUND_REQUEST") {
-                queryClient.invalidateQueries({ queryKey: ["inbound-requests"] });
-                queryClient.invalidateQueries({ queryKey: inboundRequestKeys.detail(targetId) });
-            } else {
-                queryClient.invalidateQueries({ queryKey: ["service-requests"] });
+// Patch line item metadata and notes (post-lock safe)
+export function usePatchLineItemMetadata(
+    targetId: string,
+    purposeType: "ORDER" | "INBOUND_REQUEST" | "SERVICE_REQUEST" = "ORDER"
+) {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({
+            itemId,
+            data,
+        }: {
+            itemId: string;
+            data: PatchLineItemMetadataRequest;
+        }) => {
+            try {
+                const apiData = mapCamelToSnake(data);
+                const response = await apiClient.patch(
+                    `/operations/v1/line-item/${itemId}/metadata`,
+                    apiData
+                );
+                return response.data.data;
+            } catch (error) {
+                throwApiError(error);
             }
+        },
+        onSuccess: () => {
+            invalidateLineItemRelatedQueries(queryClient, targetId, purposeType);
+        },
+    });
+}
+
+// Toggle one line item visibility for client price display
+export function usePatchLineItemClientVisibility(
+    targetId: string,
+    purposeType: "ORDER" | "INBOUND_REQUEST" | "SERVICE_REQUEST" = "ORDER"
+) {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({
+            itemId,
+            data,
+        }: {
+            itemId: string;
+            data: PatchLineItemClientVisibilityRequest;
+        }) => {
+            try {
+                const apiData = mapCamelToSnake(data);
+                const response = await apiClient.patch(
+                    `/operations/v1/line-item/${itemId}/client-visibility`,
+                    apiData
+                );
+                return response.data.data;
+            } catch (error) {
+                throwApiError(error);
+            }
+        },
+        onSuccess: () => {
+            invalidateLineItemRelatedQueries(queryClient, targetId, purposeType);
+        },
+    });
+}
+
+// Bulk set client visibility at entity scope
+export function usePatchEntityLineItemsClientVisibility(
+    targetId: string,
+    purposeType: "ORDER" | "INBOUND_REQUEST" | "SERVICE_REQUEST" = "ORDER"
+) {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (
+            data: Omit<PatchEntityLineItemClientVisibilityRequest, "purposeType">
+        ) => {
+            try {
+                const payload = {
+                    ...data,
+                    purposeType,
+                    ...(purposeType === "ORDER"
+                        ? { orderId: targetId }
+                        : purposeType === "INBOUND_REQUEST"
+                          ? { inboundRequestId: targetId }
+                          : { serviceRequestId: targetId }),
+                };
+                const apiData = mapCamelToSnake(payload);
+                const response = await apiClient.patch(
+                    `/operations/v1/line-item/client-visibility`,
+                    apiData
+                );
+                return response.data.data;
+            } catch (error) {
+                throwApiError(error);
+            }
+        },
+        onSuccess: () => {
+            invalidateLineItemRelatedQueries(queryClient, targetId, purposeType);
         },
     });
 }
@@ -199,16 +293,7 @@ export function useVoidLineItem(
             }
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: lineItemsKeys.list(targetId, purposeType) });
-
-            if (purposeType === "ORDER") {
-                queryClient.invalidateQueries({ queryKey: ["orders"] });
-            } else if (purposeType === "INBOUND_REQUEST") {
-                queryClient.invalidateQueries({ queryKey: ["inbound-requests"] });
-                queryClient.invalidateQueries({ queryKey: inboundRequestKeys.detail(targetId) });
-            } else {
-                queryClient.invalidateQueries({ queryKey: ["service-requests"] });
-            }
+            invalidateLineItemRelatedQueries(queryClient, targetId, purposeType);
         },
     });
 }

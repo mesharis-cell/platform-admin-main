@@ -56,11 +56,12 @@ const scanOutboundItem = async (data: {
 const uploadTruckPhotos = async (data: {
     orderId: string;
     photos: string[];
+    tripPhase?: "OUTBOUND" | "RETURN";
 }): Promise<UploadTruckPhotosResponse> => {
     try {
         const response = await apiClient.post(
             `/operations/v1/scanning/outbound/${data.orderId}/truck-photos`,
-            data
+            { photos: data.photos, trip_phase: data.tripPhase || "OUTBOUND" }
         );
         return response.data;
     } catch (error) {

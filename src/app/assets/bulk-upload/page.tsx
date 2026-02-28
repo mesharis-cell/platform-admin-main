@@ -144,7 +144,7 @@ export default function BulkUploadPage() {
                 ZONE: IMPORT-TERMINAL
             </div>
             <div className="absolute top-8 right-8 font-mono text-[10px] text-muted-foreground/40 tracking-[0.2em] uppercase">
-                SEC-LEVEL: A2-STAFF
+                SEC-LEVEL: LOGISTICS-STAFF
             </div>
             <div className="absolute bottom-8 right-8 font-mono text-[10px] text-muted-foreground/40 tracking-[0.2em] uppercase">
                 PROTOCOL: BULK-IMPORT-V1

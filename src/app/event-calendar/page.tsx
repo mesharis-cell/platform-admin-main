@@ -89,7 +89,7 @@ const STATUS_CONFIG: Record<
         color: "bg-fuchsia-500/10 text-fuchsia-700 border-fuchsia-500/20",
     },
     IN_USE: {
-        label: "IN USE",
+        label: "ON SITE",
         color: "bg-pink-500/10 text-pink-700 border-pink-500/20",
     },
     AWAITING_RETURN: {

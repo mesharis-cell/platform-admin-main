@@ -147,7 +147,7 @@ export function PendingApprovalSection({
                     {pricing && (
                         <div className="space-y-2 text-sm">
                             <div className="flex justify-between">
-                                <span className="text-muted-foreground">Base Operations</span>
+                                <span className="text-muted-foreground">Picking & Handling</span>
                                 <span className="font-mono">
                                     {Number(pricing.base_ops_total).toFixed(2)} AED
                                 </span>
