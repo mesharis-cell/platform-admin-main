@@ -21,6 +21,7 @@ import {
     useUpdateJobNumber,
 } from "@/hooks/use-orders";
 import { useUploadImage } from "@/hooks/use-assets";
+import { useUploadTruckPhotos } from "@/hooks/use-scanning";
 import { ScanActivityTimeline } from "@/components/scanning/scan-activity-timeline";
 import { PricingReviewSection, PendingApprovalSection, CancelOrderButton } from "./hybrid-sections";
 import { OrderApprovalRequestSubmitBtn } from "@/components/orders/OrderApprovalRequestSubmitBtn";
@@ -143,7 +144,7 @@ const STATUS_CONFIG: Record<
         nextStates: ["IN_USE"],
     },
     IN_USE: {
-        label: "IN USE",
+        label: "ON SITE",
         color: "bg-pink-500/10 text-pink-700 border-pink-500/20",
         nextStates: ["DERIG"],
     },
@@ -187,6 +188,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
     const updateJobNumber = useUpdateJobNumber();
     const downloadGoodsForm = useDownloadGoodsForm();
     const uploadImage = useUploadImage();
+    const uploadTruckPhotos = useUploadTruckPhotos();
 
     const [isEditingJobNumber, setIsEditingJobNumber] = useState(false);
     const [jobNumber, setJobNumber] = useState("");
@@ -321,12 +323,23 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
         if (!order?.data || !selectedNextStatus) return;
         try {
             setProgressLoading(true);
+            const shouldUploadTripPhotos = ["DELIVERED", "RETURN_IN_TRANSIT"].includes(
+                selectedNextStatus
+            );
             let deliveryPhotos: string[] | undefined;
-            if (selectedNextStatus === "DELIVERED" && deliveryPhotoFiles.length > 0) {
+            if (shouldUploadTripPhotos && deliveryPhotoFiles.length > 0) {
                 const formData = new FormData();
                 deliveryPhotoFiles.forEach((file) => formData.append("files", file));
                 const uploadResult = await uploadImage.mutateAsync(formData);
                 deliveryPhotos = uploadResult.data?.imageUrls?.filter(Boolean) || [];
+                if (deliveryPhotos.length > 0) {
+                    await uploadTruckPhotos.mutateAsync({
+                        orderId: order.data.id,
+                        photos: deliveryPhotos,
+                        tripPhase:
+                            selectedNextStatus === "RETURN_IN_TRANSIT" ? "RETURN" : "OUTBOUND",
+                    });
+                }
             }
             await apiClient.patch(`/client/v1/order/${order.data.id}/status`, {
                 new_status: selectedNextStatus,
@@ -520,7 +533,12 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                                     onChange={(e) => {
                                                         const nextStatus = e.target.value;
                                                         setSelectedNextStatus(nextStatus);
-                                                        if (nextStatus !== "DELIVERED")
+                                                        if (
+                                                            ![
+                                                                "DELIVERED",
+                                                                "RETURN_IN_TRANSIT",
+                                                            ].includes(nextStatus)
+                                                        )
                                                             resetDeliveryPhotoState();
                                                     }}
                                                 >
@@ -545,10 +563,14 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                                     rows={3}
                                                 />
                                             </div>
-                                            {selectedNextStatus === "DELIVERED" && (
+                                            {["DELIVERED", "RETURN_IN_TRANSIT"].includes(
+                                                selectedNextStatus
+                                            ) && (
                                                 <div className="space-y-2">
                                                     <Label className="font-mono text-xs">
-                                                        DELIVERY PROOF PHOTOS (Optional)
+                                                        {selectedNextStatus === "RETURN_IN_TRANSIT"
+                                                            ? "RETURN TRIP PHOTOS (Optional)"
+                                                            : "DELIVERY PROOF PHOTOS (Optional)"}
                                                     </Label>
                                                     <div className="rounded-md border border-dashed p-3 space-y-3">
                                                         <input
@@ -1216,6 +1238,13 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                         item={item}
                                         orderId={order?.data?.id}
                                         orderStatus={order?.data?.order_status}
+                                        linkedSr={
+                                            order?.data?.linked_service_requests?.find(
+                                                (sr: any) =>
+                                                    sr.related_order_item_id ===
+                                                    item?.order_item?.id
+                                            ) || null
+                                        }
                                         onRefresh={refetch}
                                     />
                                 ))}

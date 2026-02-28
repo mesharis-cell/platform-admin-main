@@ -136,6 +136,7 @@ export interface OutboundScanResponse {
 export interface UploadTruckPhotosRequest {
     sessionId: string;
     photos: string[]; // Base64-encoded images
+    tripPhase?: "OUTBOUND" | "RETURN";
 }
 
 export interface UploadTruckPhotosResponse {

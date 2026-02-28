@@ -2,7 +2,7 @@
 
 /**
  * Phase 14: Analytics Dashboard
- * Financial operations command center for PMG Admins
+ * Financial operations command center for Platform Admin
  */
 
 import { useState } from "react";

@@ -36,8 +36,18 @@ export default function AdminScanningDashboard() {
         page: 1,
         limit: 20,
     });
+    const { data: returnTransitOrdersData, isLoading: loadingReturnTransit } = useAdminOrders({
+        order_status: "RETURN_IN_TRANSIT",
+        page: 1,
+        limit: 20,
+    });
 
     const returnOrders = returnOrdersData as APIOrdersResponse | undefined;
+    const returnTransitOrders = returnTransitOrdersData as APIOrdersResponse | undefined;
+    const inboundReadyOrders = [
+        ...(returnOrders?.data || []),
+        ...(returnTransitOrders?.data || []),
+    ];
 
     const filteredPreparationOrders =
         preparationOrders?.data?.filter(
@@ -47,7 +57,7 @@ export default function AdminScanningDashboard() {
         ) || [];
 
     const filteredReturnOrders =
-        returnOrders?.data?.filter(
+        inboundReadyOrders.filter(
             (order) =>
                 order.order_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 order.contact_name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -168,7 +178,7 @@ export default function AdminScanningDashboard() {
                                     </div>
                                 </div>
 
-                                {loadingReturn ? (
+                                {loadingReturn || loadingReturnTransit ? (
                                     <div className="space-y-2">
                                         {[1, 2, 3].map((i) => (
                                             <div
@@ -242,7 +252,10 @@ export default function AdminScanningDashboard() {
                                     INBOUND WORKFLOW
                                 </div>
                                 <ul className="text-sm space-y-1 font-mono text-muted-foreground">
-                                    <li>1. Select order in AWAITING_RETURN status</li>
+                                    <li>
+                                        1. Select order in AWAITING_RETURN or RETURN_IN_TRANSIT
+                                        status
+                                    </li>
                                     <li>2. Scan QR codes + inspect condition (GREEN/ORANGE/RED)</li>
                                     <li>3. Add notes and photos for ORANGE/RED items</li>
                                     <li>4. Complete scan to close order</li>

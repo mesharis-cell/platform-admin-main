@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Phase 9: PMG Invoice & Payment Tracking Dashboard
+ * Phase 9: Platform Invoice & Payment Tracking Dashboard
  * Industrial-technical payment management interface with invoice operations
  */
 

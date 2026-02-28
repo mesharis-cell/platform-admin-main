@@ -379,7 +379,7 @@ export default function CompaniesPage() {
                                                             name: e.target.value,
                                                         })
                                                     }
-                                                    placeholder="e.g., Pernod Ricard"
+                                                    placeholder="e.g., Client Company"
                                                     required
                                                     className="font-mono"
                                                 />

@@ -669,7 +669,8 @@ export default function UsersManagementPage() {
                                                     ADMIN USER
                                                 </div>
                                                 <div className="text-xs text-muted-foreground">
-                                                    Platform Admin or A2 Staff with wildcard access
+                                                    Platform Admin or Logistics Staff with wildcard
+                                                    access
                                                 </div>
                                             </button>
                                             <button

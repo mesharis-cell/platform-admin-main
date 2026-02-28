@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * Phase 8: A2 Pricing Review Interface
- * A2 Staff reviews orders in PRICING_REVIEW status and approves standard pricing or adjusts pricing
+ * Phase 8: Logistics Pricing Review Interface
+ * Logistics Staff reviews orders in PRICING_REVIEW status and approves standard pricing or adjusts pricing
  */
 
 import Link from "next/link";
@@ -50,7 +50,7 @@ export default function PricingReviewPage() {
             <AdminHeader
                 icon={DollarSign}
                 title="PRICING REVIEW QUEUE"
-                description="A2 Review · Standard Pricing · Adjustments"
+                description="Logistics Review · Standard Pricing · Adjustments"
                 stats={data ? { label: "PENDING REVIEW", value: data?.data?.length } : undefined}
                 actions={
                     <Link href="/orders">

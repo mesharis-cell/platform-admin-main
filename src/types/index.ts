@@ -15,9 +15,6 @@ export * from "./asset";
 // Phase 4: Collection types
 export * from "./collection";
 
-// Phase 5: Pricing types
-export * from "./pricing";
-
 // Phase 6: Order types
 export * from "./order";
 

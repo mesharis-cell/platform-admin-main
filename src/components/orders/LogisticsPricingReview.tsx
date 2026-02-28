@@ -88,6 +88,7 @@ export function LogisticsPricingReview({
                             canManageLineItems(order?.orderStatus || order?.order_status) &&
                             canManagePricing
                         }
+                        allowClientVisibilityControls
                     />
                     <p className="text-xs text-muted-foreground mt-3">
                         Add catalog or custom services. Custom totals are derived as qty × unit
@@ -123,7 +124,7 @@ export function LogisticsPricingReview({
                             <div className="p-2 bg-muted/30 rounded space-y-1">
                                 <div className="flex justify-between">
                                     <span className="text-muted-foreground">
-                                        Base Operations ({volume.toFixed(3)} m³)
+                                        Picking & Handling ({volume.toFixed(3)} m³)
                                     </span>
                                     <span className="font-mono">
                                         {pricing.base_ops_total || 0} AED

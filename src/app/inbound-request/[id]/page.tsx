@@ -244,7 +244,7 @@ export default function InboundRequestDetailsPage({ params }: { params: Promise<
                                             <div className="space-y-2 text-sm">
                                                 <div className="flex justify-between p-2 bg-muted/30 rounded">
                                                     <span className="text-muted-foreground">
-                                                        Base Operations
+                                                        Picking & Handling
                                                     </span>
                                                     <span className="font-mono">
                                                         {pricing.base_ops_total || 0} AED
