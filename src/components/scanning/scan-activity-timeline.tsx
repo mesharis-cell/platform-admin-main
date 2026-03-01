@@ -1,9 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PrintQrAction } from "@/components/qr/PrintQrAction";
 import { useOrderScanEvents } from "@/hooks/use-scanning";
+import { ImageViewerModal, type ViewerImageItem } from "@/components/shared/image-viewer-modal";
 import {
     Camera,
     ShieldAlert,
@@ -55,6 +57,9 @@ const SCAN_TYPE_META: Record<string, { label: string; className: string; icon: R
 
 export function ScanActivityTimeline({ orderId }: ScanActivityTimelineProps) {
     const { data: scanData, isLoading } = useOrderScanEvents(orderId);
+    const [viewerOpen, setViewerOpen] = useState(false);
+    const [viewerImages, setViewerImages] = useState<ViewerImageItem[]>([]);
+    const [viewerIndex, setViewerIndex] = useState(0);
 
     if (isLoading) {
         return (
@@ -105,6 +110,19 @@ export function ScanActivityTimeline({ orderId }: ScanActivityTimelineProps) {
     };
 
     const getPhotoEntries = (event: any): Array<{ url: string; description?: string }> => {
+        const mediaEntries = event.media;
+        if (Array.isArray(mediaEntries) && mediaEntries.length > 0) {
+            return mediaEntries
+                .map((entry: any) => {
+                    if (!entry?.url) return null;
+                    return {
+                        url: entry.url,
+                        description: entry.note || undefined,
+                    };
+                })
+                .filter(Boolean) as Array<{ url: string; description?: string }>;
+        }
+
         const structuredEntries = event.damage_report_entries || event.damageReportEntries;
         if (Array.isArray(structuredEntries) && structuredEntries.length > 0) {
             return structuredEntries
@@ -119,6 +137,16 @@ export function ScanActivityTimeline({ orderId }: ScanActivityTimelineProps) {
         }
 
         return (event.photos || []).map((url: string) => ({ url }));
+    };
+
+    const openViewer = (
+        entries: Array<{ url: string; description?: string }>,
+        initialIdx: number
+    ) => {
+        if (entries.length === 0) return;
+        setViewerImages(entries.map((item) => ({ url: item.url, note: item.description })));
+        setViewerIndex(initialIdx);
+        setViewerOpen(true);
     };
 
     const outboundCount = events.filter(
@@ -279,10 +307,11 @@ export function ScanActivityTimeline({ orderId }: ScanActivityTimelineProps) {
                                                         key={`${photo.url}-${index}`}
                                                         className="space-y-1"
                                                     >
-                                                        <a
-                                                            href={photo.url}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
+                                                        <button
+                                                            type="button"
+                                                            onClick={() =>
+                                                                openViewer(photos, index)
+                                                            }
                                                             className="aspect-square bg-muted rounded-lg overflow-hidden border border-border block"
                                                         >
                                                             <img
@@ -290,7 +319,7 @@ export function ScanActivityTimeline({ orderId }: ScanActivityTimelineProps) {
                                                                 alt={`Scan photo ${index + 1}`}
                                                                 className="w-full h-full object-cover"
                                                             />
-                                                        </a>
+                                                        </button>
                                                         {photo.description ? (
                                                             <p className="text-[10px] text-muted-foreground">
                                                                 {photo.description}
@@ -307,6 +336,14 @@ export function ScanActivityTimeline({ orderId }: ScanActivityTimelineProps) {
                     })}
                 </div>
             </Card>
+
+            <ImageViewerModal
+                open={viewerOpen}
+                onOpenChange={setViewerOpen}
+                images={viewerImages}
+                initialIndex={viewerIndex}
+                title="Scan Activity Media"
+            />
         </div>
     );
 }
