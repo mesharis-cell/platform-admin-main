@@ -373,7 +373,11 @@ export interface OrderPricing {
     };
     warehouse_ops_rate?: number;
     base_ops_total?: number;
-    logistics_sub_total?: number;
+    subtotal?: number;
+    vat?: {
+        percent: number;
+        amount: number;
+    };
     transport?: {
         final_rate: number;
         system_rate: number;
@@ -390,7 +394,8 @@ export interface OrderPricing {
     };
     sell?: {
         base_ops_total: number;
-        service_fee: number;
+        subtotal?: number;
+        vat_amount?: number;
         final_total: number;
     };
     final_total: number | string;

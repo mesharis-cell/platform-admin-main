@@ -133,8 +133,11 @@ export interface InboundRequestDetails {
             is_voided?: boolean;
         }>;
         base_ops_total?: string | number;
-        logistics_sub_total?: string | number;
-        service_fee?: string | number;
+        subtotal?: string | number;
+        vat?: {
+            percent: number;
+            amount: number;
+        };
         final_total: string | number;
         line_items?: {
             custom_total: number;

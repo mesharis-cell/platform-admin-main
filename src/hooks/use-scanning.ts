@@ -56,12 +56,19 @@ const scanOutboundItem = async (data: {
 const uploadTruckPhotos = async (data: {
     orderId: string;
     photos: string[];
+    note?: string;
+    assetIds?: string[];
     tripPhase?: "OUTBOUND" | "RETURN";
 }): Promise<UploadTruckPhotosResponse> => {
     try {
         const response = await apiClient.post(
             `/operations/v1/scanning/outbound/${data.orderId}/truck-photos`,
-            { photos: data.photos, trip_phase: data.tripPhase || "OUTBOUND" }
+            {
+                media: data.photos.map((url) => ({ url })),
+                note: data.note,
+                asset_ids: data.assetIds || [],
+                trip_phase: data.tripPhase || "OUTBOUND",
+            }
         );
         return response.data;
     } catch (error) {
@@ -163,8 +170,11 @@ const scanInboundItem = async (data: {
                 qr_code: data.qrCode,
                 condition: data.condition,
                 notes: data.notes,
-                latest_return_images: data.latestReturnImages,
-                damage_report_entries: data.damageReportEntries || [],
+                return_media: (data.latestReturnImages || []).map((url) => ({ url })),
+                damage_media: (data.damageReportEntries || []).map((entry) => ({
+                    url: entry.url,
+                    note: entry.description,
+                })),
                 refurb_days_estimate: data.refurbDaysEstimate,
                 discrepancy_reason: data.discrepancyReason,
                 quantity: data.quantity,

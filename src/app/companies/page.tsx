@@ -84,6 +84,7 @@ export default function CompaniesPage() {
         },
         platform_margin_percent: 0.3,
         warehouse_ops_rate: null,
+        vat_percent_override: null as number | null,
         contact_email: undefined,
         contact_phone: "",
     });
@@ -268,6 +269,7 @@ export default function CompaniesPage() {
             },
             platform_margin_percent: 0.3,
             warehouse_ops_rate: null,
+            vat_percent_override: null,
             contact_email: undefined,
             contact_phone: "",
         });
@@ -290,6 +292,10 @@ export default function CompaniesPage() {
             },
             platform_margin_percent: parseFloat(String(company.platform_margin_percent)),
             warehouse_ops_rate: parseFloat(String(company.warehouse_ops_rate)),
+            vat_percent_override:
+                company.vat_percent_override !== null && company.vat_percent_override !== undefined
+                    ? parseFloat(String(company.vat_percent_override))
+                    : null,
             contact_email: company.contact_email || undefined,
             contact_phone: company.contact_phone || "",
         });
@@ -470,6 +476,43 @@ export default function CompaniesPage() {
                                                 <p className="text-xs text-muted-foreground font-mono">
                                                     Default rate applied to orders (2 decimal
                                                     places)
+                                                </p>
+                                            </div>
+
+                                            {/* VAT Override */}
+                                            <div className="space-y-2">
+                                                <Label
+                                                    htmlFor="vat_percent_override"
+                                                    className="font-mono text-xs flex items-center gap-2"
+                                                >
+                                                    VAT OVERRIDE (%)
+                                                </Label>
+                                                <Input
+                                                    id="vat_percent_override"
+                                                    type="number"
+                                                    step="0.01"
+                                                    min="0"
+                                                    max="100"
+                                                    value={
+                                                        formData.vat_percent_override === null
+                                                            ? ""
+                                                            : formData.vat_percent_override
+                                                    }
+                                                    onChange={(e) =>
+                                                        setFormData({
+                                                            ...formData,
+                                                            vat_percent_override:
+                                                                e.target.value === ""
+                                                                    ? null
+                                                                    : parseFloat(e.target.value),
+                                                        })
+                                                    }
+                                                    className="font-mono"
+                                                    placeholder="Leave empty to inherit platform VAT"
+                                                />
+                                                <p className="text-xs text-muted-foreground font-mono">
+                                                    Optional company-level VAT override. Empty means
+                                                    inherit platform VAT.
                                                 </p>
                                             </div>
 
@@ -793,6 +836,9 @@ export default function CompaniesPage() {
                                     <TableHead className="font-mono text-xs font-bold text-right">
                                         WAREHOUSE OPS RATE
                                     </TableHead>
+                                    <TableHead className="font-mono text-xs font-bold text-right">
+                                        VAT OVERRIDE
+                                    </TableHead>
                                     <TableHead className="font-mono text-xs font-bold">
                                         CONTACT
                                     </TableHead>
@@ -854,6 +900,14 @@ export default function CompaniesPage() {
                                                 {parseFloat(
                                                     String(company.warehouse_ops_rate)
                                                 ).toFixed(2)}
+                                            </span>
+                                        </TableCell>
+                                        <TableCell className="text-center">
+                                            <span className="font-mono font-bold text-primary">
+                                                {company.vat_percent_override !== null &&
+                                                company.vat_percent_override !== undefined
+                                                    ? `${parseFloat(String(company.vat_percent_override)).toFixed(2)}%`
+                                                    : "Inherited"}
                                             </span>
                                         </TableCell>
                                         <TableCell className="font-mono text-sm">

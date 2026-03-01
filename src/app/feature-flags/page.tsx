@@ -2,7 +2,8 @@
 
 import { useState, useMemo } from "react";
 import { useCompanies, useUpdateCompany } from "@/hooks/use-companies";
-import { Search, Building2, Mail, Phone, ChevronDown, Settings, Save, Loader2 } from "lucide-react";
+import { usePlatform } from "@/lib/hooks/use-platform";
+import { Search, Building2, ChevronDown, Settings, Save, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -23,6 +24,45 @@ export default function FeatureFlagsPage() {
     const [expandedCompanyId, setExpandedCompanyId] = useState<string | null>(null);
     const [editingFeatures, setEditingFeatures] = useState<Record<string, boolean>>({});
     const [isSaving, setIsSaving] = useState(false);
+
+    const { data: platform } = usePlatform();
+    const platformDefaults = useMemo(
+        () => ({
+            enable_inbound_requests: platform?.features?.enable_inbound_requests ?? true,
+            show_estimate_on_order_creation:
+                platform?.features?.show_estimate_on_order_creation ?? true,
+            enable_kadence_invoicing: platform?.features?.enable_kadence_invoicing ?? false,
+            enable_base_operations: platform?.features?.enable_base_operations ?? true,
+        }),
+        [platform]
+    );
+
+    const featureDefinitions: Array<{
+        key: keyof typeof platformDefaults;
+        label: string;
+        description: string;
+    }> = [
+        {
+            key: "enable_inbound_requests",
+            label: "Inbound Requests",
+            description: "Allow inbound request workflows",
+        },
+        {
+            key: "show_estimate_on_order_creation",
+            label: "Show Estimate On Checkout",
+            description: "Display quote estimate during client checkout",
+        },
+        {
+            key: "enable_base_operations",
+            label: "Picking & Handling",
+            description: "Include Picking & Handling line in pricing",
+        },
+        {
+            key: "enable_kadence_invoicing",
+            label: "Invoicing (Stub)",
+            description: "Reserved only. Endpoints currently stubbed in pre-alpha.",
+        },
+    ];
 
     // Build query params
     const queryParams = useMemo(() => {
@@ -49,7 +89,10 @@ export default function FeatureFlagsPage() {
             setEditingFeatures({});
         } else {
             setExpandedCompanyId(companyId);
-            setEditingFeatures(currentFeatures || {});
+            setEditingFeatures({
+                ...platformDefaults,
+                ...(currentFeatures || {}),
+            });
         }
     };
 
@@ -279,36 +322,52 @@ export default function FeatureFlagsPage() {
                                                                 FEATURE FLAG CONFIGURATION
                                                             </h3>
                                                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                                                                {Object.entries(
-                                                                    company.features
-                                                                ).map(([featureId, enabled]) => (
-                                                                    <div
-                                                                        key={featureId}
-                                                                        className="flex items-center gap-2 p-2 border border-border rounded hover:bg-muted/50 transition-colors"
-                                                                    >
-                                                                        <input
-                                                                            type="checkbox"
-                                                                            id={`feature-${company.id}-${featureId}`}
-                                                                            className="rounded border-input text-primary focus:ring-primary h-4 w-4"
-                                                                            checked={
-                                                                                editingFeatures[
-                                                                                    featureId
-                                                                                ] || false
-                                                                            }
-                                                                            onChange={() =>
-                                                                                handleToggleFeature(
-                                                                                    featureId
-                                                                                )
-                                                                            }
-                                                                        />
-                                                                        <label
-                                                                            htmlFor={`feature-${company.id}-${featureId}`}
-                                                                            className="text-sm font-mono cursor-pointer select-none flex-1"
+                                                                {featureDefinitions.map(
+                                                                    ({
+                                                                        key,
+                                                                        label,
+                                                                        description,
+                                                                    }) => (
+                                                                        <div
+                                                                            key={key}
+                                                                            className="flex items-center gap-2 p-2 border border-border rounded hover:bg-muted/50 transition-colors"
                                                                         >
-                                                                            {featureId}
-                                                                        </label>
-                                                                    </div>
-                                                                ))}
+                                                                            <input
+                                                                                type="checkbox"
+                                                                                id={`feature-${company.id}-${key}`}
+                                                                                className="rounded border-input text-primary focus:ring-primary h-4 w-4"
+                                                                                checked={
+                                                                                    editingFeatures[
+                                                                                        key
+                                                                                    ] || false
+                                                                                }
+                                                                                onChange={() =>
+                                                                                    handleToggleFeature(
+                                                                                        key
+                                                                                    )
+                                                                                }
+                                                                            />
+                                                                            <label
+                                                                                htmlFor={`feature-${company.id}-${key}`}
+                                                                                className="text-sm font-mono cursor-pointer select-none flex-1"
+                                                                            >
+                                                                                <div>{label}</div>
+                                                                                <div className="text-[11px] text-muted-foreground">
+                                                                                    {description}
+                                                                                </div>
+                                                                                <div className="text-[10px] text-muted-foreground mt-1">
+                                                                                    Platform
+                                                                                    default:{" "}
+                                                                                    {platformDefaults[
+                                                                                        key
+                                                                                    ]
+                                                                                        ? "ON"
+                                                                                        : "OFF"}
+                                                                                </div>
+                                                                            </label>
+                                                                        </div>
+                                                                    )
+                                                                )}
                                                             </div>
                                                             <div className="flex items-center justify-end gap-3 pt-2 border-t border-border">
                                                                 <Button

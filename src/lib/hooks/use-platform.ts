@@ -13,12 +13,14 @@ export interface PlatformConfig {
     secondary_color?: string;
     from_email?: string;
     currency?: string;
+    vat_percent?: number;
 }
 
 export interface PlatformFeatures {
     enable_inbound_requests?: boolean;
     show_estimate_on_order_creation?: boolean;
     enable_kadence_invoicing?: boolean;
+    enable_base_operations?: boolean;
 }
 
 export interface Platform {
@@ -27,6 +29,7 @@ export interface Platform {
     domain: string;
     config: PlatformConfig;
     features: PlatformFeatures;
+    vat_percent?: number;
     is_active: boolean;
     created_at: string;
     updated_at: string;
