@@ -223,8 +223,10 @@ export interface OrderPricing {
         sell_custom_total?: number;
         sell_total?: number;
         margin_amount?: number;
-        service_fee_buy?: number;
-        service_fee_sell?: number;
+        subtotal?: number;
+        vat_percent?: number;
+        vat_amount?: number;
+        sell_total_with_vat?: number;
         base_ops_total?: number;
         rate_card_total?: number;
         custom_total?: number;
@@ -239,7 +241,8 @@ export interface OrderPricing {
     base_ops_total: number;
     sell?: {
         base_ops_total: number;
-        service_fee: number;
+        subtotal?: number;
+        vat_amount?: number;
         final_total: number;
     };
     line_items?: {
@@ -253,6 +256,11 @@ export interface OrderPricing {
         override_reason: string | null;
     };
     margin_percent?: number;
+    vat?: {
+        percent: number;
+        amount: number;
+    };
+    subtotal?: number | string;
     final_total: number | string;
     calculated_at?: string;
 }

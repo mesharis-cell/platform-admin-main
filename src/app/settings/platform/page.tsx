@@ -70,6 +70,7 @@ const DEFAULT_FEATURES: StrictFeatures = {
     enable_inbound_requests: true,
     show_estimate_on_order_creation: true,
     enable_kadence_invoicing: false,
+    enable_base_operations: true,
 };
 
 export default function PlatformSettingsPage() {
@@ -88,6 +89,7 @@ export default function PlatformSettingsPage() {
 
     const [fromEmail, setFromEmail] = useState("");
     const [currency, setCurrency] = useState("");
+    const [vatPercent, setVatPercent] = useState("");
     const [primaryColor, setPrimaryColor] = useState("");
     const [secondaryColor, setSecondaryColor] = useState("");
     const [logoUrl, setLogoUrl] = useState("");
@@ -119,6 +121,7 @@ export default function PlatformSettingsPage() {
         if (!platform) return;
         setFromEmail(platform.config.from_email ?? "");
         setCurrency(platform.config.currency ?? "");
+        setVatPercent(String(platform.vat_percent ?? platform.config.vat_percent ?? 0));
         setPrimaryColor(platform.config.primary_color ?? "");
         setSecondaryColor(platform.config.secondary_color ?? "");
         setLogoUrl(platform.config.logo_url ?? "");
@@ -133,6 +136,8 @@ export default function PlatformSettingsPage() {
             enable_kadence_invoicing:
                 platform.features.enable_kadence_invoicing ??
                 DEFAULT_FEATURES.enable_kadence_invoicing,
+            enable_base_operations:
+                platform.features.enable_base_operations ?? DEFAULT_FEATURES.enable_base_operations,
         });
     }, [platform]);
 
@@ -150,6 +155,10 @@ export default function PlatformSettingsPage() {
         updateConfig.mutate({
             from_email: fromEmail || undefined,
             currency: currency || undefined,
+            vat_percent:
+                vatPercent === "" || Number.isNaN(Number(vatPercent))
+                    ? undefined
+                    : Number(vatPercent),
             primary_color: primaryColor || undefined,
             secondary_color: secondaryColor || undefined,
             logo_url: logoUrl || undefined,
@@ -279,6 +288,19 @@ export default function PlatformSettingsPage() {
                             className="w-28"
                         />
                     </div>
+                    <div className="space-y-1.5">
+                        <Label>VAT Percentage</Label>
+                        <Input
+                            placeholder="5"
+                            value={vatPercent}
+                            onChange={(e) => setVatPercent(e.target.value)}
+                            type="number"
+                            min={0}
+                            max={100}
+                            step="0.01"
+                            className="w-32"
+                        />
+                    </div>
                 </CardContent>
             </Card>
 
@@ -346,6 +368,12 @@ export default function PlatformSettingsPage() {
                             key: "enable_kadence_invoicing" as const,
                             label: "Enable Kadence Invoicing",
                             description: "Enable invoice generation and payment confirmation flows",
+                        },
+                        {
+                            key: "enable_base_operations" as const,
+                            label: "Enable Picking & Handling",
+                            description:
+                                "Include Picking & Handling (base operations) in pricing calculations",
                         },
                     ].map((item) => (
                         <div key={item.key} className="flex items-center justify-between">
