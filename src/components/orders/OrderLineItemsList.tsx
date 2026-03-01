@@ -1,11 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
     Select,
     SelectContent,
@@ -14,7 +13,8 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Edit, Eye, EyeOff, Save, Trash2, X } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Edit, Eye, EyeOff, Minus, Plus, Save, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import {
     useListLineItems,
@@ -25,11 +25,7 @@ import {
     useVoidLineItem,
 } from "@/hooks/use-order-line-items";
 import { VoidLineItemDialog } from "./VoidLineItemDialog";
-import type {
-    LineItemBillingMode,
-    OrderLineItem,
-    TransportLineItemMetadata,
-} from "@/types/hybrid-pricing";
+import type { LineItemBillingMode, OrderLineItem } from "@/types/hybrid-pricing";
 
 interface OrderLineItemsListProps {
     targetId: string;
@@ -43,13 +39,7 @@ type EditDraft = {
     unitRate: string;
     billingMode: LineItemBillingMode;
     notes: string;
-    truckPlate: string;
-    driverName: string;
-    driverContact: string;
-    truckSize: string;
-    manpower: string;
-    tailgateRequired: boolean;
-    transportNotes: string;
+    metadataJson: string;
 };
 
 const EMPTY_DRAFT: EditDraft = {
@@ -57,50 +47,21 @@ const EMPTY_DRAFT: EditDraft = {
     unitRate: "0",
     billingMode: "BILLABLE",
     notes: "",
-    truckPlate: "",
-    driverName: "",
-    driverContact: "",
-    truckSize: "",
-    manpower: "",
-    tailgateRequired: false,
-    transportNotes: "",
+    metadataJson: "",
 };
 
 const mapDraftFromItem = (item: OrderLineItem): EditDraft => {
-    const metadata = (item.metadata || {}) as TransportLineItemMetadata;
+    const metadata = item.metadata && typeof item.metadata === "object" ? item.metadata : undefined;
+    const metadataJson =
+        metadata && Object.keys(metadata).length > 0 ? JSON.stringify(metadata, null, 2) : "";
+
     return {
         quantity: String(item.quantity ?? 1),
         unitRate: String(item.unitRate ?? 0),
         billingMode: (item.billingMode || "BILLABLE") as LineItemBillingMode,
         notes: item.notes || "",
-        truckPlate: String(metadata.truck_plate || ""),
-        driverName: String(metadata.driver_name || ""),
-        driverContact: String(metadata.driver_contact || ""),
-        truckSize: String(metadata.truck_size || ""),
-        manpower:
-            metadata.manpower !== undefined && metadata.manpower !== null
-                ? String(metadata.manpower)
-                : "",
-        tailgateRequired: Boolean(metadata.tailgate_required),
-        transportNotes: String(metadata.notes || ""),
+        metadataJson,
     };
-};
-
-const buildTransportMetadata = (draft: EditDraft) => {
-    const metadata: Record<string, unknown> = {
-        truck_plate: draft.truckPlate.trim() || undefined,
-        driver_name: draft.driverName.trim() || undefined,
-        driver_contact: draft.driverContact.trim() || undefined,
-        truck_size: draft.truckSize.trim() || undefined,
-        notes: draft.transportNotes.trim() || undefined,
-        tailgate_required: draft.tailgateRequired,
-    };
-
-    if (draft.manpower.trim()) {
-        metadata.manpower = Number(draft.manpower);
-    }
-
-    return metadata;
 };
 
 export function OrderLineItemsList({
@@ -134,41 +95,6 @@ export function OrderLineItemsList({
     const allClientVisible =
         activeItems.length > 0 && activeItems.every((item) => item.clientPriceVisible);
 
-    const renderTransportMetadata = (metadata: OrderLineItem["metadata"]) => {
-        if (!metadata || typeof metadata !== "object") return null;
-        const details = metadata as Record<string, unknown>;
-        const formatBool = (value: unknown) =>
-            value === true ? "Yes" : value === false ? "No" : "N/A";
-        const info = [
-            { label: "Direction", value: details.trip_direction },
-            { label: "Truck Plate", value: details.truck_plate },
-            { label: "Driver", value: details.driver_name },
-            { label: "Driver Contact", value: details.driver_contact },
-            { label: "Truck Size", value: details.truck_size },
-            { label: "Manpower", value: details.manpower },
-            { label: "Tailgate", value: formatBool(details.tailgate_required) },
-            { label: "Transport Notes", value: details.notes },
-        ].filter(
-            (entry) => entry.value !== undefined && entry.value !== null && entry.value !== ""
-        );
-
-        if (!info.length) return null;
-
-        return (
-            <div className="mt-2 rounded border border-border/60 bg-background/60 p-2 text-xs">
-                <p className="font-medium text-muted-foreground mb-1">Transport Details</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
-                    {info.map((entry) => (
-                        <p key={entry.label} className="text-muted-foreground">
-                            <span className="font-medium text-foreground">{entry.label}:</span>{" "}
-                            {String(entry.value)}
-                        </p>
-                    ))}
-                </div>
-            </div>
-        );
-    };
-
     const openVoidDialog = (item: OrderLineItem) => {
         setSelectedItem(item);
         setVoidDialogOpen(true);
@@ -182,6 +108,20 @@ export function OrderLineItemsList({
     const cancelEdit = () => {
         setEditingItemId(null);
         setDraft(EMPTY_DRAFT);
+    };
+
+    const parseMetadata = () => {
+        const trimmed = draft.metadataJson.trim();
+        if (!trimmed) return undefined;
+        try {
+            const parsed = JSON.parse(trimmed);
+            if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+                throw new Error("Metadata must be a JSON object");
+            }
+            return parsed as Record<string, unknown>;
+        } catch {
+            throw new Error("Metadata must be valid JSON object");
+        }
     };
 
     const handleVoid = async (reason: string) => {
@@ -201,10 +141,9 @@ export function OrderLineItemsList({
     };
 
     const handleSaveEdit = async (item: OrderLineItem) => {
-        const isTransport = item.category === "TRANSPORT";
-        const metadata = isTransport ? buildTransportMetadata(draft) : item.metadata || undefined;
-
         try {
+            const metadata = parseMetadata();
+
             if (item.canEditPricingFields === false) {
                 await patchLineItemMetadata.mutateAsync({
                     itemId: item.id,
@@ -222,7 +161,7 @@ export function OrderLineItemsList({
                     return;
                 }
                 if (!Number.isFinite(unitRateNumber) || unitRateNumber < 0) {
-                    toast.error("Unit rate must be a valid number");
+                    toast.error("Unit rate must be 0 or greater");
                     return;
                 }
 
@@ -271,6 +210,12 @@ export function OrderLineItemsList({
         }
     };
 
+    const adjustQty = (delta: number) => {
+        const current = Number(draft.quantity || "1");
+        const next = Math.max(1, Math.floor(current + delta));
+        setDraft((prev) => ({ ...prev, quantity: String(next) }));
+    };
+
     if (isLoading) {
         return <p className="text-sm text-muted-foreground">Loading line items...</p>;
     }
@@ -285,7 +230,6 @@ export function OrderLineItemsList({
 
     const renderLineItem = (item: OrderLineItem, highlighted = false) => {
         const isEditing = editingItemId === item.id;
-        const isTransport = item.category === "TRANSPORT";
         const pricingLocked = item.canEditPricingFields === false;
         const visibilityBusy = patchLineVisibility.isPending || patchBulkVisibility.isPending;
 
@@ -341,26 +285,55 @@ export function OrderLineItemsList({
                         {item.notes && (
                             <p className="text-xs text-muted-foreground mt-1">Note: {item.notes}</p>
                         )}
-                        {isTransport && renderTransportMetadata(item.metadata)}
+                        {item.metadata &&
+                        typeof item.metadata === "object" &&
+                        Object.keys(item.metadata).length > 0 ? (
+                            <pre className="mt-2 rounded border border-border/60 bg-background/70 p-2 text-[11px] whitespace-pre-wrap break-all">
+                                {JSON.stringify(item.metadata, null, 2)}
+                            </pre>
+                        ) : null}
                     </>
                 ) : (
                     <div className="mt-3 space-y-3 rounded-md border border-border/80 bg-background p-3">
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                             <div className="space-y-1">
                                 <Label className="text-xs">Quantity</Label>
-                                <Input
-                                    value={draft.quantity}
-                                    type="number"
-                                    min={1}
-                                    step={1}
-                                    disabled={pricingLocked}
-                                    onChange={(event) =>
-                                        setDraft((prev) => ({
-                                            ...prev,
-                                            quantity: event.target.value,
-                                        }))
-                                    }
-                                />
+                                <div className="flex items-center gap-1">
+                                    <Button
+                                        type="button"
+                                        size="icon"
+                                        variant="outline"
+                                        className="h-8 w-8"
+                                        disabled={pricingLocked}
+                                        onClick={() => adjustQty(-1)}
+                                    >
+                                        <Minus className="h-3.5 w-3.5" />
+                                    </Button>
+                                    <Input
+                                        value={draft.quantity}
+                                        type="number"
+                                        min={1}
+                                        step={1}
+                                        disabled={pricingLocked}
+                                        className="text-center"
+                                        onChange={(event) =>
+                                            setDraft((prev) => ({
+                                                ...prev,
+                                                quantity: event.target.value,
+                                            }))
+                                        }
+                                    />
+                                    <Button
+                                        type="button"
+                                        size="icon"
+                                        variant="outline"
+                                        className="h-8 w-8"
+                                        disabled={pricingLocked}
+                                        onClick={() => adjustQty(1)}
+                                    >
+                                        <Plus className="h-3.5 w-3.5" />
+                                    </Button>
+                                </div>
                             </div>
                             <div className="space-y-1">
                                 <Label className="text-xs">Unit Rate (AED)</Label>
@@ -395,105 +368,12 @@ export function OrderLineItemsList({
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="BILLABLE">BILLABLE</SelectItem>
-                                        <SelectItem value="NON_BILLABLE">NON-BILLABLE</SelectItem>
+                                        <SelectItem value="NON_BILLABLE">NON_BILLABLE</SelectItem>
                                         <SelectItem value="COMPLIMENTARY">COMPLIMENTARY</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
                         </div>
-
-                        {isTransport ? (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                <div className="space-y-1">
-                                    <Label className="text-xs">Truck Plate</Label>
-                                    <Input
-                                        value={draft.truckPlate}
-                                        onChange={(event) =>
-                                            setDraft((prev) => ({
-                                                ...prev,
-                                                truckPlate: event.target.value,
-                                            }))
-                                        }
-                                    />
-                                </div>
-                                <div className="space-y-1">
-                                    <Label className="text-xs">Driver Name</Label>
-                                    <Input
-                                        value={draft.driverName}
-                                        onChange={(event) =>
-                                            setDraft((prev) => ({
-                                                ...prev,
-                                                driverName: event.target.value,
-                                            }))
-                                        }
-                                    />
-                                </div>
-                                <div className="space-y-1">
-                                    <Label className="text-xs">Driver Contact</Label>
-                                    <Input
-                                        value={draft.driverContact}
-                                        onChange={(event) =>
-                                            setDraft((prev) => ({
-                                                ...prev,
-                                                driverContact: event.target.value,
-                                            }))
-                                        }
-                                    />
-                                </div>
-                                <div className="space-y-1">
-                                    <Label className="text-xs">Truck Size</Label>
-                                    <Input
-                                        value={draft.truckSize}
-                                        onChange={(event) =>
-                                            setDraft((prev) => ({
-                                                ...prev,
-                                                truckSize: event.target.value,
-                                            }))
-                                        }
-                                    />
-                                </div>
-                                <div className="space-y-1">
-                                    <Label className="text-xs">Manpower</Label>
-                                    <Input
-                                        value={draft.manpower}
-                                        type="number"
-                                        min={0}
-                                        step={1}
-                                        onChange={(event) =>
-                                            setDraft((prev) => ({
-                                                ...prev,
-                                                manpower: event.target.value,
-                                            }))
-                                        }
-                                    />
-                                </div>
-                                <div className="flex items-center gap-2 pt-5">
-                                    <Switch
-                                        checked={draft.tailgateRequired}
-                                        onCheckedChange={(next) =>
-                                            setDraft((prev) => ({
-                                                ...prev,
-                                                tailgateRequired: next,
-                                            }))
-                                        }
-                                    />
-                                    <Label className="text-xs">Tailgate required</Label>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                    <Label className="text-xs">Transport Notes</Label>
-                                    <Textarea
-                                        value={draft.transportNotes}
-                                        rows={2}
-                                        onChange={(event) =>
-                                            setDraft((prev) => ({
-                                                ...prev,
-                                                transportNotes: event.target.value,
-                                            }))
-                                        }
-                                    />
-                                </div>
-                            </div>
-                        ) : null}
 
                         <div className="space-y-1">
                             <Label className="text-xs">Notes</Label>
@@ -505,10 +385,25 @@ export function OrderLineItemsList({
                                 }
                             />
                         </div>
+
+                        <div className="space-y-1">
+                            <Label className="text-xs">Metadata (JSON object)</Label>
+                            <Textarea
+                                value={draft.metadataJson}
+                                rows={4}
+                                onChange={(event) =>
+                                    setDraft((prev) => ({
+                                        ...prev,
+                                        metadataJson: event.target.value,
+                                    }))
+                                }
+                                placeholder='{"driver_name":"John"}'
+                            />
+                        </div>
                     </div>
                 )}
 
-                <div className="flex items-center justify-between mt-3">
+                <div className="flex flex-wrap items-center justify-between gap-2 mt-3">
                     <span className="font-mono font-semibold">{item.total.toFixed(2)} AED</span>
                     {canManage ? (
                         <div className="flex items-center gap-1">

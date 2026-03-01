@@ -23,8 +23,7 @@ import {
 import { useUploadImage } from "@/hooks/use-assets";
 import { useUploadTruckPhotos } from "@/hooks/use-scanning";
 import { ScanActivityTimeline } from "@/components/scanning/scan-activity-timeline";
-import { PricingReviewSection, PendingApprovalSection, CancelOrderButton } from "./hybrid-sections";
-import { OrderApprovalRequestSubmitBtn } from "@/components/orders/OrderApprovalRequestSubmitBtn";
+import { PendingApprovalSection, CancelOrderButton } from "./hybrid-sections";
 import { OrderItemCard } from "@/components/orders/OrderItemCard";
 import { StatusHistoryTimeline } from "@/components/orders/StatusHistoryTimeline";
 import { Button } from "@/components/ui/button";
@@ -74,7 +73,6 @@ import { DateTimePicker } from "@/components/ui/datetime-picker";
 import { apiClient } from "@/lib/api/api-client";
 import { getOrderPrice, removeUnderScore } from "@/lib/utils/helper";
 import { addDays, endOfDay, isAfter, isBefore, startOfDay, subDays } from "date-fns";
-import { LogisticsPricingReview } from "@/components/orders/LogisticsPricingReview";
 import { useToken } from "@/lib/auth/use-token";
 import { hasPermission } from "@/lib/auth/permissions";
 import { ADMIN_ACTION_PERMISSIONS } from "@/lib/auth/permission-map";
@@ -216,13 +214,9 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
         user,
         ADMIN_ACTION_PERMISSIONS.ordersDownloadGoodsForm
     );
-    const canProgressOrderStatus = hasPermission(user, ADMIN_ACTION_PERMISSIONS.ordersUpdate);
+    const canProgressOrderStatus = false;
     const canEditJobNumber = hasPermission(user, ADMIN_ACTION_PERMISSIONS.ordersAddJobNumber);
-    const canEditTimeWindows = hasPermission(user, ADMIN_ACTION_PERMISSIONS.ordersAddTimeWindows);
-    const canSubmitForApproval = hasPermission(
-        user,
-        ADMIN_ACTION_PERMISSIONS.ordersSubmitForApproval
-    );
+    const canEditTimeWindows = false;
 
     // Initialize states when order loads
     if (order) {
@@ -1275,13 +1269,19 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                             </Card>
                         )}
 
-                        {/* NEW: PRICING_REVIEW - Logistics Review Section */}
                         {order.data.order_status === "PRICING_REVIEW" ? (
-                            <PricingReviewSection
-                                order={order.data}
-                                orderId={order.data.id}
-                                onRefresh={refetch}
-                            />
+                            <Card className="border border-amber-500/30 bg-amber-500/5">
+                                <CardHeader>
+                                    <CardTitle className="text-sm font-mono">
+                                        Logistics-Owned Stage
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="text-sm text-muted-foreground">
+                                    Order is in `PRICING_REVIEW`. Line item preparation and
+                                    submission are handled by Logistics. Admin review becomes
+                                    available at `PENDING_APPROVAL`.
+                                </CardContent>
+                            </Card>
                         ) : (
                             <PendingApprovalSection
                                 order={order.data}
@@ -1289,16 +1289,6 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                 onRefresh={refetch}
                             />
                         )}
-
-                        {/* Submit order for the review */}
-                        <OrderApprovalRequestSubmitBtn
-                            orderId={order.data.id}
-                            onSubmitSuccess={refetch}
-                            isVisible={
-                                order?.data?.order_status === "PRICING_REVIEW" &&
-                                canSubmitForApproval
-                            }
-                        />
                     </div>
 
                     {/* Right: Status History Timeline */}

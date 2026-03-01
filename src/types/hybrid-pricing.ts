@@ -79,22 +79,10 @@ export interface UpdateServiceTypeRequest {
 export type LineItemType = "CATALOG" | "CUSTOM";
 export type PurposeType = "ORDER" | "INBOUND_REQUEST" | "SERVICE_REQUEST";
 export type LineItemBillingMode = "BILLABLE" | "NON_BILLABLE" | "COMPLIMENTARY";
+export type LineItemRequestStatus = "REQUESTED" | "APPROVED" | "REJECTED";
+export type TransportTripLeg = "DELIVERY" | "PICKUP" | "ACCESS" | "TRANSFER";
 
 export interface TransportLineItemMetadata {
-    truck_plate?: string;
-    driver_name?: string;
-    driver_contact?: string;
-    truck_size?: string;
-    tailgate_required?: boolean;
-    manpower?: number;
-    city_id?: string;
-    city_name?: string;
-    vehicle_type_id?: string;
-    vehicle_type_name?: string;
-    trip_direction?: "DELIVERY" | "PICKUP" | "ACCESS" | "TRANSFER";
-    delivery_notes?: string;
-    pickup_notes?: string;
-    notes?: string;
     [key: string]: unknown;
 }
 
@@ -188,6 +176,110 @@ export interface PatchEntityLineItemClientVisibilityRequest {
 
 export interface VoidLineItemRequest {
     void_reason: string;
+}
+
+export interface LineItemRequest {
+    id: string;
+    lineItemRequestId: string;
+    platformId: string;
+    companyId: string;
+    purposeType: PurposeType;
+    orderId: string | null;
+    inboundRequestId: string | null;
+    serviceRequestId: string | null;
+    status: LineItemRequestStatus;
+    description: string;
+    category: ServiceCategory;
+    quantity: number;
+    unit: string;
+    unitRate: number;
+    notes: string | null;
+    reviewedDescription: string | null;
+    reviewedCategory: ServiceCategory | null;
+    reviewedQuantity: number | null;
+    reviewedUnit: string | null;
+    reviewedUnitRate: number | null;
+    reviewedNotes: string | null;
+    approvedBillingMode: LineItemBillingMode | null;
+    adminNote: string | null;
+    requestedBy: string;
+    resolvedBy: string | null;
+    resolvedAt: string | null;
+    approvedLineItemId: string | null;
+    createdServiceTypeId: string | null;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface CreateLineItemRequestPayload {
+    purposeType: PurposeType;
+    orderId?: string;
+    inboundRequestId?: string;
+    serviceRequestId?: string;
+    description: string;
+    category: ServiceCategory;
+    quantity: number;
+    unit: string;
+    unitRate: number;
+    notes?: string;
+}
+
+export interface ApproveLineItemRequestPayload {
+    description?: string;
+    category?: ServiceCategory;
+    quantity?: number;
+    unit?: string;
+    unitRate?: number;
+    notes?: string;
+    billingMode?: LineItemBillingMode;
+    adminNote?: string;
+}
+
+export interface RejectLineItemRequestPayload {
+    adminNote: string;
+}
+
+export interface OrderTransportTrip {
+    id: string;
+    platformId: string;
+    orderId: string;
+    legType: TransportTripLeg;
+    truckPlate: string | null;
+    driverName: string | null;
+    driverContact: string | null;
+    truckSize: string | null;
+    manpower: number | null;
+    tailgateRequired: boolean;
+    notes: string | null;
+    sequenceNo: number;
+    createdBy: string;
+    updatedBy: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface CreateOrderTransportTripPayload {
+    legType: TransportTripLeg;
+    truckPlate?: string;
+    driverName?: string;
+    driverContact?: string;
+    truckSize?: string;
+    manpower?: number;
+    tailgateRequired?: boolean;
+    notes?: string;
+    sequenceNo?: number;
+}
+
+export interface UpdateOrderTransportTripPayload {
+    legType?: TransportTripLeg;
+    truckPlate?: string;
+    driverName?: string;
+    driverContact?: string;
+    truckSize?: string;
+    manpower?: number;
+    tailgateRequired?: boolean;
+    notes?: string;
+    sequenceNo?: number;
 }
 
 // ============================================================

@@ -21,11 +21,6 @@ export const lineItemsKeys = {
         ["line-items", purposeType, targetId] as const,
 };
 
-// For backward compatibility
-export const orderLineItemsKeys = {
-    list: (orderId: string) => lineItemsKeys.list(orderId, "ORDER"),
-};
-
 const invalidateLineItemRelatedQueries = (
     queryClient: ReturnType<typeof useQueryClient>,
     targetId: string,
@@ -68,11 +63,6 @@ export function useListLineItems(
         },
         enabled: !!targetId,
     });
-}
-
-// Backward compatible alias for orders
-export function useListOrderLineItems(orderId: string | null) {
-    return useListLineItems(orderId, "ORDER");
 }
 
 // Create catalog line item
