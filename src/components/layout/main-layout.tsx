@@ -17,11 +17,9 @@ import {
     Tag,
     Package,
     Layers,
-    DollarSign,
     ShoppingCart,
     Receipt,
     Mail,
-    ScanLine,
     AlertCircle,
     BarChart3,
     LogOut,
@@ -66,6 +64,7 @@ import { useToken } from "@/lib/auth/use-token";
 import { usePlatform } from "@/contexts/platform-context";
 import { hasAnyPermission } from "@/lib/auth/permissions";
 import { ADMIN_NAV_PERMISSIONS } from "@/lib/auth/permission-map";
+import { useOrderStatusCount } from "@/hooks/use-orders";
 
 type NavItem = {
     name: string;
@@ -101,22 +100,16 @@ const navigationSections: NavSection[] = [
                 requiredAnyPermission: ADMIN_NAV_PERMISSIONS.serviceRequests,
             },
             {
-                name: "Pricing Review",
-                href: "/orders/pricing-review",
-                icon: DollarSign,
-                requiredAnyPermission: ADMIN_NAV_PERMISSIONS.pricingReview,
-            },
-            {
                 name: "Pending Approval",
                 href: "/orders/pending-approval",
                 icon: AlertCircle,
                 requiredAnyPermission: ADMIN_NAV_PERMISSIONS.pendingApproval,
             },
             {
-                name: "Scanning",
-                href: "/scanning",
-                icon: ScanLine,
-                requiredAnyPermission: ADMIN_NAV_PERMISSIONS.scanning,
+                name: "Line Item Requests",
+                href: "/line-item-requests",
+                icon: ClipboardList,
+                requiredAnyPermission: ADMIN_NAV_PERMISSIONS.pendingApproval,
             },
             {
                 name: "Self-Bookings",
@@ -275,6 +268,7 @@ function AdminSidebarContent() {
     const { logout, user } = useToken();
     const { platform } = usePlatform();
     const invoicingEnabled = platform?.features?.enable_kadence_invoicing === true;
+    const { data: pendingApprovalCount } = useOrderStatusCount("PENDING_APPROVAL");
 
     const handleSignOut = () => {
         logout();
@@ -286,13 +280,22 @@ function AdminSidebarContent() {
     const visibleSections = navigationSections
         .map((section) => ({
             ...section,
-            items: section.items.filter(
-                (item) =>
-                    ((item.href !== "/invoices" || invoicingEnabled) &&
-                        !item.requiredAnyPermission) ||
-                    ((item.href !== "/invoices" || invoicingEnabled) &&
-                        hasAnyPermission(user, item.requiredAnyPermission))
-            ),
+            items: section.items
+                .filter(
+                    (item) =>
+                        ((item.href !== "/invoices" || invoicingEnabled) &&
+                            !item.requiredAnyPermission) ||
+                        ((item.href !== "/invoices" || invoicingEnabled) &&
+                            hasAnyPermission(user, item.requiredAnyPermission))
+                )
+                .map((item) => ({
+                    ...item,
+                    badge:
+                        item.href === "/orders/pending-approval" &&
+                        Number(pendingApprovalCount || 0) > 0
+                            ? String(pendingApprovalCount)
+                            : undefined,
+                })),
         }))
         .filter((section) => section.items.length > 0);
     const visibleNavigation = visibleSections.flatMap((section) =>
@@ -472,8 +475,8 @@ function AdminSidebarContent() {
                                                         className={cn(
                                                             "px-1.5 py-0.5 text-[10px] font-mono rounded uppercase tracking-wider relative z-10 shrink-0",
                                                             isActive
-                                                                ? "bg-primary-foreground/20 text-primary-foreground"
-                                                                : "bg-primary/10 text-primary border border-primary/20"
+                                                                ? "bg-red-200 text-red-900"
+                                                                : "bg-red-500 text-white"
                                                         )}
                                                     >
                                                         {item.badge}

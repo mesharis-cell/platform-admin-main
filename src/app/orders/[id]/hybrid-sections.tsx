@@ -8,7 +8,6 @@
 import { AddCatalogLineItemModal } from "@/components/orders/AddCatalogLineItemModal";
 import { AddCustomLineItemModal } from "@/components/orders/AddCustomLineItemModal";
 import { CancelOrderModal } from "@/components/orders/CancelOrderModal";
-import { LogisticsPricingReview } from "@/components/orders/LogisticsPricingReview";
 import { OrderLineItemsList } from "@/components/orders/OrderLineItemsList";
 import { ReturnToLogisticsModal } from "@/components/orders/ReturnToLogisticsModal";
 import { Button } from "@/components/ui/button";
@@ -64,8 +63,12 @@ export function PendingApprovalSection({ order, orderId, onRefresh }: HybridPric
               (line: any) => !line.is_voided && (line.billing_mode || "BILLABLE") === "BILLABLE"
           )
         : [];
-    const linesTotal = breakdownLines.reduce(
+    const linesBuyTotal = breakdownLines.reduce(
         (sum: number, line: any) => sum + Number(line.buy_total ?? line.total ?? 0),
+        0
+    );
+    const linesSellTotal = breakdownLines.reduce(
+        (sum: number, line: any) => sum + Number(line.sell_total ?? line.total ?? 0),
         0
     );
     const baseSubtotal = Number(
@@ -191,14 +194,17 @@ export function PendingApprovalSection({ order, orderId, onRefresh }: HybridPric
                                             </span>
                                         </div>
                                     ))}
+                                    <div className="grid grid-cols-12 px-3 py-2 text-xs border-t border-border font-semibold bg-muted/20">
+                                        <span className="col-span-6">Total of lines</span>
+                                        <span className="col-span-3 text-right font-mono">
+                                            {Number(linesBuyTotal).toFixed(2)} AED
+                                        </span>
+                                        <span className="col-span-3 text-right font-mono">
+                                            {Number(linesSellTotal).toFixed(2)} AED
+                                        </span>
+                                    </div>
                                 </div>
                             )}
-                            <div className="flex justify-between">
-                                <span className="text-muted-foreground">Total of lines</span>
-                                <span className="font-mono">
-                                    {Number(linesTotal).toFixed(2)} AED
-                                </span>
-                            </div>
                             <div className="flex justify-between">
                                 <span className="text-muted-foreground">
                                     Margin ({effectiveMarginPercent}%)
@@ -302,28 +308,6 @@ export function PendingApprovalSection({ order, orderId, onRefresh }: HybridPric
                 onSuccess={onRefresh}
                 orderId={orderId}
             />
-        </div>
-    );
-}
-
-/**
- * PRICING_REVIEW Section (Logistics Review)
- */
-export function PricingReviewSection({ order, orderId, onRefresh }: HybridPricingSectionProps) {
-    return (
-        <div className="space-y-6">
-            <Card className="border-2 border-primary/20 bg-primary/5">
-                <CardHeader>
-                    <CardTitle className="">📋 Pricing Review</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <p className="text-sm text-gray-500">
-                        Review the order details, add service line items if needed, and submit to
-                        Admin for approval.
-                    </p>
-                </CardContent>
-            </Card>
-            <LogisticsPricingReview orderId={orderId} order={order} onSubmitSuccess={onRefresh} />
         </div>
     );
 }

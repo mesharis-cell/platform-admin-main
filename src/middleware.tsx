@@ -32,6 +32,14 @@ export async function middleware(request: NextRequest) {
     if (role !== "ADMIN") {
         return NextResponse.redirect(new URL("/", request.url));
     }
+
+    if (
+        pathname.startsWith("/orders/pricing-review") ||
+        pathname === "/scanning" ||
+        pathname.startsWith("/scanning/")
+    ) {
+        return NextResponse.redirect(new URL("/orders", request.url));
+    }
     return NextResponse.next();
 }
 

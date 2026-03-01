@@ -4,9 +4,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
     Dialog,
     DialogContent,
+    DialogFooter,
     DialogHeader,
     DialogTitle,
-    DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,10 +20,11 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Minus, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { useListServiceTypes } from "@/hooks/use-service-types";
 import { useCreateCatalogLineItem } from "@/hooks/use-order-line-items";
-import type { LineItemBillingMode, TransportLineItemMetadata } from "@/types/hybrid-pricing";
+import type { LineItemBillingMode, ServiceCategory } from "@/types/hybrid-pricing";
 
 interface AddCatalogLineItemModalProps {
     open: boolean;
@@ -32,6 +33,30 @@ interface AddCatalogLineItemModalProps {
     orderId?: string;
     purposeType?: "ORDER" | "INBOUND_REQUEST" | "SERVICE_REQUEST";
 }
+
+type ServiceRow = {
+    id: string;
+    name: string;
+    category: ServiceCategory;
+    unit: string;
+    default_rate: number;
+    description?: string | null;
+};
+
+type SelectedEntry = {
+    service: ServiceRow;
+    quantity: string;
+};
+
+const CATEGORY_OPTIONS: Array<"ALL" | ServiceCategory> = [
+    "ALL",
+    "ASSEMBLY",
+    "EQUIPMENT",
+    "HANDLING",
+    "RESKIN",
+    "TRANSPORT",
+    "OTHER",
+];
 
 export function AddCatalogLineItemModal({
     open,
@@ -45,28 +70,16 @@ export function AddCatalogLineItemModal({
 
     const [search, setSearch] = useState("");
     const [debouncedSearch, setDebouncedSearch] = useState("");
+    const [category, setCategory] = useState<"ALL" | ServiceCategory>("ALL");
     const [page, setPage] = useState(1);
     const [limit, setLimit] = useState(20);
-
     const [billingMode, setBillingMode] = useState<LineItemBillingMode>("BILLABLE");
-    const [selectedIds, setSelectedIds] = useState<string[]>([]);
-    const [quantitiesById, setQuantitiesById] = useState<Record<string, string>>({});
     const [notes, setNotes] = useState("");
-
-    const [tripDirection, setTripDirection] = useState<
-        "DELIVERY" | "PICKUP" | "ACCESS" | "TRANSFER"
-    >("DELIVERY");
-    const [truckPlate, setTruckPlate] = useState("");
-    const [driverName, setDriverName] = useState("");
-    const [driverContact, setDriverContact] = useState("");
-    const [truckSize, setTruckSize] = useState("");
-    const [tailgateRequired, setTailgateRequired] = useState(false);
-    const [manpower, setManpower] = useState("");
-    const [transportNotes, setTransportNotes] = useState("");
+    const [selectedById, setSelectedById] = useState<Record<string, SelectedEntry>>({});
 
     const debounceRef = useRef<ReturnType<typeof setTimeout>>();
     useEffect(() => {
-        debounceRef.current = setTimeout(() => setDebouncedSearch(search.trim()), 300);
+        debounceRef.current = setTimeout(() => setDebouncedSearch(search.trim()), 250);
         return () => clearTimeout(debounceRef.current);
     }, [search]);
 
@@ -74,19 +87,12 @@ export function AddCatalogLineItemModal({
         if (!open) {
             setSearch("");
             setDebouncedSearch("");
+            setCategory("ALL");
             setPage(1);
-            setSelectedIds([]);
-            setQuantitiesById({});
+            setLimit(20);
             setBillingMode("BILLABLE");
             setNotes("");
-            setTripDirection("DELIVERY");
-            setTruckPlate("");
-            setDriverName("");
-            setDriverContact("");
-            setTruckSize("");
-            setTailgateRequired(false);
-            setManpower("");
-            setTransportNotes("");
+            setSelectedById({});
         }
     }, [open]);
 
@@ -94,80 +100,74 @@ export function AddCatalogLineItemModal({
         page: String(page),
         limit: String(limit),
         search_term: debouncedSearch || undefined,
+        category: category === "ALL" ? undefined : category,
     });
 
-    const serviceTypes = serviceTypesResponse?.data || [];
+    const serviceTypes = useMemo(
+        () => (serviceTypesResponse?.data || []) as ServiceRow[],
+        [serviceTypesResponse?.data]
+    );
     const total = Number(serviceTypesResponse?.meta?.total || 0);
     const totalPages = Math.max(1, Math.ceil(total / limit));
-
-    const selectedServices = useMemo(
-        () => serviceTypes.filter((service: any) => selectedIds.includes(service.id)),
-        [serviceTypes, selectedIds]
-    );
-
-    const hasTransportSelected = selectedServices.some(
-        (service: any) => service.category === "TRANSPORT"
-    );
+    const selectedIds = Object.keys(selectedById);
 
     const allCurrentPageSelected =
-        serviceTypes.length > 0 &&
-        serviceTypes.every((service: any) => selectedIds.includes(service.id));
+        serviceTypes.length > 0 && serviceTypes.every((service) => selectedById[service.id]);
 
-    const toggleSelectAllOnPage = (checked: boolean) => {
-        if (checked) {
-            const idsToAdd = serviceTypes.map((service: any) => service.id);
-            setSelectedIds((prev) => Array.from(new Set([...prev, ...idsToAdd])));
-            setQuantitiesById((prev) => {
-                const next = { ...prev };
-                idsToAdd.forEach((id) => {
-                    if (!next[id]) next[id] = "1";
-                });
-                return next;
-            });
-        } else {
-            const idsOnPage = new Set<string>(
-                serviceTypes.map((service: any) => String(service.id))
-            );
-            setSelectedIds((prev) => prev.filter((id) => !idsOnPage.has(id)));
-            setQuantitiesById((prev) => {
-                const next = { ...prev };
-                idsOnPage.forEach((id) => delete next[id]);
-                return next;
-            });
-        }
-    };
-
-    const toggleServiceSelection = (serviceId: string, checked: boolean) => {
-        if (checked) {
-            setSelectedIds((prev) => Array.from(new Set([...prev, serviceId])));
-            setQuantitiesById((prev) => ({ ...prev, [serviceId]: prev[serviceId] || "1" }));
-            return;
-        }
-
-        setSelectedIds((prev) => prev.filter((id) => id !== serviceId));
-        setQuantitiesById((prev) => {
+    const toggleServiceSelection = (service: ServiceRow, checked: boolean) => {
+        setSelectedById((prev) => {
             const next = { ...prev };
-            delete next[serviceId];
+            if (checked) {
+                const existing = next[service.id];
+                next[service.id] = {
+                    service,
+                    quantity: existing?.quantity || "1",
+                };
+                return next;
+            }
+            delete next[service.id];
             return next;
         });
     };
 
-    const buildTransportMetadata = (): TransportLineItemMetadata => {
-        const metadata: TransportLineItemMetadata = {
-            trip_direction: tripDirection,
-            truck_plate: truckPlate.trim() || undefined,
-            driver_name: driverName.trim() || undefined,
-            driver_contact: driverContact.trim() || undefined,
-            truck_size: truckSize.trim() || undefined,
-            tailgate_required: tailgateRequired,
-            notes: transportNotes.trim() || undefined,
-        };
+    const toggleSelectAllOnPage = (checked: boolean) => {
+        setSelectedById((prev) => {
+            const next = { ...prev };
+            if (checked) {
+                for (const service of serviceTypes) {
+                    const existing = next[service.id];
+                    next[service.id] = {
+                        service,
+                        quantity: existing?.quantity || "1",
+                    };
+                }
+                return next;
+            }
+            for (const service of serviceTypes) {
+                delete next[service.id];
+            }
+            return next;
+        });
+    };
 
-        if (manpower.trim()) {
-            metadata.manpower = Number(manpower);
-        }
+    const updateQuantity = (serviceId: string, value: string) => {
+        setSelectedById((prev) => {
+            const existing = prev[serviceId];
+            if (!existing) return prev;
+            return {
+                ...prev,
+                [serviceId]: {
+                    ...existing,
+                    quantity: value,
+                },
+            };
+        });
+    };
 
-        return metadata;
+    const bumpQuantity = (serviceId: string, delta: number) => {
+        const current = Number(selectedById[serviceId]?.quantity || "1");
+        const next = Math.max(1, Math.floor(current + delta));
+        updateQuantity(serviceId, String(next));
     };
 
     const handleAddSelected = async () => {
@@ -180,25 +180,21 @@ export function AddCatalogLineItemModal({
             return;
         }
 
-        const transportMetadata = buildTransportMetadata();
-
         try {
-            for (const selectedId of selectedIds) {
-                const service = serviceTypes.find((row: any) => row.id === selectedId);
-                const quantityValue = Number(quantitiesById[selectedId] || "1");
-
-                if (!service) continue;
+            for (const id of selectedIds) {
+                const selected = selectedById[id];
+                if (!selected) continue;
+                const quantityValue = Number(selected.quantity || "1");
                 if (!Number.isFinite(quantityValue) || quantityValue <= 0) {
-                    toast.error(`Invalid quantity for ${service.name}`);
+                    toast.error(`Invalid quantity for ${selected.service.name}`);
                     return;
                 }
 
                 await createLineItem.mutateAsync({
-                    service_type_id: selectedId,
+                    service_type_id: id,
                     quantity: quantityValue,
                     billing_mode: billingMode,
-                    notes: notes || undefined,
-                    metadata: service.category === "TRANSPORT" ? transportMetadata : undefined,
+                    notes: notes.trim() || undefined,
                 });
             }
 
@@ -211,14 +207,14 @@ export function AddCatalogLineItemModal({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-5xl">
+            <DialogContent className="w-[95vw] max-w-6xl h-[90vh] sm:h-auto sm:max-h-[90vh] flex flex-col">
                 <DialogHeader>
                     <DialogTitle>Add Catalog Services</DialogTitle>
                 </DialogHeader>
 
-                <div className="space-y-4">
-                    <div className="flex flex-wrap items-end gap-3">
-                        <div className="w-full md:flex-1 space-y-1">
+                <div className="space-y-4 overflow-y-auto pr-1">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div className="space-y-1 md:col-span-2">
                             <Label className="text-xs">Search services</Label>
                             <Input
                                 placeholder="Search by name, category, or unit..."
@@ -229,7 +225,31 @@ export function AddCatalogLineItemModal({
                                 }}
                             />
                         </div>
-                        <div className="w-full md:w-40 space-y-1">
+                        <div className="space-y-1">
+                            <Label className="text-xs">Category</Label>
+                            <Select
+                                value={category}
+                                onValueChange={(value) => {
+                                    setCategory(value as "ALL" | ServiceCategory);
+                                    setPage(1);
+                                }}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {CATEGORY_OPTIONS.map((option) => (
+                                        <SelectItem key={option} value={option}>
+                                            {option}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div className="space-y-1">
                             <Label className="text-xs">Page size</Label>
                             <Select
                                 value={String(limit)}
@@ -250,10 +270,32 @@ export function AddCatalogLineItemModal({
                                 </SelectContent>
                             </Select>
                         </div>
+                        <div className="space-y-1">
+                            <Label className="text-xs">Billing mode</Label>
+                            <Select
+                                value={billingMode}
+                                onValueChange={(value) =>
+                                    setBillingMode(value as LineItemBillingMode)
+                                }
+                            >
+                                <SelectTrigger>
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="BILLABLE">BILLABLE</SelectItem>
+                                    <SelectItem value="NON_BILLABLE">NON_BILLABLE</SelectItem>
+                                    <SelectItem value="COMPLIMENTARY">COMPLIMENTARY</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="self-end text-xs text-muted-foreground">
+                            Selected: {selectedIds.length} service
+                            {selectedIds.length === 1 ? "" : "s"}
+                        </div>
                     </div>
 
                     <div className="rounded-md border border-border overflow-hidden">
-                        <div className="max-h-[320px] overflow-auto">
+                        <div className="max-h-[46vh] overflow-auto hidden md:block">
                             <table className="w-full text-sm">
                                 <thead className="bg-muted/50 sticky top-0 z-10">
                                     <tr className="border-b border-border">
@@ -293,8 +335,10 @@ export function AddCatalogLineItemModal({
                                             </td>
                                         </tr>
                                     ) : (
-                                        serviceTypes.map((service: any) => {
-                                            const checked = selectedIds.includes(service.id);
+                                        serviceTypes.map((service) => {
+                                            const checked = Boolean(selectedById[service.id]);
+                                            const quantity =
+                                                selectedById[service.id]?.quantity || "1";
                                             return (
                                                 <tr
                                                     key={service.id}
@@ -305,14 +349,25 @@ export function AddCatalogLineItemModal({
                                                             checked={checked}
                                                             onCheckedChange={(value) =>
                                                                 toggleServiceSelection(
-                                                                    service.id,
+                                                                    service,
                                                                     Boolean(value)
                                                                 )
                                                             }
                                                         />
                                                     </td>
-                                                    <td className="px-3 py-2 align-top font-medium">
-                                                        {service.name}
+                                                    <td className="px-3 py-2 align-top">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() =>
+                                                                toggleServiceSelection(
+                                                                    service,
+                                                                    !checked
+                                                                )
+                                                            }
+                                                            className="font-medium text-left hover:underline"
+                                                        >
+                                                            {service.name}
+                                                        </button>
                                                     </td>
                                                     <td className="px-3 py-2 align-top">
                                                         {service.category}
@@ -327,23 +382,46 @@ export function AddCatalogLineItemModal({
                                                         AED
                                                     </td>
                                                     <td className="px-3 py-2 align-top">
-                                                        <Input
-                                                            type="number"
-                                                            min={1}
-                                                            step={1}
-                                                            className="h-8 w-20"
-                                                            disabled={!checked}
-                                                            value={
-                                                                quantitiesById[service.id] || "1"
-                                                            }
-                                                            onChange={(event) =>
-                                                                setQuantitiesById((prev) => ({
-                                                                    ...prev,
-                                                                    [service.id]:
-                                                                        event.target.value,
-                                                                }))
-                                                            }
-                                                        />
+                                                        <div className="flex items-center gap-1">
+                                                            <Button
+                                                                type="button"
+                                                                size="icon"
+                                                                variant="outline"
+                                                                className="h-8 w-8"
+                                                                disabled={!checked}
+                                                                onClick={() =>
+                                                                    bumpQuantity(service.id, -1)
+                                                                }
+                                                            >
+                                                                <Minus className="h-3.5 w-3.5" />
+                                                            </Button>
+                                                            <Input
+                                                                type="number"
+                                                                min={1}
+                                                                step={1}
+                                                                className="h-8 w-20 text-center"
+                                                                disabled={!checked}
+                                                                value={quantity}
+                                                                onChange={(event) =>
+                                                                    updateQuantity(
+                                                                        service.id,
+                                                                        event.target.value
+                                                                    )
+                                                                }
+                                                            />
+                                                            <Button
+                                                                type="button"
+                                                                size="icon"
+                                                                variant="outline"
+                                                                className="h-8 w-8"
+                                                                disabled={!checked}
+                                                                onClick={() =>
+                                                                    bumpQuantity(service.id, 1)
+                                                                }
+                                                            >
+                                                                <Plus className="h-3.5 w-3.5" />
+                                                            </Button>
+                                                        </div>
                                                     </td>
                                                     <td className="px-3 py-2 align-top text-muted-foreground">
                                                         {service.description || "—"}
@@ -355,13 +433,98 @@ export function AddCatalogLineItemModal({
                                 </tbody>
                             </table>
                         </div>
+
+                        <div className="md:hidden divide-y divide-border">
+                            {isFetching ? (
+                                <div className="p-4 text-sm text-muted-foreground">
+                                    Loading services...
+                                </div>
+                            ) : serviceTypes.length === 0 ? (
+                                <div className="p-4 text-sm text-muted-foreground">
+                                    No services found
+                                </div>
+                            ) : (
+                                serviceTypes.map((service) => {
+                                    const checked = Boolean(selectedById[service.id]);
+                                    const quantity = selectedById[service.id]?.quantity || "1";
+                                    return (
+                                        <div key={service.id} className="p-3 space-y-2">
+                                            <div className="flex items-start gap-3">
+                                                <Checkbox
+                                                    checked={checked}
+                                                    onCheckedChange={(value) =>
+                                                        toggleServiceSelection(
+                                                            service,
+                                                            Boolean(value)
+                                                        )
+                                                    }
+                                                />
+                                                <div className="flex-1 min-w-0">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() =>
+                                                            toggleServiceSelection(
+                                                                service,
+                                                                !checked
+                                                            )
+                                                        }
+                                                        className="font-medium text-left hover:underline"
+                                                    >
+                                                        {service.name}
+                                                    </button>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        {service.category} · {service.unit} ·{" "}
+                                                        {(
+                                                            Number(service.default_rate) || 0
+                                                        ).toFixed(2)}{" "}
+                                                        AED
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <Button
+                                                    type="button"
+                                                    size="icon"
+                                                    variant="outline"
+                                                    className="h-8 w-8"
+                                                    disabled={!checked}
+                                                    onClick={() => bumpQuantity(service.id, -1)}
+                                                >
+                                                    <Minus className="h-3.5 w-3.5" />
+                                                </Button>
+                                                <Input
+                                                    type="number"
+                                                    min={1}
+                                                    step={1}
+                                                    className="h-8 text-center"
+                                                    disabled={!checked}
+                                                    value={quantity}
+                                                    onChange={(event) =>
+                                                        updateQuantity(
+                                                            service.id,
+                                                            event.target.value
+                                                        )
+                                                    }
+                                                />
+                                                <Button
+                                                    type="button"
+                                                    size="icon"
+                                                    variant="outline"
+                                                    className="h-8 w-8"
+                                                    disabled={!checked}
+                                                    onClick={() => bumpQuantity(service.id, 1)}
+                                                >
+                                                    <Plus className="h-3.5 w-3.5" />
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    );
+                                })
+                            )}
+                        </div>
                     </div>
 
                     <div className="flex items-center justify-between text-xs text-muted-foreground">
-                        <span>
-                            Selected: {selectedIds.length} service
-                            {selectedIds.length === 1 ? "" : "s"}
-                        </span>
                         <div className="flex items-center gap-2">
                             <Button
                                 size="sm"
@@ -385,129 +548,15 @@ export function AddCatalogLineItemModal({
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label>
-                                Billing Mode <span className="text-destructive">*</span>
-                            </Label>
-                            <Select
-                                value={billingMode}
-                                onValueChange={(value) =>
-                                    setBillingMode(value as LineItemBillingMode)
-                                }
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select billing mode" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="BILLABLE">BILLABLE</SelectItem>
-                                    <SelectItem value="NON_BILLABLE">NON-BILLABLE</SelectItem>
-                                    <SelectItem value="COMPLIMENTARY">COMPLIMENTARY</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label>Notes (applies to all selected)</Label>
-                            <Textarea
-                                value={notes}
-                                onChange={(event) => setNotes(event.target.value)}
-                                rows={3}
-                                placeholder="Internal note for these line items"
-                            />
-                        </div>
+                    <div className="space-y-2">
+                        <Label>Notes (applies to all selected)</Label>
+                        <Textarea
+                            value={notes}
+                            onChange={(event) => setNotes(event.target.value)}
+                            rows={3}
+                            placeholder="Internal note for selected line items"
+                        />
                     </div>
-
-                    {hasTransportSelected && (
-                        <div className="space-y-3 rounded-md border border-border p-4">
-                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                                Transport Metadata (applies to selected transport lines)
-                            </p>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                <div>
-                                    <Label>Trip Direction</Label>
-                                    <Select
-                                        value={tripDirection}
-                                        onValueChange={(value) =>
-                                            setTripDirection(
-                                                value as
-                                                    | "DELIVERY"
-                                                    | "PICKUP"
-                                                    | "ACCESS"
-                                                    | "TRANSFER"
-                                            )
-                                        }
-                                    >
-                                        <SelectTrigger>
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="DELIVERY">Delivery</SelectItem>
-                                            <SelectItem value="PICKUP">Pickup</SelectItem>
-                                            <SelectItem value="ACCESS">Access</SelectItem>
-                                            <SelectItem value="TRANSFER">Transfer</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div>
-                                    <Label>Truck License Plate</Label>
-                                    <Input
-                                        value={truckPlate}
-                                        onChange={(event) => setTruckPlate(event.target.value)}
-                                    />
-                                </div>
-                                <div>
-                                    <Label>Driver Name</Label>
-                                    <Input
-                                        value={driverName}
-                                        onChange={(event) => setDriverName(event.target.value)}
-                                    />
-                                </div>
-                                <div>
-                                    <Label>Driver Contact Number</Label>
-                                    <Input
-                                        value={driverContact}
-                                        onChange={(event) => setDriverContact(event.target.value)}
-                                    />
-                                </div>
-                                <div>
-                                    <Label>Truck Size</Label>
-                                    <Input
-                                        value={truckSize}
-                                        onChange={(event) => setTruckSize(event.target.value)}
-                                    />
-                                </div>
-                                <div>
-                                    <Label>Manpower</Label>
-                                    <Input
-                                        type="number"
-                                        min="0"
-                                        step="1"
-                                        value={manpower}
-                                        onChange={(event) => setManpower(event.target.value)}
-                                    />
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <Checkbox
-                                    id="catalog-transport-tailgate"
-                                    checked={tailgateRequired}
-                                    onCheckedChange={(value) => setTailgateRequired(!!value)}
-                                />
-                                <Label htmlFor="catalog-transport-tailgate">
-                                    Tailgate Required
-                                </Label>
-                            </div>
-                            <div>
-                                <Label>Transport Notes</Label>
-                                <Textarea
-                                    value={transportNotes}
-                                    onChange={(event) => setTransportNotes(event.target.value)}
-                                    rows={2}
-                                />
-                            </div>
-                        </div>
-                    )}
                 </div>
 
                 <DialogFooter>
