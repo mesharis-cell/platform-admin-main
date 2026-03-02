@@ -173,6 +173,43 @@ const STATUS_CONFIG: Record<
     },
 };
 
+const ORDER_STATUS_SEQUENCE = [
+    "DRAFT",
+    "SUBMITTED",
+    "PRICING_REVIEW",
+    "PENDING_APPROVAL",
+    "QUOTED",
+    "DECLINED",
+    "CONFIRMED",
+    "IN_PREPARATION",
+    "READY_FOR_DELIVERY",
+    "IN_TRANSIT",
+    "DELIVERED",
+    "IN_USE",
+    "DERIG",
+    "AWAITING_RETURN",
+    "RETURN_IN_TRANSIT",
+    "CLOSED",
+    "CANCELLED",
+];
+
+const getReachableStatuses = (startStatus: string): string[] => {
+    const visited = new Set<string>();
+    const queue = [...(STATUS_CONFIG[startStatus]?.nextStates || [])];
+
+    while (queue.length > 0) {
+        const status = queue.shift() || "";
+        if (!status || visited.has(status)) continue;
+        visited.add(status);
+        const next = STATUS_CONFIG[status]?.nextStates || [];
+        for (const n of next) {
+            if (!visited.has(n)) queue.push(n);
+        }
+    }
+
+    return Array.from(visited);
+};
+
 export default function AdminOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
     const { user } = useToken();
@@ -1325,10 +1362,27 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                             isActive: index === activeIndex,
                                         };
                                     });
+                                    const reachedStatuses = new Set<string>([
+                                        currentStatus,
+                                        ...history.map((entry: any) => String(entry.status)),
+                                    ]);
+                                    const remainingEntries = getReachableStatuses(currentStatus)
+                                        .filter((status) => !reachedStatuses.has(status))
+                                        .sort(
+                                            (a, b) =>
+                                                ORDER_STATUS_SEQUENCE.indexOf(a) -
+                                                ORDER_STATUS_SEQUENCE.indexOf(b)
+                                        )
+                                        .map((status) => ({
+                                            id: `remaining-${status}`,
+                                            label: STATUS_CONFIG[status]?.label || status,
+                                        }));
                                     return (
                                         <StatusHistoryTimeline
                                             entries={entries}
                                             loading={statusHistoryLoading}
+                                            remainingEntries={remainingEntries}
+                                            remainingToggleLabel="Show Remaining Statuses"
                                         />
                                     );
                                 })()}

@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 export interface StatusTimelineEntry {
     id: string;
@@ -23,13 +25,22 @@ interface StatusHistoryTimelineProps {
     entries: StatusTimelineEntry[];
     loading?: boolean;
     emptyText?: string;
+    remainingEntries?: Array<{
+        id: string;
+        label: string;
+    }>;
+    remainingToggleLabel?: string;
 }
 
 export function StatusHistoryTimeline({
     entries,
     loading,
     emptyText = "No history yet.",
+    remainingEntries = [],
+    remainingToggleLabel = "Show Remaining",
 }: StatusHistoryTimelineProps) {
+    const [showRemaining, setShowRemaining] = useState(false);
+
     if (loading) return <Skeleton className="h-40 w-full" />;
 
     if (!entries || entries.length === 0)
@@ -75,6 +86,33 @@ export function StatusHistoryTimeline({
                     </div>
                 </div>
             ))}
+
+            {remainingEntries.length > 0 && (
+                <div className="pt-2">
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 font-mono text-[10px]"
+                        onClick={() => setShowRemaining((prev) => !prev)}
+                    >
+                        {showRemaining ? "Hide Remaining" : remainingToggleLabel}
+                    </Button>
+
+                    {showRemaining && (
+                        <div className="mt-2 border-t border-dashed border-border/70 pt-3 space-y-2">
+                            {remainingEntries.map((entry) => (
+                                <div key={entry.id} className="relative pl-6 pb-2 opacity-60">
+                                    <div className="absolute left-0 top-0.5 h-4 w-4 rounded-full border-2 bg-muted/50 border-border" />
+                                    <Badge className="border font-mono text-[10px] px-2 py-0.5 bg-muted text-muted-foreground border-border">
+                                        {entry.label}
+                                    </Badge>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
         </div>
     );
 }
