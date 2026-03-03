@@ -48,6 +48,23 @@ export function StatusHistoryTimeline({
 
     return (
         <div className="space-y-1 relative">
+            <div className="pb-2">
+                <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={remainingEntries.length === 0}
+                    className="h-7 px-2 font-mono text-[10px]"
+                    onClick={() => setShowRemaining((prev) => !prev)}
+                >
+                    {remainingEntries.length === 0
+                        ? "No Remaining Statuses"
+                        : showRemaining
+                          ? "Hide Remaining"
+                          : remainingToggleLabel}
+                </Button>
+            </div>
+
             {entries.map((entry, index) => (
                 <div key={entry.id} className="relative pl-6 pb-4 last:pb-0">
                     {/* Connecting line */}
@@ -87,30 +104,16 @@ export function StatusHistoryTimeline({
                 </div>
             ))}
 
-            {remainingEntries.length > 0 && (
-                <div className="pt-2">
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 font-mono text-[10px]"
-                        onClick={() => setShowRemaining((prev) => !prev)}
-                    >
-                        {showRemaining ? "Hide Remaining" : remainingToggleLabel}
-                    </Button>
-
-                    {showRemaining && (
-                        <div className="mt-2 border-t border-dashed border-border/70 pt-3 space-y-2">
-                            {remainingEntries.map((entry) => (
-                                <div key={entry.id} className="relative pl-6 pb-2 opacity-60">
-                                    <div className="absolute left-0 top-0.5 h-4 w-4 rounded-full border-2 bg-muted/50 border-border" />
-                                    <Badge className="border font-mono text-[10px] px-2 py-0.5 bg-muted text-muted-foreground border-border">
-                                        {entry.label}
-                                    </Badge>
-                                </div>
-                            ))}
+            {showRemaining && remainingEntries.length > 0 && (
+                <div className="mt-2 border-t border-dashed border-border/70 pt-3 space-y-2">
+                    {remainingEntries.map((entry) => (
+                        <div key={entry.id} className="relative pl-6 pb-2 opacity-60">
+                            <div className="absolute left-0 top-0.5 h-4 w-4 rounded-full border-2 bg-muted/50 border-border" />
+                            <Badge className="border font-mono text-[10px] px-2 py-0.5 bg-muted text-muted-foreground border-border">
+                                {entry.label}
+                            </Badge>
                         </div>
-                    )}
+                    ))}
                 </div>
             )}
         </div>
