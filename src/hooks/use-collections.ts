@@ -250,7 +250,11 @@ export function useUploadCollectionImages() {
                     formData.append("files", file);
                 });
 
-                const response = await apiClient.post("/operations/v1/upload/images", formData);
+                const response = await apiClient.post("/operations/v1/upload/images", formData, {
+                    headers: {
+                        "Content-Type": "multipart/form-data",
+                    },
+                });
 
                 return response.data;
             } catch (error) {
