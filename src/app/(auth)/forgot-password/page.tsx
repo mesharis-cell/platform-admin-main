@@ -56,7 +56,7 @@ export default function ForgotPasswordPage() {
             const data = await response.json();
 
             if (!response.ok) {
-                throw new Error(data.error || "Failed to send OTP");
+                throw new Error(data.message || "Failed to send OTP");
             }
 
             setStep("verify");
@@ -108,7 +108,7 @@ export default function ForgotPasswordPage() {
             const data = await response.json();
 
             if (!response.ok) {
-                throw new Error(data.error || "Failed to reset password");
+                throw new Error(data.message || "Failed to reset password");
             }
 
             toast.success("Password Reset Successful", {
@@ -142,7 +142,7 @@ export default function ForgotPasswordPage() {
             const data = await response.json();
 
             if (!response.ok) {
-                throw new Error(data.error || "Failed to resend OTP");
+                throw new Error(data.message || "Failed to resend OTP");
             }
 
             toast.success("OTP Resent", {
@@ -498,7 +498,7 @@ export default function ForgotPasswordPage() {
                                         "For security, we'll verify your identity with a one-time code."
                                     ) : (
                                         <>
-                                            OTP expires in 10 minutes.
+                                            OTP expires in 5 minutes.
                                             <br />
                                             Contact support if you continue to experience issues.
                                         </>

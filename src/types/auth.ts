@@ -15,6 +15,7 @@ export type Permission =
     | "users:read"
     | "users:update"
     | "users:deactivate"
+    | "users:manage_password"
     | "users:assign_permissions"
     | "users:set_company_scope"
     // Company Management
@@ -225,6 +226,7 @@ export const PERMISSION_GROUPS = {
         "users:read",
         "users:update",
         "users:deactivate",
+        "users:manage_password",
         "users:assign_permissions",
         "users:set_company_scope",
     ],
@@ -399,6 +401,7 @@ export const ADMIN_PERMISSION_GROUPS: Record<string, string[]> = {
         "users:read",
         "users:update",
         "users:deactivate",
+        "users:manage_password",
         "users:*",
     ],
     "Company Management": [
