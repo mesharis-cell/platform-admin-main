@@ -46,7 +46,7 @@ export function AssetsFromInbound({ items }: AssetsFromInboundProps) {
                                     <div className="w-24 h-24 sm:w-32 sm:h-auto relative bg-muted shrink-0">
                                         {item.asset.images?.[0] ? (
                                             <img
-                                                src={item.asset.images[0]}
+                                                src={item.asset.images[0]?.url}
                                                 alt={item.asset.name}
                                                 className="w-full h-full object-cover"
                                             />

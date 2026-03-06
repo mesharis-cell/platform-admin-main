@@ -1,5 +1,6 @@
 // Inbound Request Types
 // API endpoint: /client/v1/inbound-request
+import type { AssetImage } from "./asset";
 
 // Tracking method enum values
 export type TrackingMethod = "INDIVIDUAL" | "BATCH";
@@ -20,7 +21,7 @@ export interface InboundRequestItem {
     asset?: {
         id: string;
         name: string;
-        images: string[];
+        images: AssetImage[];
         qr_code: string;
         tracking_method: TrackingMethod;
         category: string;

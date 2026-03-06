@@ -216,10 +216,11 @@ export function EditAssetDialog({
 
             let uploadedUrls: string[] = [];
             if (newPhotos.length > 0) {
-                const fd = new FormData();
-                fd.append("companyId", formData.company);
-                newPhotos.forEach((p) => fd.append("files", p.file!));
-                const uploadResult = await imageUploadMutation.mutateAsync(fd);
+                const uploadResult = await imageUploadMutation.mutateAsync({
+                    files: newPhotos.map((photo) => photo.file!),
+                    companyId: formData.company,
+                    profile: "photo",
+                });
                 uploadedUrls = uploadResult.data?.imageUrls || [];
             }
 

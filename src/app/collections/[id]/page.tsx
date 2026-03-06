@@ -163,9 +163,10 @@ export default function CollectionDetailPage() {
             // Upload new images if any
             let newImageUrls: string[] = [];
             if (selectedImages.length > 0) {
-                const formData = new FormData();
-                selectedImages.forEach((file) => formData.append("files", file));
-                const uploadResult = await uploadMutation.mutateAsync(formData);
+                const uploadResult = await uploadMutation.mutateAsync({
+                    files: selectedImages,
+                    profile: "photo",
+                });
                 newImageUrls = uploadResult.data?.imageUrls || [];
             }
 

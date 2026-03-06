@@ -234,11 +234,11 @@ export function CreateAssetDialog({ open, onOpenChange, onSuccess }: CreateAsset
             // Upload images first if any are selected
             let imageUrls: string[] = [];
             if (selectedImages.length > 0) {
-                const uploadFormData = new FormData();
-                uploadFormData.append("companyId", formData.company_id!);
-                selectedImages.forEach((file) => uploadFormData.append("files", file));
-
-                const uploadResult = await uploadMutation.mutateAsync(uploadFormData);
+                const uploadResult = await uploadMutation.mutateAsync({
+                    files: selectedImages,
+                    companyId: formData.company_id!,
+                    profile: "photo",
+                });
                 imageUrls = uploadResult.data?.imageUrls;
             }
 

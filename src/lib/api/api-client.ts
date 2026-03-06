@@ -84,6 +84,12 @@ apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
         config.headers["x-platform"] = currentPlatformId;
     }
 
+    // Let the browser set multipart boundaries for FormData payloads.
+    if (typeof FormData !== "undefined" && config.data instanceof FormData) {
+        delete (config.headers as any)["Content-Type"];
+        delete (config.headers as any)["content-type"];
+    }
+
     // Inject access token if available
     const accessToken = getAccessToken();
     if (accessToken) {
