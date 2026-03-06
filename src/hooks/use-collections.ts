@@ -247,10 +247,10 @@ export function useUploadCollectionImages() {
                 const formData = new FormData();
 
                 files.forEach((file) => {
-                    formData.append("images", file);
+                    formData.append("files", file);
                 });
 
-                const response = await apiClient.post("/operations/v1/collection/images", formData);
+                const response = await apiClient.post("/operations/v1/upload/images", formData);
 
                 return response.data;
             } catch (error) {
