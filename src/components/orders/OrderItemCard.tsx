@@ -4,6 +4,7 @@ import Link from "next/link";
 import { AlertTriangle, Package, XCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Condition } from "@/types";
+import type { AssetImage } from "@/types/asset";
 import { PrintQrAction } from "@/components/qr/PrintQrAction";
 
 interface OrderItemCardProps {
@@ -23,7 +24,7 @@ interface OrderItemCardProps {
             status: string;
             refurbishment_days_estimate?: number;
             condition_notes?: string | null;
-            images?: string[];
+            images?: AssetImage[];
             on_display_image?: string | null;
         };
         order_item?: {
@@ -62,7 +63,7 @@ export function OrderItemCard({
 }: OrderItemCardProps) {
     const thumbnail =
         item.asset?.on_display_image ||
-        (item.asset?.images && item.asset.images.length > 0 ? item.asset.images[0] : null);
+        (item.asset?.images && item.asset.images.length > 0 ? item.asset.images[0]?.url : null);
 
     const isDamaged = item.asset?.condition !== "GREEN" && item.asset?.condition !== undefined;
     const conditionStyle = isDamaged

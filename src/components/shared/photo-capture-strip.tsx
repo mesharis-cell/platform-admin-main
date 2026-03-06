@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { Plus, X, ImageIcon } from "lucide-react";
 import { toast } from "sonner";
-import { apiClient } from "@/lib/api/api-client";
+import { uploadImages } from "@/lib/utils/upload-images";
 
 export interface PhotoEntry {
     previewUrl: string;
@@ -73,14 +73,15 @@ export function PhotoCaptureStrip({
         if (uploadOnCapture) {
             setUploading(true);
             try {
-                const fd = new FormData();
-                if (companyId) fd.append("companyId", companyId);
-                fd.append("files", pendingFile);
-                const res = await apiClient.post("/operations/v1/upload/images?draft=true", fd, {
-                    headers: { "Content-Type": "multipart/form-data" },
+                const urls = await uploadImages({
+                    files: [pendingFile],
+                    companyId,
+                    draft: true,
+                    profile: "photo",
                 });
-                uploadedUrl = res.data?.data?.imageUrls?.[0];
-            } catch {
+                uploadedUrl = urls[0];
+            } catch (error) {
+                console.error("[photo-upload]", error);
                 toast.error("Failed to upload photo. Try again.");
                 setUploading(false);
                 return;
@@ -89,8 +90,10 @@ export function PhotoCaptureStrip({
             }
         }
 
+        if (uploadedUrl) URL.revokeObjectURL(pendingPreview);
+
         const entry: PhotoEntry = {
-            previewUrl: pendingPreview,
+            previewUrl: uploadedUrl ?? pendingPreview,
             note: pendingNote.trim(),
             file: uploadOnCapture ? undefined : pendingFile,
             uploadedUrl,

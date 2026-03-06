@@ -359,9 +359,10 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
             );
             let deliveryPhotos: string[] | undefined;
             if (shouldUploadTripPhotos && deliveryPhotoFiles.length > 0) {
-                const formData = new FormData();
-                deliveryPhotoFiles.forEach((file) => formData.append("files", file));
-                const uploadResult = await uploadImage.mutateAsync(formData);
+                const uploadResult = await uploadImage.mutateAsync({
+                    files: deliveryPhotoFiles,
+                    profile: "photo",
+                });
                 deliveryPhotos = uploadResult.data?.imageUrls?.filter(Boolean) || [];
                 if (deliveryPhotos.length > 0) {
                     await uploadTruckPhotos.mutateAsync({

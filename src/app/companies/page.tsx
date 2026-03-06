@@ -175,10 +175,10 @@ export default function CompaniesPage() {
             // Upload logo if selected
             let logoUrl = formData.settings.branding.logo_url;
             if (selectedLogo) {
-                const uploadFormData = new FormData();
-                uploadFormData.append("files", selectedLogo);
-
-                const uploadResult = await uploadMutation.mutateAsync(uploadFormData);
+                const uploadResult = await uploadMutation.mutateAsync({
+                    files: [selectedLogo],
+                    profile: "logo",
+                });
                 logoUrl = uploadResult.data?.imageUrls?.[0];
             }
 

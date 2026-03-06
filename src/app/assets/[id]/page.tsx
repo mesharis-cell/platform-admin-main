@@ -142,10 +142,11 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
 
         try {
             const companyId = typeof asset.company === "string" ? asset.company : asset.company?.id;
-            const fd = new FormData();
-            fd.append("companyId", companyId || "");
-            files.forEach((f) => fd.append("files", f));
-            const result = await uploadImageMutation.mutateAsync(fd);
+            const result = await uploadImageMutation.mutateAsync({
+                files,
+                companyId: companyId || undefined,
+                profile: "photo",
+            });
             const newUrls: string[] = result.data?.imageUrls || [];
             await updateAssetMutation.mutateAsync({
                 id: asset.id,
@@ -901,7 +902,7 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                                                         {snap.images?.[0] && (
                                                             <div className="mt-2 w-16 h-12 rounded overflow-hidden bg-muted">
                                                                 <img
-                                                                    src={snap.images[0]}
+                                                                    src={snap.images[0]?.url}
                                                                     alt="Snapshot"
                                                                     className="w-full h-full object-cover"
                                                                 />

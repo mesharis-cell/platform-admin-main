@@ -4,7 +4,7 @@
  * Type definitions for order management, cart operations, and order submission workflows.
  */
 
-import { Condition, HandlingTag } from "./asset";
+import { AssetImage, Condition, HandlingTag } from "./asset";
 
 // ============================================================
 // Enums
@@ -162,7 +162,7 @@ export interface OrderItemWithAsset extends OrderItem {
     assetDetails?: {
         id: string;
         name: string;
-        images: string[];
+        images: AssetImage[];
         category: string;
         qrCode: string;
         trackingMethod: "INDIVIDUAL" | "BATCH";
