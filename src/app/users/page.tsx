@@ -32,7 +32,13 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { useCompanies } from "@/hooks/use-companies";
-import { useCreateUser, useUpdateUser, useUsers } from "@/hooks/use-users";
+import {
+    useCreateUser,
+    useGenerateUserPassword,
+    useSetUserPassword,
+    useUpdateUser,
+    useUsers,
+} from "@/hooks/use-users";
 import { cn } from "@/lib/utils";
 import { hasPermission } from "@/lib/auth/permissions";
 import { capitalizeFirstLetter, removeUnderScore } from "@/lib/utils/helper";
@@ -47,9 +53,12 @@ import {
     AlertCircle,
     Ban,
     CheckCircle,
+    Copy,
     Edit,
     Filter,
+    KeyRound,
     Package,
+    RefreshCcw,
     Search,
     UserPlus,
     Users,
@@ -87,6 +96,12 @@ export default function UsersManagementPage() {
         selectedCompany: null as string | null,
         is_super_admin: false,
     });
+    const [isSetPasswordDialogOpen, setIsSetPasswordDialogOpen] = useState(false);
+    const [isGeneratePasswordDialogOpen, setIsGeneratePasswordDialogOpen] = useState(false);
+    const [passwordTargetUser, setPasswordTargetUser] = useState<User | null>(null);
+    const [manualPassword, setManualPassword] = useState("");
+    const [generatedPassword, setGeneratedPassword] = useState("");
+    const canManagePasswords = hasPermission(AuthUser, "users:manage_password");
 
     // Build query params
     const queryParams = useMemo(() => {
@@ -107,6 +122,8 @@ export default function UsersManagementPage() {
     // Mutations
     const createMutation = useCreateUser();
     const updateMutation = useUpdateUser();
+    const setPasswordMutation = useSetUserPassword();
+    const generatePasswordMutation = useGenerateUserPassword();
 
     // Toggle permission
     const togglePermission = (permission: string) => {
@@ -482,6 +499,60 @@ export default function UsersManagementPage() {
         } catch (error) {
             toast.error(error instanceof Error ? error.message : "Failed to reactivate user");
         }
+    };
+
+    const openSetPasswordDialog = (targetUser: User) => {
+        setPasswordTargetUser(targetUser);
+        setManualPassword("");
+        setIsSetPasswordDialogOpen(true);
+    };
+
+    const openGeneratePasswordDialog = (targetUser: User) => {
+        setPasswordTargetUser(targetUser);
+        setGeneratedPassword("");
+        setIsGeneratePasswordDialogOpen(true);
+    };
+
+    const handleSetPassword = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!passwordTargetUser) return;
+        if (manualPassword.length < 8) {
+            toast.error("Password must be at least 8 characters");
+            return;
+        }
+
+        try {
+            await setPasswordMutation.mutateAsync({
+                userId: passwordTargetUser.id,
+                newPassword: manualPassword,
+            });
+            toast.success("Password updated successfully");
+            setIsSetPasswordDialogOpen(false);
+            setPasswordTargetUser(null);
+            setManualPassword("");
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Failed to update password");
+        }
+    };
+
+    const handleGeneratePassword = async () => {
+        if (!passwordTargetUser) return;
+
+        try {
+            const result = await generatePasswordMutation.mutateAsync({
+                userId: passwordTargetUser.id,
+            });
+            setGeneratedPassword(result.temporary_password);
+            toast.success("Temporary password generated");
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Failed to generate password");
+        }
+    };
+
+    const handleCopyGeneratedPassword = async () => {
+        if (!generatedPassword) return;
+        await navigator.clipboard.writeText(generatedPassword);
+        toast.success("Password copied");
     };
 
     return (
@@ -1627,6 +1698,146 @@ export default function UsersManagementPage() {
                             </ScrollArea>
                         </DialogContent>
                     </Dialog>
+
+                    <Dialog
+                        open={isSetPasswordDialogOpen}
+                        onOpenChange={(open) => {
+                            setIsSetPasswordDialogOpen(open);
+                            if (!open) {
+                                setPasswordTargetUser(null);
+                                setManualPassword("");
+                            }
+                        }}
+                    >
+                        <DialogContent className="max-w-md">
+                            <DialogHeader>
+                                <DialogTitle className="font-mono uppercase">
+                                    Set Password
+                                </DialogTitle>
+                                <DialogDescription className="font-mono text-xs">
+                                    {passwordTargetUser
+                                        ? `Set a new password for ${passwordTargetUser.email}`
+                                        : "Set user password"}
+                                </DialogDescription>
+                            </DialogHeader>
+                            <form onSubmit={handleSetPassword} className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label className="font-mono uppercase text-xs">
+                                        New Password
+                                    </Label>
+                                    <Input
+                                        type="password"
+                                        value={manualPassword}
+                                        onChange={(e) => setManualPassword(e.target.value)}
+                                        minLength={8}
+                                        required
+                                        className="font-mono"
+                                        placeholder="Minimum 8 characters"
+                                    />
+                                    <p className="text-xs text-muted-foreground font-mono">
+                                        Share securely with the user. They should change it after
+                                        login.
+                                    </p>
+                                </div>
+                                <div className="flex justify-end gap-2">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() => setIsSetPasswordDialogOpen(false)}
+                                        className="font-mono"
+                                    >
+                                        Cancel
+                                    </Button>
+                                    <Button
+                                        type="submit"
+                                        disabled={setPasswordMutation.isPending}
+                                        className="font-mono"
+                                    >
+                                        {setPasswordMutation.isPending
+                                            ? "Saving..."
+                                            : "Set Password"}
+                                    </Button>
+                                </div>
+                            </form>
+                        </DialogContent>
+                    </Dialog>
+
+                    <Dialog
+                        open={isGeneratePasswordDialogOpen}
+                        onOpenChange={(open) => {
+                            setIsGeneratePasswordDialogOpen(open);
+                            if (!open) {
+                                setPasswordTargetUser(null);
+                                setGeneratedPassword("");
+                            }
+                        }}
+                    >
+                        <DialogContent className="max-w-md">
+                            <DialogHeader>
+                                <DialogTitle className="font-mono uppercase">
+                                    Generate Temporary Password
+                                </DialogTitle>
+                                <DialogDescription className="font-mono text-xs">
+                                    {passwordTargetUser
+                                        ? `Generate a one-time password for ${passwordTargetUser.email}`
+                                        : "Generate temporary password"}
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4">
+                                <Button
+                                    type="button"
+                                    onClick={handleGeneratePassword}
+                                    disabled={generatePasswordMutation.isPending}
+                                    className="w-full font-mono"
+                                >
+                                    {generatePasswordMutation.isPending ? (
+                                        <>
+                                            <RefreshCcw className="mr-2 h-4 w-4 animate-spin" />
+                                            Generating...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <KeyRound className="mr-2 h-4 w-4" />
+                                            Generate Password
+                                        </>
+                                    )}
+                                </Button>
+
+                                {generatedPassword && (
+                                    <div className="rounded-lg border border-border bg-muted/40 p-3 space-y-2">
+                                        <p className="text-xs font-mono text-muted-foreground uppercase">
+                                            Temporary Password (shown once)
+                                        </p>
+                                        <div className="flex items-center gap-2">
+                                            <Input
+                                                value={generatedPassword}
+                                                readOnly
+                                                className="font-mono"
+                                            />
+                                            <Button
+                                                type="button"
+                                                size="icon"
+                                                variant="outline"
+                                                onClick={handleCopyGeneratedPassword}
+                                            >
+                                                <Copy className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    </div>
+                                )}
+                                <div className="flex justify-end gap-2">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() => setIsGeneratePasswordDialogOpen(false)}
+                                        className="font-mono"
+                                    >
+                                        Close
+                                    </Button>
+                                </div>
+                            </div>
+                        </DialogContent>
+                    </Dialog>
                 </div>
 
                 {/* Users Table */}
@@ -1762,6 +1973,35 @@ export default function UsersManagementPage() {
                                                         Edit
                                                     </Button>
                                                 )}
+
+                                                {canManagePasswords &&
+                                                    (!user.is_super_admin ||
+                                                        AuthUser?.is_super_admin) && (
+                                                        <>
+                                                            <Button
+                                                                size="sm"
+                                                                variant="ghost"
+                                                                onClick={() =>
+                                                                    openSetPasswordDialog(user)
+                                                                }
+                                                                className="font-mono text-xs"
+                                                            >
+                                                                <KeyRound className="h-3 w-3 mr-1" />
+                                                                Set Password
+                                                            </Button>
+                                                            <Button
+                                                                size="sm"
+                                                                variant="ghost"
+                                                                onClick={() =>
+                                                                    openGeneratePasswordDialog(user)
+                                                                }
+                                                                className="font-mono text-xs"
+                                                            >
+                                                                <RefreshCcw className="h-3 w-3 mr-1" />
+                                                                Generate
+                                                            </Button>
+                                                        </>
+                                                    )}
 
                                                 {hasPermission(AuthUser, "users:deactivate") &&
                                                     (user.is_active ? (

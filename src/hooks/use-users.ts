@@ -36,6 +36,28 @@ async function updateUser(userId: string, data: Partial<User>): Promise<User> {
     return response.data;
 }
 
+async function setUserPassword(userId: string, newPassword: string): Promise<User> {
+    const response = await apiClient.patch(`/operations/v1/user/${userId}/password`, {
+        new_password: newPassword,
+    });
+    return response.data.data;
+}
+
+export interface GeneratedPasswordResult {
+    user: User;
+    temporary_password: string;
+}
+
+async function generateUserPassword(
+    userId: string,
+    length?: number
+): Promise<GeneratedPasswordResult> {
+    const response = await apiClient.post(`/operations/v1/user/${userId}/password/generate`, {
+        length,
+    });
+    return response.data.data;
+}
+
 // Hooks
 export function useUsers(params?: Record<string, string>) {
     return useQuery({
@@ -61,6 +83,30 @@ export function useUpdateUser() {
     return useMutation({
         mutationFn: ({ userId, data }: { userId: string; data: Partial<User> }) =>
             updateUser(userId, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: userKeys.lists() });
+        },
+    });
+}
+
+export function useSetUserPassword() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({ userId, newPassword }: { userId: string; newPassword: string }) =>
+            setUserPassword(userId, newPassword),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: userKeys.lists() });
+        },
+    });
+}
+
+export function useGenerateUserPassword() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({ userId, length }: { userId: string; length?: number }) =>
+            generateUserPassword(userId, length),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: userKeys.lists() });
         },

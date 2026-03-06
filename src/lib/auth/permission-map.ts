@@ -61,4 +61,5 @@ export const ADMIN_ACTION_PERMISSIONS = {
     collectionsRead: "collections:read",
     collectionsUpdate: "collections:update",
     collectionsDelete: "collections:delete",
+    usersManagePassword: "users:manage_password",
 } as const;

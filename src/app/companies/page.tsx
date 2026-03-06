@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import Link from "next/link";
 import {
     useCompanies,
     useCreateCompany,
@@ -22,6 +23,7 @@ import {
     X,
     ImageIcon,
     Undo2,
+    ArrowUpRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -193,9 +195,10 @@ export default function CompaniesPage() {
             };
 
             if (editingCompany) {
+                const { domain: _domain, ...updatePayload } = payload;
                 await updateMutation.mutateAsync({
                     id: editingCompany.id,
-                    data: payload,
+                    data: updatePayload,
                 });
                 toast.success("Company updated", {
                     description: `${formData.name} has been updated.`,
@@ -281,7 +284,7 @@ export default function CompaniesPage() {
         setEditingCompany(company);
         setFormData({
             name: company.name,
-            domain: company.domain,
+            domain: company.primary_domain_hostname || company.domain,
             settings: {
                 branding: {
                     title: company.settings.branding.title,
@@ -391,13 +394,15 @@ export default function CompaniesPage() {
                                                 />
                                             </div>
 
-                                            {/* Domain */}
+                                            {/* Initial / Primary Domain */}
                                             <div className="space-y-2">
                                                 <Label
                                                     htmlFor="domain"
                                                     className="font-mono text-xs"
                                                 >
-                                                    DOMAIN *
+                                                    {editingCompany
+                                                        ? "PRIMARY DOMAIN (MANAGED IN SETTINGS)"
+                                                        : "INITIAL PRIMARY DOMAIN *"}
                                                 </Label>
                                                 <Input
                                                     id="domain"
@@ -410,8 +415,23 @@ export default function CompaniesPage() {
                                                     }
                                                     placeholder="client, custom.com, sub.custom.com"
                                                     className="font-mono"
-                                                    required
+                                                    required={!editingCompany}
+                                                    disabled={!!editingCompany}
                                                 />
+                                                {editingCompany && (
+                                                    <div className="flex items-center justify-between gap-2 rounded-md border border-border p-2">
+                                                        <p className="text-xs font-mono text-muted-foreground">
+                                                            Manage company hostnames and primary
+                                                            selection in Platform Settings.
+                                                        </p>
+                                                        <Button asChild size="sm" variant="outline">
+                                                            <Link href="/settings/platform">
+                                                                Manage Domains
+                                                                <ArrowUpRight className="ml-1 h-3 w-3" />
+                                                            </Link>
+                                                        </Button>
+                                                    </div>
+                                                )}
                                             </div>
 
                                             {/* Platform Margin */}
@@ -828,7 +848,7 @@ export default function CompaniesPage() {
                                         COMPANY
                                     </TableHead>
                                     <TableHead className="font-mono text-xs font-bold">
-                                        DOMAIN
+                                        PRIMARY DOMAIN
                                     </TableHead>
                                     <TableHead className="font-mono text-xs font-bold text-right">
                                         PLATFORM MARGIN PERCENT
@@ -885,7 +905,9 @@ export default function CompaniesPage() {
                                             </div>
                                         </TableCell>
                                         <TableCell className="font-mono text-sm text-muted-foreground max-w-xs">
-                                            {company.domain || "—"}
+                                            {company.primary_domain_hostname ||
+                                                company.domain ||
+                                                "—"}
                                         </TableCell>
                                         <TableCell className="text-center">
                                             <span className="font-mono font-bold text-primary">

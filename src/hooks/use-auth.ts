@@ -5,7 +5,7 @@ import { apiClient } from "@/lib/api/api-client";
 
 // Reset password request
 async function requestPasswordReset(email: string): Promise<void> {
-    const response = await apiClient.post("/auth/reset-password", { email });
+    const response = await apiClient.post("/auth/forgot-password", { email });
 
     if (!response.data.success) {
         throw new Error(response.data.message || "Failed to request password reset");
@@ -13,8 +13,16 @@ async function requestPasswordReset(email: string): Promise<void> {
 }
 
 // Reset password confirm
-async function confirmPasswordReset(data: { token: string; newPassword: string }): Promise<void> {
-    const response = await apiClient.post("/auth/reset-password/confirm", data);
+async function confirmPasswordReset(data: {
+    email: string;
+    otp: number;
+    newPassword: string;
+}): Promise<void> {
+    const response = await apiClient.post("/auth/forgot-password", {
+        email: data.email,
+        otp: data.otp,
+        new_password: data.newPassword,
+    });
 
     if (!response.data.success) {
         throw new Error(response.data.message || "Invalid or expired reset token");

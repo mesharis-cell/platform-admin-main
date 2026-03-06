@@ -13,6 +13,7 @@ export interface Company {
     platform_id: string;
     name: string;
     domain: string;
+    primary_domain_hostname?: string | null;
     platform_margin_percent: number;
     contact_email: string;
     contact_phone: string;
@@ -39,6 +40,7 @@ export interface Company {
             type: string;
             is_verified: boolean;
             is_active: boolean;
+            is_primary?: boolean;
             created_at: Date;
             updated_at: Date;
         },
