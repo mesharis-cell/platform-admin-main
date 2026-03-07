@@ -9,6 +9,7 @@ import {
 } from "@/hooks/use-collections";
 import { useCompanies } from "@/hooks/use-companies";
 import { useBrands } from "@/hooks/use-brands";
+import { useTeams } from "@/hooks/use-teams";
 import { useAssets, useUploadImage } from "@/hooks/use-assets";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -68,8 +69,14 @@ export default function CollectionsPage() {
     // Fetch data
     const { data: collectionsData, isLoading } = useCollections({
         search_term: searchQuery || undefined,
-        company_id: selectedCompany && selectedCompany !== "" ? selectedCompany : undefined,
-        brand_id: selectedBrand && selectedBrand !== "" ? selectedBrand : undefined,
+        company_id:
+            selectedCompany && selectedCompany !== "" && selectedCompany !== "_all_"
+                ? selectedCompany
+                : undefined,
+        brand_id:
+            selectedBrand && selectedBrand !== "" && selectedBrand !== "_all_"
+                ? selectedBrand
+                : undefined,
         limit: 100,
     });
 
@@ -79,6 +86,8 @@ export default function CollectionsPage() {
     const [formData, setFormData] = useState({
         company: "",
         brand: "",
+        teamId: null as string | null,
+        teamSelected: false,
         name: "",
         description: "",
         category: "",
@@ -88,7 +97,7 @@ export default function CollectionsPage() {
     // Brands for filter dropdown (based on selectedCompany)
     const { data: brandsData } = useBrands({
         company_id:
-            selectedCompany && selectedCompany !== "" && selectedCompany !== ""
+            selectedCompany && selectedCompany !== "" && selectedCompany !== "_all_"
                 ? selectedCompany
                 : undefined,
         limit: "100",
@@ -99,6 +108,9 @@ export default function CollectionsPage() {
         company_id: formData.company || undefined,
         limit: "100",
     });
+    const { data: formTeamsData } = useTeams(
+        formData.company ? { company_id: formData.company } : undefined
+    );
 
     const createMutation = useCreateCollection();
     const deleteMutation = useDeleteCollection();
@@ -132,8 +144,8 @@ export default function CollectionsPage() {
 
     const handleCreateCollection = async () => {
         try {
-            if (!formData.company || !formData.name) {
-                toast.error("Company and name are required");
+            if (!formData.company || !formData.brand || !formData.name || !formData.teamSelected) {
+                toast.error("Company, brand, team/shared choice, and name are required");
                 return;
             }
 
@@ -150,7 +162,8 @@ export default function CollectionsPage() {
             // Create collection
             await createMutation.mutateAsync({
                 company_id: formData.company,
-                brand_id: formData.brand || undefined,
+                brand_id: formData.brand,
+                team_id: formData.teamId,
                 name: formData.name,
                 description: formData.description || "",
                 category: formData.category || "",
@@ -164,6 +177,8 @@ export default function CollectionsPage() {
             setFormData({
                 company: "",
                 brand: "",
+                teamId: null,
+                teamSelected: false,
                 name: "",
                 description: "",
                 category: "",
@@ -193,6 +208,7 @@ export default function CollectionsPage() {
     const companies = companiesData?.data || [];
     const brands = brandsData?.data || [];
     const formBrands = formBrandsData?.data || [];
+    const formTeams = formTeamsData?.data || [];
 
     return (
         <div className="min-h-screen bg-background">
@@ -235,6 +251,8 @@ export default function CollectionsPage() {
                                                     ...formData,
                                                     company: value,
                                                     brand: "",
+                                                    teamId: null,
+                                                    teamSelected: false,
                                                 })
                                             }
                                         >
@@ -253,7 +271,7 @@ export default function CollectionsPage() {
 
                                     {/* Brand Selection */}
                                     <div className="space-y-2">
-                                        <Label htmlFor="brand">Brand (Optional)</Label>
+                                        <Label htmlFor="brand">Brand *</Label>
                                         <div className="flex gap-2">
                                             <Select
                                                 value={formData.brand || "__empty__"}
@@ -266,11 +284,11 @@ export default function CollectionsPage() {
                                                 disabled={!formData.company}
                                             >
                                                 <SelectTrigger id="brand" className="flex-1">
-                                                    <SelectValue placeholder="Select brand (optional)" />
+                                                    <SelectValue placeholder="Select brand" />
                                                 </SelectTrigger>
                                                 <SelectContent>
-                                                    <SelectItem value="__empty__">
-                                                        No Brand
+                                                    <SelectItem value="__empty__" disabled>
+                                                        Select brand
                                                     </SelectItem>
                                                     {formBrands.length === 0 ? (
                                                         <div className="px-2 py-6 text-center text-sm text-muted-foreground">
@@ -289,6 +307,44 @@ export default function CollectionsPage() {
                                                 </SelectContent>
                                             </Select>
                                         </div>
+                                    </div>
+
+                                    {/* Team Selection */}
+                                    <div className="space-y-2">
+                                        <Label htmlFor="team">Team *</Label>
+                                        <Select
+                                            value={
+                                                formData.teamSelected
+                                                    ? formData.teamId || "_none_"
+                                                    : "__unselected__"
+                                            }
+                                            onValueChange={(value) => {
+                                                if (value === "__unselected__") return;
+                                                setFormData({
+                                                    ...formData,
+                                                    teamSelected: true,
+                                                    teamId: value === "_none_" ? null : value,
+                                                });
+                                            }}
+                                            disabled={!formData.company}
+                                        >
+                                            <SelectTrigger id="team">
+                                                <SelectValue placeholder="Select team or shared" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="__unselected__" disabled>
+                                                    Select team
+                                                </SelectItem>
+                                                <SelectItem value="_none_">
+                                                    No team (shared)
+                                                </SelectItem>
+                                                {formTeams.map((team) => (
+                                                    <SelectItem key={team.id} value={team.id}>
+                                                        {team.name}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
                                     </div>
 
                                     {/* Collection Name */}

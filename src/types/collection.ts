@@ -10,6 +10,7 @@ export interface Collection {
     id: string;
     company: string;
     brand: string | null;
+    team?: { id: string; name: string } | null;
     name: string;
     description: string | null;
     images: string[];
@@ -57,7 +58,8 @@ export interface CollectionItemWithAsset extends CollectionItem {
 
 export interface CreateCollectionRequest {
     company_id: string;
-    brand_id?: string | null;
+    brand_id: string;
+    team_id: string | null;
     name: string;
     description?: string | null;
     category?: string | null;
@@ -69,7 +71,8 @@ export interface UpdateCollectionRequest {
     description?: string | null;
     category?: string | null;
     images?: string[];
-    brand_id?: string | null;
+    brand_id?: string;
+    team_id?: string | null;
 }
 
 export interface CollectionListParams {

@@ -70,6 +70,27 @@ async function updateAsset(id: string, data: Partial<CreateAssetRequest>): Promi
     }
 }
 
+// Add units for an INDIVIDUAL asset (creates new asset rows with unique QR codes)
+async function addAssetUnits(
+    id: string,
+    quantity: number
+): Promise<{
+    success: boolean;
+    message: string;
+    data: {
+        source_asset_id: string;
+        created_count: number;
+        created_assets: Array<{ id: string; name: string; qr_code: string }>;
+    };
+}> {
+    try {
+        const response = await apiClient.post(`/operations/v1/asset/${id}/add-units`, { quantity });
+        return response.data;
+    } catch (error) {
+        throwApiError(error);
+    }
+}
+
 // Delete asset
 async function deleteAsset(id: string): Promise<void> {
     try {
@@ -169,6 +190,19 @@ export function useUpdateAsset() {
     return useMutation({
         mutationFn: ({ id, data }: { id: string; data: Partial<CreateAssetRequest> }) =>
             updateAsset(id, data),
+        onSuccess: (_, variables) => {
+            queryClient.invalidateQueries({ queryKey: assetKeys.lists() });
+            queryClient.invalidateQueries({ queryKey: assetKeys.detail(variables.id) });
+        },
+    });
+}
+
+export function useAddAssetUnits() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({ id, quantity }: { id: string; quantity: number }) =>
+            addAssetUnits(id, quantity),
         onSuccess: (_, variables) => {
             queryClient.invalidateQueries({ queryKey: assetKeys.lists() });
             queryClient.invalidateQueries({ queryKey: assetKeys.detail(variables.id) });
