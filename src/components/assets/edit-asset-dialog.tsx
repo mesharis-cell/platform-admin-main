@@ -5,7 +5,7 @@ import { useCompanies } from "@/hooks/use-companies";
 import { useWarehouses } from "@/hooks/use-warehouses";
 import { useZones } from "@/hooks/use-zones";
 import { useBrands } from "@/hooks/use-brands";
-import { useUpdateAsset, useUploadImage } from "@/hooks/use-assets";
+import { useAddAssetUnits, useUpdateAsset, useUploadImage } from "@/hooks/use-assets";
 import { X, Loader2, Save, AlertCircle, Check } from "lucide-react";
 import { PhotoCaptureStrip, PhotoEntry } from "@/components/shared/photo-capture-strip";
 import { Button } from "@/components/ui/button";
@@ -79,10 +79,13 @@ export function EditAssetDialog({
         handling_tags: asset.handling_tags,
         packaging: asset.packaging || "",
         status: asset.status,
+        total_quantity: asset.total_quantity,
+        available_quantity: asset.available_quantity,
     });
 
     const [customCategory, setCustomCategory] = useState("");
     const [customHandlingTag, setCustomHandlingTag] = useState("");
+    const [addUnitsQuantity, setAddUnitsQuantity] = useState("1");
     const [stripPhotos, setStripPhotos] = useState<PhotoEntry[]>(
         asset.images.map((img) => ({ previewUrl: img.url, note: img.note ?? "" }))
     );
@@ -107,10 +110,13 @@ export function EditAssetDialog({
                 handling_tags: asset.handling_tags,
                 packaging: asset.packaging || "",
                 status: asset.status,
+                total_quantity: asset.total_quantity,
+                available_quantity: asset.available_quantity,
             });
             setActiveTab(defaultTab);
             setCustomCategory("");
             setCustomHandlingTag("");
+            setAddUnitsQuantity("1");
             setStripPhotos(
                 asset.images.map((img) => ({ previewUrl: img.url, note: img.note ?? "" }))
             );
@@ -132,6 +138,7 @@ export function EditAssetDialog({
     const brands = brandsData?.data || [];
 
     const updateMutation = useUpdateAsset();
+    const addUnitsMutation = useAddAssetUnits();
     const imageUploadMutation = useUploadImage();
 
     function toggleHandlingTag(tag: string) {
@@ -192,6 +199,26 @@ export function EditAssetDialog({
             setActiveTab("specs");
             return;
         }
+        if (asset.tracking_method === "BATCH") {
+            const totalQty = Number(formData.total_quantity);
+            const availableQty = Number(formData.available_quantity);
+
+            if (!Number.isInteger(totalQty) || totalQty < 1) {
+                toast.error("Total quantity must be at least 1");
+                setActiveTab("basic");
+                return;
+            }
+            if (!Number.isInteger(availableQty) || availableQty < 0) {
+                toast.error("Available quantity cannot be negative");
+                setActiveTab("basic");
+                return;
+            }
+            if (availableQty > totalQty) {
+                toast.error("Available quantity cannot exceed total quantity");
+                setActiveTab("basic");
+                return;
+            }
+        }
         if (
             formData.condition !== asset.condition &&
             (formData.condition === "ORANGE" || formData.condition === "RED")
@@ -242,6 +269,12 @@ export function EditAssetDialog({
                     weight_per_unit: Number(formData.weight_per_unit),
                     dimensions: formData.dimensions,
                     volume_per_unit: Number(formData.volume_per_unit),
+                    ...(asset.tracking_method === "BATCH"
+                        ? {
+                              total_quantity: Number(formData.total_quantity),
+                              available_quantity: Number(formData.available_quantity),
+                          }
+                        : {}),
                     handling_tags: formData.handling_tags,
                     packaging: formData.packaging || null,
                     condition: formData.condition,
@@ -259,7 +292,29 @@ export function EditAssetDialog({
         }
     }
 
-    const isSaving = updateMutation.isPending || imageUploadMutation.isPending;
+    async function handleAddUnits() {
+        const quantity = Number(addUnitsQuantity);
+        if (!Number.isInteger(quantity) || quantity < 1) {
+            toast.error("Add units quantity must be at least 1");
+            return;
+        }
+
+        try {
+            const response = await addUnitsMutation.mutateAsync({
+                id: asset.id,
+                quantity,
+            });
+            const createdCount = response?.data?.created_count ?? quantity;
+            toast.success(`${createdCount} new unit${createdCount > 1 ? "s" : ""} created`);
+            setAddUnitsQuantity("1");
+            onSuccess();
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Failed to add units");
+        }
+    }
+
+    const isSaving =
+        updateMutation.isPending || imageUploadMutation.isPending || addUnitsMutation.isPending;
     const totalPhotos = stripPhotos.length;
 
     return (
@@ -379,6 +434,95 @@ export function EditAssetDialog({
                                     className="font-mono text-sm"
                                     rows={3}
                                 />
+                            </div>
+
+                            <div className="space-y-3 rounded-lg border border-border p-4">
+                                <div className="space-y-2">
+                                    <Label className="font-mono text-xs">Tracking Method</Label>
+                                    <Input
+                                        value={asset.tracking_method}
+                                        disabled
+                                        className="font-mono"
+                                    />
+                                </div>
+
+                                {asset.tracking_method === "BATCH" ? (
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label className="font-mono text-xs">
+                                                Total Quantity *
+                                            </Label>
+                                            <Input
+                                                type="number"
+                                                min={1}
+                                                step={1}
+                                                value={formData.total_quantity}
+                                                onChange={(event) =>
+                                                    setFormData({
+                                                        ...formData,
+                                                        total_quantity:
+                                                            Number(event.target.value) || 0,
+                                                    })
+                                                }
+                                                className="font-mono"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label className="font-mono text-xs">
+                                                Available Quantity *
+                                            </Label>
+                                            <Input
+                                                type="number"
+                                                min={0}
+                                                step={1}
+                                                value={formData.available_quantity}
+                                                onChange={(event) =>
+                                                    setFormData({
+                                                        ...formData,
+                                                        available_quantity:
+                                                            Number(event.target.value) || 0,
+                                                    })
+                                                }
+                                                className="font-mono"
+                                            />
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-2">
+                                        <Label className="font-mono text-xs">
+                                            Add INDIVIDUAL Units
+                                        </Label>
+                                        <div className="flex gap-2">
+                                            <Input
+                                                type="number"
+                                                min={1}
+                                                step={1}
+                                                value={addUnitsQuantity}
+                                                onChange={(event) =>
+                                                    setAddUnitsQuantity(event.target.value)
+                                                }
+                                                className="font-mono"
+                                            />
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                onClick={handleAddUnits}
+                                                disabled={addUnitsMutation.isPending || isSaving}
+                                                className="font-mono"
+                                            >
+                                                {addUnitsMutation.isPending ? (
+                                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                                ) : (
+                                                    "Add Units"
+                                                )}
+                                            </Button>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">
+                                            Creates new INDIVIDUAL asset records with unique QR
+                                            codes and copied state.
+                                        </p>
+                                    </div>
+                                )}
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
