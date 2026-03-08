@@ -14,6 +14,12 @@ export interface PlatformConfig {
     from_email?: string;
     currency?: string;
     vat_percent?: number;
+    feasibility?: {
+        minimum_lead_hours?: number;
+        exclude_weekends?: boolean;
+        weekend_days?: number[];
+        timezone?: string;
+    };
 }
 
 export interface PlatformFeatures {

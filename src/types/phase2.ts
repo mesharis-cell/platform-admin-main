@@ -24,6 +24,9 @@ export interface Company {
             secondary_color: string;
             logo_url: string;
         };
+        feasibility?: {
+            minimum_lead_hours?: number | null;
+        };
     };
     is_active: boolean;
     created_at: Date;
@@ -62,6 +65,9 @@ export interface CreateCompanyRequest {
             primary_color?: string;
             secondary_color?: string;
             logo_url?: string;
+        };
+        feasibility?: {
+            minimum_lead_hours?: number | null;
         };
     };
 }

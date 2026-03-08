@@ -25,6 +25,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { AlertCircle, ArrowLeft, CheckCircle2, DollarSign, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { use, useState } from "react";
+import { EntityAttachmentsCard } from "@/components/shared/entity-attachments-card";
+import { WorkflowRequestsCard } from "@/components/shared/workflow-requests-card";
 
 export default function InboundRequestDetailsPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
@@ -168,6 +170,18 @@ export default function InboundRequestDetailsPage({ params }: { params: Promise<
                         {request.request_status === "COMPLETED" && (
                             <AssetsFromInbound items={request.items} />
                         )}
+
+                        <WorkflowRequestsCard
+                            entityType="INBOUND_REQUEST"
+                            entityId={request.id}
+                            title="Artwork / Internal Workflows"
+                        />
+
+                        <EntityAttachmentsCard
+                            entityType="INBOUND_REQUEST"
+                            entityId={request.id}
+                            title="Supporting Documents"
+                        />
 
                         {request.request_status === "PENDING_APPROVAL" ? (
                             <PendingApprovalSection

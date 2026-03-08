@@ -30,6 +30,7 @@ import {
     Settings,
     ClipboardList,
     BookmarkPlus,
+    FileText,
     Globe,
     MapPin,
 } from "lucide-react";
@@ -231,6 +232,12 @@ const navigationSections: NavSection[] = [
                 name: "Notification Rules",
                 href: "/settings/notifications",
                 icon: Mail,
+                requiredAnyPermission: ADMIN_NAV_PERMISSIONS.systemSettings,
+            },
+            {
+                name: "Attachment Types",
+                href: "/settings/attachment-types",
+                icon: FileText,
                 requiredAnyPermission: ADMIN_NAV_PERMISSIONS.systemSettings,
             },
             {

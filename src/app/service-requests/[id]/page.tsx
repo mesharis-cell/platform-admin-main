@@ -34,6 +34,8 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { EntityAttachmentsCard } from "@/components/shared/entity-attachments-card";
+import { WorkflowRequestsCard } from "@/components/shared/workflow-requests-card";
 
 const STATUS_OPTIONS: ServiceRequestStatus[] = [
     "SUBMITTED",
@@ -361,6 +363,18 @@ export default function ServiceRequestDetailsPage() {
                                 )}
                             </CardContent>
                         </Card>
+
+                        <WorkflowRequestsCard
+                            entityType="SERVICE_REQUEST"
+                            entityId={request.id}
+                            title="Artwork / Internal Workflows"
+                        />
+
+                        <EntityAttachmentsCard
+                            entityType="SERVICE_REQUEST"
+                            entityId={request.id}
+                            title="Supporting Documents"
+                        />
 
                         <Card>
                             <CardHeader>
