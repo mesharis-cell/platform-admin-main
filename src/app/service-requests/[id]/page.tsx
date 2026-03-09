@@ -23,7 +23,6 @@ import {
     useApplyServiceRequestConcession,
     useCancelServiceRequest,
     useDownloadServiceRequestCostEstimate,
-    useGenerateServiceRequestInvoice,
     useServiceRequestDetails,
     useUpdateServiceRequestCommercialStatus,
     useUpdateServiceRequestStatus,
@@ -66,13 +65,11 @@ export default function ServiceRequestDetailsPage() {
     const params = useParams<{ id: string }>();
     const routeId = Array.isArray(params?.id) ? params.id[0] : params?.id;
     const { platform } = usePlatform();
-    const invoicingEnabled = platform?.features?.enable_kadence_invoicing === true;
     const { data, isLoading, refetch } = useServiceRequestDetails(routeId || null);
     const updateStatus = useUpdateServiceRequestStatus();
     const updateCommercialStatus = useUpdateServiceRequestCommercialStatus();
     const cancelRequest = useCancelServiceRequest();
     const applyConcession = useApplyServiceRequestConcession();
-    const generateInvoice = useGenerateServiceRequestInvoice();
     const downloadCostEstimate = useDownloadServiceRequestCostEstimate();
     const [addCatalogOpen, setAddCatalogOpen] = useState(false);
     const [addCustomOpen, setAddCustomOpen] = useState(false);
@@ -157,18 +154,6 @@ export default function ServiceRequestDetailsPage() {
             refetch();
         } catch (error: any) {
             toast.error(error.message || "Failed to cancel request");
-        }
-    };
-
-    const handleGenerateInvoice = async () => {
-        if (!request) return;
-
-        try {
-            await generateInvoice.mutateAsync(request.id);
-            toast.success("Invoice generated for service request");
-            refetch();
-        } catch (error: any) {
-            toast.error(error.message || "Failed to generate invoice");
         }
     };
 
@@ -515,17 +500,6 @@ export default function ServiceRequestDetailsPage() {
                                             ? "Downloading..."
                                             : "Cost Estimate"}
                                     </Button>
-                                    {invoicingEnabled && (
-                                        <Button
-                                            variant="outline"
-                                            onClick={handleGenerateInvoice}
-                                            disabled={generateInvoice.isPending}
-                                        >
-                                            {generateInvoice.isPending
-                                                ? "Generating..."
-                                                : "Generate Invoice"}
-                                        </Button>
-                                    )}
                                 </div>
                                 {request.billing_mode === "CLIENT_BILLABLE" &&
                                     request.blocks_fulfillment && (

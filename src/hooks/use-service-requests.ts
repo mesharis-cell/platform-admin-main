@@ -195,27 +195,6 @@ export function useUpdateServiceRequestCommercialStatus() {
     });
 }
 
-export function useGenerateServiceRequestInvoice() {
-    const queryClient = useQueryClient();
-
-    return useMutation({
-        mutationFn: async (serviceRequestId: string) => {
-            try {
-                const response = await apiClient.post("/operations/v1/invoice/generate", {
-                    service_request_id: serviceRequestId,
-                });
-                return response.data;
-            } catch (error) {
-                throwApiError(error);
-            }
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["invoices"] });
-            queryClient.invalidateQueries({ queryKey: serviceRequestKeys.all() });
-        },
-    });
-}
-
 export function useApplyServiceRequestConcession() {
     const queryClient = useQueryClient();
 

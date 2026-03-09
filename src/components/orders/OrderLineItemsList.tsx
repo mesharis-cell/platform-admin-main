@@ -91,9 +91,14 @@ export function OrderLineItemsList({
         (item: OrderLineItem) => item.lineItemType === "CATALOG"
     );
     const customItems = activeItems.filter((item: OrderLineItem) => item.lineItemType === "CUSTOM");
+    const systemItems = activeItems.filter((item: OrderLineItem) => item.lineItemType === "SYSTEM");
+    const visibilityEligibleItems = activeItems.filter(
+        (item: OrderLineItem) => item.lineItemType !== "SYSTEM"
+    );
 
     const allClientVisible =
-        activeItems.length > 0 && activeItems.every((item) => item.clientPriceVisible);
+        visibilityEligibleItems.length > 0 &&
+        visibilityEligibleItems.every((item) => item.clientPriceVisible);
 
     const openVoidDialog = (item: OrderLineItem) => {
         setSelectedItem(item);
@@ -200,7 +205,7 @@ export function OrderLineItemsList({
         try {
             await patchBulkVisibility.mutateAsync({
                 clientPriceVisible: next,
-                lineItemIds: activeItems.map((item) => item.id),
+                lineItemIds: visibilityEligibleItems.map((item) => item.id),
             });
             toast.success(
                 next ? "All line prices shown to client" : "All line prices hidden from client"
@@ -230,7 +235,9 @@ export function OrderLineItemsList({
 
     const renderLineItem = (item: OrderLineItem, highlighted = false) => {
         const isEditing = editingItemId === item.id;
-        const pricingLocked = item.canEditPricingFields === false;
+        const isSystemLine = item.lineItemType === "SYSTEM";
+        const pricingLocked = isSystemLine || item.canEditPricingFields === false;
+        const canMutateLine = canManage && !isSystemLine;
         const visibilityBusy = patchLineVisibility.isPending || patchBulkVisibility.isPending;
 
         return (
@@ -249,9 +256,13 @@ export function OrderLineItemsList({
                         </Badge>
                     )}
                     <Badge variant={pricingLocked ? "outline" : "default"} className="text-xs">
-                        {pricingLocked ? "Pricing Locked" : "Pricing Editable"}
+                        {isSystemLine
+                            ? "System Managed"
+                            : pricingLocked
+                              ? "Pricing Locked"
+                              : "Pricing Editable"}
                     </Badge>
-                    {allowClientVisibilityControls && canManage ? (
+                    {allowClientVisibilityControls && canMutateLine ? (
                         <div className="ml-auto flex items-center gap-2 rounded-md border border-border px-2 py-1">
                             <Label className="text-[11px] text-muted-foreground">
                                 Client price
@@ -272,8 +283,13 @@ export function OrderLineItemsList({
                     ) : null}
                 </div>
 
-                {pricingLocked && item.lockReason ? (
+                {pricingLocked && item.lockReason && !isSystemLine ? (
                     <p className="text-[11px] text-muted-foreground mt-1">{item.lockReason}</p>
+                ) : null}
+                {isSystemLine && item.systemKey ? (
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                        Auto-managed charge: {item.systemKey.replaceAll("_", " ")}
+                    </p>
                 ) : null}
 
                 {!isEditing ? (
@@ -405,7 +421,7 @@ export function OrderLineItemsList({
 
                 <div className="flex flex-wrap items-center justify-between gap-2 mt-3">
                     <span className="font-mono font-semibold">{item.total.toFixed(2)} AED</span>
-                    {canManage ? (
+                    {canMutateLine ? (
                         <div className="flex items-center gap-1">
                             {isEditing ? (
                                 <>
@@ -454,7 +470,7 @@ export function OrderLineItemsList({
 
     return (
         <div className="space-y-4">
-            {allowClientVisibilityControls && canManage ? (
+            {allowClientVisibilityControls && canManage && visibilityEligibleItems.length > 0 ? (
                 <div className="flex items-center justify-end gap-2">
                     <Button
                         size="sm"
@@ -485,6 +501,17 @@ export function OrderLineItemsList({
                     </h4>
                     <div className="space-y-2">
                         {customItems.map((item) => renderLineItem(item, true))}
+                    </div>
+                </div>
+            )}
+
+            {systemItems.length > 0 && (
+                <div>
+                    <h4 className="text-sm font-semibold mb-2 text-muted-foreground">
+                        System Charges
+                    </h4>
+                    <div className="space-y-2">
+                        {systemItems.map((item) => renderLineItem(item))}
                     </div>
                 </div>
             )}
