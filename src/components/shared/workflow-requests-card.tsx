@@ -44,18 +44,10 @@ const LIFECYCLE_BADGE_VARIANT: Record<WorkflowLifecycleState, "default" | "secon
         CANCELLED: "outline",
     };
 
-const DEFAULT_STATUS_OPTIONS = [
-    "REQUESTED",
-    "ACKNOWLEDGED",
-    "IN_PROGRESS",
-    "COMPLETED",
-    "CANCELLED",
-];
-
 export function WorkflowRequestsCard({
     entityType,
     entityId,
-    title = "Internal Workflows",
+    title = "Workflows",
 }: {
     entityType: WorkflowEntityType;
     entityId: string | null;
@@ -203,6 +195,12 @@ export function WorkflowRequestsCard({
                                             {selectedDefinition.description}
                                         </p>
                                     ) : null}
+                                    {selectedDefinition?.family ? (
+                                        <p className="text-xs text-muted-foreground">
+                                            {selectedDefinition.family.label} ·{" "}
+                                            {selectedDefinition.status_model?.label}
+                                        </p>
+                                    ) : null}
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Title</Label>
@@ -323,7 +321,11 @@ export function WorkflowRequestsCard({
                                                 <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                {DEFAULT_STATUS_OPTIONS.map((status) => (
+                                                {(
+                                                    definition.status_model?.statuses || [
+                                                        workflow.status,
+                                                    ]
+                                                ).map((status) => (
                                                     <SelectItem key={status} value={status}>
                                                         {status.replace(/_/g, " ")}
                                                     </SelectItem>

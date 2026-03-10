@@ -6,17 +6,54 @@ import { throwApiError } from "@/lib/utils/throw-api-error";
 
 export type WorkflowEntityType = "ORDER" | "INBOUND_REQUEST" | "SERVICE_REQUEST";
 export type WorkflowLifecycleState = "OPEN" | "ACTIVE" | "DONE" | "CANCELLED";
+export type WorkflowRole = "ADMIN" | "LOGISTICS" | "CLIENT";
+
+export interface WorkflowFamilyMeta {
+    key: string;
+    label: string;
+    description: string;
+    component_key: string;
+    supportedStatusModels: string[];
+}
+
+export interface WorkflowStatusModelMeta {
+    key: string;
+    label: string;
+    statuses: string[];
+    initialStatus: string;
+    lifecycleMap: Record<string, WorkflowLifecycleState>;
+}
+
+export interface WorkflowDefinitionMetaResponse {
+    workflow_families: WorkflowFamilyMeta[];
+    status_models: WorkflowStatusModelMeta[];
+}
 
 export interface WorkflowDefinitionRecord {
     id: string;
     code: string;
     label: string;
     description: string | null;
+    workflow_family: string;
+    status_model_key: string;
     allowed_entity_types: WorkflowEntityType[];
-    requester_roles: ("ADMIN" | "LOGISTICS")[];
+    requester_roles: WorkflowRole[];
+    viewer_roles: WorkflowRole[];
+    actor_roles: WorkflowRole[];
+    priority_enabled: boolean;
+    sla_hours: number | null;
+    blocks_fulfillment_default: boolean;
+    intake_schema: Record<string, unknown>;
     is_active: boolean;
     sort_order: number;
-    company_overrides?: Array<{ company_id: string; is_enabled: boolean }>;
+    family?: WorkflowFamilyMeta | null;
+    status_model?: WorkflowStatusModelMeta | null;
+    company_overrides?: Array<{
+        company_id: string;
+        is_enabled: boolean;
+        label_override?: string | null;
+        sort_order_override?: number | null;
+    }>;
 }
 
 export interface WorkflowRequestRecord {
@@ -26,6 +63,9 @@ export interface WorkflowRequestRecord {
     entity_id: string;
     workflow_definition_id: string;
     workflow_code: string;
+    workflow_label: string;
+    workflow_family: string;
+    status_model_key: string;
     status: string;
     lifecycle_state: WorkflowLifecycleState;
     title: string;
@@ -110,6 +150,20 @@ export function useWorkflowDefinitions() {
     });
 }
 
+export function useWorkflowDefinitionMeta() {
+    return useQuery({
+        queryKey: ["workflow-definition-meta"],
+        queryFn: async (): Promise<{ data: WorkflowDefinitionMetaResponse }> => {
+            try {
+                const response = await apiClient.get("/operations/v1/workflow-definitions/meta");
+                return response.data;
+            } catch (error) {
+                throwApiError(error);
+            }
+        },
+    });
+}
+
 export function useWorkflowInbox(filters?: { lifecycle_state?: string; workflow_code?: string }) {
     return useQuery({
         queryKey: ["workflow-inbox", filters],
@@ -124,6 +178,26 @@ export function useWorkflowInbox(filters?: { lifecycle_state?: string; workflow_
             } catch (error) {
                 throwApiError(error);
             }
+        },
+    });
+}
+
+export function useCreateWorkflowDefinition() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (payload: Omit<WorkflowDefinitionRecord, "id">) => {
+            try {
+                const response = await apiClient.post(
+                    "/operations/v1/workflow-definitions",
+                    payload
+                );
+                return response.data;
+            } catch (error) {
+                throwApiError(error);
+            }
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["workflow-definitions"] });
         },
     });
 }
@@ -224,12 +298,36 @@ export function useReplaceWorkflowCompanyOverrides() {
             overrides,
         }: {
             id: string;
-            overrides: Array<{ company_id: string; is_enabled: boolean }>;
+            overrides: Array<{
+                company_id: string;
+                is_enabled: boolean;
+                label_override?: string | null;
+                sort_order_override?: number | null;
+            }>;
         }) => {
             try {
                 const response = await apiClient.put(
                     `/operations/v1/workflow-definitions/${id}/company-overrides`,
                     { overrides }
+                );
+                return response.data;
+            } catch (error) {
+                throwApiError(error);
+            }
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["workflow-definitions"] });
+        },
+    });
+}
+
+export function useDeleteWorkflowDefinition() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (id: string) => {
+            try {
+                const response = await apiClient.delete(
+                    `/operations/v1/workflow-definitions/${id}`
                 );
                 return response.data;
             } catch (error) {

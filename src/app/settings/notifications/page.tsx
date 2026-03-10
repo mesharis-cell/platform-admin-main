@@ -50,6 +50,7 @@ import {
 } from "@/lib/hooks/use-notification-rules";
 import { useCompanies } from "@/hooks/use-companies";
 import type {
+    NotificationCondition,
     NotificationRule,
     NotificationMeta,
     RecipientType,
@@ -57,6 +58,17 @@ import type {
 } from "@/types/notifications";
 
 const EMPTY_META: NotificationMeta = { event_groups: [], templates_by_event: {} };
+const CONDITION_FIELDS: Array<{ value: NotificationCondition["field"]; label: string }> = [
+    { value: "company_id", label: "Company" },
+    { value: "entity_type", label: "Entity Type" },
+    { value: "actor_role", label: "Actor Role" },
+    { value: "workflow_code", label: "Workflow Code" },
+    { value: "workflow_status", label: "Workflow Status" },
+    { value: "lifecycle_state", label: "Lifecycle State" },
+    { value: "billing_mode", label: "Billing Mode" },
+    { value: "request_type", label: "Request Type" },
+];
+const CONDITION_OPERATORS: NotificationCondition["operator"][] = ["equals", "in"];
 
 // ─── Infer the natural recipient from a template key's suffix ────────────────
 // Template naming convention: *_admin, *_logistics, *_client
@@ -95,6 +107,107 @@ function RecipientLabel({ rule }: { rule: NotificationRule }) {
     );
 }
 
+function ConditionBuilder({
+    conditions,
+    onChange,
+}: {
+    conditions: NotificationCondition[];
+    onChange: (conditions: NotificationCondition[]) => void;
+}) {
+    const setCondition = (index: number, patch: Partial<NotificationCondition>) => {
+        onChange(
+            conditions.map((condition, currentIndex) =>
+                currentIndex === index ? { ...condition, ...patch } : condition
+            )
+        );
+    };
+
+    return (
+        <div className="space-y-2">
+            {conditions.map((condition, index) => (
+                <div
+                    key={`${condition.field}-${index}`}
+                    className="grid grid-cols-[1fr_120px_1fr_auto] gap-2"
+                >
+                    <Select
+                        value={condition.field}
+                        onValueChange={(value) =>
+                            setCondition(index, { field: value as NotificationCondition["field"] })
+                        }
+                    >
+                        <SelectTrigger className="h-8 text-xs">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {CONDITION_FIELDS.map((field) => (
+                                <SelectItem
+                                    key={field.value}
+                                    value={field.value}
+                                    className="text-xs"
+                                >
+                                    {field.label}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    <Select
+                        value={condition.operator}
+                        onValueChange={(value) =>
+                            setCondition(index, {
+                                operator: value as NotificationCondition["operator"],
+                            })
+                        }
+                    >
+                        <SelectTrigger className="h-8 text-xs">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {CONDITION_OPERATORS.map((operator) => (
+                                <SelectItem key={operator} value={operator} className="text-xs">
+                                    {operator}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    <Input
+                        value={
+                            Array.isArray(condition.value)
+                                ? condition.value.join(", ")
+                                : condition.value
+                        }
+                        onChange={(event) =>
+                            setCondition(index, {
+                                value:
+                                    condition.operator === "in"
+                                        ? event.target.value
+                                              .split(",")
+                                              .map((item) => item.trim())
+                                              .filter(Boolean)
+                                        : event.target.value,
+                            })
+                        }
+                        placeholder={
+                            condition.operator === "in" ? "comma,separated,values" : "value"
+                        }
+                        className="h-8 text-xs"
+                    />
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0"
+                        onClick={() =>
+                            onChange(conditions.filter((_, currentIndex) => currentIndex !== index))
+                        }
+                    >
+                        <X className="h-3.5 w-3.5" />
+                    </Button>
+                </div>
+            ))}
+        </div>
+    );
+}
+
 // ─── Add Rules Dialog — bulk checklist ───────────────────────────────────────
 function AddRuleDialog({
     eventType,
@@ -119,6 +232,8 @@ function AddRuleDialog({
     const [checked, setChecked] = useState<Record<string, boolean>>({});
     const [customEmail, setCustomEmail] = useState("");
     const [customTemplate, setCustomTemplate] = useState("");
+    const [showConditions, setShowConditions] = useState(false);
+    const [conditions, setConditions] = useState<NotificationCondition[]>([]);
 
     const toggle = (key: string) => setChecked((p) => ({ ...p, [key]: !p[key] }));
 
@@ -130,6 +245,8 @@ function AddRuleDialog({
         setChecked({});
         setCustomEmail("");
         setCustomTemplate("");
+        setShowConditions(false);
+        setConditions([]);
     };
 
     const handleSubmit = async () => {
@@ -145,6 +262,7 @@ function AddRuleDialog({
                     recipient_value: value ?? undefined,
                     template_key: t.key,
                     company_id: scopeCompanyId,
+                    conditions,
                 })
             );
         }
@@ -157,6 +275,7 @@ function AddRuleDialog({
                     recipient_value: customEmail,
                     template_key: customTemplate,
                     company_id: scopeCompanyId,
+                    conditions,
                 })
             );
         }
@@ -257,6 +376,56 @@ function AddRuleDialog({
                                 </SelectContent>
                             </Select>
                         </div>
+                    </div>
+
+                    <div className="border rounded-lg p-3 space-y-3">
+                        <div className="flex items-center justify-between gap-3">
+                            <div>
+                                <p className="text-xs font-medium text-muted-foreground">
+                                    Advanced filters
+                                </p>
+                                <p className="text-[10px] text-muted-foreground">
+                                    Optional conditions applied to every rule created in this
+                                    dialog.
+                                </p>
+                            </div>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="h-8 text-xs"
+                                onClick={() => setShowConditions((prev) => !prev)}
+                            >
+                                {showConditions ? "Hide" : "Show"}
+                            </Button>
+                        </div>
+                        {showConditions && (
+                            <div className="space-y-3">
+                                <ConditionBuilder
+                                    conditions={conditions}
+                                    onChange={setConditions}
+                                />
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 text-xs"
+                                    onClick={() =>
+                                        setConditions((prev) => [
+                                            ...prev,
+                                            {
+                                                field: "workflow_code",
+                                                operator: "equals",
+                                                value: "",
+                                            },
+                                        ])
+                                    }
+                                >
+                                    <Plus className="mr-1 h-3.5 w-3.5" />
+                                    Add condition
+                                </Button>
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -399,6 +568,20 @@ function RuleRow({
                             </Badge>
                         )}
                     </p>
+                    {rule.conditions?.length > 0 && (
+                        <p className="mt-1 text-[10px] text-muted-foreground">
+                            {rule.conditions
+                                .map(
+                                    (condition) =>
+                                        `${condition.field} ${condition.operator} ${
+                                            Array.isArray(condition.value)
+                                                ? condition.value.join(", ")
+                                                : condition.value
+                                        }`
+                                )
+                                .join(" · ")}
+                        </p>
+                    )}
                 </div>
             </div>
             <Button

@@ -1,4 +1,20 @@
 export type RecipientType = "ROLE" | "ENTITY_OWNER" | "EMAIL";
+export type NotificationConditionField =
+    | "company_id"
+    | "entity_type"
+    | "actor_role"
+    | "workflow_code"
+    | "workflow_status"
+    | "lifecycle_state"
+    | "billing_mode"
+    | "request_type";
+export type NotificationConditionOperator = "equals" | "in";
+
+export interface NotificationCondition {
+    field: NotificationConditionField;
+    operator: NotificationConditionOperator;
+    value: string | string[];
+}
 
 export interface EventMeta {
     key: string;
@@ -44,6 +60,7 @@ export interface NotificationRule {
     company_id: string | null;
     is_enabled: boolean;
     sort_order: number;
+    conditions: NotificationCondition[];
     created_at: string;
     updated_at: string;
 }

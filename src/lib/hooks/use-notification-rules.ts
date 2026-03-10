@@ -4,7 +4,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { apiClient } from "@/lib/api/api-client";
 import { throwApiError } from "@/lib/utils/throw-api-error";
-import type { NotificationMeta, NotificationRule } from "@/types/notifications";
+import type {
+    NotificationCondition,
+    NotificationMeta,
+    NotificationRule,
+} from "@/types/notifications";
 
 const BASE = "/operations/v1/notification-rules";
 
@@ -22,12 +26,14 @@ interface CreateInput {
     company_id?: string | null;
     sort_order?: number;
     is_enabled?: boolean;
+    conditions?: NotificationCondition[];
 }
 
 interface UpdateInput {
     is_enabled?: boolean;
     template_key?: string;
     sort_order?: number;
+    conditions?: NotificationCondition[];
 }
 
 export function useNotificationMeta() {
