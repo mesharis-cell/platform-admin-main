@@ -50,6 +50,14 @@ const EMPTY_DRAFT: EditDraft = {
     metadataJson: "",
 };
 
+const getSystemLineCopy = (item: OrderLineItem) => {
+    if (item.systemKey === "BASE_OPS") {
+        return "Calculated from total volume and warehouse operations rate.";
+    }
+
+    return "Calculated automatically by the platform.";
+};
+
 const mapDraftFromItem = (item: OrderLineItem): EditDraft => {
     const metadata = item.metadata && typeof item.metadata === "object" ? item.metadata : undefined;
     const metadataJson =
@@ -92,9 +100,7 @@ export function OrderLineItemsList({
     );
     const customItems = activeItems.filter((item: OrderLineItem) => item.lineItemType === "CUSTOM");
     const systemItems = activeItems.filter((item: OrderLineItem) => item.lineItemType === "SYSTEM");
-    const visibilityEligibleItems = activeItems.filter(
-        (item: OrderLineItem) => item.lineItemType !== "SYSTEM"
-    );
+    const visibilityEligibleItems = activeItems;
 
     const allClientVisible =
         visibilityEligibleItems.length > 0 &&
@@ -238,6 +244,7 @@ export function OrderLineItemsList({
         const isSystemLine = item.lineItemType === "SYSTEM";
         const pricingLocked = isSystemLine || item.canEditPricingFields === false;
         const canMutateLine = canManage && !isSystemLine;
+        const canManageVisibility = allowClientVisibilityControls && canManage;
         const visibilityBusy = patchLineVisibility.isPending || patchBulkVisibility.isPending;
 
         return (
@@ -262,7 +269,7 @@ export function OrderLineItemsList({
                               ? "Pricing Locked"
                               : "Pricing Editable"}
                     </Badge>
-                    {allowClientVisibilityControls && canMutateLine ? (
+                    {canManageVisibility ? (
                         <div className="ml-auto flex items-center gap-2 rounded-md border border-border px-2 py-1">
                             <Label className="text-[11px] text-muted-foreground">
                                 Client price
@@ -298,10 +305,16 @@ export function OrderLineItemsList({
                             {item.quantity || 0} {item.unit || "unit"} ×{" "}
                             {item.unitRate?.toFixed(2) || "0.00"} AED
                         </p>
+                        {isSystemLine ? (
+                            <p className="text-xs text-muted-foreground mt-1">
+                                {getSystemLineCopy(item)}
+                            </p>
+                        ) : null}
                         {item.notes && (
                             <p className="text-xs text-muted-foreground mt-1">Note: {item.notes}</p>
                         )}
-                        {item.metadata &&
+                        {!isSystemLine &&
+                        item.metadata &&
                         typeof item.metadata === "object" &&
                         Object.keys(item.metadata).length > 0 ? (
                             <pre className="mt-2 rounded border border-border/60 bg-background/70 p-2 text-[11px] whitespace-pre-wrap break-all">
@@ -508,7 +521,7 @@ export function OrderLineItemsList({
             {systemItems.length > 0 && (
                 <div>
                     <h4 className="text-sm font-semibold mb-2 text-muted-foreground">
-                        System Charges
+                        Auto-Calculated Charges
                     </h4>
                     <div className="space-y-2">
                         {systemItems.map((item) => renderLineItem(item))}
