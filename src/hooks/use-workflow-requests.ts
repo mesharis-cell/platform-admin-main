@@ -5,25 +5,33 @@ import { apiClient } from "@/lib/api/api-client";
 import { throwApiError } from "@/lib/utils/throw-api-error";
 
 export type WorkflowEntityType = "ORDER" | "INBOUND_REQUEST" | "SERVICE_REQUEST";
-export type WorkflowRequestStatus =
-    | "REQUESTED"
-    | "ACKNOWLEDGED"
-    | "IN_PROGRESS"
-    | "COMPLETED"
-    | "CANCELLED";
+export type WorkflowLifecycleState = "OPEN" | "ACTIVE" | "DONE" | "CANCELLED";
+
+export interface WorkflowDefinitionRecord {
+    id: string;
+    code: string;
+    label: string;
+    description: string | null;
+    allowed_entity_types: WorkflowEntityType[];
+    requester_roles: ("ADMIN" | "LOGISTICS")[];
+    is_active: boolean;
+    sort_order: number;
+    company_overrides?: Array<{ company_id: string; is_enabled: boolean }>;
+}
 
 export interface WorkflowRequestRecord {
     id: string;
     platform_id: string;
     entity_type: WorkflowEntityType;
     entity_id: string;
-    workflow_kind: "ARTWORK_SUPPORT";
-    status: WorkflowRequestStatus;
+    workflow_definition_id: string;
+    workflow_code: string;
+    status: string;
+    lifecycle_state: WorkflowLifecycleState;
     title: string;
     description: string | null;
     requested_by: string;
-    requested_by_role: "ADMIN" | "LOGISTICS" | "CLIENT";
-    assigned_email: string | null;
+    requested_by_role: "ADMIN" | "LOGISTICS";
     requested_at: string;
     acknowledged_at: string | null;
     completed_at: string | null;
@@ -67,14 +75,66 @@ export function useEntityWorkflowRequests(entityType: WorkflowEntityType, entity
     });
 }
 
+export function useAvailableWorkflowDefinitions(
+    entityType: WorkflowEntityType,
+    entityId: string | null
+) {
+    return useQuery({
+        queryKey: ["workflow-definitions", "available", entityType, entityId],
+        queryFn: async (): Promise<{ data: WorkflowDefinitionRecord[] }> => {
+            if (!entityId) return { data: [] };
+            try {
+                const response = await apiClient.get(
+                    `/operations/v1/workflow-definitions/available?entity_type=${entityType}&entity_id=${entityId}`
+                );
+                return response.data;
+            } catch (error) {
+                throwApiError(error);
+            }
+        },
+        enabled: !!entityId,
+    });
+}
+
+export function useWorkflowDefinitions() {
+    return useQuery({
+        queryKey: ["workflow-definitions"],
+        queryFn: async (): Promise<{ data: WorkflowDefinitionRecord[] }> => {
+            try {
+                const response = await apiClient.get("/operations/v1/workflow-definitions");
+                return response.data;
+            } catch (error) {
+                throwApiError(error);
+            }
+        },
+    });
+}
+
+export function useWorkflowInbox(filters?: { lifecycle_state?: string; workflow_code?: string }) {
+    return useQuery({
+        queryKey: ["workflow-inbox", filters],
+        queryFn: async (): Promise<{ data: WorkflowRequestRecord[] }> => {
+            try {
+                const params = new URLSearchParams();
+                if (filters?.lifecycle_state)
+                    params.append("lifecycle_state", filters.lifecycle_state);
+                if (filters?.workflow_code) params.append("workflow_code", filters.workflow_code);
+                const response = await apiClient.get(`/operations/v1/workflow-request?${params}`);
+                return response.data;
+            } catch (error) {
+                throwApiError(error);
+            }
+        },
+    });
+}
+
 export function useCreateWorkflowRequest(entityType: WorkflowEntityType, entityId: string | null) {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: async (payload: {
-            workflow_kind?: "ARTWORK_SUPPORT";
+            workflow_code: string;
             title: string;
             description?: string;
-            assigned_email?: string;
             metadata?: Record<string, unknown>;
             attachments?: WorkflowAttachmentInput[];
         }) => {
@@ -93,6 +153,7 @@ export function useCreateWorkflowRequest(entityType: WorkflowEntityType, entityI
             queryClient.invalidateQueries({
                 queryKey: ["workflow-requests", entityType, entityId],
             });
+            queryClient.invalidateQueries({ queryKey: ["workflow-inbox"] });
         },
     });
 }
@@ -106,10 +167,9 @@ export function useUpdateWorkflowRequest() {
         }: {
             id: string;
             payload: {
-                status?: WorkflowRequestStatus;
+                status?: string;
                 title?: string;
                 description?: string;
-                assigned_email?: string | null;
                 metadata?: Record<string, unknown>;
             };
         }) => {
@@ -125,6 +185,59 @@ export function useUpdateWorkflowRequest() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["workflow-requests"] });
+            queryClient.invalidateQueries({ queryKey: ["workflow-inbox"] });
+        },
+    });
+}
+
+export function useUpdateWorkflowDefinition() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async ({
+            id,
+            payload,
+        }: {
+            id: string;
+            payload: Partial<WorkflowDefinitionRecord>;
+        }) => {
+            try {
+                const response = await apiClient.patch(
+                    `/operations/v1/workflow-definitions/${id}`,
+                    payload
+                );
+                return response.data;
+            } catch (error) {
+                throwApiError(error);
+            }
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["workflow-definitions"] });
+        },
+    });
+}
+
+export function useReplaceWorkflowCompanyOverrides() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async ({
+            id,
+            overrides,
+        }: {
+            id: string;
+            overrides: Array<{ company_id: string; is_enabled: boolean }>;
+        }) => {
+            try {
+                const response = await apiClient.put(
+                    `/operations/v1/workflow-definitions/${id}/company-overrides`,
+                    { overrides }
+                );
+                return response.data;
+            } catch (error) {
+                throwApiError(error);
+            }
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["workflow-definitions"] });
         },
     });
 }

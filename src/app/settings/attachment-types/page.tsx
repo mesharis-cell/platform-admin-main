@@ -37,6 +37,7 @@ const ENTITY_OPTIONS: AttachmentEntityType[] = [
     "SERVICE_REQUEST",
     "WORKFLOW_REQUEST",
 ];
+const ROLE_OPTIONS = ["ADMIN", "LOGISTICS", "CLIENT"] as const;
 
 export default function AttachmentTypesPage() {
     const { data, isLoading } = useAttachmentTypes();
@@ -48,6 +49,8 @@ export default function AttachmentTypesPage() {
         code: "",
         label: "",
         allowed_entity_types: [] as AttachmentEntityType[],
+        upload_roles: ["ADMIN", "LOGISTICS"] as Array<(typeof ROLE_OPTIONS)[number]>,
+        view_roles: ["ADMIN", "LOGISTICS"] as Array<(typeof ROLE_OPTIONS)[number]>,
         default_visible_to_client: false,
         is_active: true,
         sort_order: 0,
@@ -64,6 +67,8 @@ export default function AttachmentTypesPage() {
             code: "",
             label: "",
             allowed_entity_types: [],
+            upload_roles: ["ADMIN", "LOGISTICS"],
+            view_roles: ["ADMIN", "LOGISTICS"],
             default_visible_to_client: false,
             is_active: true,
             sort_order: 0,
@@ -76,6 +81,9 @@ export default function AttachmentTypesPage() {
         }
         if (form.allowed_entity_types.length === 0) {
             return toast.error("Select at least one allowed entity type");
+        }
+        if (form.upload_roles.length === 0) {
+            return toast.error("Select at least one upload role");
         }
 
         try {
@@ -196,6 +204,85 @@ export default function AttachmentTypesPage() {
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
+                                    <Label>Who Can Upload</Label>
+                                    <div className="space-y-2">
+                                        {ROLE_OPTIONS.map((role) => (
+                                            <label
+                                                key={role}
+                                                className="flex items-center gap-3 rounded-md border border-border/60 p-3"
+                                            >
+                                                <Checkbox
+                                                    checked={form.upload_roles.includes(role)}
+                                                    onCheckedChange={(checked) =>
+                                                        setForm((prev) => {
+                                                            const upload_roles =
+                                                                checked === true
+                                                                    ? [
+                                                                          ...new Set([
+                                                                              ...prev.upload_roles,
+                                                                              role,
+                                                                          ]),
+                                                                      ]
+                                                                    : prev.upload_roles.filter(
+                                                                          (item) => item !== role
+                                                                      );
+                                                            const view_roles =
+                                                                checked === true
+                                                                    ? [
+                                                                          ...new Set([
+                                                                              ...prev.view_roles,
+                                                                              role,
+                                                                          ]),
+                                                                      ]
+                                                                    : prev.view_roles;
+                                                            return {
+                                                                ...prev,
+                                                                upload_roles,
+                                                                view_roles,
+                                                            };
+                                                        })
+                                                    }
+                                                />
+                                                <span className="text-sm">{role}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Who Can View</Label>
+                                    <div className="space-y-2">
+                                        {ROLE_OPTIONS.map((role) => (
+                                            <label
+                                                key={role}
+                                                className="flex items-center gap-3 rounded-md border border-border/60 p-3"
+                                            >
+                                                <Checkbox
+                                                    checked={form.view_roles.includes(role)}
+                                                    onCheckedChange={(checked) =>
+                                                        setForm((prev) => ({
+                                                            ...prev,
+                                                            view_roles:
+                                                                checked === true
+                                                                    ? [
+                                                                          ...new Set([
+                                                                              ...prev.view_roles,
+                                                                              role,
+                                                                          ]),
+                                                                      ]
+                                                                    : prev.view_roles.filter(
+                                                                          (item) => item !== role
+                                                                      ),
+                                                        }))
+                                                    }
+                                                />
+                                                <span className="text-sm">{role}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
                                     <Label>Sort Order</Label>
                                     <Input
                                         type="number"
@@ -262,6 +349,8 @@ export default function AttachmentTypesPage() {
                                     <TableHead>Code</TableHead>
                                     <TableHead>Label</TableHead>
                                     <TableHead>Scopes</TableHead>
+                                    <TableHead>Upload Roles</TableHead>
+                                    <TableHead>View Roles</TableHead>
                                     <TableHead>Client Default</TableHead>
                                     <TableHead>Status</TableHead>
                                     <TableHead>Sort</TableHead>
@@ -275,6 +364,12 @@ export default function AttachmentTypesPage() {
                                         <TableCell>{type.label}</TableCell>
                                         <TableCell className="text-xs text-muted-foreground">
                                             {type.allowed_entity_types.join(", ")}
+                                        </TableCell>
+                                        <TableCell className="text-xs text-muted-foreground">
+                                            {type.upload_roles.join(", ")}
+                                        </TableCell>
+                                        <TableCell className="text-xs text-muted-foreground">
+                                            {type.view_roles.join(", ")}
                                         </TableCell>
                                         <TableCell>
                                             {type.default_visible_to_client ? "Yes" : "No"}
@@ -294,6 +389,8 @@ export default function AttachmentTypesPage() {
                                                         label: type.label,
                                                         allowed_entity_types:
                                                             type.allowed_entity_types,
+                                                        upload_roles: type.upload_roles,
+                                                        view_roles: type.view_roles,
                                                         default_visible_to_client:
                                                             type.default_visible_to_client,
                                                         is_active: type.is_active,

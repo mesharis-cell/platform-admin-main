@@ -174,7 +174,7 @@ export default function InboundRequestDetailsPage({ params }: { params: Promise<
                         <WorkflowRequestsCard
                             entityType="INBOUND_REQUEST"
                             entityId={request.id}
-                            title="Artwork / Internal Workflows"
+                            title="Internal Workflows"
                         />
 
                         <EntityAttachmentsCard

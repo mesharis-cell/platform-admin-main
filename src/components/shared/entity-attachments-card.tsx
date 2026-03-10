@@ -50,17 +50,15 @@ export function EntityAttachmentsCard({
     const [files, setFiles] = useState<File[]>([]);
 
     const { data, isLoading } = useEntityAttachments(entityType, entityId);
-    const { data: attachmentTypesData } = useAttachmentTypes();
+    const { data: attachmentTypesData } = useAttachmentTypes(entityType);
     const createAttachments = useCreateEntityAttachments(entityType, entityId);
     const deleteAttachment = useDeleteAttachment();
 
     const attachmentTypes = useMemo(
-        () =>
-            (attachmentTypesData?.data || []).filter(
-                (type) => type.is_active && type.allowed_entity_types.includes(entityType)
-            ),
-        [attachmentTypesData?.data, entityType]
+        () => (attachmentTypesData?.data || []).filter((type) => type.is_active),
+        [attachmentTypesData?.data]
     );
+    const selectedType = attachmentTypes.find((type) => type.id === selectedTypeId);
 
     const resetForm = () => {
         setSelectedTypeId("");
@@ -169,21 +167,23 @@ export function EntityAttachmentsCard({
                                         placeholder="Optional context for these files"
                                     />
                                 </div>
-                                <label className="flex items-start gap-3 rounded-md border border-border/60 p-3">
-                                    <Checkbox
-                                        checked={visibleToClient}
-                                        onCheckedChange={(checked) =>
-                                            setVisibleToClient(checked === true)
-                                        }
-                                    />
-                                    <div>
-                                        <p className="text-sm font-medium">Visible to client</p>
-                                        <p className="text-xs text-muted-foreground">
-                                            Enable this if client users should be able to see and
-                                            download these documents.
-                                        </p>
-                                    </div>
-                                </label>
+                                {selectedType?.view_roles.includes("CLIENT") ? (
+                                    <label className="flex items-start gap-3 rounded-md border border-border/60 p-3">
+                                        <Checkbox
+                                            checked={visibleToClient}
+                                            onCheckedChange={(checked) =>
+                                                setVisibleToClient(checked === true)
+                                            }
+                                        />
+                                        <div>
+                                            <p className="text-sm font-medium">Visible to client</p>
+                                            <p className="text-xs text-muted-foreground">
+                                                Enable this if client users should be able to see
+                                                and download these documents.
+                                            </p>
+                                        </div>
+                                    </label>
+                                ) : null}
                             </div>
                             <DialogFooter>
                                 <Button variant="outline" onClick={() => setIsCreateOpen(false)}>

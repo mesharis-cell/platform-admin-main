@@ -22,12 +22,27 @@ export async function getAuthUser(): Promise<User | null> {
             name: session.user.name,
             role: (session.user as any).role,
             permissions: (session.user as any).permissions || [],
+            effective_permissions:
+                (session.user as any).effective_permissions ??
+                (session.user as any).effectivePermissions ??
+                (session.user as any).permissions ??
+                [],
+            access_policy_id:
+                (session.user as any).access_policy_id ??
+                (session.user as any).accessPolicyId ??
+                null,
+            access_policy:
+                (session.user as any).access_policy ?? (session.user as any).accessPolicy ?? null,
+            permission_grants:
+                (session.user as any).permission_grants ??
+                (session.user as any).permissionGrants ??
+                [],
+            permission_revokes:
+                (session.user as any).permission_revokes ??
+                (session.user as any).permissionRevokes ??
+                [],
             companies: (session.user as any).companies || [],
             company: (session.user as any).company ?? null,
-            permission_template:
-                (session.user as any).permission_template ??
-                (session.user as any).permissionTemplate ??
-                null,
             is_super_admin:
                 (session.user as any).is_super_admin ?? (session.user as any).isSuperAdmin ?? false,
             is_active: (session.user as any).is_active ?? (session.user as any).isActive ?? true,

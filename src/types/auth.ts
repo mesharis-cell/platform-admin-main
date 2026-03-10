@@ -3,6 +3,20 @@ export type PermissionTemplate = "PLATFORM_ADMIN" | "LOGISTICS_STAFF" | "CLIENT_
 
 export type UserRole = "ADMIN" | "LOGISTICS" | "CLIENT";
 
+export interface AccessPolicy {
+    id: string;
+    platform_id?: string;
+    code: string;
+    name: string;
+    description?: string | null;
+    role: UserRole;
+    permissions: string[];
+    is_active: boolean;
+    assigned_user_count?: number;
+    created_at?: Date | string;
+    updated_at?: Date | string;
+}
+
 // Permission strings for granular access control
 export type Permission =
     // Authentication & Session
@@ -156,12 +170,16 @@ export interface User {
     name: string;
     role: UserRole;
     permissions: string[];
+    effective_permissions?: string[];
+    access_policy_id?: string | null;
+    access_policy?: AccessPolicy | null;
+    permission_grants?: string[];
+    permission_revokes?: string[];
     companies?: string[];
     company?: {
         id: string;
         name: string;
     } | null;
-    permission_template: PermissionTemplate | null;
     is_super_admin: boolean;
     is_active: boolean;
     last_login_at: Date | null;
@@ -182,8 +200,9 @@ export interface CreateUserRequest {
     name: string;
     password: string;
     role: UserRole;
-    permission_template?: PermissionTemplate | null;
-    permissions?: string[];
+    access_policy_id?: string | null;
+    permission_grants?: string[];
+    permission_revokes?: string[];
     company_id?: string | null;
     is_active?: boolean;
 }
@@ -192,16 +211,17 @@ export interface CreateUserRequest {
 export interface UpdateUserRequest {
     name?: string;
     role?: UserRole;
-    permissions?: string[];
+    access_policy_id?: string | null;
+    permission_grants?: string[];
+    permission_revokes?: string[];
     company_id?: string | null;
-    permission_template?: PermissionTemplate | null;
     is_active?: boolean;
 }
 
 // User list query params
 export interface UserListParams {
     company_id?: string;
-    permissionTemplate?: PermissionTemplate;
+    access_policy_id?: string;
     isActive?: boolean;
     search?: string;
     limit?: number;

@@ -15,6 +15,8 @@ export interface AttachmentTypeRecord {
     code: string;
     label: string;
     allowed_entity_types: AttachmentEntityType[];
+    upload_roles: ("ADMIN" | "LOGISTICS" | "CLIENT")[];
+    view_roles: ("ADMIN" | "LOGISTICS" | "CLIENT")[];
     default_visible_to_client: boolean;
     is_active: boolean;
     sort_order: number;
@@ -59,12 +61,13 @@ const entityBasePath: Record<Exclude<AttachmentEntityType, "WORKFLOW_REQUEST">, 
     SERVICE_REQUEST: "service-request",
 };
 
-export function useAttachmentTypes() {
+export function useAttachmentTypes(entityType?: AttachmentEntityType) {
     return useQuery({
-        queryKey: ["attachment-types"],
+        queryKey: ["attachment-types", entityType || "all"],
         queryFn: async (): Promise<{ data: AttachmentTypeRecord[] }> => {
             try {
-                const response = await apiClient.get("/operations/v1/attachment-types");
+                const query = entityType ? `?entity_type=${entityType}` : "";
+                const response = await apiClient.get(`/operations/v1/attachment-types${query}`);
                 return response.data;
             } catch (error) {
                 throwApiError(error);

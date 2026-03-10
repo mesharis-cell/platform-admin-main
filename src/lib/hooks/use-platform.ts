@@ -27,6 +27,8 @@ export interface PlatformFeatures {
     show_estimate_on_order_creation?: boolean;
     enable_kadence_invoicing?: boolean;
     enable_base_operations?: boolean;
+    enable_attachments?: boolean;
+    enable_workflows?: boolean;
 }
 
 export interface Platform {

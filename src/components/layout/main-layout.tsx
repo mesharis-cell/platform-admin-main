@@ -31,8 +31,10 @@ import {
     ClipboardList,
     BookmarkPlus,
     FileText,
+    Shield,
     Globe,
     MapPin,
+    Workflow,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -99,6 +101,12 @@ const navigationSections: NavSection[] = [
                 href: "/service-requests",
                 icon: ClipboardList,
                 requiredAnyPermission: ADMIN_NAV_PERMISSIONS.serviceRequests,
+            },
+            {
+                name: "Workflow Inbox",
+                href: "/workflow-inbox",
+                icon: Workflow,
+                requiredAnyPermission: ADMIN_NAV_PERMISSIONS.systemSettings,
             },
             {
                 name: "Pending Approval",
@@ -238,6 +246,18 @@ const navigationSections: NavSection[] = [
                 name: "Attachment Types",
                 href: "/settings/attachment-types",
                 icon: FileText,
+                requiredAnyPermission: ADMIN_NAV_PERMISSIONS.systemSettings,
+            },
+            {
+                name: "Workflow Definitions",
+                href: "/settings/workflows",
+                icon: Workflow,
+                requiredAnyPermission: ADMIN_NAV_PERMISSIONS.systemSettings,
+            },
+            {
+                name: "Access Policies",
+                href: "/settings/access-policies",
+                icon: Shield,
                 requiredAnyPermission: ADMIN_NAV_PERMISSIONS.systemSettings,
             },
             {

@@ -33,6 +33,8 @@ export default function FeatureFlagsPage() {
                 platform?.features?.show_estimate_on_order_creation ?? true,
             enable_kadence_invoicing: platform?.features?.enable_kadence_invoicing ?? false,
             enable_base_operations: platform?.features?.enable_base_operations ?? true,
+            enable_attachments: platform?.features?.enable_attachments ?? true,
+            enable_workflows: platform?.features?.enable_workflows ?? true,
         }),
         [platform]
     );
@@ -61,6 +63,16 @@ export default function FeatureFlagsPage() {
             key: "enable_kadence_invoicing",
             label: "Invoicing (Stub)",
             description: "Reserved only. Endpoints currently stubbed in pre-alpha.",
+        },
+        {
+            key: "enable_attachments",
+            label: "Attachments",
+            description: "Enable typed entity attachments across order, inbound, and service flows",
+        },
+        {
+            key: "enable_workflows",
+            label: "Internal Workflows",
+            description: "Enable internal workflow requests and workflow sections on entities",
         },
     ];
 

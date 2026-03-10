@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { User } from "@/types/auth";
+import type { CreateUserRequest, UpdateUserRequest, User } from "@/types/auth";
 import { apiClient } from "@/lib/api/api-client";
 
 // Query keys
@@ -25,15 +25,15 @@ async function fetchUsers(params?: Record<string, string>): Promise<{
 }
 
 // Create user
-async function createUser(data: Partial<User> & { password: string }): Promise<User> {
+async function createUser(data: CreateUserRequest): Promise<User> {
     const response = await apiClient.post("/operations/v1/user", data);
-    return response.data;
+    return response.data.data;
 }
 
 // Update user
-async function updateUser(userId: string, data: Partial<User>): Promise<User> {
+async function updateUser(userId: string, data: UpdateUserRequest): Promise<User> {
     const response = await apiClient.patch(`/operations/v1/user/${userId}`, data);
-    return response.data;
+    return response.data.data;
 }
 
 async function setUserPassword(userId: string, newPassword: string): Promise<User> {
@@ -81,7 +81,7 @@ export function useUpdateUser() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: ({ userId, data }: { userId: string; data: Partial<User> }) =>
+        mutationFn: ({ userId, data }: { userId: string; data: UpdateUserRequest }) =>
             updateUser(userId, data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: userKeys.lists() });
