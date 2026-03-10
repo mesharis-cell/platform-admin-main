@@ -42,6 +42,12 @@ type WorkflowFormState = {
     sort_order: string;
 };
 
+type CompanyOverrideDraft = {
+    is_enabled: boolean;
+    label_override: string;
+    sort_order_override: string;
+};
+
 const emptyForm: WorkflowFormState = {
     code: "",
     label: "",
@@ -72,6 +78,9 @@ export default function WorkflowSettingsPage() {
     const [editingId, setEditingId] = useState<string | null>(null);
     const [savingDefinitionId, setSavingDefinitionId] = useState<string | null>(null);
     const [form, setForm] = useState<WorkflowFormState>(emptyForm);
+    const [companyOverrideDrafts, setCompanyOverrideDrafts] = useState<
+        Record<string, CompanyOverrideDraft>
+    >({});
 
     const definitions = useMemo(
         () => [...(data?.data || [])].sort((a, b) => a.sort_order - b.sort_order),
@@ -195,32 +204,101 @@ export default function WorkflowSettingsPage() {
         }
     };
 
-    const handleCompanyToggle = async (
+    const getOverrideDraftKey = (workflowDefinitionId: string, companyId: string) =>
+        `${workflowDefinitionId}:${companyId}`;
+
+    const getCompanyOverrideDraft = (
         workflowDefinitionId: string,
         companyId: string,
-        nextValue: boolean,
         currentOverrides: Array<{
             company_id: string;
             is_enabled: boolean;
             label_override?: string | null;
             sort_order_override?: number | null;
-        }> = []
+        }> = [],
+        fallbackIsEnabled: boolean
+    ) => {
+        const key = getOverrideDraftKey(workflowDefinitionId, companyId);
+        const existing = currentOverrides.find((override) => override.company_id === companyId);
+        return (
+            companyOverrideDrafts[key] || {
+                is_enabled: existing?.is_enabled ?? fallbackIsEnabled,
+                label_override: existing?.label_override || "",
+                sort_order_override:
+                    existing?.sort_order_override !== null &&
+                    existing?.sort_order_override !== undefined
+                        ? String(existing.sort_order_override)
+                        : "",
+            }
+        );
+    };
+
+    const setCompanyOverrideDraft = (
+        workflowDefinitionId: string,
+        companyId: string,
+        patch: Partial<CompanyOverrideDraft>,
+        currentOverrides: Array<{
+            company_id: string;
+            is_enabled: boolean;
+            label_override?: string | null;
+            sort_order_override?: number | null;
+        }> = [],
+        fallbackIsEnabled: boolean
+    ) => {
+        const key = getOverrideDraftKey(workflowDefinitionId, companyId);
+        const existing = getCompanyOverrideDraft(
+            workflowDefinitionId,
+            companyId,
+            currentOverrides,
+            fallbackIsEnabled
+        );
+        setCompanyOverrideDrafts((prev) => ({
+            ...prev,
+            [key]: { ...existing, ...patch },
+        }));
+    };
+
+    const handleCompanyOverrideSave = async (
+        workflowDefinitionId: string,
+        companyId: string,
+        currentOverrides: Array<{
+            company_id: string;
+            is_enabled: boolean;
+            label_override?: string | null;
+            sort_order_override?: number | null;
+        }> = [],
+        fallbackIsEnabled: boolean
     ) => {
         try {
             setSavingDefinitionId(workflowDefinitionId);
+            const draft = getCompanyOverrideDraft(
+                workflowDefinitionId,
+                companyId,
+                currentOverrides,
+                fallbackIsEnabled
+            );
             const overrideMap = new Map(
                 currentOverrides.map((override) => [override.company_id, override])
             );
             overrideMap.set(companyId, {
                 ...(overrideMap.get(companyId) || { company_id: companyId }),
                 company_id: companyId,
-                is_enabled: nextValue,
+                is_enabled: draft.is_enabled,
+                label_override: draft.label_override.trim() || null,
+                sort_order_override: draft.sort_order_override.trim()
+                    ? Number(draft.sort_order_override)
+                    : null,
             });
             await replaceOverrides.mutateAsync({
                 id: workflowDefinitionId,
                 overrides: Array.from(overrideMap.values()),
             });
             toast.success("Company workflow overrides updated");
+            setCompanyOverrideDrafts((prev) => {
+                const next = { ...prev };
+                delete next[getOverrideDraftKey(workflowDefinitionId, companyId)];
+                return next;
+            });
         } catch (error: any) {
             toast.error(error.message || "Failed to update company overrides");
         } finally {
@@ -592,40 +670,105 @@ export default function WorkflowSettingsPage() {
                                         </div>
                                         <div className="grid gap-3 md:grid-cols-2">
                                             {companies.map((company) => {
-                                                const checked =
-                                                    overrideMap.get(company.id) ??
-                                                    definition.is_active;
+                                                const draft = getCompanyOverrideDraft(
+                                                    definition.id,
+                                                    company.id,
+                                                    definition.company_overrides || [],
+                                                    definition.is_active
+                                                );
                                                 return (
-                                                    <label
+                                                    <div
                                                         key={company.id}
-                                                        className="flex items-start gap-3 rounded-md border border-border/60 p-3"
+                                                        className="space-y-3 rounded-md border border-border/60 p-3"
                                                     >
-                                                        <Checkbox
-                                                            checked={checked}
-                                                            disabled={
-                                                                savingDefinitionId === definition.id
-                                                            }
-                                                            onCheckedChange={(value) =>
-                                                                handleCompanyToggle(
-                                                                    definition.id,
-                                                                    company.id,
-                                                                    value === true,
-                                                                    definition.company_overrides ||
-                                                                        []
-                                                                )
-                                                            }
-                                                        />
-                                                        <div className="space-y-1">
-                                                            <p className="text-sm font-medium">
-                                                                {company.name}
-                                                            </p>
-                                                            <p className="text-xs text-muted-foreground">
-                                                                {overrideMap.has(company.id)
-                                                                    ? "Company override set"
-                                                                    : "Inheriting platform default"}
-                                                            </p>
+                                                        <div className="flex items-start gap-3">
+                                                            <Checkbox
+                                                                checked={draft.is_enabled}
+                                                                disabled={
+                                                                    savingDefinitionId ===
+                                                                    definition.id
+                                                                }
+                                                                onCheckedChange={(value) =>
+                                                                    setCompanyOverrideDraft(
+                                                                        definition.id,
+                                                                        company.id,
+                                                                        {
+                                                                            is_enabled:
+                                                                                value === true,
+                                                                        },
+                                                                        definition.company_overrides ||
+                                                                            [],
+                                                                        definition.is_active
+                                                                    )
+                                                                }
+                                                            />
+                                                            <div className="space-y-1">
+                                                                <p className="text-sm font-medium">
+                                                                    {company.name}
+                                                                </p>
+                                                                <p className="text-xs text-muted-foreground">
+                                                                    {overrideMap.has(company.id)
+                                                                        ? "Company override set"
+                                                                        : "Inheriting platform default"}
+                                                                </p>
+                                                            </div>
                                                         </div>
-                                                    </label>
+                                                        <div className="grid gap-3 md:grid-cols-[1fr_140px_auto]">
+                                                            <Input
+                                                                value={draft.label_override}
+                                                                placeholder="Optional label override"
+                                                                onChange={(event) =>
+                                                                    setCompanyOverrideDraft(
+                                                                        definition.id,
+                                                                        company.id,
+                                                                        {
+                                                                            label_override:
+                                                                                event.target.value,
+                                                                        },
+                                                                        definition.company_overrides ||
+                                                                            [],
+                                                                        definition.is_active
+                                                                    )
+                                                                }
+                                                            />
+                                                            <Input
+                                                                type="number"
+                                                                value={draft.sort_order_override}
+                                                                placeholder="Sort override"
+                                                                onChange={(event) =>
+                                                                    setCompanyOverrideDraft(
+                                                                        definition.id,
+                                                                        company.id,
+                                                                        {
+                                                                            sort_order_override:
+                                                                                event.target.value,
+                                                                        },
+                                                                        definition.company_overrides ||
+                                                                            [],
+                                                                        definition.is_active
+                                                                    )
+                                                                }
+                                                            />
+                                                            <Button
+                                                                variant="outline"
+                                                                disabled={
+                                                                    savingDefinitionId ===
+                                                                    definition.id
+                                                                }
+                                                                onClick={() =>
+                                                                    handleCompanyOverrideSave(
+                                                                        definition.id,
+                                                                        company.id,
+                                                                        definition.company_overrides ||
+                                                                            [],
+                                                                        definition.is_active
+                                                                    )
+                                                                }
+                                                            >
+                                                                Save
+                                                            </Button>
+                                                        </div>
+                                                    </div>
                                                 );
                                             })}
                                         </div>

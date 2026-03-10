@@ -1,6 +1,3 @@
-// Permission Templates
-export type PermissionTemplate = "PLATFORM_ADMIN" | "LOGISTICS_STAFF" | "CLIENT_USER";
-
 export type UserRole = "ADMIN" | "LOGISTICS" | "CLIENT";
 
 export interface AccessPolicy {
@@ -330,87 +327,6 @@ export const PERMISSION_GROUPS = {
         "notifications:retry",
     ],
     Analytics: ["analytics:view_revenue", "analytics:track_margin", "analytics:filter_by_company"],
-};
-
-// Permission template default configurations
-export const PERMISSION_TEMPLATES: Record<
-    PermissionTemplate,
-    {
-        permissions: string[];
-        defaultCompanies?: string[];
-    }
-> = {
-    PLATFORM_ADMIN: {
-        permissions: [
-            "auth:*",
-            "users:*",
-            "companies:*",
-            "brands:*",
-            "warehouses:*",
-            "zones:*",
-            "orders:*",
-            "pricing:*",
-            "invoices:*",
-            "lifecycle:*",
-            "notifications:*",
-            "analytics:*",
-            "system:*",
-            "assets:*",
-            "collections:*",
-            "conditions:*",
-            "inventory:*",
-            "quotes:*",
-            "scanning:*",
-        ],
-        defaultCompanies: ["*"],
-    },
-    LOGISTICS_STAFF: {
-        permissions: [
-            "auth:*",
-            "users:read",
-            "companies:read",
-            "brands:read",
-            "warehouses:read",
-            "zones:read",
-            "assets:*",
-            "collections:*",
-            "orders:read",
-            "orders:update",
-            "orders:add_time_windows", // Phase 10
-            "pricing:review",
-            "pricing:adjust",
-            "lifecycle:progress_status", // Phase 10
-            "lifecycle:receive_notifications", // Phase 10
-            "scanning:*",
-            "inventory:*",
-            "conditions:*",
-        ],
-        defaultCompanies: ["*"],
-    },
-    CLIENT_USER: {
-        permissions: [
-            "auth:login",
-            "auth:reset_password",
-            "companies:read",
-            "brands:read",
-            "countries:read",
-            "assets:read",
-            "collections:read",
-            "orders:create",
-            "orders:read",
-            "orders:update",
-            "orders:view_status_history",
-            "quotes:approve",
-            "quotes:decline",
-            "invoices:read",
-            "invoices:download",
-            "lifecycle:receive_notifications",
-            "assets:check_availability",
-            "assets:availability_stats",
-            "calendar:read",
-        ],
-        defaultCompanies: [],
-    },
 };
 
 // Role-specific permission groups for ADMIN users

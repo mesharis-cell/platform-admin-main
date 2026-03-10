@@ -32,6 +32,7 @@ import {
     type AttachmentEntityType,
 } from "@/hooks/use-attachments";
 import { uploadDocuments } from "@/lib/utils/upload-documents";
+import { usePlatform } from "@/contexts/platform-context";
 import { Download, FileText, Plus, Trash2 } from "lucide-react";
 
 export function EntityAttachmentsCard({
@@ -48,6 +49,7 @@ export function EntityAttachmentsCard({
     const [note, setNote] = useState("");
     const [visibleToClient, setVisibleToClient] = useState(false);
     const [files, setFiles] = useState<File[]>([]);
+    const { platform } = usePlatform();
 
     const { data, isLoading } = useEntityAttachments(entityType, entityId);
     const { data: attachmentTypesData } = useAttachmentTypes(entityType);
@@ -59,6 +61,10 @@ export function EntityAttachmentsCard({
         [attachmentTypesData?.data]
     );
     const selectedType = attachmentTypes.find((type) => type.id === selectedTypeId);
+
+    if (platform?.features?.enable_attachments === false) {
+        return null;
+    }
 
     const resetForm = () => {
         setSelectedTypeId("");

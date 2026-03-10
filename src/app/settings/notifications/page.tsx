@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState, useMemo } from "react";
+import { toast } from "sonner";
 import {
     Bell,
     Plus,
@@ -16,6 +17,7 @@ import {
     X,
     VolumeX,
     Volume2,
+    Pencil,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -29,8 +31,10 @@ import {
     DialogTitle,
     DialogFooter,
     DialogDescription,
+    DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
     Select,
     SelectContent,
@@ -69,6 +73,39 @@ const CONDITION_FIELDS: Array<{ value: NotificationCondition["field"]; label: st
     { value: "request_type", label: "Request Type" },
 ];
 const CONDITION_OPERATORS: NotificationCondition["operator"][] = ["equals", "in"];
+
+function normalizeConditions(conditions: NotificationCondition[]) {
+    return conditions
+        .map((condition) => ({
+            field: condition.field,
+            operator: condition.operator,
+            value: Array.isArray(condition.value)
+                ? condition.value.map((item) => item.trim()).filter(Boolean)
+                : condition.value.trim(),
+        }))
+        .filter((condition) =>
+            Array.isArray(condition.value) ? condition.value.length > 0 : condition.value.length > 0
+        );
+}
+
+function validateConditions(conditions: NotificationCondition[]) {
+    return conditions.every((condition) =>
+        Array.isArray(condition.value)
+            ? condition.value.length > 0 && condition.value.every((item) => item.trim().length > 0)
+            : condition.value.trim().length > 0
+    );
+}
+
+function summarizeConditions(conditions: NotificationCondition[]) {
+    return conditions
+        .map(
+            (condition) =>
+                `${condition.field} ${condition.operator} ${
+                    Array.isArray(condition.value) ? condition.value.join(", ") : condition.value
+                }`
+        )
+        .join(" · ");
+}
 
 // ─── Infer the natural recipient from a template key's suffix ────────────────
 // Template naming convention: *_admin, *_logistics, *_client
@@ -250,6 +287,12 @@ function AddRuleDialog({
     };
 
     const handleSubmit = async () => {
+        if (!validateConditions(conditions)) {
+            toast.error("Every notification condition must have a value");
+            return;
+        }
+
+        const normalizedConditions = normalizeConditions(conditions);
         const jobs: Promise<unknown>[] = [];
 
         for (const t of availableTemplates) {
@@ -262,7 +305,7 @@ function AddRuleDialog({
                     recipient_value: value ?? undefined,
                     template_key: t.key,
                     company_id: scopeCompanyId,
-                    conditions,
+                    conditions: normalizedConditions,
                 })
             );
         }
@@ -275,7 +318,7 @@ function AddRuleDialog({
                     recipient_value: customEmail,
                     template_key: customTemplate,
                     company_id: scopeCompanyId,
-                    conditions,
+                    conditions: normalizedConditions,
                 })
             );
         }
@@ -506,13 +549,146 @@ function ResetConfirmDialog({
     );
 }
 
+function EditRuleDialog({
+    rule,
+    availableTemplates,
+}: {
+    rule: NotificationRule;
+    availableTemplates: TemplateMeta[];
+}) {
+    const updateRule = useUpdateNotificationRule();
+    const [open, setOpen] = useState(false);
+    const [templateKey, setTemplateKey] = useState(rule.template_key);
+    const [sortOrder, setSortOrder] = useState(String(rule.sort_order ?? 0));
+    const [conditions, setConditions] = useState<NotificationCondition[]>(rule.conditions ?? []);
+
+    const reset = () => {
+        setTemplateKey(rule.template_key);
+        setSortOrder(String(rule.sort_order ?? 0));
+        setConditions(rule.conditions ?? []);
+    };
+
+    const handleSave = async () => {
+        if (!validateConditions(conditions)) {
+            toast.error("Every notification condition must have a value");
+            return;
+        }
+
+        await updateRule.mutateAsync({
+            id: rule.id,
+            template_key: templateKey,
+            sort_order: Number(sortOrder || 0),
+            conditions: normalizeConditions(conditions),
+        });
+        setOpen(false);
+    };
+
+    return (
+        <Dialog
+            open={open}
+            onOpenChange={(nextOpen) => {
+                setOpen(nextOpen);
+                if (!nextOpen) reset();
+            }}
+        >
+            <DialogTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground">
+                    <Pencil className="h-3.5 w-3.5" />
+                </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-lg">
+                <DialogHeader>
+                    <DialogTitle className="text-sm">Edit notification rule</DialogTitle>
+                    <DialogDescription className="font-mono text-[11px]">
+                        {rule.event_type}
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                    <div className="grid grid-cols-[1fr_120px] gap-3">
+                        <div className="space-y-2">
+                            <Label>Template</Label>
+                            <Select value={templateKey} onValueChange={setTemplateKey}>
+                                <SelectTrigger className="h-9 text-xs">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {availableTemplates.map((template) => (
+                                        <SelectItem
+                                            key={template.key}
+                                            value={template.key}
+                                            className="text-xs"
+                                        >
+                                            {template.label}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Sort Order</Label>
+                            <Input
+                                type="number"
+                                value={sortOrder}
+                                onChange={(event) => setSortOrder(event.target.value)}
+                                className="h-9 text-xs"
+                            />
+                        </div>
+                    </div>
+                    <div className="space-y-3 rounded-lg border p-3">
+                        <div className="flex items-center justify-between gap-3">
+                            <div>
+                                <p className="text-xs font-medium text-muted-foreground">
+                                    Advanced filters
+                                </p>
+                                <p className="text-[10px] text-muted-foreground">
+                                    Leave empty to send for every matching event.
+                                </p>
+                            </div>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 text-xs"
+                                onClick={() =>
+                                    setConditions((prev) => [
+                                        ...prev,
+                                        {
+                                            field: "workflow_code",
+                                            operator: "equals",
+                                            value: "",
+                                        },
+                                    ])
+                                }
+                            >
+                                <Plus className="mr-1 h-3.5 w-3.5" />
+                                Add condition
+                            </Button>
+                        </div>
+                        <ConditionBuilder conditions={conditions} onChange={setConditions} />
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => setOpen(false)}>
+                        Cancel
+                    </Button>
+                    <Button onClick={handleSave} disabled={updateRule.isPending}>
+                        {updateRule.isPending ? "Saving…" : "Save changes"}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
 // ─── Rule Row with inline delete confirm ─────────────────────────────────────
 function RuleRow({
     rule,
     templateLabelMap,
+    availableTemplates,
 }: {
     rule: NotificationRule;
     templateLabelMap: Record<string, string>;
+    availableTemplates: TemplateMeta[];
 }) {
     const updateRule = useUpdateNotificationRule();
     const deleteRule = useDeleteNotificationRule();
@@ -570,28 +746,22 @@ function RuleRow({
                     </p>
                     {rule.conditions?.length > 0 && (
                         <p className="mt-1 text-[10px] text-muted-foreground">
-                            {rule.conditions
-                                .map(
-                                    (condition) =>
-                                        `${condition.field} ${condition.operator} ${
-                                            Array.isArray(condition.value)
-                                                ? condition.value.join(", ")
-                                                : condition.value
-                                        }`
-                                )
-                                .join(" · ")}
+                            {summarizeConditions(rule.conditions)}
                         </p>
                     )}
                 </div>
             </div>
-            <Button
-                variant="ghost"
-                size="sm"
-                className="text-muted-foreground hover:text-destructive h-7 w-7 p-0 shrink-0"
-                onClick={() => setConfirmDelete(true)}
-            >
-                <Trash2 className="h-3.5 w-3.5" />
-            </Button>
+            <div className="flex items-center gap-1 shrink-0">
+                <EditRuleDialog rule={rule} availableTemplates={availableTemplates} />
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-muted-foreground hover:text-destructive h-7 w-7 p-0"
+                    onClick={() => setConfirmDelete(true)}
+                >
+                    <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+            </div>
         </div>
     );
 }
@@ -933,6 +1103,9 @@ export default function NotificationSettingsPage() {
                                                 key={rule.id}
                                                 rule={rule}
                                                 templateLabelMap={templateLabelMap}
+                                                availableTemplates={
+                                                    templates_by_event[rule.event_type] ?? []
+                                                }
                                             />
                                         ))}
                                     </div>
