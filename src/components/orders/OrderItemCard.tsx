@@ -71,7 +71,7 @@ export function OrderItemCard({
         : null;
     const ConditionIcon = conditionStyle?.icon;
 
-    const showWarning = PRE_FULFILLMENT_STATUSES.includes(orderStatus) && isDamaged;
+    const showWarning = PRE_FULFILLMENT_STATUSES.includes(orderStatus) && isDamaged && item.order_item?.maintenance_decision !== "USE_AS_IS";
     const canNeedSR =
         item.asset?.condition === "RED" ||
         (item.asset?.condition === "ORANGE" &&
