@@ -52,6 +52,7 @@ export default function AttachmentTypesPage() {
         upload_roles: ["ADMIN", "LOGISTICS"] as Array<(typeof ROLE_OPTIONS)[number]>,
         view_roles: ["ADMIN", "LOGISTICS"] as Array<(typeof ROLE_OPTIONS)[number]>,
         default_visible_to_client: false,
+        required_note: false,
         is_active: true,
         sort_order: 0,
     });
@@ -70,6 +71,7 @@ export default function AttachmentTypesPage() {
             upload_roles: ["ADMIN", "LOGISTICS"],
             view_roles: ["ADMIN", "LOGISTICS"],
             default_visible_to_client: false,
+            required_note: false,
             is_active: true,
             sort_order: 0,
         });
@@ -310,6 +312,18 @@ export default function AttachmentTypesPage() {
                                     </label>
                                     <label className="flex items-center gap-3">
                                         <Checkbox
+                                            checked={form.required_note}
+                                            onCheckedChange={(checked) =>
+                                                setForm((prev) => ({
+                                                    ...prev,
+                                                    required_note: checked === true,
+                                                }))
+                                            }
+                                        />
+                                        <span className="text-sm">Require note</span>
+                                    </label>
+                                    <label className="flex items-center gap-3">
+                                        <Checkbox
                                             checked={form.is_active}
                                             onCheckedChange={(checked) =>
                                                 setForm((prev) => ({
@@ -352,6 +366,7 @@ export default function AttachmentTypesPage() {
                                     <TableHead>Upload Roles</TableHead>
                                     <TableHead>View Roles</TableHead>
                                     <TableHead>Client Default</TableHead>
+                                    <TableHead>Req. Note</TableHead>
                                     <TableHead>Status</TableHead>
                                     <TableHead>Sort</TableHead>
                                     <TableHead className="text-right">Action</TableHead>
@@ -374,6 +389,7 @@ export default function AttachmentTypesPage() {
                                         <TableCell>
                                             {type.default_visible_to_client ? "Yes" : "No"}
                                         </TableCell>
+                                        <TableCell>{type.required_note ? "Yes" : "No"}</TableCell>
                                         <TableCell>
                                             {type.is_active ? "Active" : "Inactive"}
                                         </TableCell>
@@ -393,6 +409,7 @@ export default function AttachmentTypesPage() {
                                                         view_roles: type.view_roles,
                                                         default_visible_to_client:
                                                             type.default_visible_to_client,
+                                                        required_note: type.required_note ?? false,
                                                         is_active: type.is_active,
                                                         sort_order: type.sort_order,
                                                     });

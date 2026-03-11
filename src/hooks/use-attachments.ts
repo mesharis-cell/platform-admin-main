@@ -18,6 +18,7 @@ export interface AttachmentTypeRecord {
     upload_roles: ("ADMIN" | "LOGISTICS" | "CLIENT")[];
     view_roles: ("ADMIN" | "LOGISTICS" | "CLIENT")[];
     default_visible_to_client: boolean;
+    required_note?: boolean;
     is_active: boolean;
     sort_order: number;
 }

@@ -2,7 +2,7 @@
 
 import { type ReactNode, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Plus, Workflow } from "lucide-react";
+import { CheckCircle, FileText, Plus, Workflow } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -72,7 +72,7 @@ const renderSimpleRequestSection = ({
             {definition.description ? (
                 <p className="text-xs text-muted-foreground">{definition.description}</p>
             ) : null}
-            <p className="mt-1 text-[11px] text-muted-foreground">
+            <p className="mt-1 text-xs text-muted-foreground">
                 {definition.family?.label || definition.workflow_family} ·{" "}
                 {definition.status_model?.label || definition.status_model_key}
             </p>
@@ -144,10 +144,207 @@ const renderSimpleRequestSection = ({
     </div>
 );
 
+const renderDocumentCollectionSection = ({
+    definition,
+    requests,
+    draftStatuses,
+    draftNotes,
+    onStatusChange,
+    onNoteChange,
+    onSave,
+}: WorkflowSectionProps) => (
+    <div key={definition.id} className="space-y-3 rounded-lg border border-border/60 p-4">
+        <div>
+            <p className="text-sm font-semibold flex items-center gap-1.5">
+                <FileText className="h-4 w-4 text-muted-foreground" />
+                {definition.label}
+            </p>
+            {definition.description ? (
+                <p className="text-xs text-muted-foreground">{definition.description}</p>
+            ) : null}
+            <p className="mt-1 text-xs text-muted-foreground">
+                {definition.family?.label || definition.workflow_family} ·{" "}
+                {definition.status_model?.label || definition.status_model_key}
+            </p>
+        </div>
+        {requests.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No document collection requests yet.</p>
+        ) : (
+            requests.map((workflow) => (
+                <div
+                    key={workflow.id}
+                    className="space-y-3 rounded-lg border border-border/60 bg-muted/10 p-4"
+                >
+                    <div className="flex items-start justify-between gap-3">
+                        <div className="space-y-2">
+                            <div className="flex flex-wrap items-center gap-2">
+                                <p className="font-semibold">{workflow.title}</p>
+                                <Badge variant={LIFECYCLE_BADGE_VARIANT[workflow.lifecycle_state]}>
+                                    {workflow.lifecycle_state}
+                                </Badge>
+                            </div>
+                            {workflow.description ? (
+                                <p className="text-sm leading-relaxed text-muted-foreground">
+                                    {workflow.description}
+                                </p>
+                            ) : null}
+                        </div>
+                        <div className="text-right text-xs font-mono text-muted-foreground">
+                            <p>Document Status</p>
+                            <p>{workflow.requested_by_role}</p>
+                            <p>{new Date(workflow.requested_at).toLocaleString()}</p>
+                        </div>
+                    </div>
+
+                    <div className="grid gap-3 md:grid-cols-[180px_1fr_auto]">
+                        <Select
+                            value={draftStatuses[workflow.id] || workflow.status}
+                            onValueChange={(value) => onStatusChange(workflow.id, value)}
+                        >
+                            <SelectTrigger>
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {(definition.status_model?.statuses || [workflow.status]).map(
+                                    (status) => (
+                                        <SelectItem key={status} value={status}>
+                                            {status.replace(/_/g, " ")}
+                                        </SelectItem>
+                                    )
+                                )}
+                            </SelectContent>
+                        </Select>
+                        <Textarea
+                            value={draftNotes[workflow.id] || ""}
+                            onChange={(event) => onNoteChange(workflow.id, event.target.value)}
+                            rows={2}
+                            placeholder="Optional note about document status"
+                        />
+                        <Button
+                            variant="outline"
+                            onClick={() => onSave(workflow.id, workflow.status)}
+                        >
+                            Save
+                        </Button>
+                    </div>
+                </div>
+            ))
+        )}
+    </div>
+);
+
+const TERMINAL_APPROVAL_STATUSES = ["APPROVED", "REJECTED"];
+const APPROVAL_BADGE_CLASS: Record<string, string> = {
+    APPROVED: "bg-green-100 text-green-800 border-green-200",
+    REJECTED: "bg-red-100 text-red-800 border-red-200",
+};
+
+const renderApprovalSection = ({
+    definition,
+    requests,
+    draftStatuses,
+    draftNotes,
+    onStatusChange,
+    onNoteChange,
+    onSave,
+}: WorkflowSectionProps) => (
+    <div key={definition.id} className="space-y-3 rounded-lg border border-border/60 p-4">
+        <div>
+            <p className="text-sm font-semibold flex items-center gap-1.5">
+                <CheckCircle className="h-4 w-4 text-muted-foreground" />
+                {definition.label}
+            </p>
+            {definition.description ? (
+                <p className="text-xs text-muted-foreground">{definition.description}</p>
+            ) : null}
+            <p className="mt-1 text-xs text-muted-foreground">
+                {definition.family?.label || definition.workflow_family} ·{" "}
+                {definition.status_model?.label || definition.status_model_key}
+            </p>
+        </div>
+        {requests.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No approval requests yet.</p>
+        ) : (
+            requests.map((workflow) => {
+                const currentDraft = draftStatuses[workflow.id] || workflow.status;
+                const isTerminal = TERMINAL_APPROVAL_STATUSES.includes(currentDraft);
+                return (
+                    <div
+                        key={workflow.id}
+                        className="space-y-3 rounded-lg border border-border/60 bg-muted/10 p-4"
+                    >
+                        <div className="flex items-start justify-between gap-3">
+                            <div className="space-y-2">
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <p className="font-semibold">{workflow.title}</p>
+                                    <Badge
+                                        variant={LIFECYCLE_BADGE_VARIANT[workflow.lifecycle_state]}
+                                    >
+                                        {workflow.lifecycle_state}
+                                    </Badge>
+                                    {APPROVAL_BADGE_CLASS[workflow.status] && (
+                                        <Badge
+                                            variant="outline"
+                                            className={APPROVAL_BADGE_CLASS[workflow.status]}
+                                        >
+                                            {workflow.status}
+                                        </Badge>
+                                    )}
+                                </div>
+                                {workflow.description ? (
+                                    <p className="text-sm leading-relaxed text-muted-foreground">
+                                        {workflow.description}
+                                    </p>
+                                ) : null}
+                            </div>
+                            <div className="text-right text-xs font-mono text-muted-foreground">
+                                <p>{workflow.requested_by_role}</p>
+                                <p>{new Date(workflow.requested_at).toLocaleString()}</p>
+                            </div>
+                        </div>
+
+                        <div className="grid gap-3 md:grid-cols-[180px_1fr_auto]">
+                            <Select
+                                value={currentDraft}
+                                onValueChange={(value) => onStatusChange(workflow.id, value)}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {(definition.status_model?.statuses || [workflow.status]).map(
+                                        (status) => (
+                                            <SelectItem key={status} value={status}>
+                                                {status.replace(/_/g, " ")}
+                                            </SelectItem>
+                                        )
+                                    )}
+                                </SelectContent>
+                            </Select>
+                            <Textarea
+                                value={draftNotes[workflow.id] || ""}
+                                onChange={(event) => onNoteChange(workflow.id, event.target.value)}
+                                rows={2}
+                                placeholder="Approval notes or reason for rejection"
+                            />
+                            <Button
+                                variant={isTerminal ? "default" : "outline"}
+                                onClick={() => onSave(workflow.id, workflow.status)}
+                            >
+                                {isTerminal ? "Submit Decision" : "Save"}
+                            </Button>
+                        </div>
+                    </div>
+                );
+            })
+        )}
+    </div>
+);
+
 const WORKFLOW_SECTION_RENDERERS: Record<string, (props: WorkflowSectionProps) => ReactNode> = {
     simple_request: renderSimpleRequestSection,
-    document_collection: renderSimpleRequestSection,
-    approval: renderSimpleRequestSection,
+    document_collection: renderDocumentCollectionSection,
+    approval: renderApprovalSection,
 };
 
 export function WorkflowRequestsCard({

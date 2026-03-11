@@ -2,9 +2,13 @@
 
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Plus, Shield, Trash2 } from "lucide-react";
+import { ChevronDown, Plus, Shield, Trash2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { AdminHeader } from "@/components/admin-header";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
     Dialog,
@@ -12,7 +16,6 @@ import {
     DialogFooter,
     DialogHeader,
     DialogTitle,
-    DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -37,9 +40,21 @@ import {
     useDeleteAccessPolicy,
     useUpdateAccessPolicy,
 } from "@/hooks/use-access-policies";
-import { PERMISSION_GROUPS, type AccessPolicy, type UserRole } from "@/types/auth";
+import {
+    ADMIN_PERMISSION_GROUPS,
+    LOGISTICS_PERMISSION_GROUPS,
+    PERMISSION_GROUPS,
+    type AccessPolicy,
+    type UserRole,
+} from "@/types/auth";
 
 const ROLES: UserRole[] = ["ADMIN", "LOGISTICS", "CLIENT"];
+
+function getPermissionGroupsForRole(role: UserRole): Record<string, string[]> {
+    if (role === "ADMIN") return ADMIN_PERMISSION_GROUPS;
+    if (role === "LOGISTICS") return LOGISTICS_PERMISSION_GROUPS;
+    return PERMISSION_GROUPS;
+}
 
 export default function AccessPoliciesPage() {
     const { data, isLoading } = useAccessPolicies();
@@ -48,6 +63,7 @@ export default function AccessPoliciesPage() {
     const deleteAccessPolicy = useDeleteAccessPolicy();
     const [isOpen, setIsOpen] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
+    const [confirmDeletePolicy, setConfirmDeletePolicy] = useState<AccessPolicy | null>(null);
     const [form, setForm] = useState({
         code: "",
         name: "",
@@ -58,6 +74,11 @@ export default function AccessPoliciesPage() {
     });
 
     const policies = useMemo(() => data?.data || [], [data?.data]);
+
+    const activePermissionGroups = useMemo(
+        () => getPermissionGroupsForRole(form.role),
+        [form.role]
+    );
 
     const reset = () => {
         setEditingId(null);
@@ -77,6 +98,16 @@ export default function AccessPoliciesPage() {
             permissions: checked
                 ? [...new Set([...prev.permissions, permission])]
                 : prev.permissions.filter((item) => item !== permission),
+        }));
+    };
+
+    const handleRoleChange = (newRole: UserRole) => {
+        const newGroups = getPermissionGroupsForRole(newRole);
+        const allNewPermissions = new Set(Object.values(newGroups).flat());
+        setForm((prev) => ({
+            ...prev,
+            role: newRole,
+            permissions: prev.permissions.filter((p) => allNewPermissions.has(p)),
         }));
     };
 
@@ -111,6 +142,18 @@ export default function AccessPoliciesPage() {
         }
     };
 
+    const handleDelete = async () => {
+        if (!confirmDeletePolicy) return;
+        try {
+            await deleteAccessPolicy.mutateAsync(confirmDeletePolicy.id);
+            toast.success("Access policy deleted");
+        } catch (error: any) {
+            toast.error(error.message || "Failed to delete access policy");
+        } finally {
+            setConfirmDeletePolicy(null);
+        }
+    };
+
     const openEdit = (policy: AccessPolicy) => {
         setEditingId(policy.id);
         setForm({
@@ -125,15 +168,27 @@ export default function AccessPoliciesPage() {
     };
 
     return (
-        <div className="container mx-auto px-6 py-8 space-y-6">
-            <div className="flex items-start justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold">Access Policies</h1>
-                    <p className="text-sm text-muted-foreground">
-                        Define reusable access bundles per role. Users can follow a policy and still
-                        keep explicit grant/revoke overrides.
-                    </p>
-                </div>
+        <div className="min-h-screen bg-background">
+            <AdminHeader
+                icon={Shield}
+                title="ACCESS POLICIES"
+                description="Define · Assign · Control"
+                stats={{ label: "Policies", value: policies.length }}
+                actions={
+                    <Button
+                        size="sm"
+                        onClick={() => {
+                            reset();
+                            setIsOpen(true);
+                        }}
+                    >
+                        <Plus className="h-4 w-4 mr-1" />
+                        Add Policy
+                    </Button>
+                }
+            />
+
+            <div className="container mx-auto px-6 py-8 space-y-6">
                 <Dialog
                     open={isOpen}
                     onOpenChange={(open) => {
@@ -141,13 +196,7 @@ export default function AccessPoliciesPage() {
                         if (!open) reset();
                     }}
                 >
-                    <DialogTrigger asChild>
-                        <Button>
-                            <Plus className="h-4 w-4 mr-1" />
-                            Add Access Policy
-                        </Button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-3xl">
+                    <DialogContent className="sm:max-w-4xl">
                         <DialogHeader>
                             <DialogTitle>
                                 {editingId ? "Edit Access Policy" : "Create Access Policy"}
@@ -186,10 +235,7 @@ export default function AccessPoliciesPage() {
                                     <Select
                                         value={form.role}
                                         onValueChange={(value) =>
-                                            setForm((prev) => ({
-                                                ...prev,
-                                                role: value as UserRole,
-                                            }))
+                                            handleRoleChange(value as UserRole)
                                         }
                                     >
                                         <SelectTrigger>
@@ -231,37 +277,100 @@ export default function AccessPoliciesPage() {
                                 <span className="text-sm">Policy is active</span>
                             </label>
                             <div className="space-y-3">
-                                <Label>Permissions</Label>
-                                <div className="max-h-[360px] overflow-y-auto space-y-4 rounded-md border p-4">
-                                    {Object.entries(PERMISSION_GROUPS).map(
-                                        ([groupName, permissions]) => (
-                                            <div key={groupName} className="space-y-2">
-                                                <p className="text-sm font-medium">{groupName}</p>
-                                                <div className="grid grid-cols-2 gap-2">
-                                                    {permissions.map((permission) => (
-                                                        <label
-                                                            key={permission}
-                                                            className="flex items-start gap-3 rounded-md border border-border/60 p-2"
-                                                        >
-                                                            <Checkbox
-                                                                checked={form.permissions.includes(
-                                                                    permission
-                                                                )}
-                                                                onCheckedChange={(checked) =>
-                                                                    togglePermission(
-                                                                        permission,
-                                                                        checked === true
-                                                                    )
+                                <Label>Permissions ({form.permissions.length} selected)</Label>
+                                <div className="max-h-[480px] overflow-y-auto space-y-2 rounded-md border p-4">
+                                    {Object.entries(activePermissionGroups).map(
+                                        ([groupName, permissions]) => {
+                                            if (permissions.length === 0) return null;
+                                            const selectedCount = permissions.filter((p) =>
+                                                form.permissions.includes(p)
+                                            ).length;
+                                            const allSelected =
+                                                selectedCount === permissions.length;
+                                            return (
+                                                <Collapsible key={groupName}>
+                                                    <div className="flex items-center justify-between">
+                                                        <CollapsibleTrigger asChild>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                className="gap-2"
+                                                            >
+                                                                <ChevronDown className="h-3.5 w-3.5 transition-transform" />
+                                                                <span className="text-sm font-medium">
+                                                                    {groupName}
+                                                                </span>
+                                                                <span className="text-xs text-muted-foreground">
+                                                                    ({selectedCount}/
+                                                                    {permissions.length})
+                                                                </span>
+                                                            </Button>
+                                                        </CollapsibleTrigger>
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="text-xs"
+                                                            onClick={() => {
+                                                                if (allSelected) {
+                                                                    setForm((prev) => ({
+                                                                        ...prev,
+                                                                        permissions:
+                                                                            prev.permissions.filter(
+                                                                                (p) =>
+                                                                                    !permissions.includes(
+                                                                                        p
+                                                                                    )
+                                                                            ),
+                                                                    }));
+                                                                } else {
+                                                                    setForm((prev) => ({
+                                                                        ...prev,
+                                                                        permissions: [
+                                                                            ...new Set([
+                                                                                ...prev.permissions,
+                                                                                ...permissions,
+                                                                            ]),
+                                                                        ],
+                                                                    }));
                                                                 }
-                                                            />
-                                                            <span className="text-xs font-mono">
-                                                                {permission}
-                                                            </span>
-                                                        </label>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        )
+                                                            }}
+                                                        >
+                                                            {allSelected
+                                                                ? "Deselect All"
+                                                                : "Select All"}
+                                                        </Button>
+                                                    </div>
+                                                    <CollapsibleContent>
+                                                        <div className="grid grid-cols-2 gap-2 pt-2 pb-3">
+                                                            {permissions.map((permission) => (
+                                                                <label
+                                                                    key={permission}
+                                                                    className="flex items-start gap-3 rounded-md border border-border/60 p-2"
+                                                                >
+                                                                    <Checkbox
+                                                                        checked={form.permissions.includes(
+                                                                            permission
+                                                                        )}
+                                                                        onCheckedChange={(
+                                                                            checked
+                                                                        ) =>
+                                                                            togglePermission(
+                                                                                permission,
+                                                                                checked === true
+                                                                            )
+                                                                        }
+                                                                    />
+                                                                    <span className="text-xs font-mono">
+                                                                        {permission}
+                                                                    </span>
+                                                                </label>
+                                                            ))}
+                                                        </div>
+                                                    </CollapsibleContent>
+                                                </Collapsible>
+                                            );
+                                        }
                                     )}
                                 </div>
                             </div>
@@ -276,86 +385,104 @@ export default function AccessPoliciesPage() {
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
-            </div>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <Shield className="h-4 w-4" />
-                        Configured Policies
-                    </CardTitle>
-                </CardHeader>
-                <CardContent>
-                    {isLoading ? (
-                        <p className="text-sm text-muted-foreground">Loading access policies...</p>
-                    ) : (
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Code</TableHead>
-                                    <TableHead>Name</TableHead>
-                                    <TableHead>Role</TableHead>
-                                    <TableHead>Permissions</TableHead>
-                                    <TableHead>Assigned Users</TableHead>
-                                    <TableHead>Status</TableHead>
-                                    <TableHead className="text-right">Actions</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {policies.map((policy) => (
-                                    <TableRow key={policy.id}>
-                                        <TableCell className="font-mono">{policy.code}</TableCell>
-                                        <TableCell>
-                                            <div>
-                                                <p className="font-medium">{policy.name}</p>
-                                                {policy.description ? (
-                                                    <p className="text-xs text-muted-foreground">
-                                                        {policy.description}
-                                                    </p>
-                                                ) : null}
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>{policy.role}</TableCell>
-                                        <TableCell>{policy.permissions.length}</TableCell>
-                                        <TableCell>{policy.assigned_user_count ?? 0}</TableCell>
-                                        <TableCell>
-                                            {policy.is_active ? "Active" : "Inactive"}
-                                        </TableCell>
-                                        <TableCell className="text-right space-x-2">
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => openEdit(policy)}
-                                            >
-                                                Edit
-                                            </Button>
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={async () => {
-                                                    try {
-                                                        await deleteAccessPolicy.mutateAsync(
-                                                            policy.id
-                                                        );
-                                                        toast.success("Access policy deleted");
-                                                    } catch (error: any) {
-                                                        toast.error(
-                                                            error.message ||
-                                                                "Failed to delete access policy"
-                                                        );
-                                                    }
-                                                }}
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                        </TableCell>
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Shield className="h-4 w-4" />
+                            Configured Policies
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        {isLoading ? (
+                            <p className="text-sm text-muted-foreground">
+                                Loading access policies...
+                            </p>
+                        ) : (
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Code</TableHead>
+                                        <TableHead>Name</TableHead>
+                                        <TableHead>Role</TableHead>
+                                        <TableHead>Permissions</TableHead>
+                                        <TableHead>Assigned Users</TableHead>
+                                        <TableHead>Status</TableHead>
+                                        <TableHead className="text-right">Actions</TableHead>
                                     </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    )}
-                </CardContent>
-            </Card>
+                                </TableHeader>
+                                <TableBody>
+                                    {policies.map((policy) => (
+                                        <TableRow key={policy.id}>
+                                            <TableCell className="font-mono">
+                                                {policy.code}
+                                            </TableCell>
+                                            <TableCell>
+                                                <div>
+                                                    <p className="font-medium">{policy.name}</p>
+                                                    {policy.description ? (
+                                                        <p className="text-xs text-muted-foreground">
+                                                            {policy.description}
+                                                        </p>
+                                                    ) : null}
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>{policy.role}</TableCell>
+                                            <TableCell>{policy.permissions.length}</TableCell>
+                                            <TableCell>{policy.assigned_user_count ?? 0}</TableCell>
+                                            <TableCell>
+                                                <Badge
+                                                    variant={
+                                                        policy.is_active ? "default" : "outline"
+                                                    }
+                                                >
+                                                    {policy.is_active ? "Active" : "Inactive"}
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell className="text-right space-x-2">
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => openEdit(policy)}
+                                                >
+                                                    Edit
+                                                </Button>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => setConfirmDeletePolicy(policy)}
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        )}
+                    </CardContent>
+                </Card>
+
+                <ConfirmDialog
+                    open={!!confirmDeletePolicy}
+                    onOpenChange={(open) => {
+                        if (!open) setConfirmDeletePolicy(null);
+                    }}
+                    onConfirm={handleDelete}
+                    title="Delete Access Policy"
+                    description={
+                        (confirmDeletePolicy?.assigned_user_count ?? 0) > 0
+                            ? `This policy is currently assigned to ${confirmDeletePolicy?.assigned_user_count} user(s). Deleting it will remove their policy assignment. Are you sure?`
+                            : `Are you sure you want to delete "${confirmDeletePolicy?.name}"? This cannot be undone.`
+                    }
+                    confirmText={
+                        (confirmDeletePolicy?.assigned_user_count ?? 0) > 0
+                            ? "Delete Anyway"
+                            : "Delete"
+                    }
+                    variant="destructive"
+                />
+            </div>
         </div>
     );
 }
