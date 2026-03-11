@@ -30,8 +30,11 @@ import {
     Settings,
     ClipboardList,
     BookmarkPlus,
+    FileText,
+    Shield,
     Globe,
     MapPin,
+    Workflow,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -98,6 +101,12 @@ const navigationSections: NavSection[] = [
                 href: "/service-requests",
                 icon: ClipboardList,
                 requiredAnyPermission: ADMIN_NAV_PERMISSIONS.serviceRequests,
+            },
+            {
+                name: "Workflow Inbox",
+                href: "/workflow-inbox",
+                icon: Workflow,
+                requiredAnyPermission: ADMIN_NAV_PERMISSIONS.systemSettings,
             },
             {
                 name: "Pending Approval",
@@ -231,6 +240,24 @@ const navigationSections: NavSection[] = [
                 name: "Notification Rules",
                 href: "/settings/notifications",
                 icon: Mail,
+                requiredAnyPermission: ADMIN_NAV_PERMISSIONS.systemSettings,
+            },
+            {
+                name: "Attachment Types",
+                href: "/settings/attachment-types",
+                icon: FileText,
+                requiredAnyPermission: ADMIN_NAV_PERMISSIONS.systemSettings,
+            },
+            {
+                name: "Workflow Definitions",
+                href: "/settings/workflows",
+                icon: Workflow,
+                requiredAnyPermission: ADMIN_NAV_PERMISSIONS.systemSettings,
+            },
+            {
+                name: "Access Policies",
+                href: "/settings/access-policies",
+                icon: Shield,
                 requiredAnyPermission: ADMIN_NAV_PERMISSIONS.systemSettings,
             },
             {
@@ -556,9 +583,13 @@ function AdminSidebarContent() {
                                 <p className="text-sm font-mono font-semibold truncate">
                                     {user?.name || "Admin User"}
                                 </p>
-                                <p className="text-[10px] font-mono text-muted-foreground tracking-[0.15em] uppercase">
-                                    {user?.role === "ADMIN" && "Admin"}
-                                    {user?.role === "LOGISTICS" && "Logistics"}
+                                <p className="text-[10px] font-mono tracking-[0.15em] uppercase">
+                                    {user?.role === "ADMIN" && (
+                                        <span className="text-primary font-semibold">Admin</span>
+                                    )}
+                                    {user?.role === "LOGISTICS" && (
+                                        <span className="text-muted-foreground">Logistics</span>
+                                    )}
                                 </p>
                             </div>
                         )}

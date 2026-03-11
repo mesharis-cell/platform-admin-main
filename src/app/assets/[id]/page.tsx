@@ -973,7 +973,8 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                                                             {record.outbound_scan ? (
                                                                 <p className="text-xs">
                                                                     {new Date(
-                                                                        record.outbound_scan.scanned_at
+                                                                        record.outbound_scan
+                                                                            .scanned_at
                                                                     ).toLocaleString()}
                                                                 </p>
                                                             ) : (
@@ -990,7 +991,8 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                                                                 <div>
                                                                     <p className="text-xs">
                                                                         {new Date(
-                                                                            record.inbound_scan.scanned_at
+                                                                            record.inbound_scan
+                                                                                .scanned_at
                                                                         ).toLocaleString()}
                                                                     </p>
                                                                     <span

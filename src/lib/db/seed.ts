@@ -1,8 +1,12 @@
 import { db } from "@/db";
 import { user, account } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { PERMISSION_TEMPLATES } from "@/types/auth";
+import { ADMIN_PERMISSION_GROUPS } from "@/types/auth";
 import { auth } from "../auth/server";
+
+const INITIAL_ADMIN_PERMISSIONS = Array.from(
+    new Set(Object.values(ADMIN_PERMISSION_GROUPS).flat())
+);
 
 /**
  * Seed initial PMG Admin account
@@ -26,9 +30,6 @@ export async function seedInitialAdmin() {
         // Get password from env or use default
         const password = process.env.INITIAL_ADMIN_PASSWORD || "Admin123!";
 
-        // Get permission template defaults
-        const template = PERMISSION_TEMPLATES.PLATFORM_ADMIN;
-
         // Create user using better-auth server API
         const result = await auth.api.signUpEmail({
             body: {
@@ -43,13 +44,13 @@ export async function seedInitialAdmin() {
             throw new Error("Failed to create admin user");
         }
 
-        // Update user with permission template and permissions
+        // Update user with access fields and permissions
         await db
             .update(user)
             .set({
-                permissionTemplate: "PLATFORM_ADMIN",
-                permissions: template.permissions,
-                companies: template.defaultCompanies,
+                accessPolicyId: null,
+                permissions: INITIAL_ADMIN_PERMISSIONS,
+                companies: ["*"],
                 isActive: true,
                 updatedAt: new Date(),
             })
@@ -84,9 +85,6 @@ export async function seedSystemUser() {
             return;
         }
 
-        // Get permission template defaults
-        const template = PERMISSION_TEMPLATES.PLATFORM_ADMIN;
-
         // Generate a secure random password (never to be used for login)
         const systemPassword = crypto.randomUUID() + crypto.randomUUID();
 
@@ -103,13 +101,13 @@ export async function seedSystemUser() {
             throw new Error("Failed to create system user");
         }
 
-        // Update user with permission template and permissions
+        // Update user with access fields and permissions
         await db
             .update(user)
             .set({
-                permissionTemplate: "PLATFORM_ADMIN",
-                permissions: template.permissions,
-                companies: template.defaultCompanies,
+                accessPolicyId: null,
+                permissions: INITIAL_ADMIN_PERMISSIONS,
+                companies: ["*"],
                 isActive: true,
                 updatedAt: new Date(),
             })

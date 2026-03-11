@@ -31,15 +31,41 @@ import {
 } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { auth } from "@/lib/auth/server";
-import { PERMISSION_TEMPLATES } from "@/types/auth";
+import { ADMIN_PERMISSION_GROUPS, LOGISTICS_PERMISSION_GROUPS } from "@/types/auth";
 import { subDays, addDays } from "date-fns";
+
+const DEMO_PERMISSION_SETS = {
+    ADMIN_ACCESS: Array.from(new Set(Object.values(ADMIN_PERMISSION_GROUPS).flat())),
+    LOGISTICS_ACCESS: Array.from(new Set(Object.values(LOGISTICS_PERMISSION_GROUPS).flat())),
+    CLIENT_ACCESS: [
+        "auth:login",
+        "auth:reset_password",
+        "companies:read",
+        "brands:read",
+        "countries:read",
+        "assets:read",
+        "collections:read",
+        "orders:create",
+        "orders:read",
+        "orders:update",
+        "orders:view_status_history",
+        "quotes:approve",
+        "quotes:decline",
+        "invoices:read",
+        "invoices:download",
+        "lifecycle:receive_notifications",
+        "assets:check_availability",
+        "assets:availability_stats",
+        "calendar:read",
+    ],
+} as const;
 
 // Helper to create users with better-auth
 async function createUserWithAuth(
     email: string,
     password: string,
     name: string,
-    permissionTemplate: string,
+    permissionSetKey: keyof typeof DEMO_PERMISSION_SETS,
     companies: string[]
 ) {
     try {
@@ -51,14 +77,11 @@ async function createUserWithAuth(
             throw new Error(`Failed to create user: ${email}`);
         }
 
-        const template =
-            PERMISSION_TEMPLATES[permissionTemplate as keyof typeof PERMISSION_TEMPLATES];
-
         const [updatedUser] = await db
             .update(user)
             .set({
-                permissionTemplate,
-                permissions: template.permissions,
+                accessPolicyId: null,
+                permissions: [...DEMO_PERMISSION_SETS[permissionSetKey]],
                 companies,
                 isActive: true,
                 updatedAt: new Date(),
@@ -228,14 +251,14 @@ export async function seedDemoData() {
         "ahmed.almaktoum@a2logistics.ae",
         "A2Staff123!",
         "Ahmed Al Maktoum",
-        "A2_STAFF",
+        "LOGISTICS_ACCESS",
         ["*"]
     );
     const a2Staff2 = await createUserWithAuth(
         "fatima.hassan@a2logistics.ae",
         "A2Staff123!",
         "Fatima Hassan",
-        "A2_STAFF",
+        "LOGISTICS_ACCESS",
         ["*"]
     );
 
@@ -244,14 +267,14 @@ export async function seedDemoData() {
         "john.smith@pernod-ricard.com",
         "Client123!",
         "John Smith",
-        "CLIENT_USER",
+        "CLIENT_ACCESS",
         [pernodRicard.id]
     );
     const prClient2 = await createUserWithAuth(
         "sarah.jones@pernod-ricard.com",
         "Client123!",
         "Sarah Jones",
-        "CLIENT_USER",
+        "CLIENT_ACCESS",
         [pernodRicard.id]
     );
 

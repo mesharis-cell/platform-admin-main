@@ -14,6 +14,12 @@ export interface PlatformConfig {
     from_email?: string;
     currency?: string;
     vat_percent?: number;
+    feasibility?: {
+        minimum_lead_hours?: number;
+        exclude_weekends?: boolean;
+        weekend_days?: number[];
+        timezone?: string;
+    };
 }
 
 export interface PlatformFeatures {
@@ -21,6 +27,8 @@ export interface PlatformFeatures {
     show_estimate_on_order_creation?: boolean;
     enable_kadence_invoicing?: boolean;
     enable_base_operations?: boolean;
+    enable_attachments?: boolean;
+    enable_workflows?: boolean;
 }
 
 export interface Platform {

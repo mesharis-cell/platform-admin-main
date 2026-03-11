@@ -34,9 +34,21 @@ export const auth = betterAuth({
                 defaultValue: [],
                 input: false,
             },
-            permissionTemplate: {
+            accessPolicyId: {
                 type: "string",
                 required: false,
+            },
+            permissionGrants: {
+                type: "string[]",
+                required: false,
+                defaultValue: [],
+                input: false,
+            },
+            permissionRevokes: {
+                type: "string[]",
+                required: false,
+                defaultValue: [],
+                input: false,
             },
             isActive: {
                 type: "boolean",

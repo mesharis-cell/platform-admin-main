@@ -18,7 +18,15 @@ export const user = pgTable(
             .array()
             .notNull()
             .default(sql`ARRAY[]::text[]`),
-        permissionTemplate: text("permission_template"),
+        accessPolicyId: text("access_policy_id"),
+        permissionGrants: text("permission_grants")
+            .array()
+            .notNull()
+            .default(sql`ARRAY[]::text[]`),
+        permissionRevokes: text("permission_revokes")
+            .array()
+            .notNull()
+            .default(sql`ARRAY[]::text[]`),
         isActive: boolean("is_active").notNull().default(true),
         lastLoginAt: timestamp("last_login_at"),
         createdAt: timestamp("created_at").notNull().defaultNow(),

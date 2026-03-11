@@ -58,6 +58,7 @@ import { useUploadImage } from "@/hooks/use-assets";
 import { useToken } from "@/lib/auth/use-token";
 import { hasPermission } from "@/lib/auth/permissions";
 import { ADMIN_ACTION_PERMISSIONS } from "@/lib/auth/permission-map";
+import { usePlatform as usePlatformSettings } from "@/lib/hooks/use-platform";
 
 export default function CompaniesPage() {
     const { user } = useToken();
@@ -82,6 +83,9 @@ export default function CompaniesPage() {
                 logo_url: undefined,
                 primary_color: "",
                 secondary_color: "",
+            },
+            feasibility: {
+                minimum_lead_hours: null as number | null,
             },
         },
         platform_margin_percent: 0.3,
@@ -108,6 +112,7 @@ export default function CompaniesPage() {
 
     // Fetch companies
     const { data, isLoading: loading } = useCompanies(queryParams);
+    const { data: platformSettings } = usePlatformSettings();
     const companies = data?.data || [];
     const total = data?.meta.total || 0;
 
@@ -156,6 +161,7 @@ export default function CompaniesPage() {
         setFormData({
             ...formData,
             settings: {
+                ...formData.settings,
                 branding: {
                     ...formData.settings.branding,
                     logo_url: undefined,
@@ -187,6 +193,7 @@ export default function CompaniesPage() {
             const payload = {
                 ...formData,
                 settings: {
+                    ...formData.settings,
                     branding: {
                         ...formData.settings.branding,
                         logo_url: logoUrl || undefined,
@@ -269,6 +276,9 @@ export default function CompaniesPage() {
                     primary_color: "",
                     secondary_color: "",
                 },
+                feasibility: {
+                    minimum_lead_hours: null,
+                },
             },
             platform_margin_percent: 0.3,
             warehouse_ops_rate: null,
@@ -291,6 +301,13 @@ export default function CompaniesPage() {
                     logo_url: company.settings.branding.logo_url,
                     primary_color: company.settings.branding.primary_color,
                     secondary_color: company.settings.branding.secondary_color,
+                },
+                feasibility: {
+                    minimum_lead_hours:
+                        company.settings?.feasibility?.minimum_lead_hours !== undefined &&
+                        company.settings?.feasibility?.minimum_lead_hours !== null
+                            ? Number(company.settings.feasibility.minimum_lead_hours)
+                            : null,
                 },
             },
             platform_margin_percent: parseFloat(String(company.platform_margin_percent)),
@@ -496,6 +513,54 @@ export default function CompaniesPage() {
                                                 <p className="text-xs text-muted-foreground font-mono">
                                                     Default rate applied to orders (2 decimal
                                                     places)
+                                                </p>
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <Label
+                                                    htmlFor="minimum_lead_hours"
+                                                    className="font-mono text-xs flex items-center gap-2"
+                                                >
+                                                    LEAD TIME OVERRIDE (HOURS)
+                                                </Label>
+                                                <Input
+                                                    id="minimum_lead_hours"
+                                                    type="number"
+                                                    step="1"
+                                                    min="0"
+                                                    value={
+                                                        formData.settings.feasibility
+                                                            .minimum_lead_hours === null
+                                                            ? ""
+                                                            : formData.settings.feasibility
+                                                                  .minimum_lead_hours
+                                                    }
+                                                    onChange={(e) =>
+                                                        setFormData({
+                                                            ...formData,
+                                                            settings: {
+                                                                ...formData.settings,
+                                                                feasibility: {
+                                                                    minimum_lead_hours:
+                                                                        e.target.value === ""
+                                                                            ? null
+                                                                            : parseInt(
+                                                                                  e.target.value,
+                                                                                  10
+                                                                              ),
+                                                                },
+                                                            },
+                                                        })
+                                                    }
+                                                    className="font-mono"
+                                                    placeholder="Leave empty to inherit platform lead time"
+                                                />
+                                                <p className="text-xs text-muted-foreground font-mono">
+                                                    Empty means inherit the platform minimum lead
+                                                    time.
+                                                    {platformSettings?.config?.feasibility
+                                                        ?.minimum_lead_hours !== undefined &&
+                                                        ` Current platform default: ${platformSettings.config.feasibility.minimum_lead_hours} hours.`}
                                                 </p>
                                             </div>
 

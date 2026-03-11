@@ -47,8 +47,7 @@ const calloutVariants = tv({
 });
 
 interface CalloutProps
-    extends React.ComponentPropsWithoutRef<"div">,
-        VariantProps<typeof calloutVariants> {
+    extends React.ComponentPropsWithoutRef<"div">, VariantProps<typeof calloutVariants> {
     title: string;
     icon?: React.ElementType | React.ReactElement;
 }

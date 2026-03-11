@@ -71,6 +71,8 @@ const DEFAULT_FEATURES: StrictFeatures = {
     show_estimate_on_order_creation: true,
     enable_kadence_invoicing: false,
     enable_base_operations: true,
+    enable_attachments: true,
+    enable_workflows: true,
 };
 
 export default function PlatformSettingsPage() {
@@ -138,6 +140,10 @@ export default function PlatformSettingsPage() {
                 DEFAULT_FEATURES.enable_kadence_invoicing,
             enable_base_operations:
                 platform.features.enable_base_operations ?? DEFAULT_FEATURES.enable_base_operations,
+            enable_attachments:
+                platform.features.enable_attachments ?? DEFAULT_FEATURES.enable_attachments,
+            enable_workflows:
+                platform.features.enable_workflows ?? DEFAULT_FEATURES.enable_workflows,
         });
     }, [platform]);
 
@@ -368,6 +374,19 @@ export default function PlatformSettingsPage() {
                             key: "enable_kadence_invoicing" as const,
                             label: "Enable Kadence Invoicing",
                             description: "Enable invoice generation and payment confirmation flows",
+                            comingSoon: true,
+                        },
+                        {
+                            key: "enable_attachments" as const,
+                            label: "Enable Attachments",
+                            description:
+                                "Allow typed documents across order, inbound, service request, and workflow records",
+                        },
+                        {
+                            key: "enable_workflows" as const,
+                            label: "Enable Internal Workflows",
+                            description:
+                                "Expose workflow sections, workflow inboxes, and workflow request creation",
                         },
                         {
                             key: "enable_base_operations" as const,
@@ -378,11 +397,22 @@ export default function PlatformSettingsPage() {
                     ].map((item) => (
                         <div key={item.key} className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm font-medium">{item.label}</p>
+                                <p className="text-sm font-medium">
+                                    {item.label}
+                                    {"comingSoon" in item && item.comingSoon && (
+                                        <Badge
+                                            variant="outline"
+                                            className="ml-2 text-[10px] px-1.5 py-0"
+                                        >
+                                            Coming Soon
+                                        </Badge>
+                                    )}
+                                </p>
                                 <p className="text-xs text-muted-foreground">{item.description}</p>
                             </div>
                             <Switch
                                 checked={features[item.key]}
+                                disabled={"comingSoon" in item && item.comingSoon}
                                 onCheckedChange={(checked) =>
                                     setFeatures((prev) => ({ ...prev, [item.key]: checked }))
                                 }

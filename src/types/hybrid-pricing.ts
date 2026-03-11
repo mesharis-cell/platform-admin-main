@@ -76,7 +76,7 @@ export interface UpdateServiceTypeRequest {
 // Order Line Items
 // ============================================================
 
-export type LineItemType = "CATALOG" | "CUSTOM";
+export type LineItemType = "CATALOG" | "CUSTOM" | "SYSTEM";
 export type PurposeType = "ORDER" | "INBOUND_REQUEST" | "SERVICE_REQUEST";
 export type LineItemBillingMode = "BILLABLE" | "NON_BILLABLE" | "COMPLIMENTARY";
 export type LineItemRequestStatus = "REQUESTED" | "APPROVED" | "REJECTED";
@@ -92,6 +92,7 @@ export interface OrderLineItem {
     orderId: string;
     serviceTypeId: string | null;
     lineItemType: LineItemType;
+    systemKey?: "BASE_OPS" | null;
     category: ServiceCategory;
     description: string;
     quantity: number | null;
