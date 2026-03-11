@@ -583,9 +583,13 @@ function AdminSidebarContent() {
                                 <p className="text-sm font-mono font-semibold truncate">
                                     {user?.name || "Admin User"}
                                 </p>
-                                <p className="text-[10px] font-mono text-muted-foreground tracking-[0.15em] uppercase">
-                                    {user?.role === "ADMIN" && "Admin"}
-                                    {user?.role === "LOGISTICS" && "Logistics"}
+                                <p className="text-[10px] font-mono tracking-[0.15em] uppercase">
+                                    {user?.role === "ADMIN" && (
+                                        <span className="text-primary font-semibold">Admin</span>
+                                    )}
+                                    {user?.role === "LOGISTICS" && (
+                                        <span className="text-muted-foreground">Logistics</span>
+                                    )}
                                 </p>
                             </div>
                         )}

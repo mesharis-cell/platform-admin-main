@@ -93,6 +93,10 @@ export function PendingApprovalSection({ order, orderId, onRefresh }: HybridPric
                       ? Number(pricing.margin.amount)
                       : roundCurrency(total - baseSubtotal))
           );
+    const vatPercent = Number(pricing?.vat?.percent ?? pricing?.totals?.vat_percent ?? 0);
+    const vatAmount = Number(pricing?.vat?.amount ?? pricing?.totals?.vat_amount ?? 0);
+    const totalWithVat =
+        vatAmount > 0 ? Number(pricing?.totals?.sell_total_with_vat ?? total + vatAmount) : total;
 
     const handleApprove = async () => {
         if (!canApproveQuote) return;
@@ -214,9 +218,25 @@ export function PendingApprovalSection({ order, orderId, onRefresh }: HybridPric
                                 </span>
                             </div>
                             <div className="border-t border-border my-2"></div>
+                            {vatPercent > 0 && (
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-muted-foreground">
+                                        {vatAmount > 0
+                                            ? `VAT (${vatPercent}%)`
+                                            : `VAT included (${vatPercent}%)`}
+                                    </span>
+                                    {vatAmount > 0 && (
+                                        <span className="font-mono">
+                                            {vatAmount.toFixed(2)} AED
+                                        </span>
+                                    )}
+                                </div>
+                            )}
                             <div className="flex justify-between font-semibold">
                                 <span>Total</span>
-                                <span className="font-mono">{Number(total).toFixed(2)} AED</span>
+                                <span className="font-mono">
+                                    {Number(totalWithVat).toFixed(2)} AED
+                                </span>
                             </div>
                         </div>
                     )}

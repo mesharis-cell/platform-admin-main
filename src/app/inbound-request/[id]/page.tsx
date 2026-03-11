@@ -135,7 +135,19 @@ export default function InboundRequestDetailsPage({ params }: { params: Promise<
                 />
 
                 {/* Pricing Card */}
-                <RequestPricingCard finalTotal={request.request_pricing.final_total} />
+                <RequestPricingCard
+                    finalTotal={request.request_pricing.final_total}
+                    vatPercent={Number(
+                        request.request_pricing?.vat?.percent ??
+                            request.request_pricing?.totals?.vat_percent ??
+                            0
+                    )}
+                    vatAmount={Number(
+                        request.request_pricing?.vat?.amount ??
+                            request.request_pricing?.totals?.vat_amount ??
+                            0
+                    )}
+                />
 
                 {/* Main Content Grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

@@ -374,6 +374,7 @@ export default function PlatformSettingsPage() {
                             key: "enable_kadence_invoicing" as const,
                             label: "Enable Kadence Invoicing",
                             description: "Enable invoice generation and payment confirmation flows",
+                            comingSoon: true,
                         },
                         {
                             key: "enable_attachments" as const,
@@ -396,11 +397,22 @@ export default function PlatformSettingsPage() {
                     ].map((item) => (
                         <div key={item.key} className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm font-medium">{item.label}</p>
+                                <p className="text-sm font-medium">
+                                    {item.label}
+                                    {"comingSoon" in item && item.comingSoon && (
+                                        <Badge
+                                            variant="outline"
+                                            className="ml-2 text-[10px] px-1.5 py-0"
+                                        >
+                                            Coming Soon
+                                        </Badge>
+                                    )}
+                                </p>
                                 <p className="text-xs text-muted-foreground">{item.description}</p>
                             </div>
                             <Switch
                                 checked={features[item.key]}
+                                disabled={"comingSoon" in item && item.comingSoon}
                                 onCheckedChange={(checked) =>
                                     setFeatures((prev) => ({ ...prev, [item.key]: checked }))
                                 }

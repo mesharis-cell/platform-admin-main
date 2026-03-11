@@ -6,9 +6,15 @@ import { Card, CardContent } from "@/components/ui/card";
 
 interface RequestPricingCardProps {
     finalTotal: string | number;
+    vatPercent?: number;
+    vatAmount?: number;
 }
 
-export function RequestPricingCard({ finalTotal }: RequestPricingCardProps) {
+export function RequestPricingCard({
+    finalTotal,
+    vatPercent = 0,
+    vatAmount = 0,
+}: RequestPricingCardProps) {
     return (
         <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -33,6 +39,13 @@ export function RequestPricingCard({ finalTotal }: RequestPricingCardProps) {
                             </div>
                         </div>
                         <div className="text-right">
+                            {vatPercent > 0 && (
+                                <p className="text-xs font-mono text-muted-foreground mb-1">
+                                    {vatAmount > 0
+                                        ? `VAT (${vatPercent}%) — AED ${vatAmount.toFixed(2)}`
+                                        : `VAT included (${vatPercent}%)`}
+                                </p>
+                            )}
                             <p className="text-xs font-mono text-muted-foreground">
                                 Based on current pricing
                             </p>
