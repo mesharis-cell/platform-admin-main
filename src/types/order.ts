@@ -463,7 +463,13 @@ export interface InvoiceListResponse {
 // Phase 10: Order Lifecycle & Notification Types
 // ============================================================
 
-export type NotificationStatus = "QUEUED" | "SENT" | "FAILED" | "RETRYING";
+export type NotificationStatus =
+    | "QUEUED"
+    | "PROCESSING"
+    | "SENT"
+    | "FAILED"
+    | "RETRYING"
+    | "SKIPPED";
 
 export type NotificationType =
     | "ORDER_SUBMITTED"

@@ -59,9 +59,15 @@ export function EntityAttachmentsCard({
     const [files, setFiles] = useState<File[]>([]);
     const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
     const { platform } = usePlatform();
+    const attachmentsEnabled = platform?.features?.enable_attachments !== false;
 
-    const { data, isLoading } = useEntityAttachments(entityType, entityId);
-    const { data: attachmentTypesData } = useAttachmentTypes(entityType);
+    const { data, isLoading } = useEntityAttachments(entityType, entityId, attachmentsEnabled);
+    const { data: attachmentTypesData } = useAttachmentTypes({
+        entityType,
+        mode: "upload",
+        entityId,
+        enabled: attachmentsEnabled && isCreateOpen && !!entityId,
+    });
     const createAttachments = useCreateEntityAttachments(entityType, entityId);
     const deleteAttachment = useDeleteAttachment();
 
@@ -72,7 +78,7 @@ export function EntityAttachmentsCard({
     const selectedType = attachmentTypes.find((type) => type.id === selectedTypeId);
     const confirmDeleteAttachment = (data?.data || []).find((a) => a.id === confirmDeleteId);
 
-    if (platform?.features?.enable_attachments === false) {
+    if (!attachmentsEnabled) {
         return null;
     }
 

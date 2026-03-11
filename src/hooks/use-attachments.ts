@@ -56,24 +56,53 @@ type CreateAttachmentInput = {
     visible_to_client?: boolean;
 };
 
+type AttachmentTypeQueryParams = {
+    entityType?: AttachmentEntityType;
+    mode?: "view" | "upload";
+    entityId?: string | null;
+    contextEntityType?: "ORDER" | "INBOUND_REQUEST" | "SERVICE_REQUEST";
+    contextEntityId?: string | null;
+    enabled?: boolean;
+};
+
 const entityBasePath: Record<Exclude<AttachmentEntityType, "WORKFLOW_REQUEST">, string> = {
     ORDER: "order",
     INBOUND_REQUEST: "inbound-request",
     SERVICE_REQUEST: "service-request",
 };
 
-export function useAttachmentTypes(entityType?: AttachmentEntityType) {
+export function useAttachmentTypes(params?: AttachmentTypeQueryParams) {
     return useQuery({
-        queryKey: ["attachment-types", entityType || "all"],
+        queryKey: [
+            "attachment-types",
+            params?.entityType || "all",
+            params?.mode || "view",
+            params?.entityId || null,
+            params?.contextEntityType || null,
+            params?.contextEntityId || null,
+        ],
         queryFn: async (): Promise<{ data: AttachmentTypeRecord[] }> => {
             try {
-                const query = entityType ? `?entity_type=${entityType}` : "";
-                const response = await apiClient.get(`/operations/v1/attachment-types${query}`);
+                const searchParams = new URLSearchParams();
+                if (params?.entityType) searchParams.set("entity_type", params.entityType);
+                if (params?.mode) searchParams.set("mode", params.mode);
+                if (params?.entityId) searchParams.set("entity_id", params.entityId);
+                if (params?.contextEntityType) {
+                    searchParams.set("context_entity_type", params.contextEntityType);
+                }
+                if (params?.contextEntityId) {
+                    searchParams.set("context_entity_id", params.contextEntityId);
+                }
+                const query = searchParams.toString();
+                const response = await apiClient.get(
+                    `/operations/v1/attachment-types${query ? `?${query}` : ""}`
+                );
                 return response.data;
             } catch (error) {
                 throwApiError(error);
             }
         },
+        enabled: params?.enabled ?? true,
     });
 }
 
@@ -122,7 +151,8 @@ export function useUpdateAttachmentType() {
 
 export function useEntityAttachments(
     entityType: Exclude<AttachmentEntityType, "WORKFLOW_REQUEST">,
-    entityId: string | null
+    entityId: string | null,
+    enabled = true
 ) {
     return useQuery({
         queryKey: ["entity-attachments", entityType, entityId],
@@ -137,7 +167,7 @@ export function useEntityAttachments(
                 throwApiError(error);
             }
         },
-        enabled: !!entityId,
+        enabled: !!entityId && enabled,
     });
 }
 

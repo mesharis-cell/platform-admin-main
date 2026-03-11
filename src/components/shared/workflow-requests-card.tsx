@@ -369,9 +369,23 @@ export function WorkflowRequestsCard({
     const workflowFeatureEnabled = platform?.features?.enable_workflows !== false;
     const attachmentFeatureEnabled = platform?.features?.enable_attachments !== false;
 
-    const { data, isLoading } = useEntityWorkflowRequests(entityType, entityId);
-    const { data: definitionsData } = useAvailableWorkflowDefinitions(entityType, entityId);
-    const { data: attachmentTypesData } = useAttachmentTypes("WORKFLOW_REQUEST");
+    const { data, isLoading } = useEntityWorkflowRequests(
+        entityType,
+        entityId,
+        workflowFeatureEnabled
+    );
+    const { data: definitionsData } = useAvailableWorkflowDefinitions(
+        entityType,
+        entityId,
+        workflowFeatureEnabled
+    );
+    const { data: attachmentTypesData } = useAttachmentTypes({
+        entityType: "WORKFLOW_REQUEST",
+        mode: "upload",
+        contextEntityType: entityType,
+        contextEntityId: entityId,
+        enabled: workflowFeatureEnabled && attachmentFeatureEnabled && isCreateOpen && !!entityId,
+    });
     const createWorkflow = useCreateWorkflowRequest(entityType, entityId);
     const updateWorkflow = useUpdateWorkflowRequest();
 
@@ -567,6 +581,11 @@ export function WorkflowRequestsCard({
                                                     </SelectContent>
                                                 </Select>
                                             </div>
+                                        ) : files.length > 0 ? (
+                                            <p className="text-xs text-muted-foreground">
+                                                No uploadable workflow attachment types are
+                                                available.
+                                            </p>
                                         ) : null}
                                     </div>
                                 ) : null}

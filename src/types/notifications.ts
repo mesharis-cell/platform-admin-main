@@ -35,7 +35,13 @@ export interface NotificationMeta {
     event_groups: EventGroup[];
     templates_by_event: Record<string, TemplateMeta[]>;
 }
-export type NotificationStatus = "QUEUED" | "SENT" | "FAILED" | "RETRYING";
+export type NotificationStatus =
+    | "QUEUED"
+    | "PROCESSING"
+    | "SENT"
+    | "FAILED"
+    | "RETRYING"
+    | "SKIPPED";
 export type EntityType = "ORDER" | "INBOUND_REQUEST" | "SERVICE_REQUEST" | "USER" | "SELF_BOOKING";
 
 export interface SystemEvent {
