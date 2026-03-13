@@ -47,9 +47,11 @@ import { removeUnderScore } from "@/lib/utils/helper";
 import { useToken } from "@/lib/auth/use-token";
 import { hasPermission } from "@/lib/auth/permissions";
 import { ADMIN_ACTION_PERMISSIONS } from "@/lib/auth/permission-map";
+import { usePlatform } from "@/contexts/platform-context";
 
 export default function AssetsPage() {
     const { user } = useToken();
+    const { platform } = usePlatform();
     const router = useRouter();
     const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
     const [searchQuery, setSearchQuery] = useState("");
@@ -64,6 +66,7 @@ export default function AssetsPage() {
     const { data: companies } = useCompanies();
     const canCreateAsset = hasPermission(user, ADMIN_ACTION_PERMISSIONS.assetsCreate);
     const canBulkUploadAsset = hasPermission(user, ADMIN_ACTION_PERMISSIONS.assetsBulkUpload);
+    const bulkUploadEnabled = platform?.features?.enable_asset_bulk_upload === true;
 
     // Build query params
     const queryParams = useMemo(() => {
@@ -119,9 +122,9 @@ export default function AssetsPage() {
                 description="Physical Items · QR Codes · Tracking"
                 stats={data ? { label: "TOTAL ASSETS", value: data.meta.total } : undefined}
                 actions={
-                    canCreateAsset || canBulkUploadAsset ? (
+                    canCreateAsset || (canBulkUploadAsset && bulkUploadEnabled) ? (
                         <div className="flex gap-2">
-                            {canBulkUploadAsset && (
+                            {canBulkUploadAsset && bulkUploadEnabled && (
                                 <Button
                                     variant="outline"
                                     size="lg"
@@ -129,7 +132,7 @@ export default function AssetsPage() {
                                     onClick={() => router.push("/assets/bulk-upload")}
                                 >
                                     <Upload className="w-4 h-4 mr-2" />
-                                    Bulk Upload
+                                    Bulk Upload (Stub)
                                 </Button>
                             )}
                             {canCreateAsset && (

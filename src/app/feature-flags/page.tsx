@@ -33,6 +33,7 @@ export default function FeatureFlagsPage() {
                 platform?.features?.show_estimate_on_order_creation ?? true,
             enable_kadence_invoicing: platform?.features?.enable_kadence_invoicing ?? false,
             enable_base_operations: platform?.features?.enable_base_operations ?? true,
+            enable_asset_bulk_upload: platform?.features?.enable_asset_bulk_upload ?? false,
             enable_attachments: platform?.features?.enable_attachments ?? true,
             enable_workflows: platform?.features?.enable_workflows ?? true,
         }),
@@ -58,6 +59,12 @@ export default function FeatureFlagsPage() {
             key: "enable_base_operations",
             label: "Picking & Handling",
             description: "Include Picking & Handling line in pricing",
+        },
+        {
+            key: "enable_asset_bulk_upload",
+            label: "Asset Bulk Upload (Stub)",
+            description:
+                "Reserved only. CSV asset bulk upload is intentionally stubbed pending the asset tracking redesign.",
         },
         {
             key: "enable_kadence_invoicing",

@@ -71,6 +71,7 @@ const DEFAULT_FEATURES: StrictFeatures = {
     show_estimate_on_order_creation: true,
     enable_kadence_invoicing: false,
     enable_base_operations: true,
+    enable_asset_bulk_upload: false,
     enable_attachments: true,
     enable_workflows: true,
 };
@@ -140,6 +141,9 @@ export default function PlatformSettingsPage() {
                 DEFAULT_FEATURES.enable_kadence_invoicing,
             enable_base_operations:
                 platform.features.enable_base_operations ?? DEFAULT_FEATURES.enable_base_operations,
+            enable_asset_bulk_upload:
+                platform.features.enable_asset_bulk_upload ??
+                DEFAULT_FEATURES.enable_asset_bulk_upload,
             enable_attachments:
                 platform.features.enable_attachments ?? DEFAULT_FEATURES.enable_attachments,
             enable_workflows:
@@ -381,6 +385,12 @@ export default function PlatformSettingsPage() {
                             label: "Enable Attachments",
                             description:
                                 "Allow typed documents across order, inbound, service request, and workflow records",
+                        },
+                        {
+                            key: "enable_asset_bulk_upload" as const,
+                            label: "Enable Asset Bulk Upload (Stub)",
+                            description:
+                                "Expose the reserved bulk upload section while the replacement import flow is still stubbed.",
                         },
                         {
                             key: "enable_workflows" as const,
