@@ -40,7 +40,18 @@ const redirectTo = (path: string) => {
     }
 };
 
+let isRedirectingToMaintenance = false;
+
 const redirectToMaintenance = (error: AxiosError) => {
+    if (isRedirectingToMaintenance) return;
+    if (
+        typeof globalThis.location !== "undefined" &&
+        globalThis.location.pathname === "/maintenance"
+    )
+        return;
+
+    isRedirectingToMaintenance = true;
+
     const payload = error.response?.data as
         | {
               message?: string;
@@ -53,12 +64,10 @@ const redirectToMaintenance = (error: AxiosError) => {
           }
         | undefined;
 
-    if (!payload?.data?.maintenance_mode) return;
-
     const params = new URLSearchParams();
-    if (payload.message) params.set("message", payload.message);
-    if (payload.data.maintenance?.until) params.set("until", payload.data.maintenance.until);
-    redirectTo(`/maintenance${params.toString() ? `?${params.toString()}` : ""}`);
+    if (payload?.message) params.set("message", payload.message);
+    if (payload?.data?.maintenance?.until) params.set("until", payload.data.maintenance.until);
+    globalThis.location.href = `/maintenance${params.toString() ? `?${params.toString()}` : ""}`;
 };
 
 // Token management functions
@@ -133,8 +142,11 @@ apiClient.interceptors.response.use(
         const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
         if (error.response?.status === 503) {
-            redirectToMaintenance(error);
-            return Promise.reject(error);
+            const data = error.response?.data as any;
+            if (data?.data?.maintenance_mode) {
+                redirectToMaintenance(error);
+                return new Promise(() => {}); // swallow — redirect is in progress
+            }
         }
 
         // If error is 401 and we haven't retried yet
