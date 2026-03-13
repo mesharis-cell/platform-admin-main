@@ -34,6 +34,42 @@ const processQueue = (error: AxiosError | null, token: string | null = null) => 
     failedQueue = [];
 };
 
+const redirectTo = (path: string) => {
+    if (typeof globalThis.location !== "undefined") {
+        globalThis.location.href = path;
+    }
+};
+
+let isRedirectingToMaintenance = false;
+
+const redirectToMaintenance = (error: AxiosError) => {
+    if (isRedirectingToMaintenance) return;
+    if (
+        typeof globalThis.location !== "undefined" &&
+        globalThis.location.pathname === "/maintenance"
+    )
+        return;
+
+    isRedirectingToMaintenance = true;
+
+    const payload = error.response?.data as
+        | {
+              message?: string;
+              data?: {
+                  maintenance_mode?: boolean;
+                  maintenance?: {
+                      until?: string | null;
+                  };
+              };
+          }
+        | undefined;
+
+    const params = new URLSearchParams();
+    if (payload?.message) params.set("message", payload.message);
+    if (payload?.data?.maintenance?.until) params.set("until", payload.data.maintenance.until);
+    globalThis.location.href = `/maintenance${params.toString() ? `?${params.toString()}` : ""}`;
+};
+
 // Token management functions
 export const getAccessToken = (): string | undefined => {
     return Cookies.get(ACCESS_TOKEN_KEY);
@@ -105,6 +141,14 @@ apiClient.interceptors.response.use(
     async (error: AxiosError) => {
         const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
+        if (error.response?.status === 503) {
+            const data = error.response?.data as any;
+            if (data?.data?.maintenance_mode) {
+                redirectToMaintenance(error);
+                return new Promise(() => {}); // swallow — redirect is in progress
+            }
+        }
+
         // If error is 401 and we haven't retried yet
         if (error.response?.status === 401 && !originalRequest._retry) {
             // Skip refresh for auth endpoints to prevent infinite loop
@@ -139,9 +183,7 @@ apiClient.interceptors.response.use(
                 isRefreshing = false;
                 processQueue(error, null);
                 // Redirect to login page
-                if (typeof window !== "undefined") {
-                    window.location.href = "/";
-                }
+                redirectTo("/");
                 return Promise.reject(error);
             }
 
@@ -175,9 +217,7 @@ apiClient.interceptors.response.use(
                 processQueue(refreshError as AxiosError, null);
                 isRefreshing = false;
 
-                if (typeof window !== "undefined") {
-                    window.location.href = "/";
-                }
+                redirectTo("/");
 
                 return Promise.reject(refreshError);
             }
