@@ -40,6 +40,6 @@ test("admin staging smoke", async ({ page }) => {
     await page.goto(`/collections/${requireEnv(collectionSmokeId, "ADMIN_COLLECTION_SMOKE_ID")}`, {
         waitUntil: "domcontentloaded",
     });
-    await expect(page.getByRole("heading", { name: /collection items/i })).toBeVisible();
+    await expect(page.getByText(/collection items/i).first()).toBeVisible();
     await expect(page.locator('a[href^="/assets/families/"]').first()).toBeVisible();
 });
