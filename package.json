@@ -8,6 +8,8 @@
         "build": "next build",
         "start": "next start -p 4000",
         "lint": "eslint \"src/**/*.{ts,tsx}\"",
+        "e2e:smoke": "playwright test --config=playwright.config.ts --project=chromium",
+        "e2e:smoke:headed": "playwright test --config=playwright.config.ts --project=chromium --headed",
         "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy -- --dispatch-namespace benro-testing",
         "deploy:build": "opennextjs-cloudflare build",
         "format": "prettier --write .",
@@ -109,6 +111,7 @@
         "zod": "^3.25.74"
     },
     "devDependencies": {
+        "@playwright/test": "^1.58.2",
         "@types/bcrypt": "^6.0.0",
         "@types/color": "^4.2.0",
         "@types/eslint": "^8.56.10",

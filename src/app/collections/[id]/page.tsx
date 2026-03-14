@@ -266,39 +266,6 @@ export default function CollectionDetailPage() {
         }
     };
 
-    if (isLoading) {
-        return (
-            <div className="min-h-screen bg-background p-8">
-                <div className="animate-pulse space-y-8">
-                    <div className="h-8 bg-muted rounded w-1/3" />
-                    <div className="h-64 bg-muted rounded" />
-                    <div className="space-y-4">
-                        {[...Array(3)].map((_, i) => (
-                            <div key={i} className="h-32 bg-muted rounded" />
-                        ))}
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
-    if (!collection) {
-        return (
-            <div className="min-h-screen bg-background p-8 flex items-center justify-center">
-                <Card className="p-12 text-center max-w-md">
-                    <AlertCircle className="w-16 h-16 mx-auto mb-4 text-destructive" />
-                    <h3 className="text-lg font-semibold mb-2">Collection Not Found</h3>
-                    <p className="text-muted-foreground text-sm mb-6">
-                        This collection may have been deleted or you don't have access to it.
-                    </p>
-                    <Button asChild>
-                        <Link href="/collections">Back to Collections</Link>
-                    </Button>
-                </Card>
-            </div>
-        );
-    }
-
     const assets = assetsData?.data || [];
     const familyOptions = useMemo(() => {
         const families = assetFamiliesData?.data || [];
@@ -339,6 +306,39 @@ export default function CollectionDetailPage() {
             sum + parseFloat(item?.asset?.weight_per_unit || "0") * item?.default_quantity,
         0
     );
+
+    if (isLoading) {
+        return (
+            <div className="min-h-screen bg-background p-8">
+                <div className="animate-pulse space-y-8">
+                    <div className="h-8 bg-muted rounded w-1/3" />
+                    <div className="h-64 bg-muted rounded" />
+                    <div className="space-y-4">
+                        {[...Array(3)].map((_, i) => (
+                            <div key={i} className="h-32 bg-muted rounded" />
+                        ))}
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (!collection) {
+        return (
+            <div className="min-h-screen bg-background p-8 flex items-center justify-center">
+                <Card className="p-12 text-center max-w-md">
+                    <AlertCircle className="w-16 h-16 mx-auto mb-4 text-destructive" />
+                    <h3 className="text-lg font-semibold mb-2">Collection Not Found</h3>
+                    <p className="text-muted-foreground text-sm mb-6">
+                        This collection may have been deleted or you don't have access to it.
+                    </p>
+                    <Button asChild>
+                        <Link href="/collections">Back to Collections</Link>
+                    </Button>
+                </Card>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-background p-8">
