@@ -36,6 +36,7 @@ test("admin staging smoke", async ({ page }) => {
         await expect(page.getByRole("heading", { name: firstFamilyName })).toBeVisible();
     }
     await expect(page.getByText(/stock records/i).first()).toBeVisible();
+    await expect(page.getByTestId("family-availability-stats")).toBeVisible();
 
     await page.goto(`/collections/${requireEnv(collectionSmokeId, "ADMIN_COLLECTION_SMOKE_ID")}`, {
         waitUntil: "domcontentloaded",
@@ -54,4 +55,8 @@ test("admin staging smoke", async ({ page }) => {
     await expect(page.getByTestId("self-booking-family-card").first()).toBeVisible();
     await page.getByTestId("self-booking-family-card").first().click();
     await expect(page.getByTestId("self-booking-family-stock")).toBeVisible();
+
+    await page.goto("/reports", { waitUntil: "domcontentloaded" });
+    await expect(page.getByRole("heading", { name: /reports & exports/i })).toBeVisible();
+    await expect(page.getByText(/family identity/i).first()).toBeVisible();
 });

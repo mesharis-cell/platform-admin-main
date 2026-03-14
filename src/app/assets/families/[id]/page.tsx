@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { use } from "react";
 import { ArrowLeft, Layers3, Package, QrCode } from "lucide-react";
+import { useAssetFamilyAvailabilityStats } from "@/hooks/use-asset-family-availability-stats";
 import { useAssetFamily } from "@/hooks/use-asset-families";
 import { useAssets } from "@/hooks/use-assets";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,8 @@ const formatCount = (value?: number) => (typeof value === "number" ? value : 0);
 export default function AssetFamilyDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
     const { data: familyResponse, isLoading: familyLoading } = useAssetFamily(id);
+    const { data: availabilityStats, isLoading: availabilityLoading } =
+        useAssetFamilyAvailabilityStats(id);
     const family = familyResponse?.data || null;
     const { data: stockResponse, isLoading: stockLoading } = useAssets(
         family ? { family_id: family.id, limit: "200" } : { family_id: id, limit: "200" }
@@ -138,7 +141,12 @@ export default function AssetFamilyDetailPage({ params }: { params: Promise<{ id
                                             Available Units
                                         </div>
                                         <div className="mt-2 text-2xl font-semibold">
-                                            {formatCount(family.available_quantity)}
+                                            {availabilityLoading
+                                                ? "..."
+                                                : formatCount(
+                                                      availabilityStats?.data.available_quantity ??
+                                                          family.available_quantity
+                                                  )}
                                         </div>
                                     </CardContent>
                                 </Card>
@@ -150,6 +158,67 @@ export default function AssetFamilyDetailPage({ params }: { params: Promise<{ id
                                         <div className="mt-2 text-2xl font-semibold">
                                             {formatCount(family.condition_summary?.red) +
                                                 formatCount(family.condition_summary?.orange)}
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </div>
+
+                            <div
+                                className="grid grid-cols-2 gap-3 md:grid-cols-4"
+                                data-testid="family-availability-stats"
+                            >
+                                <Card>
+                                    <CardContent className="p-4">
+                                        <div className="text-xs font-mono text-muted-foreground">
+                                            Booked Units
+                                        </div>
+                                        <div className="mt-2 text-2xl font-semibold">
+                                            {availabilityLoading
+                                                ? "..."
+                                                : formatCount(
+                                                      availabilityStats?.data.booked_quantity
+                                                  )}
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                                <Card>
+                                    <CardContent className="p-4">
+                                        <div className="text-xs font-mono text-muted-foreground">
+                                            Out Units
+                                        </div>
+                                        <div className="mt-2 text-2xl font-semibold">
+                                            {availabilityLoading
+                                                ? "..."
+                                                : formatCount(availabilityStats?.data.out_quantity)}
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                                <Card>
+                                    <CardContent className="p-4">
+                                        <div className="text-xs font-mono text-muted-foreground">
+                                            Maintenance Units
+                                        </div>
+                                        <div className="mt-2 text-2xl font-semibold">
+                                            {availabilityLoading
+                                                ? "..."
+                                                : formatCount(
+                                                      availabilityStats?.data
+                                                          .in_maintenance_quantity
+                                                  )}
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                                <Card>
+                                    <CardContent className="p-4">
+                                        <div className="text-xs font-mono text-muted-foreground">
+                                            Self-Booked Units
+                                        </div>
+                                        <div className="mt-2 text-2xl font-semibold">
+                                            {availabilityLoading
+                                                ? "..."
+                                                : formatCount(
+                                                      availabilityStats?.data.self_booked_quantity
+                                                  )}
                                         </div>
                                     </CardContent>
                                 </Card>

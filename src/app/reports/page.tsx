@@ -139,7 +139,8 @@ const EXPORT_CARDS: ExportCardConfig[] = [
     {
         id: "stockReport",
         title: "Stock Report",
-        description: "Current stock inventory breakdown by company and condition.",
+        description:
+            "Current stock inventory breakdown with family identity, company, and condition.",
         endpoint: "stock-report",
         section: "Inventory",
         filterFields: ["company", "condition"],
@@ -148,7 +149,8 @@ const EXPORT_CARDS: ExportCardConfig[] = [
     {
         id: "assetUtilization",
         title: "Asset Utilization",
-        description: "Asset usage frequency and days-since-used distribution.",
+        description:
+            "Stock-record usage frequency with family identity and days-since-used distribution.",
         endpoint: "asset-utilization",
         section: "Inventory",
         filterFields: ["company"],
