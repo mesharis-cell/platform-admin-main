@@ -134,10 +134,11 @@ async function generateQRCode(qrCode: string): Promise<{ qrCodeImage: string }> 
 }
 
 // Hooks
-export function useAssets(params?: Record<string, string>) {
+export function useAssets(params?: Record<string, string>, options?: { enabled?: boolean }) {
     return useQuery({
         queryKey: assetKeys.list(params),
         queryFn: () => fetchAssets(params),
+        enabled: options?.enabled ?? true,
     });
 }
 
