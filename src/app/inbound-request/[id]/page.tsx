@@ -392,6 +392,7 @@ export default function InboundRequestDetailsPage({ params }: { params: Promise<
                     requestId={request.id}
                     companyId={request.company.id}
                     platformId={request.platform_id}
+                    items={request.items}
                     onSuccess={handleRefresh}
                 />
             </div>

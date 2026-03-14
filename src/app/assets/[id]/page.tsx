@@ -301,6 +301,23 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                                 <span className="text-sm text-muted-foreground font-mono">
                                     {asset.tracking_method}
                                 </span>
+                                {asset.family_id && (
+                                    <>
+                                        <span className="text-sm text-muted-foreground font-mono">
+                                            •
+                                        </span>
+                                        <Button
+                                            variant="link"
+                                            size="sm"
+                                            asChild
+                                            className="h-auto p-0 font-mono text-sm"
+                                        >
+                                            <Link href={`/assets/families/${asset.family_id}`}>
+                                                View Family
+                                            </Link>
+                                        </Button>
+                                    </>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -973,8 +990,7 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                                                             {record.outbound_scan ? (
                                                                 <p className="text-xs">
                                                                     {new Date(
-                                                                        record.outbound_scan
-                                                                            .scanned_at
+                                                                        record.outbound_scan.scanned_at
                                                                     ).toLocaleString()}
                                                                 </p>
                                                             ) : (
@@ -991,8 +1007,7 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                                                                 <div>
                                                                     <p className="text-xs">
                                                                         {new Date(
-                                                                            record.inbound_scan
-                                                                                .scanned_at
+                                                                            record.inbound_scan.scanned_at
                                                                         ).toLocaleString()}
                                                                     </p>
                                                                     <span

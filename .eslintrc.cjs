@@ -9,6 +9,7 @@ const config = {
     plugins: ["@typescript-eslint", "react", "react-hooks", "creatr"],
     globals: {
         React: "readonly",
+        globalThis: "readonly",
     },
     settings: {
         react: {

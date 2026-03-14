@@ -800,8 +800,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                                 {Math.floor(
                                                     (Date.now() -
                                                         new Date(
-                                                            order?.data?.final_pricing
-                                                                ?.quote_sent_at
+                                                            order?.data?.final_pricing?.quote_sent_at
                                                         ).getTime()) /
                                                         (1000 * 60 * 60 * 24)
                                                 )}{" "}
@@ -809,8 +808,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                                 {Math.floor(
                                                     (Date.now() -
                                                         new Date(
-                                                            order?.data?.final_pricing
-                                                                ?.quote_sent_at
+                                                            order?.data?.final_pricing?.quote_sent_at
                                                         ).getTime()) /
                                                         (1000 * 60 * 60 * 24)
                                                 ) >= 2 && " - Consider following up with client"}
