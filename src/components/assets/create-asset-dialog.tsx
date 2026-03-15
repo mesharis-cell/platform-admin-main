@@ -7,12 +7,12 @@
  * Design: Warehouse terminal interface with tabbed steps
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useCompanies } from "@/hooks/use-companies";
 import { useWarehouses } from "@/hooks/use-warehouses";
 import { useZones } from "@/hooks/use-zones";
 import { useBrands } from "@/hooks/use-brands";
-import { useAssetFamilies } from "@/hooks/use-asset-families";
+import { useAssetFamilies, useAssetFamily } from "@/hooks/use-asset-families";
 import { useCreateAsset, useUploadImage } from "@/hooks/use-assets";
 import {
     Plus,
@@ -67,7 +67,12 @@ interface CreateAssetDialogProps {
     defaultFamilyId?: string;
 }
 
-export function CreateAssetDialog({ open, onOpenChange, onSuccess, defaultFamilyId }: CreateAssetDialogProps) {
+export function CreateAssetDialog({
+    open,
+    onOpenChange,
+    onSuccess,
+    defaultFamilyId,
+}: CreateAssetDialogProps) {
     const [currentStep, setCurrentStep] = useState(0);
     const [formData, setFormData] = useState<Partial<CreateAssetRequest>>({
         tracking_method: "INDIVIDUAL",
@@ -114,6 +119,39 @@ export function CreateAssetDialog({ open, onOpenChange, onSuccess, defaultFamily
     // Mutations
     const createMutation = useCreateAsset();
     const uploadMutation = useUploadImage();
+
+    // Fetch selected family details for auto-prefill
+    const { data: selectedFamilyData } = useAssetFamily(formData.family_id || "");
+
+    // Auto-prefill fields when a family is selected
+    useEffect(() => {
+        const family = selectedFamilyData?.data;
+        if (!family) return;
+
+        setFormData((prev) => ({
+            ...prev,
+            company_id: prev.company_id || family.company?.id || undefined,
+            brand_id: prev.brand_id || family.brand?.id || undefined,
+            category: prev.category || (family.category as any) || undefined,
+            name: prev.name || family.name || undefined,
+            description: prev.description || family.description || undefined,
+            tracking_method: family.stock_mode === "POOLED" ? "BATCH" : "INDIVIDUAL",
+            handling_tags: prev.handling_tags?.length
+                ? prev.handling_tags
+                : family.handling_tags || [],
+            dimensions:
+                prev.dimensions && Object.keys(prev.dimensions).length > 0
+                    ? prev.dimensions
+                    : family.dimensions || {},
+            weight_per_unit:
+                prev.weight_per_unit ||
+                (family.weight_per_unit ? Number(family.weight_per_unit) : undefined),
+            volume_per_unit:
+                prev.volume_per_unit ||
+                (family.volume_per_unit ? Number(family.volume_per_unit) : undefined),
+            packaging: prev.packaging || family.packaging || undefined,
+        }));
+    }, [selectedFamilyData?.data]);
 
     // Handle image selection - store files locally, create previews
     function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {

@@ -11,7 +11,6 @@ import {
 } from "@/hooks/use-companies";
 import {
     Plus,
-    Search,
     Archive,
     Pencil,
     Percent,
@@ -25,6 +24,7 @@ import {
     Undo2,
     ArrowUpRight,
 } from "lucide-react";
+import { DataTable, DataTableSearch, DataTableRow } from "@/components/ui/data-table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,14 +36,7 @@ import {
     DialogTrigger,
     DialogDescription,
 } from "@/components/ui/dialog";
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table";
+import { TableCell } from "@/components/ui/table";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -852,249 +845,186 @@ export default function CompaniesPage() {
                 </div>
             </div>
 
-            {/* Control Panel */}
-            <div className="border-b border-border bg-card px-8 py-4">
-                <div className="flex items-center gap-4">
-                    {/* Search */}
-                    <div className="relative flex-1 max-w-md">
-                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                        <Input
-                            placeholder="Search companies..."
+            <DataTable
+                filters={
+                    <>
+                        <DataTableSearch
                             value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="pl-10 font-mono text-sm"
+                            onChange={setSearchQuery}
+                            placeholder="Search companies..."
                         />
-                    </div>
-
-                    {/* Archive Toggle */}
-                    <Button
-                        variant={includeArchived ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setIncludeArchived(!includeArchived)}
-                        className="gap-2 font-mono text-xs"
-                    >
-                        <Archive className="h-3.5 w-3.5" />
-                        {includeArchived ? "HIDE ARCHIVED" : "SHOW ARCHIVED"}
-                    </Button>
-                </div>
-            </div>
-
-            {/* Data Table */}
-            <div className="px-8 py-6">
-                {loading ? (
-                    <div className="flex items-center justify-center py-12">
-                        <div className="text-sm font-mono text-muted-foreground animate-pulse">
-                            LOADING REGISTRY...
-                        </div>
-                    </div>
-                ) : companies.length === 0 ? (
-                    <div className="text-center py-12 space-y-3">
-                        <Building2 className="h-12 w-12 mx-auto text-muted-foreground opacity-50" />
-                        <p className="font-mono text-sm text-muted-foreground">
-                            NO COMPANIES FOUND
-                        </p>
-                        {canCreateCompany && (
-                            <Button
-                                onClick={() => setIsCreateOpen(true)}
-                                variant="outline"
-                                className="font-mono text-xs"
-                            >
-                                <Plus className="h-3.5 w-3.5 mr-2" />
-                                CREATE FIRST COMPANY
-                            </Button>
-                        )}
-                    </div>
-                ) : (
-                    <div className="border border-border rounded-lg overflow-hidden bg-card">
-                        <Table>
-                            <TableHeader>
-                                <TableRow className="bg-muted/50 border-border/50">
-                                    <TableHead className="font-mono text-xs font-bold">
-                                        COMPANY
-                                    </TableHead>
-                                    <TableHead className="font-mono text-xs font-bold">
-                                        PRIMARY DOMAIN
-                                    </TableHead>
-                                    <TableHead className="font-mono text-xs font-bold text-right">
-                                        PLATFORM MARGIN PERCENT
-                                    </TableHead>
-                                    <TableHead className="font-mono text-xs font-bold text-right">
-                                        WAREHOUSE OPS RATE
-                                    </TableHead>
-                                    <TableHead className="font-mono text-xs font-bold text-right">
-                                        VAT OVERRIDE
-                                    </TableHead>
-                                    <TableHead className="font-mono text-xs font-bold">
-                                        CONTACT
-                                    </TableHead>
-                                    <TableHead className="font-mono text-xs font-bold">
-                                        STATUS
-                                    </TableHead>
-                                    <TableHead className="w-12"></TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {companies.map((company, index) => (
-                                    <TableRow
-                                        key={company.id}
-                                        className="group hover:bg-muted/30 transition-colors border-border/50"
-                                        style={{
-                                            animationDelay: `${index * 50}ms`,
-                                        }}
-                                    >
-                                        <TableCell className="font-mono font-medium">
-                                            <div className="flex items-center gap-2">
-                                                <div className="h-10 w-10 rounded-lg overflow-hidden bg-background border border-border flex items-center justify-center shrink-0">
-                                                    {company.settings.branding.logo_url ? (
-                                                        <img
-                                                            src={company.settings.branding.logo_url}
-                                                            alt={`${company.name} logo`}
-                                                            className="w-full h-full object-contain p-1"
-                                                        />
-                                                    ) : (
-                                                        <div className="h-8 w-8 rounded bg-primary/10 flex items-center justify-center">
-                                                            <span className="text-xs font-mono font-bold text-primary">
-                                                                {company.name
-                                                                    .substring(0, 2)
-                                                                    .toUpperCase()}
-                                                            </span>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                                <div>
-                                                    <div className="font-bold">{company.name}</div>
-                                                    <div className="text-xs text-muted-foreground">
-                                                        ID: {company.id.slice(0, 8)}...
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="font-mono text-sm text-muted-foreground max-w-xs">
-                                            {company.primary_domain_hostname ||
-                                                company.domain ||
-                                                "—"}
-                                        </TableCell>
-                                        <TableCell className="text-center">
-                                            <span className="font-mono font-bold text-primary">
-                                                {parseFloat(
-                                                    String(company.platform_margin_percent)
-                                                ).toFixed(2)}
-                                                %
+                        <Button
+                            variant={includeArchived ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setIncludeArchived(!includeArchived)}
+                            className="gap-2 font-mono text-xs"
+                        >
+                            <Archive className="h-3.5 w-3.5" />
+                            {includeArchived ? "HIDE ARCHIVED" : "SHOW ARCHIVED"}
+                        </Button>
+                    </>
+                }
+                columns={[
+                    "COMPANY",
+                    "PRIMARY DOMAIN",
+                    { label: "PLATFORM MARGIN PERCENT", className: "text-right" },
+                    { label: "WAREHOUSE OPS RATE", className: "text-right" },
+                    { label: "VAT OVERRIDE", className: "text-right" },
+                    "CONTACT",
+                    "STATUS",
+                    { label: "", className: "w-12" },
+                ]}
+                loading={loading}
+                hasData={companies.length > 0}
+                empty={{
+                    icon: Building2,
+                    message: "NO COMPANIES FOUND",
+                    action: canCreateCompany ? (
+                        <Button
+                            onClick={() => setIsCreateOpen(true)}
+                            variant="outline"
+                            className="font-mono text-xs"
+                        >
+                            <Plus className="h-3.5 w-3.5 mr-2" />
+                            CREATE FIRST COMPANY
+                        </Button>
+                    ) : undefined,
+                }}
+            >
+                {companies.map((company, index) => (
+                    <DataTableRow key={company.id} index={index}>
+                        <TableCell className="font-mono font-medium">
+                            <div className="flex items-center gap-2">
+                                <div className="h-10 w-10 rounded-lg overflow-hidden bg-background border border-border flex items-center justify-center shrink-0">
+                                    {company.settings.branding.logo_url ? (
+                                        <img
+                                            src={company.settings.branding.logo_url}
+                                            alt={`${company.name} logo`}
+                                            className="w-full h-full object-contain p-1"
+                                        />
+                                    ) : (
+                                        <div className="h-8 w-8 rounded bg-primary/10 flex items-center justify-center">
+                                            <span className="text-xs font-mono font-bold text-primary">
+                                                {company.name.substring(0, 2).toUpperCase()}
                                             </span>
-                                        </TableCell>
-                                        <TableCell className="text-center">
-                                            <span className="font-mono font-bold text-primary">
-                                                {parseFloat(
-                                                    String(company.warehouse_ops_rate)
-                                                ).toFixed(2)}
-                                            </span>
-                                        </TableCell>
-                                        <TableCell className="text-center">
-                                            <span className="font-mono font-bold text-primary">
-                                                {company.vat_percent_override !== null &&
-                                                company.vat_percent_override !== undefined
-                                                    ? `${parseFloat(String(company.vat_percent_override)).toFixed(2)}%`
-                                                    : "Inherited"}
-                                            </span>
-                                        </TableCell>
-                                        <TableCell className="font-mono text-sm">
-                                            {company.contact_email || company.contact_phone ? (
-                                                <div className="space-y-1">
-                                                    {company.contact_email && (
-                                                        <div className="flex items-center gap-2 text-xs">
-                                                            <Mail className="h-3 w-3 text-muted-foreground" />
-                                                            {company.contact_email}
-                                                        </div>
-                                                    )}
-                                                    {company.contact_phone && (
-                                                        <div className="flex items-center gap-2 text-xs">
-                                                            <Phone className="h-3 w-3 text-muted-foreground" />
-                                                            {company.contact_phone}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            ) : (
-                                                <span className="text-muted-foreground">—</span>
-                                            )}
-                                        </TableCell>
-                                        <TableCell>
-                                            {company.deleted_at ? (
-                                                <Badge
-                                                    variant="outline"
-                                                    className="font-mono text-xs border-destructive/30 text-destructive"
+                                        </div>
+                                    )}
+                                </div>
+                                <div>
+                                    <div className="font-bold">{company.name}</div>
+                                    <div className="text-xs text-muted-foreground">
+                                        ID: {company.id.slice(0, 8)}...
+                                    </div>
+                                </div>
+                            </div>
+                        </TableCell>
+                        <TableCell className="font-mono text-sm text-muted-foreground max-w-xs">
+                            {company.primary_domain_hostname || company.domain || "—"}
+                        </TableCell>
+                        <TableCell className="text-center">
+                            <span className="font-mono font-bold text-primary">
+                                {parseFloat(String(company.platform_margin_percent)).toFixed(2)}%
+                            </span>
+                        </TableCell>
+                        <TableCell className="text-center">
+                            <span className="font-mono font-bold text-primary">
+                                {parseFloat(String(company.warehouse_ops_rate)).toFixed(2)}
+                            </span>
+                        </TableCell>
+                        <TableCell className="text-center">
+                            <span className="font-mono font-bold text-primary">
+                                {company.vat_percent_override !== null &&
+                                company.vat_percent_override !== undefined
+                                    ? `${parseFloat(String(company.vat_percent_override)).toFixed(2)}%`
+                                    : "Inherited"}
+                            </span>
+                        </TableCell>
+                        <TableCell className="font-mono text-sm">
+                            {company.contact_email || company.contact_phone ? (
+                                <div className="space-y-1">
+                                    {company.contact_email && (
+                                        <div className="flex items-center gap-2 text-xs">
+                                            <Mail className="h-3 w-3 text-muted-foreground" />
+                                            {company.contact_email}
+                                        </div>
+                                    )}
+                                    {company.contact_phone && (
+                                        <div className="flex items-center gap-2 text-xs">
+                                            <Phone className="h-3 w-3 text-muted-foreground" />
+                                            {company.contact_phone}
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                <span className="text-muted-foreground">—</span>
+                            )}
+                        </TableCell>
+                        <TableCell>
+                            {company.deleted_at ? (
+                                <Badge
+                                    variant="outline"
+                                    className="font-mono text-xs border-destructive/30 text-destructive"
+                                >
+                                    ARCHIVED
+                                </Badge>
+                            ) : (
+                                <Badge
+                                    variant="outline"
+                                    className="font-mono text-xs border-primary/30 text-primary"
+                                >
+                                    ACTIVE
+                                </Badge>
+                            )}
+                        </TableCell>
+                        <TableCell>
+                            {canManageCompanies ? (
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                        >
+                                            <MoreVertical className="h-4 w-4" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        {canUpdateCompany && (
+                                            <DropdownMenuItem
+                                                onClick={() => openEditDialog(company)}
+                                                className="font-mono text-xs"
+                                            >
+                                                <Pencil className="h-3.5 w-3.5 mr-2" />
+                                                Edit Company
+                                            </DropdownMenuItem>
+                                        )}
+                                        {canArchiveCompany &&
+                                            (company.deleted_at ? (
+                                                <DropdownMenuItem
+                                                    onClick={() => setConfirmUnarchive(company)}
+                                                    className="font-mono text-xs text-primary"
                                                 >
-                                                    ARCHIVED
-                                                </Badge>
+                                                    <Undo2 className="h-3.5 w-3.5 mr-2" />
+                                                    Unarchive Company
+                                                </DropdownMenuItem>
                                             ) : (
-                                                <Badge
-                                                    variant="outline"
-                                                    className="font-mono text-xs border-primary/30 text-primary"
+                                                <DropdownMenuItem
+                                                    onClick={() => setConfirmArchive(company)}
+                                                    className="font-mono text-xs text-destructive"
                                                 >
-                                                    ACTIVE
-                                                </Badge>
-                                            )}
-                                        </TableCell>
-                                        <TableCell>
-                                            {canManageCompanies ? (
-                                                <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                        >
-                                                            <MoreVertical className="h-4 w-4" />
-                                                        </Button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end">
-                                                        {canUpdateCompany && (
-                                                            <DropdownMenuItem
-                                                                onClick={() =>
-                                                                    openEditDialog(company)
-                                                                }
-                                                                className="font-mono text-xs"
-                                                            >
-                                                                <Pencil className="h-3.5 w-3.5 mr-2" />
-                                                                Edit Company
-                                                            </DropdownMenuItem>
-                                                        )}
-                                                        {canArchiveCompany &&
-                                                            (company.deleted_at ? (
-                                                                <DropdownMenuItem
-                                                                    onClick={() =>
-                                                                        setConfirmUnarchive(company)
-                                                                    }
-                                                                    className="font-mono text-xs text-primary"
-                                                                >
-                                                                    <Undo2 className="h-3.5 w-3.5 mr-2" />
-                                                                    Unarchive Company
-                                                                </DropdownMenuItem>
-                                                            ) : (
-                                                                <DropdownMenuItem
-                                                                    onClick={() =>
-                                                                        setConfirmArchive(company)
-                                                                    }
-                                                                    className="font-mono text-xs text-destructive"
-                                                                >
-                                                                    <Archive className="h-3.5 w-3.5 mr-2" />
-                                                                    Archive Company
-                                                                </DropdownMenuItem>
-                                                            ))}
-                                                    </DropdownMenuContent>
-                                                </DropdownMenu>
-                                            ) : (
-                                                <span className="text-xs text-muted-foreground">
-                                                    -
-                                                </span>
-                                            )}
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </div>
-                )}
-            </div>
+                                                    <Archive className="h-3.5 w-3.5 mr-2" />
+                                                    Archive Company
+                                                </DropdownMenuItem>
+                                            ))}
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            ) : (
+                                <span className="text-xs text-muted-foreground">-</span>
+                            )}
+                        </TableCell>
+                    </DataTableRow>
+                ))}
+            </DataTable>
 
             {/* Footer with zone marker */}
             <div className="fixed bottom-4 right-4 font-mono text-xs text-muted-foreground/40">

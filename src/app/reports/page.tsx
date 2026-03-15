@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Download, FileSpreadsheet } from "lucide-react";
+import { Download, FileBarChart, FileSpreadsheet } from "lucide-react";
+import { AdminHeader } from "@/components/admin-header";
 import { toast } from "sonner";
 import { useCompanies } from "@/hooks/use-companies";
 import { useToken } from "@/lib/auth/use-token";
@@ -258,195 +259,207 @@ export default function ReportsPage() {
     };
 
     return (
-        <div className="container mx-auto py-8 px-6 space-y-8">
-            <div className="flex items-start gap-4">
-                <div className="h-11 w-11 rounded-lg border border-primary/20 bg-primary/10 flex items-center justify-center">
-                    <FileSpreadsheet className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                    <h1 className="text-3xl font-bold">Reports & Exports</h1>
-                    <p className="text-muted-foreground mt-1">
-                        Export operational, financial, and inventory datasets with scoped filters.
-                    </p>
-                </div>
+        <div className="min-h-screen bg-background">
+            <AdminHeader
+                icon={FileBarChart}
+                title="REPORTS & EXPORTS"
+                description="Data Exports · Analytics · Reconciliation"
+                stats={{ label: "AVAILABLE REPORTS", value: visibleCards.length }}
+            />
+
+            <div className="mx-auto max-w-[1600px] px-6 py-8 space-y-8">
+                {groupedCards.length === 0 ? (
+                    <Card>
+                        <CardContent className="p-8 text-center">
+                            <p className="text-muted-foreground">
+                                You do not have permission to view export cards.
+                            </p>
+                        </CardContent>
+                    </Card>
+                ) : (
+                    groupedCards.map(({ section, cards }) => (
+                        <section key={section} className="space-y-4">
+                            <h2 className="text-xs uppercase tracking-[0.2em] text-muted-foreground font-mono">
+                                {section}
+                            </h2>
+                            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                                {cards.map((card) => {
+                                    const filters = cardFilters[card.id];
+                                    return (
+                                        <Card key={card.id} className="border-border/60">
+                                            <CardHeader className="space-y-1">
+                                                <CardTitle className="text-base">
+                                                    {card.title}
+                                                </CardTitle>
+                                                <CardDescription>
+                                                    {card.description}
+                                                </CardDescription>
+                                            </CardHeader>
+                                            <CardContent className="space-y-4">
+                                                {card.filterFields.includes("dateRange") && (
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                        <div className="space-y-1.5">
+                                                            <Label className="text-xs">
+                                                                Date From
+                                                            </Label>
+                                                            <Input
+                                                                type="date"
+                                                                value={filters.dateFrom}
+                                                                onChange={(event) =>
+                                                                    updateCardFilter(
+                                                                        card.id,
+                                                                        "dateFrom",
+                                                                        event.target.value
+                                                                    )
+                                                                }
+                                                            />
+                                                        </div>
+                                                        <div className="space-y-1.5">
+                                                            <Label className="text-xs">
+                                                                Date To
+                                                            </Label>
+                                                            <Input
+                                                                type="date"
+                                                                value={filters.dateTo}
+                                                                onChange={(event) =>
+                                                                    updateCardFilter(
+                                                                        card.id,
+                                                                        "dateTo",
+                                                                        event.target.value
+                                                                    )
+                                                                }
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {card.filterFields.includes("company") && (
+                                                    <div className="space-y-1.5">
+                                                        <Label className="text-xs">Company</Label>
+                                                        <Select
+                                                            value={filters.companyId || "all"}
+                                                            onValueChange={(value) =>
+                                                                updateCardFilter(
+                                                                    card.id,
+                                                                    "companyId",
+                                                                    value === "all" ? "" : value
+                                                                )
+                                                            }
+                                                        >
+                                                            <SelectTrigger>
+                                                                <SelectValue placeholder="All companies" />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="all">
+                                                                    All companies
+                                                                </SelectItem>
+                                                                {companies?.data?.map((company) => (
+                                                                    <SelectItem
+                                                                        key={company.id}
+                                                                        value={company.id}
+                                                                    >
+                                                                        {company.name}
+                                                                    </SelectItem>
+                                                                ))}
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
+                                                )}
+
+                                                {card.filterFields.includes("status") && (
+                                                    <div className="space-y-1.5">
+                                                        <Label className="text-xs">
+                                                            Order Status
+                                                        </Label>
+                                                        <Select
+                                                            value={filters.status || "all"}
+                                                            onValueChange={(value) =>
+                                                                updateCardFilter(
+                                                                    card.id,
+                                                                    "status",
+                                                                    value === "all" ? "" : value
+                                                                )
+                                                            }
+                                                        >
+                                                            <SelectTrigger>
+                                                                <SelectValue placeholder="All statuses" />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="all">
+                                                                    All statuses
+                                                                </SelectItem>
+                                                                {ORDER_STATUS_OPTIONS.map(
+                                                                    (status) => (
+                                                                        <SelectItem
+                                                                            key={status}
+                                                                            value={status}
+                                                                        >
+                                                                            {status.replace(
+                                                                                /_/g,
+                                                                                " "
+                                                                            )}
+                                                                        </SelectItem>
+                                                                    )
+                                                                )}
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
+                                                )}
+
+                                                {card.filterFields.includes("condition") && (
+                                                    <div className="space-y-1.5">
+                                                        <Label className="text-xs">Condition</Label>
+                                                        <Select
+                                                            value={filters.condition || "all"}
+                                                            onValueChange={(value) =>
+                                                                updateCardFilter(
+                                                                    card.id,
+                                                                    "condition",
+                                                                    value === "all" ? "" : value
+                                                                )
+                                                            }
+                                                        >
+                                                            <SelectTrigger>
+                                                                <SelectValue placeholder="All conditions" />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="all">
+                                                                    All conditions
+                                                                </SelectItem>
+                                                                {CONDITION_OPTIONS.map(
+                                                                    (condition) => (
+                                                                        <SelectItem
+                                                                            key={condition}
+                                                                            value={condition}
+                                                                        >
+                                                                            {condition}
+                                                                        </SelectItem>
+                                                                    )
+                                                                )}
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
+                                                )}
+
+                                                <Button
+                                                    className="w-full gap-2"
+                                                    onClick={() => downloadExport(card)}
+                                                    disabled={downloadingCard === card.id}
+                                                >
+                                                    <Download className="h-4 w-4" />
+                                                    {downloadingCard === card.id
+                                                        ? "Exporting..."
+                                                        : "Download CSV"}
+                                                </Button>
+                                            </CardContent>
+                                        </Card>
+                                    );
+                                })}
+                            </div>
+                        </section>
+                    ))
+                )}
             </div>
-
-            {groupedCards.length === 0 ? (
-                <Card>
-                    <CardContent className="p-8 text-center">
-                        <p className="text-muted-foreground">
-                            You do not have permission to view export cards.
-                        </p>
-                    </CardContent>
-                </Card>
-            ) : (
-                groupedCards.map(({ section, cards }) => (
-                    <section key={section} className="space-y-4">
-                        <h2 className="text-xs uppercase tracking-[0.2em] text-muted-foreground font-mono">
-                            {section}
-                        </h2>
-                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                            {cards.map((card) => {
-                                const filters = cardFilters[card.id];
-                                return (
-                                    <Card key={card.id} className="border-border/60">
-                                        <CardHeader className="space-y-1">
-                                            <CardTitle className="text-base">
-                                                {card.title}
-                                            </CardTitle>
-                                            <CardDescription>{card.description}</CardDescription>
-                                        </CardHeader>
-                                        <CardContent className="space-y-4">
-                                            {card.filterFields.includes("dateRange") && (
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                                    <div className="space-y-1.5">
-                                                        <Label className="text-xs">Date From</Label>
-                                                        <Input
-                                                            type="date"
-                                                            value={filters.dateFrom}
-                                                            onChange={(event) =>
-                                                                updateCardFilter(
-                                                                    card.id,
-                                                                    "dateFrom",
-                                                                    event.target.value
-                                                                )
-                                                            }
-                                                        />
-                                                    </div>
-                                                    <div className="space-y-1.5">
-                                                        <Label className="text-xs">Date To</Label>
-                                                        <Input
-                                                            type="date"
-                                                            value={filters.dateTo}
-                                                            onChange={(event) =>
-                                                                updateCardFilter(
-                                                                    card.id,
-                                                                    "dateTo",
-                                                                    event.target.value
-                                                                )
-                                                            }
-                                                        />
-                                                    </div>
-                                                </div>
-                                            )}
-
-                                            {card.filterFields.includes("company") && (
-                                                <div className="space-y-1.5">
-                                                    <Label className="text-xs">Company</Label>
-                                                    <Select
-                                                        value={filters.companyId || "all"}
-                                                        onValueChange={(value) =>
-                                                            updateCardFilter(
-                                                                card.id,
-                                                                "companyId",
-                                                                value === "all" ? "" : value
-                                                            )
-                                                        }
-                                                    >
-                                                        <SelectTrigger>
-                                                            <SelectValue placeholder="All companies" />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value="all">
-                                                                All companies
-                                                            </SelectItem>
-                                                            {companies?.data?.map((company) => (
-                                                                <SelectItem
-                                                                    key={company.id}
-                                                                    value={company.id}
-                                                                >
-                                                                    {company.name}
-                                                                </SelectItem>
-                                                            ))}
-                                                        </SelectContent>
-                                                    </Select>
-                                                </div>
-                                            )}
-
-                                            {card.filterFields.includes("status") && (
-                                                <div className="space-y-1.5">
-                                                    <Label className="text-xs">Order Status</Label>
-                                                    <Select
-                                                        value={filters.status || "all"}
-                                                        onValueChange={(value) =>
-                                                            updateCardFilter(
-                                                                card.id,
-                                                                "status",
-                                                                value === "all" ? "" : value
-                                                            )
-                                                        }
-                                                    >
-                                                        <SelectTrigger>
-                                                            <SelectValue placeholder="All statuses" />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value="all">
-                                                                All statuses
-                                                            </SelectItem>
-                                                            {ORDER_STATUS_OPTIONS.map((status) => (
-                                                                <SelectItem
-                                                                    key={status}
-                                                                    value={status}
-                                                                >
-                                                                    {status.replace(/_/g, " ")}
-                                                                </SelectItem>
-                                                            ))}
-                                                        </SelectContent>
-                                                    </Select>
-                                                </div>
-                                            )}
-
-                                            {card.filterFields.includes("condition") && (
-                                                <div className="space-y-1.5">
-                                                    <Label className="text-xs">Condition</Label>
-                                                    <Select
-                                                        value={filters.condition || "all"}
-                                                        onValueChange={(value) =>
-                                                            updateCardFilter(
-                                                                card.id,
-                                                                "condition",
-                                                                value === "all" ? "" : value
-                                                            )
-                                                        }
-                                                    >
-                                                        <SelectTrigger>
-                                                            <SelectValue placeholder="All conditions" />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value="all">
-                                                                All conditions
-                                                            </SelectItem>
-                                                            {CONDITION_OPTIONS.map((condition) => (
-                                                                <SelectItem
-                                                                    key={condition}
-                                                                    value={condition}
-                                                                >
-                                                                    {condition}
-                                                                </SelectItem>
-                                                            ))}
-                                                        </SelectContent>
-                                                    </Select>
-                                                </div>
-                                            )}
-
-                                            <Button
-                                                className="w-full gap-2"
-                                                onClick={() => downloadExport(card)}
-                                                disabled={downloadingCard === card.id}
-                                            >
-                                                <Download className="h-4 w-4" />
-                                                {downloadingCard === card.id
-                                                    ? "Exporting..."
-                                                    : "Download CSV"}
-                                            </Button>
-                                        </CardContent>
-                                    </Card>
-                                );
-                            })}
-                        </div>
-                    </section>
-                ))
-            )}
         </div>
     );
 }

@@ -27,14 +27,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table";
+import { TableCell } from "@/components/ui/table";
+import { DataTable, DataTableRow } from "@/components/ui/data-table";
 import { useCompanies } from "@/hooks/use-companies";
 import { useWarehouses } from "@/hooks/use-warehouses";
 import { useCreateZone, useDeleteRestoreZone, useUpdateZone, useZones } from "@/hooks/use-zones";
@@ -396,70 +390,69 @@ export default function ZonesPage() {
                 }
             />
 
-            {/* Control Panel */}
-            <div className="border-b border-border bg-card px-8 py-4">
-                <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2 text-sm font-mono text-muted-foreground">
-                        <Filter className="h-4 w-4" />
-                        FILTERS:
-                    </div>
-
-                    <Select value={warehouseFilter} onValueChange={setWarehouseFilter}>
-                        <SelectTrigger className="w-[250px] font-mono text-sm">
-                            <SelectValue placeholder="All Warehouses" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all" className="font-mono">
-                                All Warehouses
-                            </SelectItem>
-                            {warehouses.map((wh) => (
-                                <SelectItem key={wh.id} value={wh.id} className="font-mono">
-                                    {wh.name}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-
-                    <Select value={companyFilter} onValueChange={setCompanyFilter}>
-                        <SelectTrigger className="w-[250px] font-mono text-sm">
-                            <SelectValue placeholder="All Companies" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all" className="font-mono">
-                                All Companies
-                            </SelectItem>
-                            {companies.map((co) => (
-                                <SelectItem key={co.id} value={co.id} className="font-mono">
-                                    {co.name}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-
-                    <Button
-                        variant={includeDeleted ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setIncludeDeleted(!includeDeleted)}
-                        className="gap-2 font-mono text-xs"
-                    >
-                        <Trash2 className="h-3.5 w-3.5" />
-                        {includeDeleted ? "HIDE DELETED" : "SHOW DELETED"}
-                    </Button>
-                </div>
-            </div>
-
-            {/* Data Table */}
-            <div className="px-8 py-6">
-                {loading ? (
-                    <div className="flex items-center justify-center py-12">
-                        <div className="text-sm font-mono text-muted-foreground animate-pulse">
-                            LOADING ZONES...
+            <DataTable
+                filters={
+                    <>
+                        <div className="flex items-center gap-2 text-sm font-mono text-muted-foreground">
+                            <Filter className="h-4 w-4" />
+                            FILTERS:
                         </div>
-                    </div>
-                ) : zones.length === 0 ? (
-                    <div className="text-center py-12 space-y-3">
-                        <Box className="h-12 w-12 mx-auto text-muted-foreground opacity-50" />
-                        <p className="font-mono text-sm text-muted-foreground">NO ZONES FOUND</p>
+                        <Select value={warehouseFilter} onValueChange={setWarehouseFilter}>
+                            <SelectTrigger className="w-[250px] font-mono text-sm">
+                                <SelectValue placeholder="All Warehouses" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all" className="font-mono">
+                                    All Warehouses
+                                </SelectItem>
+                                {warehouses.map((wh) => (
+                                    <SelectItem key={wh.id} value={wh.id} className="font-mono">
+                                        {wh.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <Select value={companyFilter} onValueChange={setCompanyFilter}>
+                            <SelectTrigger className="w-[250px] font-mono text-sm">
+                                <SelectValue placeholder="All Companies" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all" className="font-mono">
+                                    All Companies
+                                </SelectItem>
+                                {companies.map((co) => (
+                                    <SelectItem key={co.id} value={co.id} className="font-mono">
+                                        {co.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <Button
+                            variant={includeDeleted ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setIncludeDeleted(!includeDeleted)}
+                            className="gap-2 font-mono text-xs"
+                        >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            {includeDeleted ? "HIDE DELETED" : "SHOW DELETED"}
+                        </Button>
+                    </>
+                }
+                columns={[
+                    "ZONE",
+                    "WAREHOUSE",
+                    "ASSIGNED COMPANY",
+                    "CAPACITY",
+                    "DESCRIPTION",
+                    "STATUS",
+                    { label: "", className: "w-12" },
+                ]}
+                loading={loading}
+                hasData={zones.length > 0}
+                empty={{
+                    icon: Box,
+                    message: "NO ZONES FOUND",
+                    action: (
                         <Button
                             onClick={() => setIsCreateOpen(true)}
                             variant="outline"
@@ -468,151 +461,105 @@ export default function ZonesPage() {
                             <Plus className="h-3.5 w-3.5 mr-2" />
                             CREATE FIRST ZONE
                         </Button>
-                    </div>
-                ) : (
-                    <div className="border border-border rounded-lg overflow-hidden bg-card">
-                        <Table>
-                            <TableHeader>
-                                <TableRow className="bg-muted/50 border-border/50">
-                                    <TableHead className="font-mono text-xs font-bold">
-                                        ZONE
-                                    </TableHead>
-                                    <TableHead className="font-mono text-xs font-bold">
-                                        WAREHOUSE
-                                    </TableHead>
-                                    <TableHead className="font-mono text-xs font-bold">
-                                        ASSIGNED COMPANY
-                                    </TableHead>
-                                    <TableHead className="font-mono text-xs font-bold">
-                                        CAPACITY
-                                    </TableHead>
-                                    <TableHead className="font-mono text-xs font-bold">
-                                        DESCRIPTION
-                                    </TableHead>
-                                    <TableHead className="font-mono text-xs font-bold">
-                                        STATUS
-                                    </TableHead>
-                                    <TableHead className="w-12"></TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {zones.map((zone, index) => (
-                                    <TableRow
-                                        key={zone.id}
-                                        className="group hover:bg-muted/30 transition-colors border-border/50"
-                                        style={{
-                                            animationDelay: `${index * 50}ms`,
-                                        }}
-                                    >
-                                        <TableCell className="font-mono font-medium">
-                                            <div className="flex items-center gap-2">
-                                                <div className="h-8 w-8 rounded bg-primary/10 flex items-center justify-center">
-                                                    <Box className="h-4 w-4 text-primary" />
-                                                </div>
-                                                <div>
-                                                    <div className="font-bold">{zone.name}</div>
-                                                    <div className="text-xs text-muted-foreground">
-                                                        ID: {zone.id.slice(0, 8)}...
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="font-mono">
-                                            <div className="flex items-center gap-2">
-                                                <Warehouse className="h-3.5 w-3.5 text-secondary" />
-                                                <span className="text-sm">
-                                                    {zone.warehouse?.name || "-"}
-                                                </span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="font-mono">
-                                            <div className="flex items-center gap-2">
-                                                <Building2 className="h-3.5 w-3.5 text-primary" />
-                                                <span className="text-sm font-medium">
-                                                    {zone.company?.name || "-"}
-                                                </span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="font-mono">
-                                            <span className="text-sm font-medium">
-                                                {zone.capacity || "—"}
-                                            </span>
-                                        </TableCell>
-                                        <TableCell className="font-mono text-sm text-muted-foreground max-w-xs">
-                                            {zone.description || "—"}
-                                        </TableCell>
-                                        <TableCell>
-                                            {zone.is_active ? (
-                                                <Badge
-                                                    variant="outline"
-                                                    className="font-mono text-xs border-primary/30 text-primary"
-                                                >
-                                                    ACTIVE
-                                                </Badge>
-                                            ) : (
-                                                <Badge
-                                                    variant="outline"
-                                                    className="font-mono text-xs border-destructive/30 text-destructive"
-                                                >
-                                                    DELETED
-                                                </Badge>
-                                            )}
-                                        </TableCell>
-                                        <TableCell>
-                                            {canManageZones ? (
-                                                <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                        >
-                                                            <MoreVertical className="h-4 w-4" />
-                                                        </Button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end">
-                                                        {canUpdateZone && (
-                                                            <DropdownMenuItem
-                                                                onClick={() => openEditDialog(zone)}
-                                                                className="font-mono text-xs"
-                                                            >
-                                                                <Pencil className="h-3.5 w-3.5 mr-2" />
-                                                                Edit Zone
-                                                            </DropdownMenuItem>
-                                                        )}
-
-                                                        {canDeleteZone && (
-                                                            <DropdownMenuItem
-                                                                onClick={() =>
-                                                                    setConfirmDelete(zone)
-                                                                }
-                                                                className={`font-mono text-xs ${zone.is_active ? "text-destructive" : "text-primary"}`}
-                                                            >
-                                                                {zone.is_active ? (
-                                                                    <Trash2 className="h-3.5 w-3.5 mr-2" />
-                                                                ) : (
-                                                                    <Undo2 className="h-3.5 w-3.5 mr-2" />
-                                                                )}
-                                                                {zone.is_active
-                                                                    ? "Delete Zone"
-                                                                    : "Unarchive Zone"}
-                                                            </DropdownMenuItem>
-                                                        )}
-                                                    </DropdownMenuContent>
-                                                </DropdownMenu>
-                                            ) : (
-                                                <span className="text-xs text-muted-foreground">
-                                                    -
-                                                </span>
-                                            )}
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </div>
-                )}
-            </div>
+                    ),
+                }}
+            >
+                {zones.map((zone, index) => (
+                    <DataTableRow key={zone.id} index={index}>
+                        <TableCell className="font-mono font-medium">
+                            <div className="flex items-center gap-2">
+                                <div className="h-8 w-8 rounded bg-primary/10 flex items-center justify-center">
+                                    <Box className="h-4 w-4 text-primary" />
+                                </div>
+                                <div>
+                                    <div className="font-bold">{zone.name}</div>
+                                    <div className="text-xs text-muted-foreground">
+                                        ID: {zone.id.slice(0, 8)}...
+                                    </div>
+                                </div>
+                            </div>
+                        </TableCell>
+                        <TableCell className="font-mono">
+                            <div className="flex items-center gap-2">
+                                <Warehouse className="h-3.5 w-3.5 text-secondary" />
+                                <span className="text-sm">{zone.warehouse?.name || "-"}</span>
+                            </div>
+                        </TableCell>
+                        <TableCell className="font-mono">
+                            <div className="flex items-center gap-2">
+                                <Building2 className="h-3.5 w-3.5 text-primary" />
+                                <span className="text-sm font-medium">
+                                    {zone.company?.name || "-"}
+                                </span>
+                            </div>
+                        </TableCell>
+                        <TableCell className="font-mono">
+                            <span className="text-sm font-medium">{zone.capacity || "—"}</span>
+                        </TableCell>
+                        <TableCell className="font-mono text-sm text-muted-foreground max-w-xs">
+                            {zone.description || "—"}
+                        </TableCell>
+                        <TableCell>
+                            {zone.is_active ? (
+                                <Badge
+                                    variant="outline"
+                                    className="font-mono text-xs border-primary/30 text-primary"
+                                >
+                                    ACTIVE
+                                </Badge>
+                            ) : (
+                                <Badge
+                                    variant="outline"
+                                    className="font-mono text-xs border-destructive/30 text-destructive"
+                                >
+                                    DELETED
+                                </Badge>
+                            )}
+                        </TableCell>
+                        <TableCell>
+                            {canManageZones ? (
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                        >
+                                            <MoreVertical className="h-4 w-4" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        {canUpdateZone && (
+                                            <DropdownMenuItem
+                                                onClick={() => openEditDialog(zone)}
+                                                className="font-mono text-xs"
+                                            >
+                                                <Pencil className="h-3.5 w-3.5 mr-2" />
+                                                Edit Zone
+                                            </DropdownMenuItem>
+                                        )}
+                                        {canDeleteZone && (
+                                            <DropdownMenuItem
+                                                onClick={() => setConfirmDelete(zone)}
+                                                className={`font-mono text-xs ${zone.is_active ? "text-destructive" : "text-primary"}`}
+                                            >
+                                                {zone.is_active ? (
+                                                    <Trash2 className="h-3.5 w-3.5 mr-2" />
+                                                ) : (
+                                                    <Undo2 className="h-3.5 w-3.5 mr-2" />
+                                                )}
+                                                {zone.is_active ? "Delete Zone" : "Unarchive Zone"}
+                                            </DropdownMenuItem>
+                                        )}
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            ) : (
+                                <span className="text-xs text-muted-foreground">-</span>
+                            )}
+                        </TableCell>
+                    </DataTableRow>
+                ))}
+            </DataTable>
 
             <div className="fixed bottom-4 right-4 font-mono text-xs text-muted-foreground/40">
                 ZONE: ADMIN-ZONES · SEC-LEVEL: PLATFORM-ADMIN

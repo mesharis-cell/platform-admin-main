@@ -264,7 +264,7 @@ export default function AccessPoliciesPage() {
                                     placeholder="Optional summary for admins"
                                 />
                             </div>
-                            <label className="flex items-center gap-3 rounded-md border p-3">
+                            <label className="flex items-center gap-3 rounded-md bg-muted/40 p-3">
                                 <Checkbox
                                     checked={form.is_active}
                                     onCheckedChange={(checked) =>
@@ -278,7 +278,7 @@ export default function AccessPoliciesPage() {
                             </label>
                             <div className="space-y-3">
                                 <Label>Permissions ({form.permissions.length} selected)</Label>
-                                <div className="max-h-[480px] overflow-y-auto space-y-2 rounded-md border p-4">
+                                <div className="max-h-[480px] overflow-y-auto space-y-2 rounded-md bg-muted/30 p-4">
                                     {Object.entries(activePermissionGroups).map(
                                         ([groupName, permissions]) => {
                                             if (permissions.length === 0) return null;

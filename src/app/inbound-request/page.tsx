@@ -13,7 +13,8 @@
 import { useState } from "react";
 import { useInboundRequests } from "@/hooks/use-inbound-requests";
 import { CreateInboundRequestDialog } from "@/components/assets/create-inbound-request-dialog";
-import { Plus, Search, Package, Loader2 } from "lucide-react";
+import { Plus, Search, Package, PackagePlus, Loader2 } from "lucide-react";
+import { AdminHeader } from "@/components/admin-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -45,128 +46,130 @@ export default function AssetsInboundPage() {
     const { data, isLoading, refetch } = useInboundRequests({ limit: "100", search_term: search });
 
     return (
-        <div className="container mx-auto py-8 px-4 space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold font-mono flex items-center gap-2">
-                        <Package className="w-6 h-6 text-primary" />
-                        New Stock Requests
-                    </h1>
-                    <p className="text-muted-foreground font-mono text-sm mt-1">
-                        Manage new stock requests
-                    </p>
-                </div>
-                <Button size="lg" className="font-mono" onClick={() => setIsCreateOpen(true)}>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Create Request
-                </Button>
-            </div>
+        <div className="min-h-screen bg-background">
+            <AdminHeader
+                icon={PackagePlus}
+                title="INBOUND REQUESTS"
+                description="Stock Intake · Receiving · Processing"
+                stats={data?.meta ? { label: "TOTAL REQUESTS", value: data.meta.total } : undefined}
+                actions={
+                    <Button size="lg" className="font-mono" onClick={() => setIsCreateOpen(true)}>
+                        <Plus className="w-4 h-4 mr-2" />
+                        Create Request
+                    </Button>
+                }
+            />
 
-            {/* Search and filters */}
-            <div className="flex items-center gap-4">
-                <div className="relative flex-1 max-w-md">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input
-                        placeholder="Search by ID, item name, or company..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        className="pl-10 font-mono"
-                    />
+            <div className="mx-auto max-w-[1600px] px-6 py-8 space-y-6">
+                {/* Search and filters */}
+                <div className="flex items-center gap-4">
+                    <div className="relative flex-1 max-w-md">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <Input
+                            placeholder="Search by ID, item name, or company..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="pl-10 font-mono"
+                        />
+                    </div>
                 </div>
-            </div>
 
-            {/* Data table */}
-            <div className="border border-border rounded-lg overflow-hidden">
-                <Table>
-                    <TableHeader>
-                        <TableRow className="bg-muted/50">
-                            <TableHead className="font-mono font-semibold">Inbound ID</TableHead>
-                            <TableHead className="font-mono font-semibold">Company</TableHead>
-                            <TableHead className="font-mono font-semibold">Incoming at</TableHead>
-                            <TableHead className="font-mono font-semibold">Status</TableHead>
-                            <TableHead className="font-mono font-semibold">Created</TableHead>
-                            <TableHead className="font-mono font-semibold w-[50px]"></TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {isLoading ? (
-                            <TableRow>
-                                <TableCell colSpan={7} className="text-center py-12">
-                                    <Loader2 className="w-6 h-6 animate-spin mx-auto text-muted-foreground" />
-                                    <p className="text-sm text-muted-foreground font-mono mt-2">
-                                        Loading requests...
-                                    </p>
-                                </TableCell>
+                {/* Data table */}
+                <div className="border border-border rounded-lg overflow-hidden">
+                    <Table>
+                        <TableHeader>
+                            <TableRow className="bg-muted/50">
+                                <TableHead className="font-mono font-semibold">
+                                    Inbound ID
+                                </TableHead>
+                                <TableHead className="font-mono font-semibold">Company</TableHead>
+                                <TableHead className="font-mono font-semibold">
+                                    Incoming at
+                                </TableHead>
+                                <TableHead className="font-mono font-semibold">Status</TableHead>
+                                <TableHead className="font-mono font-semibold">Created</TableHead>
+                                <TableHead className="font-mono font-semibold w-[50px]"></TableHead>
                             </TableRow>
-                        ) : data?.data.length === 0 ? (
-                            <TableRow>
-                                <TableCell colSpan={7} className="text-center py-12">
-                                    <Package className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
-                                    <p className="text-sm text-muted-foreground font-mono">
-                                        {search
-                                            ? "No requests match your search"
-                                            : "No new stock requests yet"}
-                                    </p>
-                                    {!search && (
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            className="mt-4 font-mono"
-                                            onClick={() => setIsCreateOpen(true)}
-                                        >
-                                            <Plus className="w-4 h-4 mr-2" />
-                                            Create First Request
-                                        </Button>
-                                    )}
-                                </TableCell>
-                            </TableRow>
-                        ) : (
-                            data?.data.map((request) => (
-                                <TableRow key={request.id} className="hover:bg-muted/30">
-                                    <TableCell className="font-mono">
-                                        {request.inbound_request_id}
-                                    </TableCell>
-                                    <TableCell className="font-mono">
-                                        {request.company?.name || "-"}
-                                    </TableCell>
-                                    <TableCell>
-                                        <div className="flex items-center gap-2">
-                                            {format(request.incoming_at, "MMM dd, yyyy")}
-                                        </div>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Badge
-                                            variant="outline"
-                                            className={`font-mono text-xs ${STATUS_COLORS[request.request_status]}`}
-                                        >
-                                            {request.request_status}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell className="font-mono text-sm text-muted-foreground">
-                                        {format(request.created_at, "MMM dd, yyyy")}
-                                    </TableCell>
-                                    <TableCell>
-                                        <Link href={`/inbound-request/${request.id}`}>
-                                            <Button variant="default">Details</Button>
-                                        </Link>
+                        </TableHeader>
+                        <TableBody>
+                            {isLoading ? (
+                                <TableRow>
+                                    <TableCell colSpan={7} className="text-center py-12">
+                                        <Loader2 className="w-6 h-6 animate-spin mx-auto text-muted-foreground" />
+                                        <p className="text-sm text-muted-foreground font-mono mt-2">
+                                            Loading requests...
+                                        </p>
                                     </TableCell>
                                 </TableRow>
-                            ))
-                        )}
-                    </TableBody>
-                </Table>
-            </div>
+                            ) : data?.data.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={7} className="text-center py-12">
+                                        <Package className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
+                                        <p className="text-sm text-muted-foreground font-mono">
+                                            {search
+                                                ? "No requests match your search"
+                                                : "No new stock requests yet"}
+                                        </p>
+                                        {!search && (
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="mt-4 font-mono"
+                                                onClick={() => setIsCreateOpen(true)}
+                                            >
+                                                <Plus className="w-4 h-4 mr-2" />
+                                                Create First Request
+                                            </Button>
+                                        )}
+                                    </TableCell>
+                                </TableRow>
+                            ) : (
+                                data?.data.map((request) => (
+                                    <TableRow key={request.id} className="hover:bg-muted/30">
+                                        <TableCell className="font-mono">
+                                            {request.inbound_request_id}
+                                        </TableCell>
+                                        <TableCell className="font-mono">
+                                            {request.company?.name || "-"}
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="flex items-center gap-2">
+                                                {format(request.incoming_at, "MMM dd, yyyy")}
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Badge
+                                                variant="outline"
+                                                className={`font-mono text-xs ${STATUS_COLORS[request.request_status]}`}
+                                            >
+                                                {request.request_status}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell className="font-mono text-sm text-muted-foreground">
+                                            {format(request.created_at, "MMM dd, yyyy")}
+                                        </TableCell>
+                                        <TableCell>
+                                            <Link href={`/inbound-request/${request.id}`}>
+                                                <Button variant="default">Details</Button>
+                                            </Link>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            )}
+                        </TableBody>
+                    </Table>
+                </div>
 
-            {/* Create dialog */}
-            <CreateInboundRequestDialog
-                open={isCreateOpen}
-                onOpenChange={setIsCreateOpen}
-                onSuccess={() => {
-                    setIsCreateOpen(false);
-                    refetch();
-                }}
-            />
+                {/* Create dialog */}
+                <CreateInboundRequestDialog
+                    open={isCreateOpen}
+                    onOpenChange={setIsCreateOpen}
+                    onSuccess={() => {
+                        setIsCreateOpen(false);
+                        refetch();
+                    }}
+                />
+            </div>
         </div>
     );
 }

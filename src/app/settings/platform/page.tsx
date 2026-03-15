@@ -261,571 +261,609 @@ export default function PlatformSettingsPage() {
     }
 
     return (
-        <div className="p-8 max-w-5xl space-y-6">
-            <div>
-                <h1 className="text-2xl font-bold">Platform Settings</h1>
-                <p className="text-sm text-muted-foreground mt-1">
-                    Runtime configuration for <span className="font-medium">{platform?.name}</span>
-                </p>
+        <div className="min-h-screen bg-background">
+            <div className="border-b border-border bg-card">
+                <div className="mx-auto max-w-5xl px-8 py-6">
+                    <h1 className="text-2xl font-bold font-mono tracking-tight">
+                        PLATFORM SETTINGS
+                    </h1>
+                    <p className="text-sm text-muted-foreground mt-1">
+                        Runtime configuration for{" "}
+                        <span className="font-medium">{platform?.name}</span>
+                    </p>
+                </div>
             </div>
-
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-base">
-                        <Mail className="h-4 w-4" /> Email & Currency
-                    </CardTitle>
-                    <CardDescription>
-                        These values are consumed directly by notifications and pricing displays.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="space-y-1.5">
-                        <Label>From Email</Label>
-                        <Input
-                            placeholder="notifications@platform.com"
-                            value={fromEmail}
-                            onChange={(e) => setFromEmail(e.target.value)}
-                            type="email"
-                        />
-                    </div>
-                    <div className="space-y-1.5">
-                        <Label>Currency</Label>
-                        <Input
-                            placeholder="AED"
-                            value={currency}
-                            onChange={(e) => setCurrency(e.target.value.toUpperCase().slice(0, 3))}
-                            maxLength={3}
-                            className="w-28"
-                        />
-                    </div>
-                    <div className="space-y-1.5">
-                        <Label>VAT Percentage</Label>
-                        <Input
-                            placeholder="5"
-                            value={vatPercent}
-                            onChange={(e) => setVatPercent(e.target.value)}
-                            type="number"
-                            min={0}
-                            max={100}
-                            step="0.01"
-                            className="w-32"
-                        />
-                    </div>
-                </CardContent>
-            </Card>
-
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-base">
-                        <Palette className="h-4 w-4" /> Branding
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="space-y-1.5">
-                        <Label>Logo URL</Label>
-                        <Input
-                            placeholder="https://cdn.example.com/logo.png"
-                            value={logoUrl}
-                            onChange={(e) => setLogoUrl(e.target.value)}
-                        />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
+            <div className="mx-auto max-w-5xl px-8 py-6 space-y-6">
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-base">
+                            <Mail className="h-4 w-4" /> Email & Currency
+                        </CardTitle>
+                        <CardDescription>
+                            These values are consumed directly by notifications and pricing
+                            displays.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
                         <div className="space-y-1.5">
-                            <Label>Primary Color</Label>
+                            <Label>From Email</Label>
                             <Input
-                                placeholder="#0F172A"
-                                value={primaryColor}
-                                onChange={(e) => setPrimaryColor(e.target.value)}
+                                placeholder="notifications@platform.com"
+                                value={fromEmail}
+                                onChange={(e) => setFromEmail(e.target.value)}
+                                type="email"
                             />
                         </div>
                         <div className="space-y-1.5">
-                            <Label>Secondary Color</Label>
+                            <Label>Currency</Label>
                             <Input
-                                placeholder="#64748B"
-                                value={secondaryColor}
-                                onChange={(e) => setSecondaryColor(e.target.value)}
-                            />
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
-
-            <div className="flex justify-end">
-                <Button onClick={handleSaveConfig} disabled={updateConfig.isPending}>
-                    {updateConfig.isPending ? "Saving..." : "Save Config"}
-                </Button>
-            </div>
-
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-base">
-                        <Sliders className="h-4 w-4" /> Enforced Feature Flags
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    {[
-                        {
-                            key: "enable_inbound_requests" as const,
-                            label: "Enable Inbound Requests",
-                            description: "Allow inbound request workflows",
-                        },
-                        {
-                            key: "show_estimate_on_order_creation" as const,
-                            label: "Show Estimate on Order Creation",
-                            description: "Display estimate immediately in order creation flow",
-                        },
-                        {
-                            key: "enable_kadence_invoicing" as const,
-                            label: "Enable Kadence Invoicing",
-                            description: "Enable invoice generation and payment confirmation flows",
-                            comingSoon: true,
-                        },
-                        {
-                            key: "enable_attachments" as const,
-                            label: "Enable Attachments",
-                            description:
-                                "Allow typed documents across order, inbound, service request, and workflow records",
-                        },
-                        {
-                            key: "enable_asset_bulk_upload" as const,
-                            label: "Enable Asset Bulk Upload (Stub)",
-                            description:
-                                "Expose the reserved bulk upload section while the replacement import flow is still stubbed.",
-                        },
-                        {
-                            key: "enable_workflows" as const,
-                            label: "Enable Internal Workflows",
-                            description:
-                                "Expose workflow sections, workflow inboxes, and workflow request creation",
-                        },
-                        {
-                            key: "enable_base_operations" as const,
-                            label: "Enable Picking & Handling",
-                            description:
-                                "Include Picking & Handling (base operations) in pricing calculations",
-                        },
-                    ].map((item) => (
-                        <div key={item.key} className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm font-medium">
-                                    {item.label}
-                                    {"comingSoon" in item && item.comingSoon && (
-                                        <Badge
-                                            variant="outline"
-                                            className="ml-2 text-[10px] px-1.5 py-0"
-                                        >
-                                            Coming Soon
-                                        </Badge>
-                                    )}
-                                </p>
-                                <p className="text-xs text-muted-foreground">{item.description}</p>
-                            </div>
-                            <Switch
-                                checked={features[item.key]}
-                                disabled={"comingSoon" in item && item.comingSoon}
-                                onCheckedChange={(checked) =>
-                                    setFeatures((prev) => ({ ...prev, [item.key]: checked }))
+                                placeholder="AED"
+                                value={currency}
+                                onChange={(e) =>
+                                    setCurrency(e.target.value.toUpperCase().slice(0, 3))
                                 }
+                                maxLength={3}
+                                className="w-28"
                             />
                         </div>
-                    ))}
-                </CardContent>
-            </Card>
+                        <div className="space-y-1.5">
+                            <Label>VAT Percentage</Label>
+                            <Input
+                                placeholder="5"
+                                value={vatPercent}
+                                onChange={(e) => setVatPercent(e.target.value)}
+                                type="number"
+                                min={0}
+                                max={100}
+                                step="0.01"
+                                className="w-32"
+                            />
+                        </div>
+                    </CardContent>
+                </Card>
 
-            <div className="flex justify-end">
-                <Button onClick={handleSaveFeatures} disabled={savingFeatures}>
-                    {savingFeatures ? "Saving..." : "Save Features"}
-                </Button>
-            </div>
-
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-base">
-                        <Globe className="h-4 w-4" /> Platform Domain
-                    </CardTitle>
-                    <CardDescription>
-                        Admin and warehouse URLs are derived from this domain at runtime.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                    <div className="flex gap-2">
-                        <Input
-                            placeholder="kadence.ae"
-                            value={platformDomain}
-                            onChange={(e) => setPlatformDomain(e.target.value)}
-                            className="font-mono"
-                        />
-                        <Button
-                            onClick={() =>
-                                updatePlatformDomain.mutate(platformDomain, {
-                                    onSuccess: () =>
-                                        qc.invalidateQueries({
-                                            queryKey: ["platform-url-diagnostics"],
-                                        }),
-                                })
-                            }
-                            disabled={
-                                updatePlatformDomain.isPending ||
-                                platformDomain === (platform?.domain ?? "")
-                            }
-                        >
-                            {updatePlatformDomain.isPending ? "Saving..." : "Save"}
-                        </Button>
-                    </div>
-                </CardContent>
-            </Card>
-
-            <Card>
-                <CardHeader>
-                    <CardTitle className="text-base">URL Diagnostics</CardTitle>
-                    <CardDescription>
-                        Resolver-backed URLs used by notifications and app routing.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    {diagnosticsLoading ? (
-                        <Skeleton className="h-24 w-full" />
-                    ) : (
-                        <>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                <div className="rounded-md border p-3">
-                                    <p className="text-xs text-muted-foreground">Admin URL</p>
-                                    <p className="font-mono text-sm break-all">
-                                        {diagnostics?.admin_url || "-"}
-                                    </p>
-                                </div>
-                                <div className="rounded-md border p-3">
-                                    <p className="text-xs text-muted-foreground">Warehouse URL</p>
-                                    <p className="font-mono text-sm break-all">
-                                        {diagnostics?.warehouse_url || "-"}
-                                    </p>
-                                </div>
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-base">
+                            <Palette className="h-4 w-4" /> Branding
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="space-y-1.5">
+                            <Label>Logo URL</Label>
+                            <Input
+                                placeholder="https://cdn.example.com/logo.png"
+                                value={logoUrl}
+                                onChange={(e) => setLogoUrl(e.target.value)}
+                            />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                                <Label>Primary Color</Label>
+                                <Input
+                                    placeholder="#0F172A"
+                                    value={primaryColor}
+                                    onChange={(e) => setPrimaryColor(e.target.value)}
+                                />
                             </div>
-                            <div className="space-y-2">
-                                <p className="text-sm font-medium">Client URL Status by Company</p>
-                                {(diagnostics?.company_urls || []).length === 0 ? (
-                                    <p className="text-xs text-muted-foreground">
-                                        No company diagnostics available.
-                                    </p>
-                                ) : (
-                                    <div className="space-y-2">
-                                        {diagnostics?.company_urls.map((row) => (
-                                            <div
-                                                key={row.company_id}
-                                                className="flex items-center justify-between rounded-md border p-3"
+                            <div className="space-y-1.5">
+                                <Label>Secondary Color</Label>
+                                <Input
+                                    placeholder="#64748B"
+                                    value={secondaryColor}
+                                    onChange={(e) => setSecondaryColor(e.target.value)}
+                                />
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <div className="flex justify-end">
+                    <Button onClick={handleSaveConfig} disabled={updateConfig.isPending}>
+                        {updateConfig.isPending ? "Saving..." : "Save Config"}
+                    </Button>
+                </div>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-base">
+                            <Sliders className="h-4 w-4" /> Enforced Feature Flags
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        {[
+                            {
+                                key: "enable_inbound_requests" as const,
+                                label: "Enable Inbound Requests",
+                                description: "Allow inbound request workflows",
+                            },
+                            {
+                                key: "show_estimate_on_order_creation" as const,
+                                label: "Show Estimate on Order Creation",
+                                description: "Display estimate immediately in order creation flow",
+                            },
+                            {
+                                key: "enable_kadence_invoicing" as const,
+                                label: "Enable Invoicing",
+                                description:
+                                    "Enable invoice generation and payment confirmation flows",
+                                comingSoon: true,
+                            },
+                            {
+                                key: "enable_attachments" as const,
+                                label: "Enable Attachments",
+                                description:
+                                    "Allow typed documents across order, inbound, service request, and workflow records",
+                            },
+                            {
+                                key: "enable_asset_bulk_upload" as const,
+                                label: "Enable Asset Bulk Upload",
+                                description:
+                                    "Allow bulk uploading of assets via spreadsheet import",
+                            },
+                            {
+                                key: "enable_workflows" as const,
+                                label: "Enable Internal Workflows",
+                                description:
+                                    "Expose workflow sections, workflow inboxes, and workflow request creation",
+                            },
+                            {
+                                key: "enable_base_operations" as const,
+                                label: "Enable Picking & Handling",
+                                description:
+                                    "Include Picking & Handling (base operations) in pricing calculations",
+                            },
+                        ].map((item) => (
+                            <div key={item.key} className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-sm font-medium">
+                                        {item.label}
+                                        {"comingSoon" in item && item.comingSoon && (
+                                            <Badge
+                                                variant="outline"
+                                                className="ml-2 text-[10px] px-1.5 py-0"
                                             >
-                                                <div>
-                                                    <p className="text-sm font-medium">
-                                                        {row.company_name}
-                                                    </p>
-                                                    <p className="font-mono text-xs text-muted-foreground break-all">
-                                                        {row.client_url ||
-                                                            "No active primary domain"}
-                                                    </p>
+                                                Coming Soon
+                                            </Badge>
+                                        )}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                        {item.description}
+                                    </p>
+                                </div>
+                                <Switch
+                                    checked={features[item.key]}
+                                    disabled={"comingSoon" in item && item.comingSoon}
+                                    onCheckedChange={(checked) =>
+                                        setFeatures((prev) => ({ ...prev, [item.key]: checked }))
+                                    }
+                                />
+                            </div>
+                        ))}
+                    </CardContent>
+                </Card>
+
+                <div className="flex justify-end">
+                    <Button onClick={handleSaveFeatures} disabled={savingFeatures}>
+                        {savingFeatures ? "Saving..." : "Save Features"}
+                    </Button>
+                </div>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-base">
+                            <Globe className="h-4 w-4" /> Platform Domain
+                        </CardTitle>
+                        <CardDescription>
+                            Admin and warehouse URLs are derived from this domain at runtime.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                        <div className="flex gap-2">
+                            <Input
+                                placeholder="kadence.ae"
+                                value={platformDomain}
+                                onChange={(e) => setPlatformDomain(e.target.value)}
+                                className="font-mono"
+                            />
+                            <Button
+                                onClick={() =>
+                                    updatePlatformDomain.mutate(platformDomain, {
+                                        onSuccess: () =>
+                                            qc.invalidateQueries({
+                                                queryKey: ["platform-url-diagnostics"],
+                                            }),
+                                    })
+                                }
+                                disabled={
+                                    updatePlatformDomain.isPending ||
+                                    platformDomain === (platform?.domain ?? "")
+                                }
+                            >
+                                {updatePlatformDomain.isPending ? "Saving..." : "Save"}
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-base">URL Diagnostics</CardTitle>
+                        <CardDescription>
+                            Resolver-backed URLs used by notifications and app routing.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        {diagnosticsLoading ? (
+                            <Skeleton className="h-24 w-full" />
+                        ) : (
+                            <>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <div className="rounded-md bg-muted/50 p-3">
+                                        <p className="text-xs text-muted-foreground">Admin URL</p>
+                                        <p className="font-mono text-sm break-all">
+                                            {diagnostics?.admin_url || "-"}
+                                        </p>
+                                    </div>
+                                    <div className="rounded-md bg-muted/50 p-3">
+                                        <p className="text-xs text-muted-foreground">
+                                            Warehouse URL
+                                        </p>
+                                        <p className="font-mono text-sm break-all">
+                                            {diagnostics?.warehouse_url || "-"}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <p className="text-sm font-medium">
+                                        Client URL Status by Company
+                                    </p>
+                                    {(diagnostics?.company_urls || []).length === 0 ? (
+                                        <p className="text-xs text-muted-foreground">
+                                            No company diagnostics available.
+                                        </p>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            {diagnostics?.company_urls.map((row) => (
+                                                <div
+                                                    key={row.company_id}
+                                                    className="flex items-center justify-between rounded-md bg-muted/40 p-3"
+                                                >
+                                                    <div>
+                                                        <p className="text-sm font-medium">
+                                                            {row.company_name}
+                                                        </p>
+                                                        <p className="font-mono text-xs text-muted-foreground break-all">
+                                                            {row.client_url ||
+                                                                "No active primary domain"}
+                                                        </p>
+                                                    </div>
+                                                    <Badge
+                                                        variant={
+                                                            row.status === "OK"
+                                                                ? "default"
+                                                                : "destructive"
+                                                        }
+                                                        className="gap-1"
+                                                    >
+                                                        {row.status === "OK" ? (
+                                                            <CheckCircle2 className="h-3 w-3" />
+                                                        ) : (
+                                                            <AlertCircle className="h-3 w-3" />
+                                                        )}
+                                                        {row.status}
+                                                    </Badge>
                                                 </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </>
+                        )}
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader className="flex flex-row items-start justify-between">
+                        <div>
+                            <CardTitle className="text-base">Company Domains</CardTitle>
+                            <CardDescription>
+                                Client URL resolution requires one active primary domain per
+                                company.
+                            </CardDescription>
+                        </div>
+                        <Button size="sm" onClick={() => setAddDomainOpen(true)}>
+                            <Plus className="h-4 w-4 mr-1" /> Add Domain
+                        </Button>
+                    </CardHeader>
+                    <CardContent>
+                        {domainsLoading ? (
+                            <Skeleton className="h-24 w-full" />
+                        ) : companyDomains.length === 0 ? (
+                            <p className="text-sm text-muted-foreground">
+                                No company domains configured.
+                            </p>
+                        ) : (
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Hostname</TableHead>
+                                        <TableHead>Company</TableHead>
+                                        <TableHead>Type</TableHead>
+                                        <TableHead>Status</TableHead>
+                                        <TableHead>Primary</TableHead>
+                                        <TableHead className="w-[220px]" />
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {companyDomains.map((domain) => (
+                                        <TableRow key={domain.id}>
+                                            <TableCell className="font-mono text-sm">
+                                                {domain.hostname}
+                                            </TableCell>
+                                            <TableCell>{domain.company_name}</TableCell>
+                                            <TableCell>
+                                                <Badge variant="outline">{domain.type}</Badge>
+                                            </TableCell>
+                                            <TableCell>
                                                 <Badge
                                                     variant={
-                                                        row.status === "OK"
-                                                            ? "default"
-                                                            : "destructive"
+                                                        domain.is_active ? "default" : "secondary"
                                                     }
-                                                    className="gap-1"
                                                 >
-                                                    {row.status === "OK" ? (
-                                                        <CheckCircle2 className="h-3 w-3" />
-                                                    ) : (
-                                                        <AlertCircle className="h-3 w-3" />
-                                                    )}
-                                                    {row.status}
+                                                    {domain.is_active ? "Active" : "Inactive"}
                                                 </Badge>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        </>
-                    )}
-                </CardContent>
-            </Card>
-
-            <Card>
-                <CardHeader className="flex flex-row items-start justify-between">
-                    <div>
-                        <CardTitle className="text-base">Company Domains</CardTitle>
-                        <CardDescription>
-                            Client URL resolution requires one active primary domain per company.
-                        </CardDescription>
-                    </div>
-                    <Button size="sm" onClick={() => setAddDomainOpen(true)}>
-                        <Plus className="h-4 w-4 mr-1" /> Add Domain
-                    </Button>
-                </CardHeader>
-                <CardContent>
-                    {domainsLoading ? (
-                        <Skeleton className="h-24 w-full" />
-                    ) : companyDomains.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">
-                            No company domains configured.
-                        </p>
-                    ) : (
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Hostname</TableHead>
-                                    <TableHead>Company</TableHead>
-                                    <TableHead>Type</TableHead>
-                                    <TableHead>Status</TableHead>
-                                    <TableHead>Primary</TableHead>
-                                    <TableHead className="w-[220px]" />
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {companyDomains.map((domain) => (
-                                    <TableRow key={domain.id}>
-                                        <TableCell className="font-mono text-sm">
-                                            {domain.hostname}
-                                        </TableCell>
-                                        <TableCell>{domain.company_name}</TableCell>
-                                        <TableCell>
-                                            <Badge variant="outline">{domain.type}</Badge>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Badge
-                                                variant={domain.is_active ? "default" : "secondary"}
-                                            >
-                                                {domain.is_active ? "Active" : "Inactive"}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell>
-                                            {domain.is_primary ? (
-                                                <Badge>Primary</Badge>
-                                            ) : (
-                                                <Badge variant="secondary">Secondary</Badge>
-                                            )}
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="flex items-center gap-2">
-                                                {!domain.is_primary && domain.is_active && (
-                                                    <Button
-                                                        size="sm"
-                                                        variant="outline"
-                                                        onClick={() => handleSetPrimary(domain)}
-                                                    >
-                                                        Set Primary
-                                                    </Button>
+                                            </TableCell>
+                                            <TableCell>
+                                                {domain.is_primary ? (
+                                                    <Badge>Primary</Badge>
+                                                ) : (
+                                                    <Badge variant="secondary">Secondary</Badge>
                                                 )}
-                                                <Button
-                                                    size="icon"
-                                                    variant="ghost"
-                                                    onClick={() => openEditDialog(domain)}
-                                                >
-                                                    <Pencil className="h-4 w-4" />
-                                                </Button>
-                                                <Button
-                                                    size="icon"
-                                                    variant="ghost"
-                                                    className="text-destructive hover:text-destructive"
-                                                    onClick={() => setDeleteDomainId(domain.id)}
-                                                    disabled={
-                                                        (
-                                                            groupedDomains.get(domain.company_id) ||
-                                                            []
-                                                        ).length <= 1
-                                                    }
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                            </div>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    )}
-                </CardContent>
-            </Card>
-
-            <Dialog open={addDomainOpen} onOpenChange={setAddDomainOpen}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Add Company Domain</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                        <div>
-                            <Label>Company</Label>
-                            <Select
-                                value={newDomain.company_id}
-                                onValueChange={(value) =>
-                                    setNewDomain((prev) => ({ ...prev, company_id: value }))
-                                }
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select company" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {companies.map((company: any) => (
-                                        <SelectItem key={company.id} value={company.id}>
-                                            {company.name}
-                                        </SelectItem>
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="flex items-center gap-2">
+                                                    {!domain.is_primary && domain.is_active && (
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline"
+                                                            onClick={() => handleSetPrimary(domain)}
+                                                        >
+                                                            Set Primary
+                                                        </Button>
+                                                    )}
+                                                    <Button
+                                                        size="icon"
+                                                        variant="ghost"
+                                                        onClick={() => openEditDialog(domain)}
+                                                    >
+                                                        <Pencil className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button
+                                                        size="icon"
+                                                        variant="ghost"
+                                                        className="text-destructive hover:text-destructive"
+                                                        onClick={() => setDeleteDomainId(domain.id)}
+                                                        disabled={
+                                                            (
+                                                                groupedDomains.get(
+                                                                    domain.company_id
+                                                                ) || []
+                                                            ).length <= 1
+                                                        }
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
                                     ))}
-                                </SelectContent>
-                            </Select>
+                                </TableBody>
+                            </Table>
+                        )}
+                    </CardContent>
+                </Card>
+
+                <Dialog open={addDomainOpen} onOpenChange={setAddDomainOpen}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Add Company Domain</DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4">
+                            <div>
+                                <Label>Company</Label>
+                                <Select
+                                    value={newDomain.company_id}
+                                    onValueChange={(value) =>
+                                        setNewDomain((prev) => ({ ...prev, company_id: value }))
+                                    }
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select company" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {companies.map((company: any) => (
+                                            <SelectItem key={company.id} value={company.id}>
+                                                {company.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div>
+                                <Label>Hostname</Label>
+                                <Input
+                                    value={newDomain.hostname}
+                                    onChange={(e) =>
+                                        setNewDomain((prev) => ({
+                                            ...prev,
+                                            hostname: e.target.value,
+                                        }))
+                                    }
+                                    placeholder="brand.platform-domain.com"
+                                />
+                            </div>
+                            <div>
+                                <Label>Type</Label>
+                                <Select
+                                    value={newDomain.type}
+                                    onValueChange={(value: "VANITY" | "CUSTOM") =>
+                                        setNewDomain((prev) => ({ ...prev, type: value }))
+                                    }
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="VANITY">VANITY</SelectItem>
+                                        <SelectItem value="CUSTOM">CUSTOM</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="flex items-center gap-6">
+                                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                                    <Switch
+                                        checked={newDomain.is_active}
+                                        onCheckedChange={(checked) =>
+                                            setNewDomain((prev) => ({
+                                                ...prev,
+                                                is_active: checked,
+                                            }))
+                                        }
+                                    />
+                                    Active
+                                </label>
+                                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                                    <Switch
+                                        checked={newDomain.is_primary}
+                                        onCheckedChange={(checked) =>
+                                            setNewDomain((prev) => ({
+                                                ...prev,
+                                                is_primary: checked,
+                                            }))
+                                        }
+                                    />
+                                    Primary
+                                </label>
+                            </div>
                         </div>
-                        <div>
-                            <Label>Hostname</Label>
-                            <Input
-                                value={newDomain.hostname}
-                                onChange={(e) =>
-                                    setNewDomain((prev) => ({ ...prev, hostname: e.target.value }))
-                                }
-                                placeholder="brand.platform-domain.com"
-                            />
-                        </div>
-                        <div>
-                            <Label>Type</Label>
-                            <Select
-                                value={newDomain.type}
-                                onValueChange={(value: "VANITY" | "CUSTOM") =>
-                                    setNewDomain((prev) => ({ ...prev, type: value }))
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => setAddDomainOpen(false)}>
+                                Cancel
+                            </Button>
+                            <Button
+                                onClick={handleCreateDomain}
+                                disabled={
+                                    createDomain.isPending ||
+                                    !newDomain.company_id ||
+                                    !newDomain.hostname
                                 }
                             >
-                                <SelectTrigger>
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="VANITY">VANITY</SelectItem>
-                                    <SelectItem value="CUSTOM">CUSTOM</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div className="flex items-center gap-6">
-                            <label className="flex items-center gap-2 text-sm cursor-pointer">
-                                <Switch
-                                    checked={newDomain.is_active}
-                                    onCheckedChange={(checked) =>
-                                        setNewDomain((prev) => ({ ...prev, is_active: checked }))
-                                    }
-                                />
-                                Active
-                            </label>
-                            <label className="flex items-center gap-2 text-sm cursor-pointer">
-                                <Switch
-                                    checked={newDomain.is_primary}
-                                    onCheckedChange={(checked) =>
-                                        setNewDomain((prev) => ({ ...prev, is_primary: checked }))
-                                    }
-                                />
-                                Primary
-                            </label>
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setAddDomainOpen(false)}>
-                            Cancel
-                        </Button>
-                        <Button
-                            onClick={handleCreateDomain}
-                            disabled={
-                                createDomain.isPending ||
-                                !newDomain.company_id ||
-                                !newDomain.hostname
-                            }
-                        >
-                            {createDomain.isPending ? "Adding..." : "Add Domain"}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+                                {createDomain.isPending ? "Adding..." : "Add Domain"}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
 
-            <Dialog open={!!editDomain} onOpenChange={(open) => !open && setEditDomain(null)}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Edit Company Domain</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                        <div>
-                            <Label>Hostname</Label>
-                            <Input
-                                value={editFields.hostname}
-                                onChange={(e) =>
-                                    setEditFields((prev) => ({ ...prev, hostname: e.target.value }))
-                                }
-                            />
+                <Dialog open={!!editDomain} onOpenChange={(open) => !open && setEditDomain(null)}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Edit Company Domain</DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4">
+                            <div>
+                                <Label>Hostname</Label>
+                                <Input
+                                    value={editFields.hostname}
+                                    onChange={(e) =>
+                                        setEditFields((prev) => ({
+                                            ...prev,
+                                            hostname: e.target.value,
+                                        }))
+                                    }
+                                />
+                            </div>
+                            <div>
+                                <Label>Type</Label>
+                                <Select
+                                    value={editFields.type}
+                                    onValueChange={(value: "VANITY" | "CUSTOM") =>
+                                        setEditFields((prev) => ({ ...prev, type: value }))
+                                    }
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="VANITY">VANITY</SelectItem>
+                                        <SelectItem value="CUSTOM">CUSTOM</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="flex items-center gap-6">
+                                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                                    <Switch
+                                        checked={editFields.is_active}
+                                        onCheckedChange={(checked) =>
+                                            setEditFields((prev) => ({
+                                                ...prev,
+                                                is_active: checked,
+                                            }))
+                                        }
+                                    />
+                                    Active
+                                </label>
+                                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                                    <Switch
+                                        checked={editFields.is_primary}
+                                        onCheckedChange={(checked) =>
+                                            setEditFields((prev) => ({
+                                                ...prev,
+                                                is_primary: checked,
+                                            }))
+                                        }
+                                    />
+                                    Primary
+                                </label>
+                            </div>
                         </div>
-                        <div>
-                            <Label>Type</Label>
-                            <Select
-                                value={editFields.type}
-                                onValueChange={(value: "VANITY" | "CUSTOM") =>
-                                    setEditFields((prev) => ({ ...prev, type: value }))
-                                }
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => setEditDomain(null)}>
+                                Cancel
+                            </Button>
+                            <Button onClick={handleUpdateDomain} disabled={updateDomain.isPending}>
+                                {updateDomain.isPending ? "Saving..." : "Save"}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+
+                <Dialog
+                    open={!!deleteDomainId}
+                    onOpenChange={(open) => !open && setDeleteDomainId(null)}
+                >
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Delete Domain</DialogTitle>
+                        </DialogHeader>
+                        <p className="text-sm text-muted-foreground">
+                            Deleting this domain may break client access and notification links.
+                        </p>
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => setDeleteDomainId(null)}>
+                                Cancel
+                            </Button>
+                            <Button
+                                variant="destructive"
+                                onClick={handleDeleteDomain}
+                                disabled={deleteDomain.isPending}
                             >
-                                <SelectTrigger>
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="VANITY">VANITY</SelectItem>
-                                    <SelectItem value="CUSTOM">CUSTOM</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div className="flex items-center gap-6">
-                            <label className="flex items-center gap-2 text-sm cursor-pointer">
-                                <Switch
-                                    checked={editFields.is_active}
-                                    onCheckedChange={(checked) =>
-                                        setEditFields((prev) => ({ ...prev, is_active: checked }))
-                                    }
-                                />
-                                Active
-                            </label>
-                            <label className="flex items-center gap-2 text-sm cursor-pointer">
-                                <Switch
-                                    checked={editFields.is_primary}
-                                    onCheckedChange={(checked) =>
-                                        setEditFields((prev) => ({ ...prev, is_primary: checked }))
-                                    }
-                                />
-                                Primary
-                            </label>
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setEditDomain(null)}>
-                            Cancel
-                        </Button>
-                        <Button onClick={handleUpdateDomain} disabled={updateDomain.isPending}>
-                            {updateDomain.isPending ? "Saving..." : "Save"}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            <Dialog
-                open={!!deleteDomainId}
-                onOpenChange={(open) => !open && setDeleteDomainId(null)}
-            >
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Delete Domain</DialogTitle>
-                    </DialogHeader>
-                    <p className="text-sm text-muted-foreground">
-                        Deleting this domain may break client access and notification links.
-                    </p>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setDeleteDomainId(null)}>
-                            Cancel
-                        </Button>
-                        <Button
-                            variant="destructive"
-                            onClick={handleDeleteDomain}
-                            disabled={deleteDomain.isPending}
-                        >
-                            {deleteDomain.isPending ? "Deleting..." : "Delete"}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+                                {deleteDomain.isPending ? "Deleting..." : "Delete"}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+            </div>
         </div>
     );
 }

@@ -4,11 +4,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Grid3x3, Layers3, List, Search, Upload } from "lucide-react";
+import { Grid3x3, Layers3, List, Plus, Search, Upload } from "lucide-react";
 import { useAssetFamilies } from "@/hooks/use-asset-families";
 import { useCompanies } from "@/hooks/use-companies";
-import { CreateAssetDialog } from "@/components/assets/create-asset-dialog";
-import { CreateAssetFamilyDialog } from "@/components/assets/create-asset-family-dialog";
+import { AssetWizard } from "@/components/assets/asset-wizard";
 import { AdminHeader } from "@/components/admin-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -85,18 +84,18 @@ function FamilyCard({ family, compact = false }: { family: AssetFamily; compact?
                         )}
                     </div>
 
-                    <div className="grid grid-cols-3 gap-2 text-xs font-mono">
-                        <div className="rounded border border-border p-2">
-                            <div className="text-muted-foreground">Stock</div>
-                            <div className="mt-1 font-semibold">{stockRecordCount}</div>
+                    <div className="flex items-center gap-4 text-xs font-mono pt-1">
+                        <div>
+                            <span className="text-muted-foreground">
+                                {family.stock_mode === "SERIALIZED" ? "Units " : "Total "}
+                            </span>
+                            <span className="font-semibold">{totalQuantity}</span>
                         </div>
-                        <div className="rounded border border-border p-2">
-                            <div className="text-muted-foreground">Units</div>
-                            <div className="mt-1 font-semibold">{totalQuantity}</div>
-                        </div>
-                        <div className="rounded border border-border p-2">
-                            <div className="text-muted-foreground">Available</div>
-                            <div className="mt-1 font-semibold">{availableQuantity}</div>
+                        <div>
+                            <span className="text-muted-foreground">Available </span>
+                            <span className="font-semibold text-emerald-600">
+                                {availableQuantity}
+                            </span>
                         </div>
                     </div>
                 </CardContent>
@@ -112,8 +111,7 @@ export default function AssetsPage() {
     const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
     const [searchQuery, setSearchQuery] = useState("");
     const [debouncedSearch, setDebouncedSearch] = useState("");
-    const [showCreateDialog, setShowCreateDialog] = useState(false);
-    const [showCreateFamilyDialog, setShowCreateFamilyDialog] = useState(false);
+    const [showWizard, setShowWizard] = useState(false);
     const [filters, setFilters] = useState({
         company: "all",
         category: "all",
@@ -161,22 +159,14 @@ export default function AssetsPage() {
                                     onClick={() => router.push("/assets/bulk-upload")}
                                 >
                                     <Upload className="mr-2 h-4 w-4" />
-                                    Bulk Upload (Stub)
+                                    Bulk Upload
                                 </Button>
                             )}
                             {canCreateAsset && (
-                                <>
-                                    <CreateAssetFamilyDialog
-                                        open={showCreateFamilyDialog}
-                                        onOpenChange={setShowCreateFamilyDialog}
-                                        onSuccess={() => setShowCreateFamilyDialog(false)}
-                                    />
-                                    <CreateAssetDialog
-                                        open={showCreateDialog}
-                                        onOpenChange={setShowCreateDialog}
-                                        onSuccess={() => setShowCreateDialog(false)}
-                                    />
-                                </>
+                                <Button onClick={() => setShowWizard(true)}>
+                                    <Plus className="mr-2 h-4 w-4" />
+                                    Create Asset
+                                </Button>
                             )}
                         </div>
                     ) : undefined
@@ -307,19 +297,24 @@ export default function AssetsPage() {
                         </p>
                     </div>
                 ) : viewMode === "grid" ? (
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    <div
+                        className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3"
+                        data-testid="family-list"
+                    >
                         {families.map((family) => (
                             <FamilyCard key={family.id} family={family} />
                         ))}
                     </div>
                 ) : (
-                    <div className="space-y-4">
+                    <div className="space-y-4" data-testid="family-list">
                         {families.map((family) => (
                             <FamilyCard key={family.id} family={family} compact />
                         ))}
                     </div>
                 )}
             </div>
+
+            <AssetWizard open={showWizard} onOpenChange={setShowWizard} />
         </div>
     );
 }

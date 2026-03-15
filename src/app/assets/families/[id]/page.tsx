@@ -19,7 +19,8 @@ import {
     ChevronLeft,
     ChevronRight,
     Search,
-    AlertTriangle,
+    MapPin,
+    CircleDot,
 } from "lucide-react";
 import { useAssetFamilyAvailabilityStats } from "@/hooks/use-asset-family-availability-stats";
 import { useAssetFamily, useDeleteAssetFamily } from "@/hooks/use-asset-families";
@@ -34,63 +35,43 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { toast } from "sonner";
-import { CreateAssetDialog } from "@/components/assets/create-asset-dialog";
+import { AssetWizard } from "@/components/assets/asset-wizard";
 import type { Asset } from "@/types/asset";
 
-const formatStockMode = (stockMode?: string | null) =>
-    stockMode ? stockMode.replace(/_/g, " ") : "Unknown";
-
 const formatCount = (value?: number) => (typeof value === "number" ? value : 0);
+const formatDim = (val?: number) => (val != null ? `${val}` : null);
 
-const formatDimension = (val?: number) => (val != null ? `${val}` : null);
-
-const getConditionColor = (condition?: string) => {
-    switch (condition) {
-        case "GREEN":
-            return "bg-emerald-500/10 text-emerald-700 border-emerald-500/20";
-        case "ORANGE":
-            return "bg-amber-500/10 text-amber-700 border-amber-500/20";
-        case "RED":
-            return "bg-red-500/10 text-red-700 border-red-500/20";
-        default:
-            return "";
-    }
+const CONDITION_STYLES: Record<string, string> = {
+    GREEN: "bg-emerald-500/10 text-emerald-700 border-emerald-500/20",
+    ORANGE: "bg-amber-500/10 text-amber-700 border-amber-500/20",
+    RED: "bg-red-500/10 text-red-700 border-red-500/20",
 };
 
-const getStatusColor = (status?: string) => {
-    switch (status) {
-        case "AVAILABLE":
-            return "bg-emerald-500/10 text-emerald-700 border-emerald-500/20";
-        case "BOOKED":
-            return "bg-blue-500/10 text-blue-700 border-blue-500/20";
-        case "OUT":
-            return "bg-violet-500/10 text-violet-700 border-violet-500/20";
-        case "MAINTENANCE":
-            return "bg-amber-500/10 text-amber-700 border-amber-500/20";
-        case "TRANSFORMED":
-            return "bg-gray-500/10 text-gray-600 border-gray-500/20";
-        default:
-            return "";
-    }
+const STATUS_STYLES: Record<string, string> = {
+    AVAILABLE: "bg-emerald-500/10 text-emerald-700 border-emerald-500/20",
+    BOOKED: "bg-blue-500/10 text-blue-700 border-blue-500/20",
+    OUT: "bg-violet-500/10 text-violet-700 border-violet-500/20",
+    MAINTENANCE: "bg-amber-500/10 text-amber-700 border-amber-500/20",
+    TRANSFORMED: "bg-gray-500/10 text-gray-600 border-gray-500/20",
 };
 
 export default function AssetFamilyDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
     const router = useRouter();
-    const [currentImageIndex, setCurrentImageIndex] = useState(0);
+    const [imgIdx, setImgIdx] = useState(0);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [showEditDialog, setShowEditDialog] = useState(false);
     const [showCreateAsset, setShowCreateAsset] = useState(false);
-    const [stockSearch, setStockSearch] = useState("");
+    const [inventorySearch, setInventorySearch] = useState("");
 
     const { data: familyResponse, isLoading: familyLoading } = useAssetFamily(id);
-    const { data: availabilityStats, isLoading: availabilityLoading } =
+    const { data: availabilityStats, isLoading: availLoading } =
         useAssetFamilyAvailabilityStats(id);
     const family = familyResponse?.data || null;
     const { data: stockResponse, isLoading: stockLoading } = useAssets(
         family ? { family_id: family.id, limit: "200" } : { family_id: id, limit: "200" }
     );
-    const stockRecords: Asset[] = stockResponse?.data || [];
+    const inventory: Asset[] = stockResponse?.data || [];
     const deleteMutation = useDeleteAssetFamily();
 
     const images = family?.images || [];
@@ -104,9 +85,11 @@ export default function AssetFamilyDetailPage({ params }: { params: Promise<{ id
         (dims && (dims.length || dims.width || dims.height)) ||
         family?.packaging;
 
-    const filteredStock = stockRecords.filter((asset) => {
-        if (!stockSearch) return true;
-        const q = stockSearch.toLowerCase();
+    const isSerialized = family?.stock_mode === "SERIALIZED";
+
+    const filtered = inventory.filter((asset) => {
+        if (!inventorySearch) return true;
+        const q = inventorySearch.toLowerCase();
         return (
             asset.name?.toLowerCase().includes(q) ||
             asset.qr_code?.toLowerCase().includes(q) ||
@@ -143,7 +126,7 @@ export default function AssetFamilyDetailPage({ params }: { params: Promise<{ id
             <div className="flex min-h-screen items-center justify-center bg-background">
                 <div className="text-center">
                     <Layers3 className="mx-auto mb-4 h-16 w-16 text-muted-foreground" />
-                    <h2 className="mb-2 font-mono text-xl font-semibold">Asset family not found</h2>
+                    <h2 className="mb-2 font-mono text-xl font-semibold">Family not found</h2>
                     <Button asChild>
                         <Link href="/assets">
                             <ArrowLeft className="mr-2 h-4 w-4" />
@@ -155,6 +138,19 @@ export default function AssetFamilyDetailPage({ params }: { params: Promise<{ id
         );
     }
 
+    const totalQty = formatCount(family.total_quantity);
+    const availQty = availLoading
+        ? "—"
+        : formatCount(availabilityStats?.data.available_quantity ?? family.available_quantity);
+    const bookedQty = availLoading ? 0 : formatCount(availabilityStats?.data.booked_quantity);
+    const outQty = availLoading ? 0 : formatCount(availabilityStats?.data.out_quantity);
+    const maintQty = availLoading
+        ? 0
+        : formatCount(availabilityStats?.data.in_maintenance_quantity);
+    const greenCount = formatCount(family.condition_summary?.green);
+    const orangeCount = formatCount(family.condition_summary?.orange);
+    const redCount = formatCount(family.condition_summary?.red);
+
     return (
         <div className="min-h-screen bg-background">
             {/* Header */}
@@ -164,7 +160,7 @@ export default function AssetFamilyDetailPage({ params }: { params: Promise<{ id
                         <Button variant="ghost" asChild className="font-mono">
                             <Link href="/assets">
                                 <ArrowLeft className="mr-2 h-4 w-4" />
-                                Back to Families
+                                All Families
                             </Link>
                         </Button>
                         <div className="flex items-center gap-2">
@@ -173,6 +169,7 @@ export default function AssetFamilyDetailPage({ params }: { params: Promise<{ id
                                 size="sm"
                                 className="font-mono"
                                 onClick={() => setShowEditDialog(true)}
+                                data-testid="family-edit-btn"
                             >
                                 <Edit className="w-4 h-4 mr-2" />
                                 Edit
@@ -183,6 +180,7 @@ export default function AssetFamilyDetailPage({ params }: { params: Promise<{ id
                                 className="font-mono text-destructive hover:text-destructive"
                                 onClick={() => setShowDeleteConfirm(true)}
                                 disabled={deleteMutation.isPending}
+                                data-testid="family-delete-btn"
                             >
                                 <Trash2 className="w-4 h-4 mr-2" />
                                 Delete
@@ -192,11 +190,16 @@ export default function AssetFamilyDetailPage({ params }: { params: Promise<{ id
 
                     <div className="flex flex-col gap-6 lg:flex-row">
                         {/* Image gallery */}
-                        <div className="relative h-56 w-full overflow-hidden rounded-lg bg-muted lg:w-96 shrink-0">
+                        <div
+                            className="relative h-64 w-full overflow-hidden rounded-lg bg-muted lg:w-[420px] shrink-0"
+                            data-testid={
+                                hasImages || heroImage ? "family-image-gallery" : "family-no-image"
+                            }
+                        >
                             {hasImages ? (
                                 <>
                                     <Image
-                                        src={images[currentImageIndex]?.url || heroImage || ""}
+                                        src={images[imgIdx]?.url || heroImage || ""}
                                         alt={family.name}
                                         fill
                                         className="object-cover"
@@ -205,10 +208,9 @@ export default function AssetFamilyDetailPage({ params }: { params: Promise<{ id
                                         <>
                                             <button
                                                 onClick={() =>
-                                                    setCurrentImageIndex(
-                                                        (prev) =>
-                                                            (prev - 1 + images.length) %
-                                                            images.length
+                                                    setImgIdx(
+                                                        (p) =>
+                                                            (p - 1 + images.length) % images.length
                                                     )
                                                 }
                                                 className="absolute left-2 top-1/2 -translate-y-1/2 p-1.5 bg-black/50 text-white rounded-full hover:bg-black/70"
@@ -217,16 +219,14 @@ export default function AssetFamilyDetailPage({ params }: { params: Promise<{ id
                                             </button>
                                             <button
                                                 onClick={() =>
-                                                    setCurrentImageIndex(
-                                                        (prev) => (prev + 1) % images.length
-                                                    )
+                                                    setImgIdx((p) => (p + 1) % images.length)
                                                 }
                                                 className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 bg-black/50 text-white rounded-full hover:bg-black/70"
                                             >
                                                 <ChevronRight className="h-4 w-4" />
                                             </button>
                                             <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/50 text-white text-xs px-2 py-0.5 rounded-full font-mono">
-                                                {currentImageIndex + 1} / {images.length}
+                                                {imgIdx + 1} / {images.length}
                                             </div>
                                         </>
                                     )}
@@ -248,281 +248,171 @@ export default function AssetFamilyDetailPage({ params }: { params: Promise<{ id
                         {/* Family info */}
                         <div className="flex-1 space-y-4">
                             <div>
-                                <div className="mb-2 flex flex-wrap gap-2">
-                                    <Badge variant="secondary" className="font-mono">
-                                        {formatStockMode(family.stock_mode)}
+                                <div className="mb-2 flex flex-wrap items-center gap-2">
+                                    <Badge variant="secondary" className="font-mono text-xs">
+                                        {isSerialized ? "Serialized" : "Pooled"}
                                     </Badge>
-                                    <Badge variant="outline" className="font-mono">
+                                    <Badge variant="outline" className="font-mono text-xs">
                                         {family.category}
                                     </Badge>
+                                    {family.brand?.name && (
+                                        <Badge variant="outline" className="font-mono text-xs">
+                                            {family.brand.name}
+                                        </Badge>
+                                    )}
                                     {family.team?.name && (
-                                        <Badge variant="outline" className="font-mono">
+                                        <Badge variant="outline" className="font-mono text-xs">
                                             Team: {family.team.name}
                                         </Badge>
                                     )}
                                 </div>
                                 <h1 className="font-mono text-3xl font-semibold">{family.name}</h1>
-                                <p className="mt-2 text-sm font-mono text-muted-foreground">
+                                <p className="mt-1 text-sm font-mono text-muted-foreground">
                                     {family.company?.name || "Unknown company"}
-                                    {family.brand?.name ? ` \u2022 ${family.brand.name}` : ""}
                                 </p>
                                 {family.description && (
-                                    <p className="mt-3 max-w-3xl text-sm text-muted-foreground">
+                                    <p className="mt-3 max-w-2xl text-sm text-muted-foreground leading-relaxed">
                                         {family.description}
                                     </p>
                                 )}
                             </div>
 
-                            {/* Stats row 1 */}
-                            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-                                <Card>
-                                    <CardContent className="p-4">
-                                        <div className="text-xs font-mono text-muted-foreground">
-                                            Stock Records
+                            {/* Availability summary — single compact row */}
+                            <div data-testid="family-availability-stats">
+                                <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm font-mono">
+                                    <div>
+                                        <span className="text-muted-foreground">
+                                            {isSerialized ? "Units " : "Total "}
+                                        </span>
+                                        <span className="font-semibold text-lg">{totalQty}</span>
+                                    </div>
+                                    <div>
+                                        <span className="text-muted-foreground">Available </span>
+                                        <span className="font-semibold text-lg text-emerald-600">
+                                            {availQty}
+                                        </span>
+                                    </div>
+                                    {bookedQty > 0 && (
+                                        <div>
+                                            <span className="text-muted-foreground">Booked </span>
+                                            <span className="font-semibold text-blue-600">
+                                                {bookedQty}
+                                            </span>
                                         </div>
-                                        <div className="mt-2 text-2xl font-semibold">
-                                            {formatCount(
-                                                family.stock_record_count ?? family.asset_count
-                                            )}
+                                    )}
+                                    {outQty > 0 && (
+                                        <div>
+                                            <span className="text-muted-foreground">Out </span>
+                                            <span className="font-semibold text-violet-600">
+                                                {outQty}
+                                            </span>
                                         </div>
-                                    </CardContent>
-                                </Card>
-                                <Card>
-                                    <CardContent className="p-4">
-                                        <div className="text-xs font-mono text-muted-foreground">
-                                            Total Units
+                                    )}
+                                    {maintQty > 0 && (
+                                        <div>
+                                            <span className="text-muted-foreground">
+                                                Maintenance{" "}
+                                            </span>
+                                            <span className="font-semibold text-amber-600">
+                                                {maintQty}
+                                            </span>
                                         </div>
-                                        <div className="mt-2 text-2xl font-semibold">
-                                            {formatCount(family.total_quantity)}
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                                <Card>
-                                    <CardContent className="p-4">
-                                        <div className="text-xs font-mono text-muted-foreground">
-                                            Available
-                                        </div>
-                                        <div className="mt-2 text-2xl font-semibold">
-                                            {availabilityLoading
-                                                ? "..."
-                                                : formatCount(
-                                                      availabilityStats?.data.available_quantity ??
-                                                          family.available_quantity
-                                                  )}
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                                <Card>
-                                    <CardContent className="p-4">
-                                        <div className="text-xs font-mono text-muted-foreground">
-                                            Attention
-                                        </div>
-                                        <div className="mt-2 text-2xl font-semibold text-amber-600">
-                                            {formatCount(family.condition_summary?.red) +
-                                                formatCount(family.condition_summary?.orange)}
-                                        </div>
-                                    </CardContent>
-                                </Card>
+                                    )}
+                                </div>
                             </div>
 
-                            {/* Stats row 2 - availability breakdown */}
-                            <div className="grid grid-cols-2 gap-3 md:grid-cols-4" data-testid="family-availability-stats">
-                                <Card>
-                                    <CardContent className="p-4">
-                                        <div className="text-xs font-mono text-muted-foreground">Booked</div>
-                                        <div className="mt-2 text-2xl font-semibold">
-                                            {availabilityLoading ? "..." : formatCount(availabilityStats?.data.booked_quantity)}
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                                <Card>
-                                    <CardContent className="p-4">
-                                        <div className="text-xs font-mono text-muted-foreground">Out</div>
-                                        <div className="mt-2 text-2xl font-semibold">
-                                            {availabilityLoading ? "..." : formatCount(availabilityStats?.data.out_quantity)}
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                                <Card>
-                                    <CardContent className="p-4">
-                                        <div className="text-xs font-mono text-muted-foreground">Maintenance</div>
-                                        <div className="mt-2 text-2xl font-semibold">
-                                            {availabilityLoading ? "..." : formatCount(availabilityStats?.data.in_maintenance_quantity)}
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                                <Card>
-                                    <CardContent className="p-4">
-                                        <div className="text-xs font-mono text-muted-foreground">Self-Booked</div>
-                                        <div className="mt-2 text-2xl font-semibold">
-                                            {availabilityLoading ? "..." : formatCount(availabilityStats?.data.self_booked_quantity)}
-                                        </div>
-                                    </CardContent>
-                                </Card>
+                            {/* Condition dots — inline, not a separate card */}
+                            <div className="flex items-center gap-4 text-xs font-mono">
+                                <span className="text-muted-foreground">Condition:</span>
+                                <span className="flex items-center gap-1">
+                                    <CircleDot className="h-3 w-3 text-emerald-500" />
+                                    {greenCount}
+                                </span>
+                                <span className="flex items-center gap-1">
+                                    <CircleDot className="h-3 w-3 text-amber-500" />
+                                    {orangeCount}
+                                </span>
+                                <span className="flex items-center gap-1">
+                                    <CircleDot className="h-3 w-3 text-red-500" />
+                                    {redCount}
+                                </span>
+                            </div>
+
+                            {/* Specs inline — only if they exist */}
+                            {hasSpecs && (
+                                <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs font-mono text-muted-foreground">
+                                    {dims && (dims.length || dims.width || dims.height) && (
+                                        <span className="flex items-center gap-1">
+                                            <Ruler className="h-3 w-3" />
+                                            {formatDim(dims.length) ?? "—"} x{" "}
+                                            {formatDim(dims.width) ?? "—"} x{" "}
+                                            {formatDim(dims.height) ?? "—"} cm
+                                        </span>
+                                    )}
+                                    {family.weight_per_unit != null && (
+                                        <span className="flex items-center gap-1">
+                                            <Weight className="h-3 w-3" />
+                                            {Number(family.weight_per_unit).toFixed(2)} kg
+                                        </span>
+                                    )}
+                                    {family.volume_per_unit != null && (
+                                        <span className="flex items-center gap-1">
+                                            <Box className="h-3 w-3" />
+                                            {Number(family.volume_per_unit).toFixed(3)} m³
+                                        </span>
+                                    )}
+                                    {family.packaging && (
+                                        <span className="flex items-center gap-1">
+                                            <Package className="h-3 w-3" />
+                                            {family.packaging}
+                                        </span>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Handling tags */}
+                            {family.handling_tags?.length > 0 && (
+                                <div className="flex flex-wrap gap-1.5">
+                                    {family.handling_tags.map((tag) => (
+                                        <Badge
+                                            key={tag}
+                                            variant="outline"
+                                            className="font-mono text-[10px]"
+                                        >
+                                            <Tag className="h-2.5 w-2.5 mr-1" />
+                                            {tag}
+                                        </Badge>
+                                    ))}
+                                </div>
+                            )}
+
+                            <div className="flex gap-4 text-[10px] font-mono text-muted-foreground pt-1">
+                                <span>
+                                    Created {new Date(family.created_at).toLocaleDateString()}
+                                </span>
+                                <span>
+                                    Updated {new Date(family.updated_at).toLocaleDateString()}
+                                </span>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* Content */}
-            <div className="mx-auto max-w-[1400px] px-6 py-8 space-y-6">
-                {/* Physical Specs + Handling Tags */}
-                {(hasSpecs || family.handling_tags?.length > 0) && (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        {hasSpecs && (
-                            <Card>
-                                <CardHeader className="py-3 px-6">
-                                    <CardTitle className="font-mono text-sm">
-                                        Default Specifications
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent className="px-6 pb-6">
-                                    <div className="grid grid-cols-2 gap-4 text-sm">
-                                        {dims &&
-                                            (dims.length || dims.width || dims.height) && (
-                                                <div className="flex items-start gap-2">
-                                                    <Ruler className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
-                                                    <div>
-                                                        <div className="text-xs text-muted-foreground font-mono">
-                                                            Dimensions (L x W x H)
-                                                        </div>
-                                                        <div className="font-mono">
-                                                            {formatDimension(dims.length) ?? "—"} x{" "}
-                                                            {formatDimension(dims.width) ?? "—"} x{" "}
-                                                            {formatDimension(dims.height) ?? "—"} cm
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            )}
-                                        {family.weight_per_unit != null && (
-                                            <div className="flex items-start gap-2">
-                                                <Weight className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
-                                                <div>
-                                                    <div className="text-xs text-muted-foreground font-mono">
-                                                        Weight
-                                                    </div>
-                                                    <div className="font-mono">
-                                                        {Number(family.weight_per_unit).toFixed(2)} kg
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )}
-                                        {family.volume_per_unit != null && (
-                                            <div className="flex items-start gap-2">
-                                                <Box className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
-                                                <div>
-                                                    <div className="text-xs text-muted-foreground font-mono">
-                                                        Volume
-                                                    </div>
-                                                    <div className="font-mono">
-                                                        {Number(family.volume_per_unit).toFixed(3)} m&sup3;
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )}
-                                        {family.packaging && (
-                                            <div className="flex items-start gap-2">
-                                                <Package className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
-                                                <div>
-                                                    <div className="text-xs text-muted-foreground font-mono">
-                                                        Packaging
-                                                    </div>
-                                                    <div className="font-mono">
-                                                        {family.packaging}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        )}
-
-                        {family.handling_tags?.length > 0 && (
-                            <Card>
-                                <CardHeader className="py-3 px-6">
-                                    <CardTitle className="font-mono text-sm">
-                                        Handling Tags
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent className="px-6 pb-6">
-                                    <div className="flex flex-wrap gap-2">
-                                        {family.handling_tags.map((tag) => (
-                                            <Badge
-                                                key={tag}
-                                                variant="outline"
-                                                className="font-mono"
-                                            >
-                                                <Tag className="h-3 w-3 mr-1" />
-                                                {tag}
-                                            </Badge>
-                                        ))}
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        )}
-                    </div>
-                )}
-
-                {/* Condition breakdown */}
-                {family.condition_summary && (
-                    <Card>
-                        <CardHeader className="py-3 px-6">
-                            <CardTitle className="font-mono text-sm">Condition Breakdown</CardTitle>
-                        </CardHeader>
-                        <CardContent className="px-6 pb-6">
-                            <div className="flex gap-4">
-                                <div className="flex items-center gap-2">
-                                    <div className="h-3 w-3 rounded-full bg-emerald-500" />
-                                    <span className="text-sm font-mono">
-                                        Green: {formatCount(family.condition_summary.green)}
-                                    </span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <div className="h-3 w-3 rounded-full bg-amber-500" />
-                                    <span className="text-sm font-mono">
-                                        Orange: {formatCount(family.condition_summary.orange)}
-                                    </span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <div className="h-3 w-3 rounded-full bg-red-500" />
-                                    <span className="text-sm font-mono">
-                                        Red: {formatCount(family.condition_summary.red)}
-                                    </span>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                )}
-
-                {/* Metadata */}
-                <div className="flex gap-4 text-xs font-mono text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        Created: {new Date(family.created_at).toLocaleDateString()}
-                    </span>
-                    <span className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        Updated: {new Date(family.updated_at).toLocaleDateString()}
-                    </span>
-                </div>
-
-                <Separator />
-
-                {/* Stock Records */}
-                <Card>
+            {/* Inventory */}
+            <div className="mx-auto max-w-[1400px] px-6 py-6">
+                <Card data-testid="family-stock-list">
                     <CardHeader className="flex flex-row items-center justify-between py-3 px-6">
                         <CardTitle className="font-mono text-sm">
-                            Stock Records ({filteredStock.length})
+                            Inventory ({filtered.length})
                         </CardTitle>
                         <div className="flex items-center gap-2">
                             <div className="relative w-56">
                                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                                 <Input
-                                    placeholder="Search records..."
-                                    value={stockSearch}
-                                    onChange={(e) => setStockSearch(e.target.value)}
+                                    placeholder="Filter by name, QR, condition..."
+                                    value={inventorySearch}
+                                    onChange={(e) => setInventorySearch(e.target.value)}
                                     className="pl-8 h-8 text-xs font-mono"
                                 />
                             </div>
@@ -530,32 +420,33 @@ export default function AssetFamilyDetailPage({ params }: { params: Promise<{ id
                                 size="sm"
                                 className="font-mono"
                                 onClick={() => setShowCreateAsset(true)}
+                                data-testid="family-add-stock-btn"
                             >
                                 <Plus className="h-3.5 w-3.5 mr-1.5" />
-                                Add Stock
+                                {isSerialized ? "Add Units" : "Add Inventory"}
                             </Button>
                         </div>
                     </CardHeader>
                     <CardContent className="px-6 pb-6">
                         {stockLoading ? (
                             <div className="space-y-3">
-                                {Array.from({ length: 5 }).map((_, index) => (
-                                    <Skeleton key={index} className="h-14 w-full" />
+                                {Array.from({ length: 5 }).map((_, i) => (
+                                    <Skeleton key={i} className="h-16 w-full" />
                                 ))}
                             </div>
-                        ) : filteredStock.length === 0 ? (
+                        ) : filtered.length === 0 ? (
                             <div className="py-12 text-center text-sm font-mono text-muted-foreground">
-                                {stockSearch
-                                    ? "No stock records match your search."
-                                    : "No stock records are linked to this family."}
+                                {inventorySearch
+                                    ? "No inventory matches your filter."
+                                    : "No inventory under this family yet."}
                             </div>
                         ) : (
-                            <div className="space-y-2">
-                                {filteredStock.map((asset) => (
+                            <div className="divide-y divide-border">
+                                {filtered.map((asset) => (
                                     <Link key={asset.id} href={`/assets/${asset.id}`}>
-                                        <div className="flex items-center gap-4 rounded-lg border border-border p-3 transition-colors hover:border-primary/50">
+                                        <div className="flex items-center gap-4 py-3 px-2 -mx-2 rounded-md transition-colors hover:bg-muted/50">
                                             {/* Thumbnail */}
-                                            <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded bg-muted">
+                                            <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-md bg-muted border border-border">
                                                 {asset.images?.[0]?.url ? (
                                                     <Image
                                                         src={asset.images[0].url}
@@ -570,37 +461,57 @@ export default function AssetFamilyDetailPage({ params }: { params: Promise<{ id
                                                 )}
                                             </div>
 
-                                            {/* Info */}
+                                            {/* Name + badges */}
                                             <div className="flex-1 min-w-0">
-                                                <div className="flex flex-wrap items-center gap-2">
-                                                    <span className="font-mono text-sm font-semibold truncate">
+                                                <div className="flex items-center gap-2 mb-0.5">
+                                                    <span className="font-mono text-sm font-medium truncate">
                                                         {asset.name}
                                                     </span>
+                                                </div>
+                                                <div className="flex flex-wrap items-center gap-1.5">
                                                     <Badge
                                                         variant="outline"
-                                                        className={`font-mono text-[10px] ${getConditionColor(asset.condition)}`}
+                                                        className={`font-mono text-[10px] py-0 ${CONDITION_STYLES[asset.condition || ""] || ""}`}
                                                     >
                                                         {asset.condition}
                                                     </Badge>
                                                     <Badge
                                                         variant="outline"
-                                                        className={`font-mono text-[10px] ${getStatusColor(asset.status)}`}
+                                                        className={`font-mono text-[10px] py-0 ${STATUS_STYLES[asset.status || ""] || ""}`}
                                                     >
                                                         {asset.status?.replace(/_/g, " ")}
                                                     </Badge>
                                                 </div>
-                                                <div className="mt-1 flex flex-wrap gap-3 text-xs font-mono text-muted-foreground">
-                                                    <span>
-                                                        {asset.warehouse?.name || "—"} /{" "}
-                                                        {asset.zone?.name || "—"}
-                                                    </span>
-                                                    <span>{asset.total_quantity} total</span>
-                                                    <span>{asset.available_quantity} avail</span>
-                                                    <span className="flex items-center gap-1">
-                                                        <QrCode className="h-3 w-3" />
-                                                        {asset.qr_code}
-                                                    </span>
+                                            </div>
+
+                                            {/* Location */}
+                                            <div className="hidden md:flex items-center gap-1 text-xs font-mono text-muted-foreground shrink-0">
+                                                <MapPin className="h-3 w-3" />
+                                                {asset.warehouse?.name || "—"} /{" "}
+                                                {asset.zone?.name || "—"}
+                                            </div>
+
+                                            {/* Quantity */}
+                                            {!isSerialized && (
+                                                <div className="text-right shrink-0">
+                                                    <div className="text-sm font-mono font-semibold">
+                                                        {asset.available_quantity}
+                                                        <span className="text-muted-foreground font-normal">
+                                                            /{asset.total_quantity}
+                                                        </span>
+                                                    </div>
+                                                    <div className="text-[10px] font-mono text-muted-foreground">
+                                                        avail / total
+                                                    </div>
                                                 </div>
+                                            )}
+
+                                            {/* QR */}
+                                            <div className="hidden lg:flex items-center gap-1 text-xs font-mono text-muted-foreground shrink-0">
+                                                <QrCode className="h-3 w-3" />
+                                                <span className="max-w-[120px] truncate">
+                                                    {asset.qr_code}
+                                                </span>
                                             </div>
                                         </div>
                                     </Link>
@@ -615,10 +526,9 @@ export default function AssetFamilyDetailPage({ params }: { params: Promise<{ id
                 open={showDeleteConfirm}
                 onOpenChange={setShowDeleteConfirm}
                 title="Delete Family"
-                description="Are you sure you want to delete this asset family? This will only work if no stock records are linked."
+                description="Are you sure? This only works if no inventory is linked to this family."
                 confirmText="Delete"
                 onConfirm={handleDelete}
-                loading={deleteMutation.isPending}
                 variant="destructive"
             />
 
@@ -628,13 +538,11 @@ export default function AssetFamilyDetailPage({ params }: { params: Promise<{ id
                 onOpenChange={setShowEditDialog}
             />
 
-            {showCreateAsset && (
-                <CreateAssetDialog
-                    open={showCreateAsset}
-                    onOpenChange={setShowCreateAsset}
-                    defaultFamilyId={family.id}
-                />
-            )}
+            <AssetWizard
+                open={showCreateAsset}
+                onOpenChange={setShowCreateAsset}
+                preselectedFamilyId={family.id}
+            />
         </div>
     );
 }

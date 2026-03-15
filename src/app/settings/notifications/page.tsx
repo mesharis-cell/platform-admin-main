@@ -634,7 +634,7 @@ function EditRuleDialog({
                             />
                         </div>
                     </div>
-                    <div className="space-y-3 rounded-lg border p-3">
+                    <div className="space-y-3 rounded-lg bg-muted/40 p-3">
                         <div className="flex items-center justify-between gap-3">
                             <div>
                                 <p className="text-xs font-medium text-muted-foreground">
