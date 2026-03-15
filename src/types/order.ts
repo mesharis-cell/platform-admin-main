@@ -599,6 +599,7 @@ export interface APIOrder {
     brand: string | null;
     created_by: string;
     job_number: string | null;
+    po_number: string | null;
     contact_name: string;
     contact_email: string;
     contact_phone: string;

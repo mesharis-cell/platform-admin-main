@@ -905,6 +905,18 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                 </CardContent>
                             </Card>
                         )}
+                        {order?.data?.po_number && (
+                            <Card className="border border-border/60 bg-card/60">
+                                <CardContent className="pt-6">
+                                    <Label className="font-mono text-xs text-muted-foreground">
+                                        CLIENT PO NUMBER
+                                    </Label>
+                                    <p className="mt-2 font-mono text-lg font-bold">
+                                        {order.data.po_number}
+                                    </p>
+                                </CardContent>
+                            </Card>
+                        )}
                         {/* Delivery Schedule Card - Show for CONFIRMED+ states */}
                         {["CONFIRMED", "IN_PREPARATION", "READY_FOR_DELIVERY"].includes(
                             order?.data?.order_status
