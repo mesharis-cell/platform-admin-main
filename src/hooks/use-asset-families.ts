@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { AssetFamily } from "@/types/asset-family";
 import { apiClient } from "@/lib/api/api-client";
 import { throwApiError } from "@/lib/utils/throw-api-error";
@@ -53,5 +53,45 @@ export function useAssetFamily(id: string) {
         queryKey: assetFamilyKeys.detail(id),
         queryFn: () => fetchAssetFamily(id),
         enabled: !!id,
+    });
+}
+
+export function useUpdateAssetFamily() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async ({ id, data }: { id: string; data: Partial<AssetFamily> }) => {
+            const response = await apiClient.patch(`/operations/v1/asset-family/${id}`, data);
+            return response.data;
+        },
+        onSuccess: (_data, variables) => {
+            queryClient.invalidateQueries({ queryKey: assetFamilyKeys.all });
+            queryClient.invalidateQueries({ queryKey: assetFamilyKeys.detail(variables.id) });
+        },
+    });
+}
+
+export function useCreateAssetFamily() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (data: Record<string, unknown>) => {
+            const response = await apiClient.post(`/operations/v1/asset-family`, data);
+            return response.data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: assetFamilyKeys.all });
+        },
+    });
+}
+
+export function useDeleteAssetFamily() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (id: string) => {
+            const response = await apiClient.delete(`/operations/v1/asset-family/${id}`);
+            return response.data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: assetFamilyKeys.all });
+        },
     });
 }

@@ -63,10 +63,11 @@ const DEFAULT_CATEGORIES = ["Furniture", "Glassware", "Installation", "Decor"];
 interface CreateAssetDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    onSuccess: () => void;
+    onSuccess?: () => void;
+    defaultFamilyId?: string;
 }
 
-export function CreateAssetDialog({ open, onOpenChange, onSuccess }: CreateAssetDialogProps) {
+export function CreateAssetDialog({ open, onOpenChange, onSuccess, defaultFamilyId }: CreateAssetDialogProps) {
     const [currentStep, setCurrentStep] = useState(0);
     const [formData, setFormData] = useState<Partial<CreateAssetRequest>>({
         tracking_method: "INDIVIDUAL",
@@ -75,6 +76,7 @@ export function CreateAssetDialog({ open, onOpenChange, onSuccess }: CreateAsset
         images: [],
         handling_tags: [],
         condition: "GREEN",
+        family_id: defaultFamilyId || undefined,
         status: "AVAILABLE",
         dimensions: {},
     });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -8,6 +8,7 @@ import { Grid3x3, Layers3, List, Search, Upload } from "lucide-react";
 import { useAssetFamilies } from "@/hooks/use-asset-families";
 import { useCompanies } from "@/hooks/use-companies";
 import { CreateAssetDialog } from "@/components/assets/create-asset-dialog";
+import { CreateAssetFamilyDialog } from "@/components/assets/create-asset-family-dialog";
 import { AdminHeader } from "@/components/admin-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -110,12 +111,20 @@ export default function AssetsPage() {
     const router = useRouter();
     const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
     const [searchQuery, setSearchQuery] = useState("");
+    const [debouncedSearch, setDebouncedSearch] = useState("");
     const [showCreateDialog, setShowCreateDialog] = useState(false);
+    const [showCreateFamilyDialog, setShowCreateFamilyDialog] = useState(false);
     const [filters, setFilters] = useState({
         company: "all",
         category: "all",
         stockMode: "all",
     });
+
+    const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+    useEffect(() => {
+        debounceRef.current = setTimeout(() => setDebouncedSearch(searchQuery), 300);
+        return () => clearTimeout(debounceRef.current);
+    }, [searchQuery]);
 
     const { data: companies } = useCompanies({ limit: "100" });
     const canCreateAsset = hasPermission(user, ADMIN_ACTION_PERMISSIONS.assetsCreate);
@@ -124,12 +133,12 @@ export default function AssetsPage() {
 
     const queryParams = useMemo(() => {
         const params: Record<string, string> = {};
-        if (searchQuery) params.search_term = searchQuery;
+        if (debouncedSearch) params.search_term = debouncedSearch;
         if (filters.company !== "all") params.company_id = filters.company;
         if (filters.category !== "all") params.category = filters.category;
         if (filters.stockMode !== "all") params.stock_mode = filters.stockMode;
         return params;
-    }, [filters, searchQuery]);
+    }, [filters, debouncedSearch]);
 
     const { data, isLoading } = useAssetFamilies(queryParams);
     const families = data?.data || [];
@@ -156,11 +165,18 @@ export default function AssetsPage() {
                                 </Button>
                             )}
                             {canCreateAsset && (
-                                <CreateAssetDialog
-                                    open={showCreateDialog}
-                                    onOpenChange={setShowCreateDialog}
-                                    onSuccess={() => setShowCreateDialog(false)}
-                                />
+                                <>
+                                    <CreateAssetFamilyDialog
+                                        open={showCreateFamilyDialog}
+                                        onOpenChange={setShowCreateFamilyDialog}
+                                        onSuccess={() => setShowCreateFamilyDialog(false)}
+                                    />
+                                    <CreateAssetDialog
+                                        open={showCreateDialog}
+                                        onOpenChange={setShowCreateDialog}
+                                        onSuccess={() => setShowCreateDialog(false)}
+                                    />
+                                </>
                             )}
                         </div>
                     ) : undefined

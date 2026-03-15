@@ -15,6 +15,7 @@ interface AvailabilityStats {
         booked_quantity: number;
         out_quantity: number;
         in_maintenance_quantity: number;
+        self_booked_quantity: number;
         breakdown: {
             active_bookings_count: number;
             outbound_scans_total: number;
