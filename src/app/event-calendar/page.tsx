@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Plus } from "lucide-react";
+import { AdminHeader } from "@/components/admin-header";
 import {
     startOfMonth,
     endOfMonth,
@@ -209,22 +210,12 @@ export default function EventCalendarPage() {
     });
 
     return (
-        <div className="min-h-screen bg-linear-to-br from-background via-muted/30 to-background">
-            {/* Header */}
-            <div className="border-b border-border/40 bg-card/80 backdrop-blur-sm sticky top-0 z-10">
-                <div className="container mx-auto px-6 py-6">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h1 className="text-3xl font-bold text-foreground tracking-tight">
-                                Event Calendar
-                            </h1>
-                            <p className="text-sm text-muted-foreground mt-1">
-                                View your upcoming event schedule
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </div>
+        <div className="min-h-screen bg-background">
+            <AdminHeader
+                icon={CalendarIcon}
+                title="EVENT CALENDAR"
+                description="Upcoming Events · Schedule Overview"
+            />
 
             <div className="container mx-auto px-6 py-8">
                 {/* Month Navigation */}

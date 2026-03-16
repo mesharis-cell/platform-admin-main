@@ -13,11 +13,15 @@ import {
     Trash2,
     CheckCircle2,
     AlertCircle,
+    Clock,
+    ShieldAlert,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -100,6 +104,17 @@ export default function PlatformSettingsPage() {
     const [features, setFeatures] = useState<StrictFeatures>(DEFAULT_FEATURES);
     const [savingFeatures, setSavingFeatures] = useState(false);
 
+    // Feasibility & Lead Time
+    const [minimumLeadHours, setMinimumLeadHours] = useState(0);
+    const [excludeWeekends, setExcludeWeekends] = useState(false);
+    const [weekendDays, setWeekendDays] = useState<number[]>([0, 6]);
+    const [feasibilityTimezone, setFeasibilityTimezone] = useState("Asia/Dubai");
+
+    // Maintenance Mode
+    const [maintenanceMode, setMaintenanceMode] = useState(false);
+    const [maintenanceMessage, setMaintenanceMessage] = useState("");
+    const [maintenanceUntil, setMaintenanceUntil] = useState("");
+
     const [addDomainOpen, setAddDomainOpen] = useState(false);
     const [editDomain, setEditDomain] = useState<CompanyDomain | null>(null);
     const [deleteDomainId, setDeleteDomainId] = useState<string | null>(null);
@@ -129,6 +144,13 @@ export default function PlatformSettingsPage() {
         setSecondaryColor(platform.config.secondary_color ?? "");
         setLogoUrl(platform.config.logo_url ?? "");
         setPlatformDomain(platform.domain ?? "");
+        // Feasibility
+        const f = platform.config.feasibility;
+        setMinimumLeadHours(f?.minimum_lead_hours ?? 0);
+        setExcludeWeekends(f?.exclude_weekends ?? false);
+        setWeekendDays(f?.weekend_days ?? [0, 6]);
+        setFeasibilityTimezone(f?.timezone ?? "Asia/Dubai");
+
         setFeatures({
             enable_inbound_requests:
                 platform.features.enable_inbound_requests ??
@@ -172,6 +194,17 @@ export default function PlatformSettingsPage() {
             primary_color: primaryColor || undefined,
             secondary_color: secondaryColor || undefined,
             logo_url: logoUrl || undefined,
+        });
+    };
+
+    const handleSaveFeasibility = () => {
+        updateConfig.mutate({
+            feasibility: {
+                minimum_lead_hours: minimumLeadHours,
+                exclude_weekends: excludeWeekends,
+                weekend_days: weekendDays,
+                timezone: feasibilityTimezone,
+            },
         });
     };
 
@@ -362,6 +395,185 @@ export default function PlatformSettingsPage() {
                     <Button onClick={handleSaveConfig} disabled={updateConfig.isPending}>
                         {updateConfig.isPending ? "Saving..." : "Save Config"}
                     </Button>
+                </div>
+
+                {/* ── Feasibility & Lead Time ── */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-base">
+                            <Clock className="h-4 w-4" /> Feasibility &amp; Lead Time
+                        </CardTitle>
+                        <CardDescription>
+                            Controls how the platform calculates event feasibility and minimum
+                            scheduling windows.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="space-y-1.5">
+                            <Label>Minimum Lead Time (hours)</Label>
+                            <Input
+                                type="number"
+                                min={0}
+                                value={minimumLeadHours}
+                                onChange={(e) =>
+                                    setMinimumLeadHours(
+                                        Number.isNaN(Number(e.target.value))
+                                            ? 0
+                                            : Number(e.target.value)
+                                    )
+                                }
+                                className="w-40"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                                Minimum hours between now and the earliest allowed event start date
+                            </p>
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm font-medium">Exclude Weekends</p>
+                                <p className="text-xs text-muted-foreground">
+                                    Skip weekend days when calculating maintenance feasibility
+                                </p>
+                            </div>
+                            <Switch
+                                checked={excludeWeekends}
+                                onCheckedChange={setExcludeWeekends}
+                            />
+                        </div>
+
+                        {excludeWeekends && (
+                            <div className="space-y-1.5">
+                                <Label>Weekend Days</Label>
+                                <div className="flex flex-wrap gap-4">
+                                    {[
+                                        { value: 0, label: "Sunday" },
+                                        { value: 1, label: "Monday" },
+                                        { value: 2, label: "Tuesday" },
+                                        { value: 3, label: "Wednesday" },
+                                        { value: 4, label: "Thursday" },
+                                        { value: 5, label: "Friday" },
+                                        { value: 6, label: "Saturday" },
+                                    ].map((day) => (
+                                        <label
+                                            key={day.value}
+                                            className="flex items-center gap-2 text-sm cursor-pointer"
+                                        >
+                                            <Checkbox
+                                                checked={weekendDays.includes(day.value)}
+                                                onCheckedChange={(checked) => {
+                                                    setWeekendDays((prev) =>
+                                                        checked
+                                                            ? [...prev, day.value].sort()
+                                                            : prev.filter((d) => d !== day.value)
+                                                    );
+                                                }}
+                                            />
+                                            {day.label}
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="space-y-1.5">
+                            <Label>Timezone</Label>
+                            <Select
+                                value={feasibilityTimezone}
+                                onValueChange={setFeasibilityTimezone}
+                            >
+                                <SelectTrigger className="w-64">
+                                    <SelectValue placeholder="Select timezone" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {[
+                                        "Asia/Dubai",
+                                        "Asia/Riyadh",
+                                        "UTC",
+                                        "America/New_York",
+                                        "America/Chicago",
+                                        "America/Denver",
+                                        "America/Los_Angeles",
+                                        "Europe/London",
+                                        "Europe/Paris",
+                                        "Europe/Berlin",
+                                        "Asia/Kolkata",
+                                        "Asia/Singapore",
+                                        "Asia/Tokyo",
+                                        "Australia/Sydney",
+                                    ].map((tz) => (
+                                        <SelectItem key={tz} value={tz}>
+                                            {tz}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <p className="text-xs text-muted-foreground">
+                                Used for all date calculations
+                            </p>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <div className="flex justify-end">
+                    <Button onClick={handleSaveFeasibility} disabled={updateConfig.isPending}>
+                        {updateConfig.isPending ? "Saving..." : "Save Feasibility"}
+                    </Button>
+                </div>
+
+                {/* ── Maintenance Mode ── */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-base">
+                            <ShieldAlert className="h-4 w-4" /> Maintenance Mode
+                        </CardTitle>
+                        <CardDescription>
+                            Enable maintenance mode to temporarily restrict platform access.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm font-medium">Maintenance Mode</p>
+                                <p className="text-xs text-muted-foreground">
+                                    When enabled, users will see the maintenance message
+                                </p>
+                            </div>
+                            <Switch
+                                checked={maintenanceMode}
+                                onCheckedChange={setMaintenanceMode}
+                            />
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <Label>Maintenance Message</Label>
+                            <Textarea
+                                placeholder="We are currently undergoing scheduled maintenance..."
+                                value={maintenanceMessage}
+                                onChange={(e) => setMaintenanceMessage(e.target.value)}
+                                rows={3}
+                            />
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <Label>Maintenance Until</Label>
+                            <Input
+                                type="datetime-local"
+                                value={maintenanceUntil}
+                                onChange={(e) => setMaintenanceUntil(e.target.value)}
+                                className="w-64"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                                Optional end date for the maintenance window
+                            </p>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <div className="flex justify-end">
+                    {/* TODO: Wire to super-admin maintenance endpoint (separate from platform config).
+                        Payload: { maintenance_mode, maintenance_message, maintenance_until } */}
+                    <Button disabled>Save Maintenance Settings</Button>
                 </div>
 
                 <Card>
