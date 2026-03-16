@@ -78,6 +78,9 @@ const DEFAULT_FEATURES: StrictFeatures = {
     enable_asset_bulk_upload: false,
     enable_attachments: true,
     enable_workflows: true,
+    enable_service_requests: true,
+    enable_event_calendar: true,
+    enable_client_stock_requests: true,
 };
 
 export default function PlatformSettingsPage() {
@@ -170,6 +173,14 @@ export default function PlatformSettingsPage() {
                 platform.features.enable_attachments ?? DEFAULT_FEATURES.enable_attachments,
             enable_workflows:
                 platform.features.enable_workflows ?? DEFAULT_FEATURES.enable_workflows,
+            enable_service_requests:
+                platform.features.enable_service_requests ??
+                DEFAULT_FEATURES.enable_service_requests,
+            enable_event_calendar:
+                platform.features.enable_event_calendar ?? DEFAULT_FEATURES.enable_event_calendar,
+            enable_client_stock_requests:
+                platform.features.enable_client_stock_requests ??
+                DEFAULT_FEATURES.enable_client_stock_requests,
         });
     }, [platform]);
 
@@ -624,6 +635,21 @@ export default function PlatformSettingsPage() {
                                 label: "Enable Picking & Handling",
                                 description:
                                     "Include Picking & Handling (base operations) in pricing calculations",
+                            },
+                            {
+                                key: "enable_service_requests" as const,
+                                label: "Enable Service Requests",
+                                description: "Show service requests section in client portal",
+                            },
+                            {
+                                key: "enable_event_calendar" as const,
+                                label: "Enable Event Calendar",
+                                description: "Show event calendar page in client portal",
+                            },
+                            {
+                                key: "enable_client_stock_requests" as const,
+                                label: "Enable Client Stock Requests",
+                                description: "Allow clients to submit new stock / inbound requests",
                             },
                         ].map((item) => (
                             <div key={item.key} className="flex items-center justify-between">

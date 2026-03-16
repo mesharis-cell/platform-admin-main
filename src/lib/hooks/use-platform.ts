@@ -30,6 +30,9 @@ export interface PlatformFeatures {
     enable_asset_bulk_upload?: boolean;
     enable_attachments?: boolean;
     enable_workflows?: boolean;
+    enable_service_requests?: boolean;
+    enable_event_calendar?: boolean;
+    enable_client_stock_requests?: boolean;
 }
 
 export interface Platform {

@@ -69,6 +69,21 @@ const FEATURE_FLAGS = [
         label: "Enable Picking & Handling",
         description: "Include Picking & Handling (base operations) in pricing calculations",
     },
+    {
+        key: "enable_service_requests",
+        label: "Enable Service Requests",
+        description: "Show service requests section in client portal",
+    },
+    {
+        key: "enable_event_calendar",
+        label: "Enable Event Calendar",
+        description: "Show event calendar page in client portal",
+    },
+    {
+        key: "enable_client_stock_requests",
+        label: "Enable Client Stock Requests",
+        description: "Allow clients to submit new stock / inbound requests",
+    },
 ] as const;
 
 type FeatureOverrides = Record<string, boolean | null>;
