@@ -20,6 +20,7 @@ export function useListServiceTypes(filters: Record<string, any> = {}) {
     if (filters.limit) queryParams.append("limit", filters.limit);
     if (filters.category) queryParams.append("category", filters.category);
     if (filters.search_term) queryParams.append("search_term", filters.search_term);
+    if (filters.is_active !== undefined) queryParams.append("is_active", filters.is_active);
     if (filters.include_inactive) queryParams.append("include_inactive", "true");
 
     return useQuery({
@@ -91,6 +92,27 @@ export function useUpdateServiceType() {
                     `/operations/v1/pricing/service-types/${id}`,
                     apiData
                 );
+                return response.data.data;
+            } catch (error) {
+                throwApiError(error);
+            }
+        },
+        onSuccess: (_, variables) => {
+            queryClient.invalidateQueries({ queryKey: serviceTypesKeys.detail(variables.id) });
+            queryClient.invalidateQueries({ queryKey: serviceTypesKeys.lists() });
+        },
+    });
+}
+
+export function useToggleServiceTypeStatus() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({ id, isActive }: { id: string; isActive: boolean }) => {
+            try {
+                const response = await apiClient.put(`/operations/v1/pricing/service-types/${id}`, {
+                    is_active: isActive,
+                });
                 return response.data.data;
             } catch (error) {
                 throwApiError(error);

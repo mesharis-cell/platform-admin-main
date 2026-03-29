@@ -29,15 +29,25 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Wrench, Plus, Pencil, Trash2, ChevronLeft, ChevronRight, Search } from "lucide-react";
+import {
+    Wrench,
+    Plus,
+    Pencil,
+    Trash2,
+    ChevronLeft,
+    ChevronRight,
+    Search,
+    Ban,
+    RotateCcw,
+} from "lucide-react";
 import { AdminHeader } from "@/components/admin-header";
 import {
     useListServiceTypes,
     useCreateServiceType,
     useUpdateServiceType,
     useDeleteServiceType,
+    useToggleServiceTypeStatus,
 } from "@/hooks/use-service-types";
 import type { ServiceType, ServiceCategory } from "@/types/hybrid-pricing";
 
@@ -51,11 +61,12 @@ const CATEGORIES: { value: ServiceCategory; label: string }[] = [
 ];
 
 const PAGE_SIZE = 20;
+type StatusFilter = "active" | "disabled" | "both";
 
 export default function ServiceTypesPage() {
     const [searchTerm, setSearchTerm] = useState("");
     const [categoryFilter, setCategoryFilter] = useState<string>("all");
-    const [includeInactive, setIncludeInactive] = useState(false);
+    const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
     const [page, setPage] = useState(1);
 
     const filters: Record<string, string> = {
@@ -64,12 +75,20 @@ export default function ServiceTypesPage() {
     };
     if (searchTerm.trim()) filters.search_term = searchTerm.trim();
     if (categoryFilter !== "all") filters.category = categoryFilter;
-    if (includeInactive) filters.include_inactive = "true";
+    if (statusFilter === "both") {
+        filters.include_inactive = "true";
+    } else if (statusFilter === "active") {
+        filters.is_active = "true";
+    } else if (statusFilter === "disabled") {
+        filters.include_inactive = "true";
+        filters.is_active = "false";
+    }
 
     const { data, isLoading } = useListServiceTypes(filters);
     const createService = useCreateServiceType();
     const updateService = useUpdateServiceType();
     const deleteService = useDeleteServiceType();
+    const toggleServiceStatus = useToggleServiceTypeStatus();
 
     const [createDialogOpen, setCreateDialogOpen] = useState(false);
     const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -146,13 +165,29 @@ export default function ServiceTypesPage() {
     };
 
     const handleDelete = async (service: ServiceType) => {
-        if (!confirm(`Deactivate service type "${service.name}"?`)) return;
+        if (!confirm(`Delete service type "${service.name}" permanently? This cannot be undone.`)) {
+            return;
+        }
 
         try {
             await deleteService.mutateAsync(service.id);
-            toast.success("Service type deactivated");
+            toast.success("Service type deleted");
         } catch (error: any) {
-            toast.error(error.message || "Failed to deactivate service type");
+            toast.error(error.message || "Failed to delete service type");
+        }
+    };
+
+    const handleToggleStatus = async (service: ServiceType, nextIsActive: boolean) => {
+        const actionLabel = nextIsActive ? "enable" : "disable";
+        if (!confirm(`${actionLabel[0].toUpperCase()}${actionLabel.slice(1)} "${service.name}"?`)) {
+            return;
+        }
+
+        try {
+            await toggleServiceStatus.mutateAsync({ id: service.id, isActive: nextIsActive });
+            toast.success(`Service type ${nextIsActive ? "enabled" : "disabled"}`);
+        } catch (error: any) {
+            toast.error(error.message || `Failed to ${actionLabel} service type`);
         }
     };
 
@@ -232,22 +267,22 @@ export default function ServiceTypesPage() {
                                     ))}
                                 </SelectContent>
                             </Select>
-                            <div className="flex items-center gap-2">
-                                <Switch
-                                    id="include-inactive"
-                                    checked={includeInactive}
-                                    onCheckedChange={(v) => {
-                                        setIncludeInactive(v);
-                                        setPage(1);
-                                    }}
-                                />
-                                <Label
-                                    htmlFor="include-inactive"
-                                    className="text-sm whitespace-nowrap"
-                                >
-                                    Show Inactive
-                                </Label>
-                            </div>
+                            <Select
+                                value={statusFilter}
+                                onValueChange={(v: StatusFilter) => {
+                                    setStatusFilter(v);
+                                    setPage(1);
+                                }}
+                            >
+                                <SelectTrigger className="w-full sm:w-[160px]">
+                                    <SelectValue placeholder="Status" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="active">Active</SelectItem>
+                                    <SelectItem value="both">Both</SelectItem>
+                                    <SelectItem value="disabled">Disabled</SelectItem>
+                                </SelectContent>
+                            </Select>
                         </div>
 
                         {/* Table */}
@@ -327,7 +362,29 @@ export default function ServiceTypesPage() {
                                                         <Button
                                                             variant="ghost"
                                                             size="sm"
+                                                            onClick={() =>
+                                                                handleToggleStatus(
+                                                                    service,
+                                                                    !service.is_active
+                                                                )
+                                                            }
+                                                            title={
+                                                                service.is_active
+                                                                    ? "Disable service type"
+                                                                    : "Enable service type"
+                                                            }
+                                                        >
+                                                            {service.is_active ? (
+                                                                <Ban className="h-3.5 w-3.5" />
+                                                            ) : (
+                                                                <RotateCcw className="h-3.5 w-3.5" />
+                                                            )}
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
                                                             onClick={() => handleDelete(service)}
+                                                            title="Delete service type"
                                                         >
                                                             <Trash2 className="h-3.5 w-3.5" />
                                                         </Button>
