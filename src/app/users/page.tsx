@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Shield, UserPlus, Users } from "lucide-react";
+import { Eye, EyeOff, KeyRound, Shield, UserPlus, Users } from "lucide-react";
 import { AdminHeader } from "@/components/admin-header";
 import { DataTable, DataTableSearch, DataTableRow } from "@/components/ui/data-table";
 import { Button } from "@/components/ui/button";
@@ -29,9 +29,16 @@ import {
 import { TableCell } from "@/components/ui/table";
 import { useAccessPolicies } from "@/hooks/use-access-policies";
 import { useCompanies } from "@/hooks/use-companies";
-import { useCreateUser, useUpdateUser, useUsers } from "@/hooks/use-users";
+import {
+    useCreateUser,
+    useGenerateUserPassword,
+    useSetUserPassword,
+    useUpdateUser,
+    useUsers,
+} from "@/hooks/use-users";
 import { useToken } from "@/lib/auth/use-token";
 import { PERMISSION_GROUPS, type AccessPolicy, type User, type UserRole } from "@/types/auth";
+import ButtonCopy from "@/components/ui/copy-button";
 
 type UserFormState = {
     name: string;
@@ -69,6 +76,12 @@ export default function UsersPage() {
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<User | null>(null);
     const [form, setForm] = useState<UserFormState>(EMPTY_FORM);
+    const [showPassword, setShowPassword] = useState(false);
+    const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+    const [passwordUser, setPasswordUser] = useState<User | null>(null);
+    const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
+    const [customPassword, setCustomPassword] = useState("");
+    const [showCustomPassword, setShowCustomPassword] = useState(false);
 
     const queryParams = useMemo(() => {
         const params: Record<string, string> = { limit: "100", page: "1" };
@@ -84,6 +97,8 @@ export default function UsersPage() {
     const { data: accessPoliciesData } = useAccessPolicies();
     const createUser = useCreateUser();
     const updateUser = useUpdateUser();
+    const generatePassword = useGenerateUserPassword();
+    const setUserPassword = useSetUserPassword();
 
     const companies = companiesData?.data || [];
     const users = usersData?.data || [];
@@ -91,6 +106,8 @@ export default function UsersPage() {
     const rolePolicies = accessPolicies.filter((policy) => policy.role === form.role);
     const selectedPolicy =
         accessPolicies.find((policy) => policy.id === form.access_policy_id) || null;
+    const canManagePasswords =
+        authUser?.is_super_admin || authUser?.permissions?.includes("users:manage_password");
 
     const effectivePermissions = useMemo(() => {
         const base = selectedPolicy?.permissions || [];
@@ -109,6 +126,9 @@ export default function UsersPage() {
             access_policy_id: defaultPolicy?.id || null,
         });
         setEditingUser(null);
+        setGeneratedPassword(null);
+        setCustomPassword("");
+        setShowCustomPassword(false);
         setIsCreateOpen(true);
     };
 
@@ -126,7 +146,17 @@ export default function UsersPage() {
             is_active: user.is_active,
             is_super_admin: user.is_super_admin,
         });
+        setGeneratedPassword(null);
+        setCustomPassword("");
+        setShowCustomPassword(false);
         setIsCreateOpen(true);
+    };
+    const openPasswordDialog = (user: User) => {
+        setPasswordUser(user);
+        setGeneratedPassword(null);
+        setCustomPassword("");
+        setShowCustomPassword(false);
+        setPasswordDialogOpen(true);
     };
 
     const toggleOverride = (mode: "grant" | "revoke", permission: string, checked: boolean) => {
@@ -190,8 +220,59 @@ export default function UsersPage() {
             setIsCreateOpen(false);
             setEditingUser(null);
             setForm(EMPTY_FORM);
+            setShowPassword(false);
         } catch (error: any) {
             toast.error(error.message || "Failed to save user");
+        }
+    };
+
+    const generateRandomPassword = (length = 12) => {
+        const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+        const bytes = new Uint32Array(length);
+        if (typeof globalThis !== "undefined" && globalThis.crypto?.getRandomValues) {
+            globalThis.crypto.getRandomValues(bytes);
+        } else {
+            for (let i = 0; i < length; i++) bytes[i] = Math.floor(Math.random() * chars.length);
+        }
+        let out = "";
+        for (let i = 0; i < length; i++) out += chars[bytes[i] % chars.length];
+        return out;
+    };
+
+    const handleGenerateForCreate = () => {
+        const next = generateRandomPassword(12);
+        setForm((prev) => ({ ...prev, password: next }));
+        setGeneratedPassword(next);
+        setShowPassword(true);
+    };
+
+    const handleGenerateForExisting = async () => {
+        if (!passwordUser) return;
+        try {
+            const result = await generatePassword.mutateAsync({
+                userId: passwordUser.id,
+                length: 12,
+            });
+            setGeneratedPassword(result.temporary_password);
+            toast.success("Temporary password generated");
+        } catch (error: any) {
+            toast.error(error.message || "Failed to generate password");
+        }
+    };
+
+    const handleSetCustomPassword = async () => {
+        if (!passwordUser) return;
+        if (customPassword.length < 8) return toast.error("Password must be at least 8 characters");
+        try {
+            await setUserPassword.mutateAsync({
+                userId: passwordUser.id,
+                newPassword: customPassword,
+            });
+            toast.success("Password updated");
+            setCustomPassword("");
+            setShowCustomPassword(false);
+        } catch (error: any) {
+            toast.error(error.message || "Failed to set password");
         }
     };
 
@@ -288,9 +369,20 @@ export default function UsersPage() {
                         <TableCell>{user.permissions.length}</TableCell>
                         <TableCell>{user.is_active ? "Active" : "Inactive"}</TableCell>
                         <TableCell className="text-right">
-                            <Button variant="outline" size="sm" onClick={() => openEdit(user)}>
-                                Edit
-                            </Button>
+                            <div className="flex items-center justify-end gap-2">
+                                <Button variant="outline" size="sm" onClick={() => openEdit(user)}>
+                                    Edit
+                                </Button>
+                                {canManagePasswords ? (
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => openPasswordDialog(user)}
+                                    >
+                                        Password
+                                    </Button>
+                                ) : null}
+                            </div>
                         </TableCell>
                     </DataTableRow>
                 ))}
@@ -336,18 +428,49 @@ export default function UsersPage() {
                         </div>
 
                         {!editingUser ? (
-                            <div className="space-y-2">
+                            <div className="space-y-3">
                                 <Label>Temporary Password</Label>
-                                <Input
-                                    type="password"
-                                    value={form.password}
-                                    onChange={(event) =>
-                                        setForm((prev) => ({
-                                            ...prev,
-                                            password: event.target.value,
-                                        }))
-                                    }
-                                />
+                                <div className="flex items-center gap-2">
+                                    <Input
+                                        type={showPassword ? "text" : "password"}
+                                        value={form.password}
+                                        onChange={(event) =>
+                                            setForm((prev) => ({
+                                                ...prev,
+                                                password: event.target.value,
+                                            }))
+                                        }
+                                        placeholder="Generate or enter a temporary password"
+                                    />
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() => setShowPassword((prev) => !prev)}
+                                    >
+                                        {showPassword ? (
+                                            <EyeOff className="h-4 w-4" />
+                                        ) : (
+                                            <Eye className="h-4 w-4" />
+                                        )}
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={handleGenerateForCreate}
+                                    >
+                                        Generate
+                                    </Button>
+                                    <ButtonCopy
+                                        onCopy={async () => {
+                                            if (!form.password) return;
+                                            await navigator.clipboard.writeText(form.password);
+                                            toast.success("Copied");
+                                        }}
+                                    />
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                    This password is shown once. Share it securely with the user.
+                                </p>
                             </div>
                         ) : null}
 
@@ -582,6 +705,98 @@ export default function UsersPage() {
                         </Button>
                         <Button onClick={handleSubmit}>
                             {editingUser ? "Save Changes" : "Create User"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={passwordDialogOpen} onOpenChange={setPasswordDialogOpen}>
+                <DialogContent className="sm:max-w-xl">
+                    <DialogHeader>
+                        <DialogTitle>Manage Password</DialogTitle>
+                        <DialogDescription>
+                            Generate a temporary password or set a custom one.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                        <Card>
+                            <CardContent className="pt-4 space-y-3">
+                                <div className="flex items-center gap-2">
+                                    <KeyRound className="h-4 w-4" />
+                                    <p className="text-sm font-medium">
+                                        Generate temporary password
+                                    </p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={handleGenerateForExisting}
+                                        disabled={generatePassword.isPending}
+                                    >
+                                        {generatePassword.isPending ? "Generating..." : "Generate"}
+                                    </Button>
+                                    {generatedPassword ? (
+                                        <>
+                                            <Input value={generatedPassword} readOnly />
+                                            <ButtonCopy
+                                                onCopy={async () => {
+                                                    await navigator.clipboard.writeText(
+                                                        generatedPassword
+                                                    );
+                                                    toast.success("Copied");
+                                                }}
+                                            />
+                                        </>
+                                    ) : null}
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                    This temporary password is shown once. Share it securely.
+                                </p>
+                            </CardContent>
+                        </Card>
+
+                        <Card>
+                            <CardContent className="pt-4 space-y-3">
+                                <div className="flex items-center gap-2">
+                                    <KeyRound className="h-4 w-4" />
+                                    <p className="text-sm font-medium">Set custom password</p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <Input
+                                        type={showCustomPassword ? "text" : "password"}
+                                        value={customPassword}
+                                        onChange={(event) => setCustomPassword(event.target.value)}
+                                        placeholder="Minimum 8 characters"
+                                    />
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() => setShowCustomPassword((prev) => !prev)}
+                                    >
+                                        {showCustomPassword ? (
+                                            <EyeOff className="h-4 w-4" />
+                                        ) : (
+                                            <Eye className="h-4 w-4" />
+                                        )}
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        onClick={handleSetCustomPassword}
+                                        disabled={setUserPassword.isPending}
+                                    >
+                                        {setUserPassword.isPending ? "Saving..." : "Save"}
+                                    </Button>
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                    This replaces the current password immediately.
+                                </p>
+                            </CardContent>
+                        </Card>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setPasswordDialogOpen(false)}>
+                            Close
                         </Button>
                     </DialogFooter>
                 </DialogContent>
