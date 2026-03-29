@@ -75,6 +75,7 @@ type NavItem = {
     icon: React.ComponentType<{ className?: string }>;
     badge?: string;
     requiredAnyPermission?: readonly string[];
+    requiredFeature?: string;
     items?: {
         title: string;
         url: string;
@@ -101,12 +102,14 @@ const navigationSections: NavSection[] = [
                 href: "/service-requests",
                 icon: ClipboardList,
                 requiredAnyPermission: ADMIN_NAV_PERMISSIONS.serviceRequests,
+                requiredFeature: "enable_service_requests",
             },
             {
                 name: "Workflow Inbox",
                 href: "/workflow-inbox",
                 icon: Workflow,
                 requiredAnyPermission: ADMIN_NAV_PERMISSIONS.systemSettings,
+                requiredFeature: "enable_workflows",
             },
             {
                 name: "Pending Approval",
@@ -131,6 +134,7 @@ const navigationSections: NavSection[] = [
                 href: "/event-calendar",
                 icon: Calendar,
                 requiredAnyPermission: ADMIN_NAV_PERMISSIONS.eventCalendar,
+                requiredFeature: "enable_event_calendar",
             },
         ],
     },
@@ -177,6 +181,7 @@ const navigationSections: NavSection[] = [
                 href: "/inbound-request",
                 icon: Package,
                 requiredAnyPermission: ADMIN_NAV_PERMISSIONS.inboundRequest,
+                requiredFeature: "enable_inbound_requests",
             },
             {
                 name: "Conditions",
@@ -247,12 +252,14 @@ const navigationSections: NavSection[] = [
                 href: "/settings/attachment-types",
                 icon: FileText,
                 requiredAnyPermission: ADMIN_NAV_PERMISSIONS.systemSettings,
+                requiredFeature: "enable_attachments",
             },
             {
                 name: "Workflow Definitions",
                 href: "/settings/workflows",
                 icon: Workflow,
                 requiredAnyPermission: ADMIN_NAV_PERMISSIONS.systemSettings,
+                requiredFeature: "enable_workflows",
             },
             {
                 name: "Access Policies",
@@ -271,6 +278,7 @@ const navigationSections: NavSection[] = [
                 href: "/settings/pricing/warehouse-opt-rates",
                 icon: Warehouse,
                 requiredAnyPermission: ADMIN_NAV_PERMISSIONS.systemSettings,
+                requiredFeature: "enable_base_operations",
             },
             {
                 name: "Countries",
@@ -296,6 +304,8 @@ function AdminSidebarContent() {
     const { platform } = usePlatform();
     const invoicingEnabled = platform?.features?.enable_kadence_invoicing === true;
     const { data: pendingApprovalCount } = useOrderStatusCount("PENDING_APPROVAL");
+    const isFeatureEnabled = (featureKey?: string) =>
+        !featureKey || platform?.features?.[featureKey as keyof typeof platform.features] === true;
 
     const handleSignOut = () => {
         logout();
@@ -310,10 +320,11 @@ function AdminSidebarContent() {
             items: section.items
                 .filter(
                     (item) =>
-                        ((item.href !== "/invoices" || invoicingEnabled) &&
+                        isFeatureEnabled(item.requiredFeature) &&
+                        (((item.href !== "/invoices" || invoicingEnabled) &&
                             !item.requiredAnyPermission) ||
-                        ((item.href !== "/invoices" || invoicingEnabled) &&
-                            hasAnyPermission(user, item.requiredAnyPermission))
+                            ((item.href !== "/invoices" || invoicingEnabled) &&
+                                hasAnyPermission(user, item.requiredAnyPermission)))
                 )
                 .map((item) => ({
                     ...item,
