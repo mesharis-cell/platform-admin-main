@@ -98,6 +98,7 @@ export default function PlatformSettingsPage() {
     const companies = companiesData?.data ?? [];
 
     const [fromEmail, setFromEmail] = useState("");
+    const [supportEmail, setSupportEmail] = useState("");
     const [currency, setCurrency] = useState("");
     const [vatPercent, setVatPercent] = useState("");
     const [primaryColor, setPrimaryColor] = useState("");
@@ -141,6 +142,7 @@ export default function PlatformSettingsPage() {
     useEffect(() => {
         if (!platform) return;
         setFromEmail(platform.config.from_email ?? "");
+        setSupportEmail(platform.config.support_email ?? "");
         setCurrency(platform.config.currency ?? "");
         setVatPercent(String(platform.vat_percent ?? platform.config.vat_percent ?? 0));
         setPrimaryColor(platform.config.primary_color ?? "");
@@ -197,6 +199,7 @@ export default function PlatformSettingsPage() {
     const handleSaveConfig = () => {
         updateConfig.mutate({
             from_email: fromEmail || undefined,
+            support_email: supportEmail || undefined,
             currency: currency || undefined,
             vat_percent:
                 vatPercent === "" || Number.isNaN(Number(vatPercent))
@@ -335,6 +338,15 @@ export default function PlatformSettingsPage() {
                                 placeholder="notifications@platform.com"
                                 value={fromEmail}
                                 onChange={(e) => setFromEmail(e.target.value)}
+                                type="email"
+                            />
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label>Support Email</Label>
+                            <Input
+                                placeholder="support@platform.com"
+                                value={supportEmail}
+                                onChange={(e) => setSupportEmail(e.target.value)}
                                 type="email"
                             />
                         </div>

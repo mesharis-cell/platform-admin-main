@@ -51,6 +51,9 @@ export interface Company {
     features: {
         [key: string]: boolean;
     };
+    feature_overrides?: {
+        [key: string]: boolean;
+    };
 }
 
 export interface CreateCompanyRequest {

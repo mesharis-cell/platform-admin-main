@@ -12,6 +12,7 @@ export interface PlatformConfig {
     primary_color?: string;
     secondary_color?: string;
     from_email?: string;
+    support_email?: string;
     currency?: string;
     vat_percent?: number;
     feasibility?: {

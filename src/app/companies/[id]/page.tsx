@@ -159,10 +159,10 @@ export default function CompanyEditPage() {
         });
         setLogoPreview(company.settings.branding.logo_url || "");
 
-        // Initialize feature overrides from company.features
+        // Initialize feature overrides from raw company override values.
         const overrides: FeatureOverrides = {};
         for (const flag of FEATURE_FLAGS) {
-            const val = company.features?.[flag.key];
+            const val = company.feature_overrides?.[flag.key];
             overrides[flag.key] = val === true ? true : val === false ? false : null;
         }
         setFeatureOverrides(overrides);
