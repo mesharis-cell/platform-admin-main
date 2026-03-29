@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
     Dialog,
     DialogContent,
@@ -19,10 +19,12 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { useAssetFamilies } from "@/hooks/use-asset-families";
 import { useCompleteInboundRequest } from "@/hooks/use-inbound-requests";
 import { useWarehouses } from "@/hooks/use-warehouses";
 import { useZones } from "@/hooks/use-zones";
 import { CheckCircle2 } from "lucide-react";
+import type { InboundRequestItem } from "@/types/inbound-request";
 
 interface CompleteInboundDialogProps {
     open: boolean;
@@ -30,6 +32,7 @@ interface CompleteInboundDialogProps {
     requestId: string;
     companyId: string;
     platformId: string;
+    items: InboundRequestItem[];
     onSuccess?: () => void;
 }
 
@@ -39,6 +42,7 @@ export function CompleteInboundDialog({
     requestId,
     companyId,
     platformId,
+    items,
     onSuccess,
 }: CompleteInboundDialogProps) {
     const completeRequest = useCompleteInboundRequest();
@@ -51,6 +55,24 @@ export function CompleteInboundDialog({
     // Selected state
     const [warehouseId, setWarehouseId] = useState("");
     const [zoneId, setZoneId] = useState("");
+    const [familyAssignments, setFamilyAssignments] = useState<Record<string, string>>({});
+
+    const { data: assetFamiliesResponse } = useAssetFamilies(
+        companyId ? { company_id: companyId } : undefined
+    );
+    const assetFamilies = assetFamiliesResponse?.data || [];
+    const itemsNeedingFamilies = useMemo(() => items.filter((item) => !item.asset_id), [items]);
+
+    useEffect(() => {
+        if (!open) return;
+        const nextAssignments: Record<string, string> = {};
+        for (const item of itemsNeedingFamilies) {
+            if (item.asset?.family?.id) {
+                nextAssignments[item.id] = item.asset.family.id;
+            }
+        }
+        setFamilyAssignments(nextAssignments);
+    }, [open, itemsNeedingFamilies]);
 
     // Fetch zones for selected warehouse AND company
     // Note: The backend validation says: "Zone not found or does not belong to the specified warehouse and company"
@@ -77,6 +99,10 @@ export function CompleteInboundDialog({
                 payload: {
                     warehouse_id: warehouseId,
                     zone_id: zoneId,
+                    item_family_assignments: itemsNeedingFamilies.map((item) => ({
+                        item_id: item.id,
+                        family_id: familyAssignments[item.id] || null,
+                    })),
                 },
             });
             toast.success("Inbound request completed successfully");
@@ -91,6 +117,7 @@ export function CompleteInboundDialog({
         onOpenChange(false);
         setWarehouseId("");
         setZoneId("");
+        setFamilyAssignments({});
     };
 
     return (
@@ -177,6 +204,54 @@ export function CompleteInboundDialog({
                             </p>
                         )}
                     </div>
+
+                    {itemsNeedingFamilies.length > 0 && (
+                        <div className="space-y-3 rounded-lg border border-border p-3">
+                            <div>
+                                <Label>Asset Family Assignment</Label>
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                    Optional. Assign new stock to an existing family when the item
+                                    belongs to a catalog identity already in use.
+                                </p>
+                            </div>
+                            {itemsNeedingFamilies.map((item) => {
+                                const familyOptions = assetFamilies.filter(
+                                    (family) => family.brand_id === item.brand_id
+                                );
+                                return (
+                                    <div key={item.id} className="space-y-2">
+                                        <div className="text-sm font-medium">{item.name}</div>
+                                        <Select
+                                            value={familyAssignments[item.id] || "_none_"}
+                                            onValueChange={(value) =>
+                                                setFamilyAssignments((current) => ({
+                                                    ...current,
+                                                    [item.id]: value === "_none_" ? "" : value,
+                                                }))
+                                            }
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select family" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="_none_">No family</SelectItem>
+                                                {familyOptions.map((family) => (
+                                                    <SelectItem key={family.id} value={family.id}>
+                                                        {family.name}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        {familyOptions.length === 0 && (
+                                            <p className="text-xs text-muted-foreground">
+                                                No matching families exist for this brand yet.
+                                            </p>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
                 </div>
 
                 <DialogFooter>

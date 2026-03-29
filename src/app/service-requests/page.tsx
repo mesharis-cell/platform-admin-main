@@ -93,7 +93,7 @@ const SR_STATUS_CONFIG: Record<string, { label: string; color: string }> = {
 };
 
 const COMMERCIAL_STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-    INTERNAL: { label: "Internal", color: "bg-slate-100 text-slate-700 border-slate-300" },
+    INTERNAL: { label: "Internal", color: "bg-muted text-muted-foreground border-border" },
     PENDING_QUOTE: { label: "Pending Quote", color: "bg-blue-100 text-blue-700 border-blue-300" },
     QUOTED: { label: "Quoted", color: "bg-purple-100 text-purple-700 border-purple-300" },
     QUOTE_APPROVED: {
@@ -414,11 +414,11 @@ export default function ServiceRequestsPage() {
                                     {srItems.map((item, idx) => (
                                         <div
                                             key={idx}
-                                            className="rounded-md border p-3 space-y-2 bg-slate-50/50"
+                                            className="rounded-md p-3 space-y-2 bg-muted/50"
                                         >
                                             <div className="relative">
                                                 <div className="flex items-center gap-1 mb-1">
-                                                    <Label className="text-xs text-slate-600">
+                                                    <Label className="text-xs text-muted-foreground">
                                                         {srItems.length > 1
                                                             ? `Asset ${idx + 1}`
                                                             : "Asset / Item"}
@@ -431,7 +431,7 @@ export default function ServiceRequestsPage() {
                                                 </div>
                                                 <div className="flex gap-1">
                                                     <div className="relative flex-1">
-                                                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                                                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/60" />
                                                         <Input
                                                             className="pl-8 pr-8 text-sm"
                                                             placeholder={
@@ -456,7 +456,7 @@ export default function ServiceRequestsPage() {
                                                         {item.asset_id && (
                                                             <button
                                                                 type="button"
-                                                                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-destructive"
+                                                                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground/60 hover:text-destructive"
                                                                 onMouseDown={(e) => {
                                                                     e.preventDefault();
                                                                     updateItem(idx, {
@@ -520,7 +520,7 @@ export default function ServiceRequestsPage() {
                                             </div>
                                             <div className="grid grid-cols-2 gap-2">
                                                 <div>
-                                                    <Label className="text-xs text-slate-600">
+                                                    <Label className="text-xs text-muted-foreground">
                                                         Quantity
                                                     </Label>
                                                     <Input
@@ -536,7 +536,7 @@ export default function ServiceRequestsPage() {
                                                     />
                                                 </div>
                                                 <div>
-                                                    <Label className="text-xs text-slate-600">
+                                                    <Label className="text-xs text-muted-foreground">
                                                         Refurb Days
                                                     </Label>
                                                     <Input
@@ -591,7 +591,7 @@ export default function ServiceRequestsPage() {
             <div className="container mx-auto px-6 py-8">
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
                     {/* Filter Sidebar */}
-                    <Card className="lg:col-span-1 h-fit border-slate-200 shadow-sm">
+                    <Card className="lg:col-span-1 h-fit border-border shadow-sm">
                         <CardHeader className="border-b border-slate-100">
                             <div className="flex items-center justify-between">
                                 <CardTitle className="text-base font-semibold flex items-center gap-2">
@@ -612,7 +612,7 @@ export default function ServiceRequestsPage() {
                         </CardHeader>
                         <CardContent className="space-y-4 pt-6">
                             <div className="space-y-2">
-                                <label className="text-xs font-medium text-slate-700 uppercase tracking-wide">
+                                <label className="text-xs font-medium text-foreground uppercase tracking-wide">
                                     Search
                                 </label>
                                 <div className="flex gap-2">
@@ -629,7 +629,7 @@ export default function ServiceRequestsPage() {
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <label className="text-xs font-medium text-slate-700 uppercase tracking-wide">
+                                <label className="text-xs font-medium text-foreground uppercase tracking-wide">
                                     Company
                                 </label>
                                 <Select
@@ -653,7 +653,7 @@ export default function ServiceRequestsPage() {
                                 </Select>
                             </div>
                             <div className="space-y-2">
-                                <label className="text-xs font-medium text-slate-700 uppercase tracking-wide">
+                                <label className="text-xs font-medium text-foreground uppercase tracking-wide">
                                     Type
                                 </label>
                                 <Select
@@ -677,7 +677,7 @@ export default function ServiceRequestsPage() {
                                 </Select>
                             </div>
                             <div className="space-y-2">
-                                <label className="text-xs font-medium text-slate-700 uppercase tracking-wide">
+                                <label className="text-xs font-medium text-foreground uppercase tracking-wide">
                                     Billing
                                 </label>
                                 <Select
@@ -701,7 +701,7 @@ export default function ServiceRequestsPage() {
                                 </Select>
                             </div>
                             <div className="space-y-2">
-                                <label className="text-xs font-medium text-slate-700 uppercase tracking-wide">
+                                <label className="text-xs font-medium text-foreground uppercase tracking-wide">
                                     Status
                                 </label>
                                 <Select
@@ -725,7 +725,7 @@ export default function ServiceRequestsPage() {
                                 </Select>
                             </div>
                             <div className="space-y-2 pt-4 border-t border-slate-100">
-                                <label className="text-xs font-medium text-slate-700 uppercase tracking-wide">
+                                <label className="text-xs font-medium text-foreground uppercase tracking-wide">
                                     Sort By
                                 </label>
                                 <Select value={sortBy} onValueChange={setSortBy}>
@@ -758,55 +758,55 @@ export default function ServiceRequestsPage() {
                     <div className="lg:col-span-3 space-y-4">
                         {data?.data && (
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <Card className="border-slate-200 shadow-sm">
+                                <Card className="border-border shadow-sm">
                                     <CardContent className="pt-6">
                                         <div className="flex items-center justify-between">
                                             <div>
-                                                <p className="text-xs font-medium text-slate-600 uppercase tracking-wide">
+                                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                                                     Total Requests
                                                 </p>
-                                                <p className="text-2xl font-bold text-slate-900 mt-1">
+                                                <p className="text-2xl font-bold text-foreground mt-1">
                                                     {totalRequests}
                                                 </p>
                                             </div>
-                                            <Wrench className="h-8 w-8 text-slate-400" />
+                                            <Wrench className="h-8 w-8 text-muted-foreground/60" />
                                         </div>
                                     </CardContent>
                                 </Card>
-                                <Card className="border-slate-200 shadow-sm">
+                                <Card className="border-border shadow-sm">
                                     <CardContent className="pt-6">
                                         <div className="flex items-center justify-between">
                                             <div>
-                                                <p className="text-xs font-medium text-slate-600 uppercase tracking-wide">
+                                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                                                     Current Page
                                                 </p>
-                                                <p className="text-2xl font-bold text-slate-900 mt-1">
+                                                <p className="text-2xl font-bold text-foreground mt-1">
                                                     {page} of {totalPages}
                                                 </p>
                                             </div>
-                                            <Calendar className="h-8 w-8 text-slate-400" />
+                                            <Calendar className="h-8 w-8 text-muted-foreground/60" />
                                         </div>
                                     </CardContent>
                                 </Card>
-                                <Card className="border-slate-200 shadow-sm">
+                                <Card className="border-border shadow-sm">
                                     <CardContent className="pt-6">
                                         <div className="flex items-center justify-between">
                                             <div>
-                                                <p className="text-xs font-medium text-slate-600 uppercase tracking-wide">
+                                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                                                     Showing
                                                 </p>
-                                                <p className="text-2xl font-bold text-slate-900 mt-1">
+                                                <p className="text-2xl font-bold text-foreground mt-1">
                                                     {requests.length} requests
                                                 </p>
                                             </div>
-                                            <ClipboardList className="h-8 w-8 text-slate-400" />
+                                            <ClipboardList className="h-8 w-8 text-muted-foreground/60" />
                                         </div>
                                     </CardContent>
                                 </Card>
                             </div>
                         )}
 
-                        <Card className="border-slate-200 shadow-sm">
+                        <Card className="border-border shadow-sm">
                             <CardContent className="p-0">
                                 {isLoading ? (
                                     <div className="p-8 space-y-4">
@@ -820,11 +820,11 @@ export default function ServiceRequestsPage() {
                                     </div>
                                 ) : requests.length === 0 ? (
                                     <div className="p-12 text-center">
-                                        <ClipboardList className="h-12 w-12 mx-auto text-slate-400 mb-4" />
-                                        <p className="text-slate-600 font-medium">
+                                        <ClipboardList className="h-12 w-12 mx-auto text-muted-foreground/60 mb-4" />
+                                        <p className="text-muted-foreground font-medium">
                                             No service requests found
                                         </p>
-                                        <p className="text-sm text-slate-500 mt-1">
+                                        <p className="text-sm text-muted-foreground mt-1">
                                             Try adjusting your filters or create a new request
                                         </p>
                                     </div>
@@ -832,7 +832,7 @@ export default function ServiceRequestsPage() {
                                     <>
                                         <Table>
                                             <TableHeader>
-                                                <TableRow className="bg-slate-50/50 hover:bg-slate-50/50">
+                                                <TableRow className="bg-muted/50 hover:bg-muted/50">
                                                     <TableHead className="font-semibold">
                                                         Request
                                                     </TableHead>
@@ -867,13 +867,13 @@ export default function ServiceRequestsPage() {
                                                     return (
                                                         <TableRow
                                                             key={request.id}
-                                                            className="group hover:bg-slate-50/50"
+                                                            className="group hover:bg-muted/50"
                                                         >
                                                             <TableCell>
                                                                 <p className="font-mono text-xs font-medium">
                                                                     {request.service_request_id}
                                                                 </p>
-                                                                <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">
+                                                                <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
                                                                     {request.title}
                                                                 </p>
                                                             </TableCell>
@@ -888,7 +888,7 @@ export default function ServiceRequestsPage() {
                                                                     )}
                                                                 </Badge>
                                                             </TableCell>
-                                                            <TableCell className="text-sm text-slate-700">
+                                                            <TableCell className="text-sm text-foreground">
                                                                 {request.billing_mode.replace(
                                                                     /_/g,
                                                                     " "
@@ -912,7 +912,7 @@ export default function ServiceRequestsPage() {
                                                                         request.commercial_status}
                                                                 </Badge>
                                                             </TableCell>
-                                                            <TableCell className="text-sm text-slate-500">
+                                                            <TableCell className="text-sm text-muted-foreground">
                                                                 {new Date(
                                                                     request.created_at
                                                                 ).toLocaleDateString()}
@@ -937,8 +937,8 @@ export default function ServiceRequestsPage() {
                                         </Table>
 
                                         {totalPages > 1 && (
-                                            <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200 bg-slate-50/30">
-                                                <p className="text-sm text-slate-600">
+                                            <div className="flex items-center justify-between px-6 py-4 border-t border-border bg-muted/30">
+                                                <p className="text-sm text-muted-foreground">
                                                     Showing {(page - 1) * limit + 1} to{" "}
                                                     {Math.min(page * limit, totalRequests)} of{" "}
                                                     {totalRequests} requests

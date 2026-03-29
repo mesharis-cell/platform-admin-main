@@ -7,11 +7,12 @@
  * Design: Warehouse terminal interface with tabbed steps
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useCompanies } from "@/hooks/use-companies";
 import { useWarehouses } from "@/hooks/use-warehouses";
 import { useZones } from "@/hooks/use-zones";
 import { useBrands } from "@/hooks/use-brands";
+import { useAssetFamilies, useAssetFamily } from "@/hooks/use-asset-families";
 import { useCreateAsset, useUploadImage } from "@/hooks/use-assets";
 import {
     Plus,
@@ -62,10 +63,16 @@ const DEFAULT_CATEGORIES = ["Furniture", "Glassware", "Installation", "Decor"];
 interface CreateAssetDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    onSuccess: () => void;
+    onSuccess?: () => void;
+    defaultFamilyId?: string;
 }
 
-export function CreateAssetDialog({ open, onOpenChange, onSuccess }: CreateAssetDialogProps) {
+export function CreateAssetDialog({
+    open,
+    onOpenChange,
+    onSuccess,
+    defaultFamilyId,
+}: CreateAssetDialogProps) {
     const [currentStep, setCurrentStep] = useState(0);
     const [formData, setFormData] = useState<Partial<CreateAssetRequest>>({
         tracking_method: "INDIVIDUAL",
@@ -74,6 +81,7 @@ export function CreateAssetDialog({ open, onOpenChange, onSuccess }: CreateAsset
         images: [],
         handling_tags: [],
         condition: "GREEN",
+        family_id: defaultFamilyId || undefined,
         status: "AVAILABLE",
         dimensions: {},
     });
@@ -93,15 +101,57 @@ export function CreateAssetDialog({ open, onOpenChange, onSuccess }: CreateAsset
     const { data: brandsData } = useBrands(
         formData.company_id ? { company_id: formData.company_id } : undefined
     );
+    const { data: assetFamiliesData } = useAssetFamilies(
+        formData.company_id
+            ? {
+                  company_id: formData.company_id,
+                  ...(formData.brand_id ? { brand_id: formData.brand_id } : {}),
+              }
+            : undefined
+    );
 
     const companies = companiesData?.data || [];
     const warehouses = warehousesData?.data || [];
     const zones = zonesData?.data || [];
     const brands = brandsData?.data || [];
+    const assetFamilies = assetFamiliesData?.data || [];
 
     // Mutations
     const createMutation = useCreateAsset();
     const uploadMutation = useUploadImage();
+
+    // Fetch selected family details for auto-prefill
+    const { data: selectedFamilyData } = useAssetFamily(formData.family_id || "");
+
+    // Auto-prefill fields when a family is selected
+    useEffect(() => {
+        const family = selectedFamilyData?.data;
+        if (!family) return;
+
+        setFormData((prev) => ({
+            ...prev,
+            company_id: prev.company_id || family.company?.id || undefined,
+            brand_id: prev.brand_id || family.brand?.id || undefined,
+            category: prev.category || (family.category as any) || undefined,
+            name: prev.name || family.name || undefined,
+            description: prev.description || family.description || undefined,
+            tracking_method: family.stock_mode === "POOLED" ? "BATCH" : "INDIVIDUAL",
+            handling_tags: prev.handling_tags?.length
+                ? prev.handling_tags
+                : family.handling_tags || [],
+            dimensions:
+                prev.dimensions && Object.keys(prev.dimensions).length > 0
+                    ? prev.dimensions
+                    : family.dimensions || {},
+            weight_per_unit:
+                prev.weight_per_unit ||
+                (family.weight_per_unit ? Number(family.weight_per_unit) : undefined),
+            volume_per_unit:
+                prev.volume_per_unit ||
+                (family.volume_per_unit ? Number(family.volume_per_unit) : undefined),
+            packaging: prev.packaging || family.packaging || undefined,
+        }));
+    }, [selectedFamilyData?.data]);
 
     // Handle image selection - store files locally, create previews
     function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
@@ -413,6 +463,8 @@ export function CreateAssetDialog({ open, onOpenChange, onSuccess }: CreateAsset
                                                 setFormData({
                                                     ...formData,
                                                     company_id: value,
+                                                    brand_id: undefined,
+                                                    family_id: null,
                                                 })
                                             }
                                         >
@@ -439,6 +491,7 @@ export function CreateAssetDialog({ open, onOpenChange, onSuccess }: CreateAsset
                                                 setFormData({
                                                     ...formData,
                                                     brand_id: value,
+                                                    family_id: null,
                                                 })
                                             }
                                             disabled={!formData.company_id}
@@ -469,6 +522,40 @@ export function CreateAssetDialog({ open, onOpenChange, onSuccess }: CreateAsset
                                             </SelectContent>
                                         </Select>
                                     </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label className="font-mono text-xs">Asset Family</Label>
+                                    <Select
+                                        value={formData.family_id || "__none__"}
+                                        onValueChange={(value) =>
+                                            setFormData({
+                                                ...formData,
+                                                family_id: value === "__none__" ? null : value,
+                                            })
+                                        }
+                                        disabled={!formData.company_id}
+                                    >
+                                        <SelectTrigger className="font-mono">
+                                            <SelectValue
+                                                placeholder={
+                                                    !formData.company_id
+                                                        ? "Select company first"
+                                                        : assetFamilies.length === 0
+                                                          ? "No families available"
+                                                          : "Select family"
+                                                }
+                                            />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="__none__">No family</SelectItem>
+                                            {assetFamilies.map((family) => (
+                                                <SelectItem key={family.id} value={family.id}>
+                                                    {family.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
                                 </div>
 
                                 <div className="space-y-2">

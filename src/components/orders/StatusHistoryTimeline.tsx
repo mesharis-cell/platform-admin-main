@@ -81,7 +81,7 @@ export function StatusHistoryTimeline({
                         <Badge
                             className={`border font-mono text-[10px] px-2 py-0.5 ${
                                 entry.badgeClassName ||
-                                "bg-slate-500/10 text-slate-600 border-slate-500/20"
+                                "bg-muted text-muted-foreground border-border"
                             }`}
                         >
                             {entry.label}

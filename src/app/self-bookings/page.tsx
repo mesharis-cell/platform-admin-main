@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
 import {
+    BookOpen,
     BookmarkPlus,
     Search,
     Plus,
@@ -13,6 +14,7 @@ import {
     XCircle,
     Clock,
 } from "lucide-react";
+import { AdminHeader } from "@/components/admin-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -88,31 +90,22 @@ export default function SelfBookingsPage() {
 
     return (
         <div className="min-h-screen bg-background">
-            <div className="border-b border-border bg-card">
-                <div className="max-w-[1400px] mx-auto px-6 py-6">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2.5 bg-primary/10 rounded-lg border border-primary/20">
-                                <BookmarkPlus className="w-5 h-5 text-primary" />
-                            </div>
-                            <div>
-                                <h1 className="text-2xl font-bold font-mono">Self-Bookings</h1>
-                                <p className="text-sm text-muted-foreground font-mono">
-                                    Internal asset reservations — no order flow required
-                                </p>
-                            </div>
-                        </div>
-                        <Button asChild className="font-mono">
-                            <Link href="/self-bookings/new">
-                                <Plus className="w-4 h-4 mr-2" />
-                                New Self-Booking
-                            </Link>
-                        </Button>
-                    </div>
-                </div>
-            </div>
+            <AdminHeader
+                icon={BookOpen}
+                title="SELF-BOOKINGS"
+                description="Internal Checkouts · Demo Loans · Photo Shoots"
+                stats={meta ? { label: "TOTAL BOOKINGS", value: meta.total } : undefined}
+                actions={
+                    <Button asChild className="font-mono">
+                        <Link href="/self-bookings/new">
+                            <Plus className="w-4 h-4 mr-2" />
+                            New Self-Booking
+                        </Link>
+                    </Button>
+                }
+            />
 
-            <div className="max-w-[1400px] mx-auto px-6 py-8 space-y-6">
+            <div className="mx-auto max-w-[1600px] px-6 py-8 space-y-6">
                 {/* Filters */}
                 <div className="flex gap-3">
                     <div className="relative flex-1 max-w-sm">

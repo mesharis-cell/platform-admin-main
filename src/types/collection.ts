@@ -39,6 +39,12 @@ export interface CollectionItem {
 export interface CollectionItemWithAsset extends CollectionItem {
     assetDetails: {
         id: string;
+        family_id?: string | null;
+        family?: {
+            id: string | null;
+            name: string | null;
+            stock_mode?: "SERIALIZED" | "POOLED" | null;
+        } | null;
         name: string;
         category: string;
         images: string[];

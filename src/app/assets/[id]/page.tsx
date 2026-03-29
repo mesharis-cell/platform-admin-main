@@ -10,14 +10,12 @@
 import { useEffect, useState, use } from "react";
 import {
     useAsset,
-    useGenerateQRCode,
     useDeleteAsset,
     useAssetVersions,
     useAssetOrderHistory,
     useUploadImage,
     useUpdateAsset,
 } from "@/hooks/use-assets";
-import { useConditionHistory } from "@/hooks/use-conditions";
 import { useAssetAvailabilityStats } from "@/hooks/use-asset-availability-stats";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -101,10 +99,12 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
     }, [asset?.qr_code]);
 
     // Handle error
-    if (error) {
-        toast.error("Failed to load asset");
-        router.push("/assets");
-    }
+    useEffect(() => {
+        if (error) {
+            toast.error("Failed to load asset");
+            router.push("/assets");
+        }
+    }, [error, router]);
 
     function downloadQRCode() {
         if (!qrCodeImage || !asset) return;
@@ -229,7 +229,7 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                     <Package className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
                     <h2 className="text-xl font-semibold font-mono mb-2">Asset Not Found</h2>
                     <Button asChild>
-                        <Link href="/admin/assets">
+                        <Link href="/assets">
                             <ArrowLeft className="w-4 h-4 mr-2" />
                             Back to Assets
                         </Link>
@@ -246,9 +246,19 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                 <div className="max-w-[1400px] mx-auto px-6 py-6">
                     <div className="flex items-center justify-between mb-4">
                         <Button variant="ghost" asChild className="font-mono">
-                            <Link href="/assets">
+                            <Link
+                                href={
+                                    (asset as any).family_id || (asset as any).familyId
+                                        ? `/assets/families/${(asset as any).family_id || (asset as any).familyId}`
+                                        : "/assets"
+                                }
+                            >
                                 <ArrowLeft className="w-4 h-4 mr-2" />
-                                Back to Assets
+                                {(asset as any).family
+                                    ? ((asset as any).family as any)?.name || "Back to Family"
+                                    : (asset as any).family_id || (asset as any).familyId
+                                      ? "Back to Family"
+                                      : "All Families"}
                             </Link>
                         </Button>
 
@@ -297,10 +307,45 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                                 <span className="text-sm text-muted-foreground font-mono">
                                     {asset.category}
                                 </span>
-                                <span className="text-sm text-muted-foreground font-mono">•</span>
-                                <span className="text-sm text-muted-foreground font-mono">
-                                    {asset.tracking_method}
-                                </span>
+                                {(asset as any).family && (
+                                    <>
+                                        <span className="text-sm text-muted-foreground font-mono">
+                                            •
+                                        </span>
+                                        <Button
+                                            variant="link"
+                                            size="sm"
+                                            asChild
+                                            className="h-auto p-0 font-mono text-sm"
+                                        >
+                                            <Link
+                                                href={`/assets/families/${(asset as any).family_id || (asset as any).familyId}`}
+                                            >
+                                                {((asset as any).family as any)?.name ||
+                                                    "View Family"}
+                                            </Link>
+                                        </Button>
+                                    </>
+                                )}
+                                {!(asset as any).family && (asset as any).family_id && (
+                                    <>
+                                        <span className="text-sm text-muted-foreground font-mono">
+                                            •
+                                        </span>
+                                        <Button
+                                            variant="link"
+                                            size="sm"
+                                            asChild
+                                            className="h-auto p-0 font-mono text-sm"
+                                        >
+                                            <Link
+                                                href={`/assets/families/${(asset as any).family_id}`}
+                                            >
+                                                View Family
+                                            </Link>
+                                        </Button>
+                                    </>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -479,7 +524,9 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                                             Length
                                         </p>
                                         <p className="text-sm font-semibold font-mono">
-                                            {asset?.dimensions?.length} cm
+                                            {asset?.dimensions?.length != null
+                                                ? `${asset.dimensions.length} cm`
+                                                : "—"}
                                         </p>
                                     </div>
                                     <div className="space-y-1">
@@ -487,7 +534,9 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                                             Width
                                         </p>
                                         <p className="text-sm font-semibold font-mono">
-                                            {asset?.dimensions?.width} cm
+                                            {asset?.dimensions?.width != null
+                                                ? `${asset.dimensions.width} cm`
+                                                : "—"}
                                         </p>
                                     </div>
                                     <div className="space-y-1">
@@ -495,7 +544,9 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                                             Height
                                         </p>
                                         <p className="text-sm font-semibold font-mono">
-                                            {asset?.dimensions?.height} cm
+                                            {asset?.dimensions?.height != null
+                                                ? `${asset.dimensions.height} cm`
+                                                : "—"}
                                         </p>
                                     </div>
                                     <div className="space-y-1">
@@ -692,8 +743,7 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                                                     {availabilityStats.data.in_maintenance_quantity}
                                                 </span>
                                             </div>
-                                            {(availabilityStats.data as any).self_booked_quantity >
-                                                0 && (
+                                            {availabilityStats.data.self_booked_quantity > 0 && (
                                                 <div className="flex items-center justify-between text-sm font-mono">
                                                     <span className="text-blue-600">
                                                         Self-Booked
@@ -973,8 +1023,7 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                                                             {record.outbound_scan ? (
                                                                 <p className="text-xs">
                                                                     {new Date(
-                                                                        record.outbound_scan
-                                                                            .scanned_at
+                                                                        record.outbound_scan.scanned_at
                                                                     ).toLocaleString()}
                                                                 </p>
                                                             ) : (
@@ -991,8 +1040,7 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                                                                 <div>
                                                                     <p className="text-xs">
                                                                         {new Date(
-                                                                            record.inbound_scan
-                                                                                .scanned_at
+                                                                            record.inbound_scan.scanned_at
                                                                         ).toLocaleString()}
                                                                     </p>
                                                                     <span

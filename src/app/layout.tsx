@@ -19,7 +19,7 @@ const geistMono = Geist_Mono({
 export async function generateMetadata(): Promise<Metadata> {
     try {
         const headersList = await headers();
-        const host = headersList.get("host") || "";
+        const host = process.env.NEXT_PUBLIC_DEV_HOST_OVERRIDE || headersList.get("host") || "";
 
         // Pass the host to your backend so it can identify the tenant
         const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/context`, {

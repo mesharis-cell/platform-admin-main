@@ -315,7 +315,7 @@ export default function ServiceRequestDetailsPage() {
                             <CardContent className="space-y-3">
                                 {request.items?.length ? (
                                     request.items.map((item) => (
-                                        <div key={item.id} className="rounded-md border p-3">
+                                        <div key={item.id} className="rounded-md bg-muted/40 p-3">
                                             <div className="flex items-center justify-between">
                                                 {item.asset_id ? (
                                                     <Link

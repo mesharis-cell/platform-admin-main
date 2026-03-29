@@ -20,6 +20,12 @@ export interface InboundRequestItem {
     id: string;
     asset?: {
         id: string;
+        family_id?: string | null;
+        family?: {
+            id: string | null;
+            name: string | null;
+            stock_mode?: "SERIALIZED" | "POOLED" | null;
+        } | null;
         name: string;
         images: AssetImage[];
         qr_code: string;
@@ -80,6 +86,10 @@ export interface UpdateInboundRequestPayload {
 export interface CompleteInboundRequestPayload {
     warehouse_id: string;
     zone_id: string;
+    item_family_assignments?: Array<{
+        item_id: string;
+        family_id: string | null;
+    }>;
 }
 
 // List Response

@@ -5,7 +5,6 @@ import { Package, ArrowUpRight } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
-import { RequestItemCard } from "./request-item-card";
 import type { InboundRequestItem } from "@/types/inbound-request";
 
 interface AssetsFromInboundProps {
@@ -85,6 +84,19 @@ export function AssetsFromInbound({ items }: AssetsFromInboundProps) {
                                                 >
                                                     {item.asset.tracking_method}
                                                 </Badge>
+                                                {item.asset.family?.id &&
+                                                    item.asset.family?.name && (
+                                                        <Link
+                                                            href={`/assets/families/${item.asset.family.id}`}
+                                                        >
+                                                            <Badge
+                                                                variant="outline"
+                                                                className="text-xs font-mono text-primary hover:border-primary/50"
+                                                            >
+                                                                {item.asset.family.name}
+                                                            </Badge>
+                                                        </Link>
+                                                    )}
                                             </div>
                                         </div>
 

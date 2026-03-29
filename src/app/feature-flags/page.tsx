@@ -3,7 +3,8 @@
 import { useState, useMemo } from "react";
 import { useCompanies, useUpdateCompany } from "@/hooks/use-companies";
 import { usePlatform } from "@/lib/hooks/use-platform";
-import { Search, Building2, ChevronDown, Settings, Save, Loader2 } from "lucide-react";
+import { Search, Building2, ChevronDown, Settings, Save, Loader2, ToggleRight } from "lucide-react";
+import { AdminHeader } from "@/components/admin-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -62,9 +63,8 @@ export default function FeatureFlagsPage() {
         },
         {
             key: "enable_asset_bulk_upload",
-            label: "Asset Bulk Upload (Stub)",
-            description:
-                "Reserved only. CSV asset bulk upload is intentionally stubbed pending the asset tracking redesign.",
+            label: "Asset Bulk Upload",
+            description: "Allow bulk uploading of assets via spreadsheet import.",
         },
         {
             key: "enable_kadence_invoicing",
@@ -144,44 +144,12 @@ export default function FeatureFlagsPage() {
 
     return (
         <div className="min-h-screen bg-background">
-            {/* Industrial Header with Grid Background */}
-            <div className="border-b border-border bg-muted/30 relative overflow-hidden">
-                <div
-                    className="absolute inset-0 opacity-[0.02]"
-                    style={{
-                        backgroundImage: `
-              linear-gradient(to right, hsl(var(--foreground)) 1px, transparent 1px),
-              linear-gradient(to bottom, hsl(var(--foreground)) 1px, transparent 1px)
-            `,
-                        backgroundSize: "40px 40px",
-                    }}
-                />
-                <div className="relative px-8 py-6">
-                    <div className="flex items-center justify-between">
-                        <div className="space-y-1">
-                            <div className="flex items-center gap-3">
-                                <Building2 className="h-6 w-6 text-primary" />
-                                <h1 className="text-2xl font-mono font-bold tracking-tight">
-                                    COMPANY REGISTRY
-                                </h1>
-                            </div>
-                            <p className="text-sm text-muted-foreground font-mono">
-                                TENANT ENTITIES · MARGIN CONFIG · CONTACT MANAGEMENT
-                            </p>
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <div className="text-right">
-                                <div className="text-xs font-mono text-muted-foreground">
-                                    TOTAL ENTITIES
-                                </div>
-                                <div className="text-2xl font-mono font-bold text-primary">
-                                    {total.toString().padStart(3, "0")}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <AdminHeader
+                icon={ToggleRight}
+                title="FEATURE FLAGS"
+                description="Platform Features · Company Overrides · Controls"
+                stats={{ label: "TOTAL COMPANIES", value: total }}
+            />
 
             {/* Control Panel */}
             <div className="border-b border-border bg-card px-8 py-4">

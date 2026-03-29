@@ -5,6 +5,7 @@ import { useCompanies } from "@/hooks/use-companies";
 import { useWarehouses } from "@/hooks/use-warehouses";
 import { useZones } from "@/hooks/use-zones";
 import { useBrands } from "@/hooks/use-brands";
+import { useAssetFamilies } from "@/hooks/use-asset-families";
 import { useAddAssetUnits, useUpdateAsset, useUploadImage } from "@/hooks/use-assets";
 import { X, Loader2, Save, AlertCircle, Check } from "lucide-react";
 import { PhotoCaptureStrip, PhotoEntry } from "@/components/shared/photo-capture-strip";
@@ -64,6 +65,7 @@ export function EditAssetDialog({
     const [formData, setFormData] = useState({
         company: extractId(asset.company),
         brand_id: extractId(asset.brand) || undefined,
+        family_id: asset.family_id || asset.familyId || null,
         warehouse_id: extractId(asset.warehouse),
         zone_id: extractId(asset.zone),
         name: asset.name,
@@ -95,6 +97,7 @@ export function EditAssetDialog({
             setFormData({
                 company: extractId(asset.company),
                 brand_id: extractId(asset.brand) || undefined,
+                family_id: asset.family_id || asset.familyId || null,
                 warehouse_id: extractId(asset.warehouse),
                 zone_id: extractId(asset.zone),
                 name: asset.name,
@@ -132,10 +135,19 @@ export function EditAssetDialog({
     const { data: brandsData } = useBrands(
         formData.company ? { company: formData.company } : undefined
     );
+    const { data: assetFamiliesData } = useAssetFamilies(
+        formData.company
+            ? {
+                  company_id: formData.company,
+                  ...(formData.brand_id ? { brand_id: formData.brand_id } : {}),
+              }
+            : undefined
+    );
 
     const warehouses = warehousesData?.data || [];
     const zones = zonesData?.data || [];
     const brands = brandsData?.data || [];
+    const assetFamilies = assetFamiliesData?.data || [];
 
     const updateMutation = useUpdateAsset();
     const addUnitsMutation = useAddAssetUnits();
@@ -260,6 +272,7 @@ export function EditAssetDialog({
                 id: asset.id,
                 data: {
                     brand_id: formData.brand_id || null,
+                    family_id: formData.family_id || null,
                     warehouse_id: formData.warehouse_id,
                     zone_id: formData.zone_id,
                     name: formData.name,
@@ -593,7 +606,11 @@ export function EditAssetDialog({
                                 <Select
                                     value={formData.brand_id}
                                     onValueChange={(value) =>
-                                        setFormData({ ...formData, brand_id: value })
+                                        setFormData({
+                                            ...formData,
+                                            brand_id: value,
+                                            family_id: null,
+                                        })
                                     }
                                     disabled={!formData.company}
                                 >
@@ -612,6 +629,40 @@ export function EditAssetDialog({
                                         {brands.map((b) => (
                                             <SelectItem key={b.id} value={b.id}>
                                                 {b.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label className="font-mono text-xs">Asset Family</Label>
+                                <Select
+                                    value={formData.family_id || "__none__"}
+                                    onValueChange={(value) =>
+                                        setFormData({
+                                            ...formData,
+                                            family_id: value === "__none__" ? null : value,
+                                        })
+                                    }
+                                    disabled={!formData.company}
+                                >
+                                    <SelectTrigger className="font-mono">
+                                        <SelectValue
+                                            placeholder={
+                                                !formData.company
+                                                    ? "No company assigned"
+                                                    : assetFamilies.length === 0
+                                                      ? "No families available"
+                                                      : "Select family"
+                                            }
+                                        />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="__none__">No family</SelectItem>
+                                        {assetFamilies.map((family) => (
+                                            <SelectItem key={family.id} value={family.id}>
+                                                {family.name}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>

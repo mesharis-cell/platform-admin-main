@@ -1,0 +1,283 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useBrands } from "@/hooks/use-brands";
+import { useTeams } from "@/hooks/use-teams";
+import { useUpdateAssetFamily } from "@/hooks/use-asset-families";
+import { Layers3, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import { toast } from "sonner";
+import type { AssetFamily } from "@/types/asset-family";
+
+const DEFAULT_CATEGORIES = ["Furniture", "Glassware", "Installation", "Decor"];
+const HANDLING_TAGS = ["Fragile", "HighValue", "HeavyLift", "AssemblyRequired"];
+
+interface EditAssetFamilyDialogProps {
+    family: AssetFamily | null;
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    onSuccess?: () => void;
+}
+
+export function EditAssetFamilyDialog({
+    family,
+    open,
+    onOpenChange,
+    onSuccess,
+}: EditAssetFamilyDialogProps) {
+    const [formData, setFormData] = useState({
+        brand_id: "" as string | null,
+        team_id: "" as string | null,
+        name: "",
+        description: "" as string | null,
+        category: "",
+        stock_mode: "SERIALIZED" as "SERIALIZED" | "POOLED",
+        packaging: "" as string | null,
+        handling_tags: [] as string[],
+        is_active: true,
+    });
+
+    useEffect(() => {
+        if (family && open) {
+            const w = family.weight_per_unit;
+            const v = family.volume_per_unit;
+            setFormData({
+                brand_id: family.brand_id || null,
+                team_id: family.team_id || null,
+                name: family.name || "",
+                description: family.description || null,
+                category: family.category || "",
+                stock_mode: (family.stock_mode as "SERIALIZED" | "POOLED") || "SERIALIZED",
+                packaging: family.packaging || null,
+                handling_tags: family.handling_tags || [],
+                is_active: family.is_active ?? true,
+            });
+        }
+    }, [family, open]);
+
+    const { data: brandsData } = useBrands(
+        family?.company_id ? { company_id: family.company_id } : undefined
+    );
+    const { data: teamsData } = useTeams(
+        family?.company_id ? { company_id: family.company_id } : undefined
+    );
+    const brands = brandsData?.data || [];
+    const teams = teamsData?.data || [];
+    const updateMutation = useUpdateAssetFamily();
+
+    function toggleHandlingTag(tag: string) {
+        setFormData((prev) => ({
+            ...prev,
+            handling_tags: prev.handling_tags.includes(tag)
+                ? prev.handling_tags.filter((t) => t !== tag)
+                : [...prev.handling_tags, tag],
+        }));
+    }
+
+    async function handleSubmit() {
+        if (!family || !formData.name?.trim() || !formData.category?.trim()) {
+            toast.error("Name and category are required");
+            return;
+        }
+        try {
+            const payload = {
+                brand_id: formData.brand_id || null,
+                team_id: formData.team_id || null,
+                name: formData.name.trim(),
+                description: formData.description?.trim() || null,
+                category: formData.category.trim(),
+                stock_mode: formData.stock_mode,
+                packaging: formData.packaging?.trim() || null,
+                handling_tags: formData.handling_tags,
+                is_active: formData.is_active,
+            };
+            await updateMutation.mutateAsync({ id: family.id, data: payload });
+            toast.success("Asset family updated");
+            onOpenChange(false);
+            onSuccess?.();
+        } catch {
+            toast.error("Failed to update asset family");
+        }
+    }
+
+    if (!family) return null;
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="max-w-lg">
+                <DialogHeader>
+                    <DialogTitle className="font-mono flex items-center gap-2">
+                        <Layers3 className="h-5 w-5 text-primary" />
+                        Edit Asset Family
+                    </DialogTitle>
+                    <DialogDescription className="font-mono text-xs">
+                        Update catalog identity. Company cannot be changed.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                        <Label className="font-mono text-xs">Name *</Label>
+                        <Input
+                            value={formData.name}
+                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                            placeholder="e.g. Pedestrian Fan"
+                            className="font-mono"
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label className="font-mono text-xs">Category *</Label>
+                        <Select
+                            value={formData.category}
+                            onValueChange={(v) => setFormData({ ...formData, category: v })}
+                        >
+                            <SelectTrigger className="font-mono">
+                                <SelectValue placeholder="Select category" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {DEFAULT_CATEGORIES.map((c) => (
+                                    <SelectItem key={c} value={c}>
+                                        {c}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="space-y-2">
+                        <Label className="font-mono text-xs">Stock Mode *</Label>
+                        <Select
+                            value={formData.stock_mode}
+                            onValueChange={(v: "SERIALIZED" | "POOLED") =>
+                                setFormData({ ...formData, stock_mode: v })
+                            }
+                        >
+                            <SelectTrigger className="font-mono">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="SERIALIZED">Serialized</SelectItem>
+                                <SelectItem value="POOLED">Pooled</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label className="font-mono text-xs">Brand</Label>
+                            <Select
+                                value={formData.brand_id || "__none__"}
+                                onValueChange={(v) =>
+                                    setFormData({
+                                        ...formData,
+                                        brand_id: v === "__none__" ? null : v,
+                                    })
+                                }
+                            >
+                                <SelectTrigger className="font-mono">
+                                    <SelectValue placeholder="Select brand" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="__none__">None</SelectItem>
+                                    {brands.map((b) => (
+                                        <SelectItem key={b.id} value={b.id}>
+                                            {b.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="font-mono text-xs">Team</Label>
+                            <Select
+                                value={formData.team_id || "__none__"}
+                                onValueChange={(v) =>
+                                    setFormData({
+                                        ...formData,
+                                        team_id: v === "__none__" ? null : v,
+                                    })
+                                }
+                            >
+                                <SelectTrigger className="font-mono">
+                                    <SelectValue placeholder="Select team" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="__none__">None</SelectItem>
+                                    {teams.map((t) => (
+                                        <SelectItem key={t.id} value={t.id}>
+                                            {t.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+                    <div className="space-y-2">
+                        <Label className="font-mono text-xs">Description</Label>
+                        <Textarea
+                            value={formData.description || ""}
+                            onChange={(e) =>
+                                setFormData({ ...formData, description: e.target.value || null })
+                            }
+                            placeholder="Optional description"
+                            className="font-mono resize-none"
+                            rows={2}
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label className="font-mono text-xs">Handling Tags</Label>
+                        <div className="flex flex-wrap gap-2">
+                            {HANDLING_TAGS.map((tag) => (
+                                <Button
+                                    key={tag}
+                                    type="button"
+                                    variant={
+                                        formData.handling_tags.includes(tag) ? "default" : "outline"
+                                    }
+                                    size="sm"
+                                    className="font-mono"
+                                    onClick={() => toggleHandlingTag(tag)}
+                                >
+                                    {tag}
+                                </Button>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="flex justify-end gap-2 pt-4">
+                        <Button
+                            variant="outline"
+                            onClick={() => onOpenChange(false)}
+                            className="font-mono"
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={handleSubmit}
+                            disabled={updateMutation.isPending}
+                            className="font-mono"
+                        >
+                            {updateMutation.isPending && (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            )}
+                            Save Changes
+                        </Button>
+                    </div>
+                </div>
+            </DialogContent>
+        </Dialog>
+    );
+}

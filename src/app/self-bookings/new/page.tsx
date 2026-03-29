@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback, type UIEvent } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, type UIEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Html5Qrcode } from "html5-qrcode";
@@ -24,8 +24,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
+import { useAssetFamilies } from "@/hooks/use-asset-families";
+import { useAssets } from "@/hooks/use-assets";
 import { useCreateSelfBooking } from "@/hooks/use-self-bookings";
 import { apiClient } from "@/lib/api/api-client";
+import type { AssetFamily } from "@/types/asset-family";
 
 interface ScannedItem {
     asset_id: string;
@@ -46,6 +49,7 @@ interface AssetSearchResult {
 }
 
 const SEARCH_PAGE_SIZE = 12;
+const FAMILY_PREVIEW_SIZE = 12;
 
 export default function NewSelfBookingPage() {
     const router = useRouter();
@@ -65,6 +69,8 @@ export default function NewSelfBookingPage() {
     const [isFetchingMoreSearch, setIsFetchingMoreSearch] = useState(false);
     const [searchPage, setSearchPage] = useState(1);
     const [hasMoreSearch, setHasMoreSearch] = useState(false);
+    const [familySearchQuery, setFamilySearchQuery] = useState("");
+    const [selectedFamilyId, setSelectedFamilyId] = useState<string | null>(null);
     const qrScannerRef = useRef<Html5Qrcode | null>(null);
     const lastScanRef = useRef<number>(0);
     const isScanningRef = useRef(false);
@@ -77,6 +83,36 @@ export default function NewSelfBookingPage() {
     const [notes, setNotes] = useState("");
 
     const createMutation = useCreateSelfBooking();
+    const { data: familyResponse, isLoading: familyLoading } = useAssetFamilies();
+    const { data: familyStockResponse, isLoading: familyStockLoading } = useAssets(
+        selectedFamilyId
+            ? {
+                  family_id: selectedFamilyId,
+                  status: "AVAILABLE",
+                  sort_by: "name",
+                  sort_order: "asc",
+                  limit: "100",
+              }
+            : undefined,
+        { enabled: Boolean(selectedFamilyId) }
+    );
+
+    const familyOptions = familyResponse?.data ?? [];
+    const selectedFamily = familyOptions.find((family) => family.id === selectedFamilyId) ?? null;
+    const visibleFamilies = useMemo(() => {
+        const query = familySearchQuery.trim().toLowerCase();
+        if (!query) {
+            return familyOptions.slice(0, FAMILY_PREVIEW_SIZE);
+        }
+
+        return familyOptions
+            .filter((family) =>
+                [family.name, family.category, family.company?.name, family.brand?.name]
+                    .filter(Boolean)
+                    .some((value) => value!.toLowerCase().includes(query))
+            )
+            .slice(0, FAMILY_PREVIEW_SIZE);
+    }, [familyOptions, familySearchQuery]);
 
     const clearScannerContainer = useCallback(() => {
         // eslint-disable-next-line creatr/no-browser-globals-in-ssr
@@ -331,6 +367,10 @@ export default function NewSelfBookingPage() {
         setSearchResults([]);
     }
 
+    function addFromFamilyStock(asset: AssetSearchResult) {
+        addFromSearch(asset);
+    }
+
     async function handleConfirm() {
         if (!bookedFor.trim()) {
             toast.error("Booked For is required");
@@ -483,11 +523,160 @@ export default function NewSelfBookingPage() {
                                 </Card>
                             )}
 
+                            <Card data-testid="self-booking-family-browser">
+                                <CardHeader className="pb-2">
+                                    <CardTitle className="font-mono text-sm">
+                                        Browse by Family
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-3">
+                                    <div className="relative">
+                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                        <Input
+                                            className="pl-9 font-mono"
+                                            placeholder="Family name or category…"
+                                            value={familySearchQuery}
+                                            onChange={(e) => setFamilySearchQuery(e.target.value)}
+                                        />
+                                    </div>
+
+                                    {selectedFamily && (
+                                        <div className="rounded-lg border border-border bg-muted/30 p-3">
+                                            <div className="flex items-center justify-between gap-3">
+                                                <div>
+                                                    <p className="text-sm font-mono font-medium">
+                                                        {selectedFamily.name}
+                                                    </p>
+                                                    <p className="text-xs font-mono text-muted-foreground">
+                                                        {selectedFamily.category} ·{" "}
+                                                        {selectedFamily.available_quantity || 0} /{" "}
+                                                        {selectedFamily.total_quantity || 0} units
+                                                        available
+                                                    </p>
+                                                </div>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="font-mono"
+                                                    onClick={() => setSelectedFamilyId(null)}
+                                                >
+                                                    Clear
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div
+                                        className="border border-border rounded-lg divide-y divide-border max-h-72 overflow-y-auto"
+                                        data-testid="self-booking-family-list"
+                                    >
+                                        {familyLoading ? (
+                                            <div className="px-3 py-2.5 text-xs text-muted-foreground font-mono flex items-center gap-2">
+                                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                                Loading families…
+                                            </div>
+                                        ) : visibleFamilies.length > 0 ? (
+                                            visibleFamilies.map((family: AssetFamily) => (
+                                                <button
+                                                    key={family.id}
+                                                    type="button"
+                                                    onClick={() => setSelectedFamilyId(family.id)}
+                                                    className="w-full flex items-start justify-between px-3 py-2.5 hover:bg-muted/30 transition-colors text-left"
+                                                    data-testid="self-booking-family-card"
+                                                >
+                                                    <div className="flex items-start gap-2">
+                                                        <Package className="w-3.5 h-3.5 text-muted-foreground mt-0.5" />
+                                                        <div>
+                                                            <p className="text-sm font-mono font-medium">
+                                                                {family.name}
+                                                            </p>
+                                                            <p className="text-xs text-muted-foreground font-mono">
+                                                                {family.category} ·{" "}
+                                                                {family.company?.name ||
+                                                                    "No company"}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    <Badge
+                                                        variant="outline"
+                                                        className="font-mono text-xs"
+                                                    >
+                                                        {family.available_quantity || 0} avail
+                                                    </Badge>
+                                                </button>
+                                            ))
+                                        ) : (
+                                            <div className="px-3 py-3 text-xs text-muted-foreground font-mono">
+                                                No families found
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {selectedFamilyId && (
+                                        <div
+                                            className="space-y-2"
+                                            data-testid="self-booking-family-stock"
+                                        >
+                                            <div className="flex items-center justify-between">
+                                                <p className="text-xs font-mono uppercase tracking-wider text-muted-foreground">
+                                                    Available stock records
+                                                </p>
+                                                {familyStockLoading && (
+                                                    <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
+                                                )}
+                                            </div>
+
+                                            <div className="border border-border rounded-lg divide-y divide-border max-h-72 overflow-y-auto">
+                                                {familyStockResponse?.data?.length ? (
+                                                    familyStockResponse.data.map((asset) => (
+                                                        <button
+                                                            key={asset.id}
+                                                            type="button"
+                                                            onClick={() =>
+                                                                addFromFamilyStock({
+                                                                    id: asset.id,
+                                                                    name: asset.name,
+                                                                    qr_code: asset.qr_code,
+                                                                    tracking_method:
+                                                                        asset.tracking_method,
+                                                                    category: asset.category,
+                                                                })
+                                                            }
+                                                            className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-muted/30 transition-colors text-left"
+                                                        >
+                                                            <div className="flex items-start gap-2">
+                                                                <Package className="w-3.5 h-3.5 text-muted-foreground mt-0.5" />
+                                                                <div>
+                                                                    <p className="text-sm font-mono font-medium">
+                                                                        {asset.name}
+                                                                    </p>
+                                                                    <p className="text-xs text-muted-foreground font-mono">
+                                                                        {asset.category ||
+                                                                            "Uncategorized"}{" "}
+                                                                        · {asset.tracking_method} ·{" "}
+                                                                        {asset.qr_code}
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                            <Plus className="w-4 h-4 text-muted-foreground" />
+                                                        </button>
+                                                    ))
+                                                ) : (
+                                                    <div className="px-3 py-3 text-xs text-muted-foreground font-mono">
+                                                        No available stock records in this family
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
+
                             {/* Search fallback */}
                             <Card>
                                 <CardHeader className="pb-2">
                                     <CardTitle className="font-mono text-sm">
-                                        Search Asset
+                                        Direct Stock Search
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent className="space-y-2">

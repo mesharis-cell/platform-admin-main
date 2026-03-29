@@ -21,7 +21,10 @@ export const PlatformProvider = ({ children }: { children: React.ReactNode }) =>
         const fetchPlatform = async () => {
             try {
                 setLoading(true);
-                const response = await apiClient.get(`/auth/context`);
+                const devHost = process.env.NEXT_PUBLIC_DEV_HOST_OVERRIDE;
+                const response = await apiClient.get(`/auth/context`, {
+                    headers: devHost ? { "x-dev-host": devHost } : undefined,
+                });
                 setPlatform(response.data.data);
             } catch (error) {
                 console.error("Error fetching platform:", error);

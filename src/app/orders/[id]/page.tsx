@@ -800,8 +800,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                                 {Math.floor(
                                                     (Date.now() -
                                                         new Date(
-                                                            order?.data?.final_pricing
-                                                                ?.quote_sent_at
+                                                            order?.data?.final_pricing?.quote_sent_at
                                                         ).getTime()) /
                                                         (1000 * 60 * 60 * 24)
                                                 )}{" "}
@@ -809,8 +808,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                                 {Math.floor(
                                                     (Date.now() -
                                                         new Date(
-                                                            order?.data?.final_pricing
-                                                                ?.quote_sent_at
+                                                            order?.data?.final_pricing?.quote_sent_at
                                                         ).getTime()) /
                                                         (1000 * 60 * 60 * 24)
                                                 ) >= 2 && " - Consider following up with client"}
@@ -904,6 +902,18 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                             ) : null}
                                         </div>
                                     </div>
+                                </CardContent>
+                            </Card>
+                        )}
+                        {order?.data?.po_number && (
+                            <Card className="border border-border/60 bg-card/60">
+                                <CardContent className="pt-6">
+                                    <Label className="font-mono text-xs text-muted-foreground">
+                                        CLIENT PO NUMBER
+                                    </Label>
+                                    <p className="mt-2 font-mono text-lg font-bold">
+                                        {order.data.po_number}
+                                    </p>
                                 </CardContent>
                             </Card>
                         )}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
     useCollection,
@@ -8,9 +8,8 @@ import {
     useDeleteCollection,
     useAddCollectionItem,
     useRemoveCollectionItem,
-    useUpdateCollectionItem,
-    useUploadCollectionImages,
 } from "@/hooks/use-collections";
+import { useAssetFamilies } from "@/hooks/use-asset-families";
 import { useAssets, useUploadImage } from "@/hooks/use-assets";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,6 +52,23 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 
+const ALL_FAMILIES_VALUE = "_all_";
+
+const getAssetImageUrl = (images: unknown): string | null => {
+    if (!Array.isArray(images) || images.length === 0) return null;
+    const firstImage = images[0];
+    if (typeof firstImage === "string") return firstImage;
+    if (
+        firstImage &&
+        typeof firstImage === "object" &&
+        "url" in firstImage &&
+        typeof firstImage.url === "string"
+    ) {
+        return firstImage.url;
+    }
+    return null;
+};
+
 export default function CollectionDetailPage() {
     const params = useParams();
     const router = useRouter();
@@ -73,6 +89,7 @@ export default function CollectionDetailPage() {
 
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [isAddItemDialogOpen, setIsAddItemDialogOpen] = useState(false);
+    const [selectedFamilyId, setSelectedFamilyId] = useState(ALL_FAMILIES_VALUE);
     const [confirmDeleteCollection, setConfirmDeleteCollection] = useState(false);
     const [confirmRemoveItem, setConfirmRemoveItem] = useState<{
         id: string;
@@ -88,10 +105,7 @@ export default function CollectionDetailPage() {
     const deleteMutation = useDeleteCollection();
     const addItemMutation = useAddCollectionItem(collectionId);
     const removeItemMutation = useRemoveCollectionItem(collectionId);
-    const updateItemMutation = useUpdateCollectionItem;
     const uploadMutation = useUploadImage();
-
-    console.log(collectionData);
 
     // Fetch assets for adding to collection
     const companyId = collection?.company_id;
@@ -100,6 +114,14 @@ export default function CollectionDetailPage() {
         company_id: typeof companyId === "string" ? companyId : undefined,
         limit: "200",
     });
+    const { data: assetFamiliesData } = useAssetFamilies(
+        collection?.company_id
+            ? {
+                  company_id: collection.company_id,
+                  brand_id: collection.brand_id || undefined,
+              }
+            : undefined
+    );
 
     // Edit form state
     const [editFormData, setEditFormData] = useState({
@@ -130,6 +152,12 @@ export default function CollectionDetailPage() {
             });
         }
     }, [collection, isEditDialogOpen]);
+
+    useEffect(() => {
+        if (!isAddItemDialogOpen) {
+            setSelectedFamilyId(ALL_FAMILIES_VALUE);
+        }
+    }, [isAddItemDialogOpen]);
 
     const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(e.target.files || []);
@@ -238,6 +266,47 @@ export default function CollectionDetailPage() {
         }
     };
 
+    const assets = assetsData?.data || [];
+    const familyOptions = useMemo(() => {
+        const families = assetFamiliesData?.data || [];
+        if (!collection) return families;
+        return families.filter(
+            (family) =>
+                family.brand_id === collection.brand_id &&
+                (family.team_id ?? null) === (collection.team_id ?? null)
+        );
+    }, [assetFamiliesData?.data, collection]);
+    const collectionAssetIds = useMemo(
+        () => new Set((collection?.assets || []).map((item) => item.asset_id)),
+        [collection?.assets]
+    );
+    const selectableAssets = useMemo(() => {
+        return assets.filter((asset) => {
+            const teamId = "team_id" in asset ? (asset.team_id ?? null) : null;
+            const familyId = asset.family_id ?? asset.familyId ?? null;
+            return (
+                asset.brand_id === collection?.brand_id &&
+                teamId === (collection?.team_id ?? null) &&
+                !collectionAssetIds.has(asset.id) &&
+                (selectedFamilyId === ALL_FAMILIES_VALUE || familyId === selectedFamilyId)
+            );
+        });
+    }, [assets, collection?.brand_id, collection?.team_id, collectionAssetIds, selectedFamilyId]);
+    const selectedAsset = useMemo(
+        () => selectableAssets.find((asset) => asset.id === addItemFormData.asset_id),
+        [selectableAssets, addItemFormData.asset_id]
+    );
+    const totalVolume = collection?.assets?.reduce(
+        (sum, item) =>
+            sum + parseFloat(item?.asset?.volume_per_unit || "0") * item?.default_quantity,
+        0
+    );
+    const totalWeight = collection?.assets?.reduce(
+        (sum, item) =>
+            sum + parseFloat(item?.asset?.weight_per_unit || "0") * item?.default_quantity,
+        0
+    );
+
     if (isLoading) {
         return (
             <div className="min-h-screen bg-background p-8">
@@ -270,18 +339,6 @@ export default function CollectionDetailPage() {
             </div>
         );
     }
-
-    const assets = assetsData?.data || [];
-    const totalVolume = collection?.assets?.reduce(
-        (sum, item) =>
-            sum + parseFloat(item?.asset?.volume_per_unit || "0") * item?.default_quantity,
-        0
-    );
-    const totalWeight = collection?.assets?.reduce(
-        (sum, item) =>
-            sum + parseFloat(item?.asset?.weight_per_unit || "0") * item?.default_quantity,
-        0
-    );
 
     return (
         <div className="min-h-screen bg-background p-8">
@@ -575,6 +632,43 @@ export default function CollectionDetailPage() {
                             </DialogHeader>
 
                             <div className="space-y-4 py-4">
+                                {familyOptions.length > 0 && (
+                                    <div className="space-y-2">
+                                        <Label htmlFor="add-family">Asset Family</Label>
+                                        <Select
+                                            value={selectedFamilyId}
+                                            onValueChange={(value) => {
+                                                setSelectedFamilyId(value);
+                                                setAddItemFormData((current) => ({
+                                                    ...current,
+                                                    asset_id:
+                                                        value === ALL_FAMILIES_VALUE ||
+                                                        (selectedAsset &&
+                                                            (selectedAsset.family_id ??
+                                                                selectedAsset.familyId ??
+                                                                null) === value)
+                                                            ? current.asset_id
+                                                            : "",
+                                                }));
+                                            }}
+                                        >
+                                            <SelectTrigger id="add-family">
+                                                <SelectValue placeholder="Filter by family" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value={ALL_FAMILIES_VALUE}>
+                                                    All families
+                                                </SelectItem>
+                                                {familyOptions.map((family) => (
+                                                    <SelectItem key={family.id} value={family.id}>
+                                                        {family.name}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                )}
+
                                 <div className="space-y-2">
                                     <Label htmlFor="add-asset">Asset</Label>
                                     <Select
@@ -590,14 +684,34 @@ export default function CollectionDetailPage() {
                                             <SelectValue placeholder="Select asset" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {assets.map((asset) => (
+                                            {selectableAssets.map((asset) => (
                                                 <SelectItem key={asset.id} value={asset.id}>
-                                                    {asset.name} (Available:{" "}
-                                                    {asset?.available_quantity})
+                                                    {asset.name}
+                                                    {" • "}
+                                                    Available: {asset.available_quantity}
+                                                    {asset.family_id || asset.familyId
+                                                        ? ` • ${
+                                                              familyOptions.find(
+                                                                  (family) =>
+                                                                      family.id ===
+                                                                      (asset.family_id ??
+                                                                          asset.familyId)
+                                                              )?.name ?? "Family"
+                                                          }`
+                                                        : ""}
                                                 </SelectItem>
                                             ))}
                                         </SelectContent>
                                     </Select>
+                                    {selectableAssets.length === 0 && (
+                                        <p className="text-xs text-muted-foreground">
+                                            No stock records match this collection identity
+                                            {selectedFamilyId !== ALL_FAMILIES_VALUE
+                                                ? " and family filter"
+                                                : ""}
+                                            .
+                                        </p>
+                                    )}
                                 </div>
 
                                 <div className="space-y-2">
@@ -673,9 +787,9 @@ export default function CollectionDetailPage() {
                                     <div className="flex gap-6">
                                         {/* Asset Image */}
                                         <div className="w-24 h-24 rounded-lg overflow-hidden border border-border shrink-0">
-                                            {item?.asset?.images?.length > 0 ? (
+                                            {getAssetImageUrl(item?.asset?.images) ? (
                                                 <Image
-                                                    src={item?.asset?.images?.[0]}
+                                                    src={getAssetImageUrl(item?.asset?.images)!}
                                                     alt={item?.asset?.name}
                                                     width={96}
                                                     height={96}
@@ -692,9 +806,25 @@ export default function CollectionDetailPage() {
                                         <div className="flex-1">
                                             <div className="flex items-start justify-between mb-2">
                                                 <div>
-                                                    <h3 className="text-lg font-semibold mb-1">
-                                                        {item?.asset.name}
-                                                    </h3>
+                                                    <div className="mb-1 flex flex-wrap items-center gap-2">
+                                                        <h3 className="text-lg font-semibold">
+                                                            {item?.asset.name}
+                                                        </h3>
+                                                        {item?.asset?.family?.id &&
+                                                            item?.asset?.family?.name && (
+                                                                <Link
+                                                                    href={`/assets/families/${item.asset.family.id}`}
+                                                                >
+                                                                    <Badge
+                                                                        variant="outline"
+                                                                        className="gap-1 hover:border-primary/50"
+                                                                    >
+                                                                        <ChevronRight className="w-3 h-3" />
+                                                                        {item.asset.family.name}
+                                                                    </Badge>
+                                                                </Link>
+                                                            )}
+                                                    </div>
                                                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                                         <span>{item?.asset.category}</span>
                                                         <span>•</span>
@@ -726,7 +856,7 @@ export default function CollectionDetailPage() {
                                                     onClick={() =>
                                                         setConfirmRemoveItem({
                                                             id: item.id,
-                                                            name: item?.name,
+                                                            name: item?.asset?.name || "Asset",
                                                         })
                                                     }
                                                     disabled={removeItemMutation.isPending}
