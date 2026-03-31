@@ -37,7 +37,14 @@ import {
     useUsers,
 } from "@/hooks/use-users";
 import { useToken } from "@/lib/auth/use-token";
-import { PERMISSION_GROUPS, type AccessPolicy, type User, type UserRole } from "@/types/auth";
+import {
+    ADMIN_PERMISSION_GROUPS,
+    LOGISTICS_PERMISSION_GROUPS,
+    PERMISSION_GROUPS,
+    type AccessPolicy,
+    type User,
+    type UserRole,
+} from "@/types/auth";
 import ButtonCopy from "@/components/ui/copy-button";
 
 type UserFormState = {
@@ -67,6 +74,12 @@ const EMPTY_FORM: UserFormState = {
 };
 
 const ROLES: UserRole[] = ["ADMIN", "LOGISTICS", "CLIENT"];
+
+function getPermissionGroupsForRole(role: UserRole): Record<string, string[]> {
+    if (role === "ADMIN") return ADMIN_PERMISSION_GROUPS;
+    if (role === "LOGISTICS") return LOGISTICS_PERMISSION_GROUPS;
+    return PERMISSION_GROUPS;
+}
 
 export default function UsersPage() {
     const { user: authUser } = useToken();
@@ -104,6 +117,10 @@ export default function UsersPage() {
     const users = usersData?.data || [];
     const accessPolicies = accessPoliciesData?.data || [];
     const rolePolicies = accessPolicies.filter((policy) => policy.role === form.role);
+    const activePermissionGroups = useMemo(
+        () => getPermissionGroupsForRole(form.role),
+        [form.role]
+    );
     const selectedPolicy =
         accessPolicies.find((policy) => policy.id === form.access_policy_id) || null;
     const canManagePasswords =
@@ -567,7 +584,7 @@ export default function UsersPage() {
                                         <h3 className="font-semibold">Permission Overrides</h3>
                                     </div>
                                     <div className="max-h-[360px] overflow-y-auto space-y-4 pr-1">
-                                        {Object.entries(PERMISSION_GROUPS).map(
+                                        {Object.entries(activePermissionGroups).map(
                                             ([groupName, permissions]) => (
                                                 <div key={groupName} className="space-y-2">
                                                     <p className="text-sm font-medium">
