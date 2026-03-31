@@ -1,10 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Eye, EyeOff, KeyRound, Shield, UserPlus, Users } from "lucide-react";
 import { AdminHeader } from "@/components/admin-header";
 import { DataTable, DataTableSearch, DataTableRow } from "@/components/ui/data-table";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -15,7 +17,6 @@ import {
     DialogFooter,
     DialogHeader,
     DialogTitle,
-    DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,7 +34,6 @@ import {
     useCreateUser,
     useGenerateUserPassword,
     useSetUserPassword,
-    useUpdateUser,
     useUsers,
 } from "@/hooks/use-users";
 import { useToken } from "@/lib/auth/use-token";
@@ -41,11 +41,11 @@ import {
     ADMIN_PERMISSION_GROUPS,
     LOGISTICS_PERMISSION_GROUPS,
     PERMISSION_GROUPS,
-    type AccessPolicy,
     type User,
     type UserRole,
 } from "@/types/auth";
 import ButtonCopy from "@/components/ui/copy-button";
+import { cn } from "@/lib/utils";
 
 type UserFormState = {
     name: string;
@@ -74,6 +74,9 @@ const EMPTY_FORM: UserFormState = {
 };
 
 const ROLES: UserRole[] = ["ADMIN", "LOGISTICS", "CLIENT"];
+const OVERRIDE_FILTERS = ["all", "policy", "overrides", "grants", "revokes"] as const;
+
+type OverrideFilter = (typeof OVERRIDE_FILTERS)[number];
 
 function getPermissionGroupsForRole(role: UserRole): Record<string, string[]> {
     if (role === "ADMIN") return ADMIN_PERMISSION_GROUPS;
@@ -83,11 +86,11 @@ function getPermissionGroupsForRole(role: UserRole): Record<string, string[]> {
 
 export default function UsersPage() {
     const { user: authUser } = useToken();
+    const router = useRouter();
     const [searchTerm, setSearchTerm] = useState("");
     const [roleFilter, setRoleFilter] = useState<string>("all");
     const [statusFilter, setStatusFilter] = useState<string>("all");
     const [isCreateOpen, setIsCreateOpen] = useState(false);
-    const [editingUser, setEditingUser] = useState<User | null>(null);
     const [form, setForm] = useState<UserFormState>(EMPTY_FORM);
     const [showPassword, setShowPassword] = useState(false);
     const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
@@ -95,6 +98,8 @@ export default function UsersPage() {
     const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
     const [customPassword, setCustomPassword] = useState("");
     const [showCustomPassword, setShowCustomPassword] = useState(false);
+    const [overrideSearchTerm, setOverrideSearchTerm] = useState("");
+    const [overrideFilter, setOverrideFilter] = useState<OverrideFilter>("all");
 
     const queryParams = useMemo(() => {
         const params: Record<string, string> = { limit: "100", page: "1" };
@@ -109,7 +114,6 @@ export default function UsersPage() {
     const { data: companiesData } = useCompanies({ limit: "200", page: "1" });
     const { data: accessPoliciesData } = useAccessPolicies();
     const createUser = useCreateUser();
-    const updateUser = useUpdateUser();
     const generatePassword = useGenerateUserPassword();
     const setUserPassword = useSetUserPassword();
 
@@ -133,6 +137,56 @@ export default function UsersPage() {
         );
     }, [form.permission_grants, form.permission_revokes, selectedPolicy?.permissions]);
 
+    const permissionIsImpliedByPolicy = (permission: string) => {
+        const policyPermissions = selectedPolicy?.permissions || [];
+        if (policyPermissions.includes(permission)) return true;
+
+        const [resource, action] = permission.split(":");
+        return Boolean(action && policyPermissions.includes(`${resource}:*`));
+    };
+
+    const filteredPermissionGroups = useMemo(() => {
+        const query = overrideSearchTerm.trim().toLowerCase();
+
+        return Object.entries(activePermissionGroups)
+            .map(([groupName, permissions]) => {
+                const filteredPermissions = permissions.filter((permission) => {
+                    const inPolicy = permissionIsImpliedByPolicy(permission);
+                    const granted = form.permission_grants.includes(permission);
+                    const revoked = form.permission_revokes.includes(permission);
+                    const matchesQuery =
+                        !query ||
+                        groupName.toLowerCase().includes(query) ||
+                        permission.toLowerCase().includes(query);
+
+                    if (!matchesQuery) return false;
+
+                    switch (overrideFilter) {
+                        case "policy":
+                            return inPolicy;
+                        case "overrides":
+                            return granted || revoked;
+                        case "grants":
+                            return granted;
+                        case "revokes":
+                            return revoked;
+                        default:
+                            return true;
+                    }
+                });
+
+                return [groupName, filteredPermissions] as const;
+            })
+            .filter(([, permissions]) => permissions.length > 0);
+    }, [
+        activePermissionGroups,
+        form.permission_grants,
+        form.permission_revokes,
+        overrideFilter,
+        overrideSearchTerm,
+        selectedPolicy?.permissions,
+    ]);
+
     const openCreate = (role: UserRole) => {
         const defaultPolicy = accessPolicies.find(
             (policy) => policy.role === role && policy.is_active
@@ -141,27 +195,6 @@ export default function UsersPage() {
             ...EMPTY_FORM,
             role,
             access_policy_id: defaultPolicy?.id || null,
-        });
-        setEditingUser(null);
-        setGeneratedPassword(null);
-        setCustomPassword("");
-        setShowCustomPassword(false);
-        setIsCreateOpen(true);
-    };
-
-    const openEdit = (user: User) => {
-        setEditingUser(user);
-        setForm({
-            name: user.name,
-            email: user.email,
-            password: "",
-            role: user.role,
-            access_policy_id: user.access_policy_id || null,
-            permission_grants: user.permission_grants || [],
-            permission_revokes: user.permission_revokes || [],
-            company_id: user.company?.id || null,
-            is_active: user.is_active,
-            is_super_admin: user.is_super_admin,
         });
         setGeneratedPassword(null);
         setCustomPassword("");
@@ -194,8 +227,8 @@ export default function UsersPage() {
 
     const handleSubmit = async () => {
         if (!form.name.trim()) return toast.error("Name is required");
-        if (!editingUser && !form.email.trim()) return toast.error("Email is required");
-        if (!editingUser && form.password.length < 8) {
+        if (!form.email.trim()) return toast.error("Email is required");
+        if (form.password.length < 8) {
             return toast.error("Password must be at least 8 characters");
         }
         if (form.role === "CLIENT" && !form.company_id) {
@@ -203,39 +236,20 @@ export default function UsersPage() {
         }
 
         try {
-            if (editingUser) {
-                await updateUser.mutateAsync({
-                    userId: editingUser.id,
-                    data: {
-                        name: form.name.trim(),
-                        access_policy_id: form.access_policy_id,
-                        permission_grants: form.permission_grants,
-                        permission_revokes: form.permission_revokes,
-                        company_id: form.role === "CLIENT" ? form.company_id : null,
-                        is_active: form.is_active,
-                        ...(authUser?.is_super_admin
-                            ? { is_super_admin: form.is_super_admin }
-                            : {}),
-                    },
-                });
-                toast.success("User updated");
-            } else {
-                await createUser.mutateAsync({
-                    name: form.name.trim(),
-                    email: form.email.trim(),
-                    password: form.password,
-                    role: form.role,
-                    access_policy_id: form.access_policy_id,
-                    permission_grants: form.permission_grants,
-                    permission_revokes: form.permission_revokes,
-                    company_id: form.role === "CLIENT" ? form.company_id : null,
-                    is_active: form.is_active,
-                });
-                toast.success("User created");
-            }
+            await createUser.mutateAsync({
+                name: form.name.trim(),
+                email: form.email.trim(),
+                password: form.password,
+                role: form.role,
+                access_policy_id: form.access_policy_id,
+                permission_grants: form.permission_grants,
+                permission_revokes: form.permission_revokes,
+                company_id: form.role === "CLIENT" ? form.company_id : null,
+                is_active: form.is_active,
+            });
+            toast.success("User created");
 
             setIsCreateOpen(false);
-            setEditingUser(null);
             setForm(EMPTY_FORM);
             setShowPassword(false);
         } catch (error: any) {
@@ -387,7 +401,11 @@ export default function UsersPage() {
                         <TableCell>{user.is_active ? "Active" : "Inactive"}</TableCell>
                         <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-2">
-                                <Button variant="outline" size="sm" onClick={() => openEdit(user)}>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => router.push(`/users/${user.id}`)}
+                                >
                                     Edit
                                 </Button>
                                 {canManagePasswords ? (
@@ -406,12 +424,12 @@ export default function UsersPage() {
             </DataTable>
 
             <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-                <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
-                    <DialogHeader>
-                        <DialogTitle>{editingUser ? "Edit User" : "Create User"}</DialogTitle>
-                        <DialogDescription>
-                            Role sets the boundary. Access Policy sets the default permission
-                            bundle. Grants and revokes are explicit per-user overrides.
+                    <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+                        <DialogHeader>
+                            <DialogTitle>Create User</DialogTitle>
+                            <DialogDescription>
+                                Role sets the boundary. Access Policy sets the default permission
+                                bundle. Grants and revokes are explicit per-user overrides.
                         </DialogDescription>
                     </DialogHeader>
 
@@ -433,7 +451,6 @@ export default function UsersPage() {
                                 <Label>Email</Label>
                                 <Input
                                     value={form.email}
-                                    disabled={!!editingUser}
                                     onChange={(event) =>
                                         setForm((prev) => ({
                                             ...prev,
@@ -444,59 +461,56 @@ export default function UsersPage() {
                             </div>
                         </div>
 
-                        {!editingUser ? (
-                            <div className="space-y-3">
-                                <Label>Temporary Password</Label>
-                                <div className="flex items-center gap-2">
-                                    <Input
-                                        type={showPassword ? "text" : "password"}
-                                        value={form.password}
-                                        onChange={(event) =>
-                                            setForm((prev) => ({
-                                                ...prev,
-                                                password: event.target.value,
-                                            }))
-                                        }
-                                        placeholder="Generate or enter a temporary password"
-                                    />
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        onClick={() => setShowPassword((prev) => !prev)}
-                                    >
-                                        {showPassword ? (
-                                            <EyeOff className="h-4 w-4" />
-                                        ) : (
-                                            <Eye className="h-4 w-4" />
-                                        )}
-                                    </Button>
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        onClick={handleGenerateForCreate}
-                                    >
-                                        Generate
-                                    </Button>
-                                    <ButtonCopy
-                                        onCopy={async () => {
-                                            if (!form.password) return;
-                                            await navigator.clipboard.writeText(form.password);
-                                            toast.success("Copied");
-                                        }}
-                                    />
-                                </div>
-                                <p className="text-xs text-muted-foreground">
-                                    This password is shown once. Share it securely with the user.
-                                </p>
+                        <div className="space-y-3">
+                            <Label>Temporary Password</Label>
+                            <div className="flex items-center gap-2">
+                                <Input
+                                    type={showPassword ? "text" : "password"}
+                                    value={form.password}
+                                    onChange={(event) =>
+                                        setForm((prev) => ({
+                                            ...prev,
+                                            password: event.target.value,
+                                        }))
+                                    }
+                                    placeholder="Generate or enter a temporary password"
+                                />
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => setShowPassword((prev) => !prev)}
+                                >
+                                    {showPassword ? (
+                                        <EyeOff className="h-4 w-4" />
+                                    ) : (
+                                        <Eye className="h-4 w-4" />
+                                    )}
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={handleGenerateForCreate}
+                                >
+                                    Generate
+                                </Button>
+                                <ButtonCopy
+                                    onCopy={async () => {
+                                        if (!form.password) return;
+                                        await navigator.clipboard.writeText(form.password);
+                                        toast.success("Copied");
+                                    }}
+                                />
                             </div>
-                        ) : null}
+                            <p className="text-xs text-muted-foreground">
+                                This password is shown once. Share it securely with the user.
+                            </p>
+                        </div>
 
                         <div className="grid grid-cols-3 gap-4">
                             <div className="space-y-2">
                                 <Label>Role</Label>
                                 <Select
                                     value={form.role}
-                                    disabled={!!editingUser}
                                     onValueChange={(value) => {
                                         const nextRole = value as UserRole;
                                         const defaultPolicy = accessPolicies.find(
@@ -583,61 +597,152 @@ export default function UsersPage() {
                                         <Shield className="h-4 w-4" />
                                         <h3 className="font-semibold">Permission Overrides</h3>
                                     </div>
+                                    <div className="space-y-3">
+                                        <Input
+                                            value={overrideSearchTerm}
+                                            onChange={(event) =>
+                                                setOverrideSearchTerm(event.target.value)
+                                            }
+                                            placeholder="Filter permissions or groups"
+                                        />
+                                        <div className="flex flex-wrap gap-2">
+                                            {OVERRIDE_FILTERS.map((filter) => (
+                                                <Button
+                                                    key={filter}
+                                                    type="button"
+                                                    size="sm"
+                                                    variant={
+                                                        overrideFilter === filter
+                                                            ? "default"
+                                                            : "outline"
+                                                    }
+                                                    onClick={() => setOverrideFilter(filter)}
+                                                >
+                                                    {filter === "all"
+                                                        ? "All"
+                                                        : filter === "policy"
+                                                          ? "In Policy"
+                                                          : filter === "overrides"
+                                                            ? "Overrides"
+                                                            : filter === "grants"
+                                                              ? "Granted"
+                                                              : "Revoked"}
+                                                </Button>
+                                            ))}
+                                        </div>
+                                    </div>
                                     <div className="max-h-[360px] overflow-y-auto space-y-4 pr-1">
-                                        {Object.entries(activePermissionGroups).map(
-                                            ([groupName, permissions]) => (
+                                        {filteredPermissionGroups.length === 0 ? (
+                                            <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+                                                No matching permissions.
+                                            </div>
+                                        ) : (
+                                            filteredPermissionGroups.map(([groupName, permissions]) => (
                                                 <div key={groupName} className="space-y-2">
                                                     <p className="text-sm font-medium">
                                                         {groupName}
                                                     </p>
                                                     <div className="space-y-2">
-                                                        {permissions.map((permission) => (
-                                                            <div
-                                                                key={permission}
-                                                                className="grid grid-cols-[1fr_auto_auto] items-center gap-3 rounded-md bg-muted/40 p-2"
-                                                            >
-                                                                <span className="text-xs font-mono">
-                                                                    {permission}
-                                                                </span>
-                                                                <label className="flex items-center gap-2 text-xs">
-                                                                    <Checkbox
-                                                                        checked={form.permission_grants.includes(
-                                                                            permission
-                                                                        )}
-                                                                        onCheckedChange={(
-                                                                            checked
-                                                                        ) =>
-                                                                            toggleOverride(
-                                                                                "grant",
-                                                                                permission,
-                                                                                checked === true
-                                                                            )
-                                                                        }
-                                                                    />
-                                                                    Grant
-                                                                </label>
-                                                                <label className="flex items-center gap-2 text-xs">
-                                                                    <Checkbox
-                                                                        checked={form.permission_revokes.includes(
-                                                                            permission
-                                                                        )}
-                                                                        onCheckedChange={(
-                                                                            checked
-                                                                        ) =>
-                                                                            toggleOverride(
-                                                                                "revoke",
-                                                                                permission,
-                                                                                checked === true
-                                                                            )
-                                                                        }
-                                                                    />
-                                                                    Revoke
-                                                                </label>
-                                                            </div>
-                                                        ))}
+                                                        {permissions.map((permission) => {
+                                                            const inPolicy =
+                                                                permissionIsImpliedByPolicy(
+                                                                    permission
+                                                                );
+                                                            const granted =
+                                                                form.permission_grants.includes(
+                                                                    permission
+                                                                );
+                                                            const revoked =
+                                                                form.permission_revokes.includes(
+                                                                    permission
+                                                                );
+
+                                                            return (
+                                                                <div
+                                                                    key={permission}
+                                                                    className={cn(
+                                                                        "space-y-2 rounded-md border p-3",
+                                                                        inPolicy
+                                                                            ? "border-primary/25 bg-primary/5"
+                                                                            : "border-border/60 bg-muted/40"
+                                                                    )}
+                                                                >
+                                                                    <div className="flex flex-wrap items-center gap-2">
+                                                                        <span className="text-xs font-mono">
+                                                                            {permission}
+                                                                        </span>
+                                                                        {inPolicy ? (
+                                                                            <Badge variant="outline">
+                                                                                In policy
+                                                                            </Badge>
+                                                                        ) : null}
+                                                                        {granted ? (
+                                                                            <Badge
+                                                                                variant={
+                                                                                    inPolicy
+                                                                                        ? "outline"
+                                                                                        : "secondary"
+                                                                                }
+                                                                            >
+                                                                                {inPolicy
+                                                                                    ? "Grant no-op"
+                                                                                    : "Granted"}
+                                                                            </Badge>
+                                                                        ) : null}
+                                                                        {revoked ? (
+                                                                            <Badge
+                                                                                variant={
+                                                                                    inPolicy
+                                                                                        ? "destructive"
+                                                                                        : "outline"
+                                                                                }
+                                                                            >
+                                                                                {inPolicy
+                                                                                    ? "Revoked"
+                                                                                    : "Revoke no-op"}
+                                                                            </Badge>
+                                                                        ) : null}
+                                                                    </div>
+                                                                    <div className="grid grid-cols-[auto_auto] justify-start gap-4">
+                                                                        <label className="flex items-center gap-2 text-xs">
+                                                                            <Checkbox
+                                                                                checked={granted}
+                                                                                onCheckedChange={(
+                                                                                    checked
+                                                                                ) =>
+                                                                                    toggleOverride(
+                                                                                        "grant",
+                                                                                        permission,
+                                                                                        checked ===
+                                                                                            true
+                                                                                    )
+                                                                                }
+                                                                            />
+                                                                            Grant
+                                                                        </label>
+                                                                        <label className="flex items-center gap-2 text-xs">
+                                                                            <Checkbox
+                                                                                checked={revoked}
+                                                                                onCheckedChange={(
+                                                                                    checked
+                                                                                ) =>
+                                                                                    toggleOverride(
+                                                                                        "revoke",
+                                                                                        permission,
+                                                                                        checked ===
+                                                                                            true
+                                                                                    )
+                                                                                }
+                                                                            />
+                                                                            Revoke
+                                                                        </label>
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
                                                     </div>
                                                 </div>
-                                            )
+                                            ))
                                         )}
                                     </div>
                                 </CardContent>
@@ -720,9 +825,7 @@ export default function UsersPage() {
                         <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
                             Cancel
                         </Button>
-                        <Button onClick={handleSubmit}>
-                            {editingUser ? "Save Changes" : "Create User"}
-                        </Button>
+                        <Button onClick={handleSubmit}>Create User</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
