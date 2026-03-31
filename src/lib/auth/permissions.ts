@@ -1,5 +1,15 @@
 import { User } from "@/types/auth";
 
+function isPermissionRevoked(user: User | null, requiredPermission: string): boolean {
+    if (!user) return false;
+
+    const revokes = user.permission_revokes || [];
+    if (revokes.includes(requiredPermission)) return true;
+
+    const [resource, action] = requiredPermission.split(":");
+    return Boolean(action && revokes.includes(`${resource}:*`));
+}
+
 /**
  * Check if user has a specific permission
  * Supports wildcard permissions (e.g., "users:*" matches "users:create", "users:read", etc.)
@@ -9,6 +19,9 @@ export function hasPermission(user: User | null, requiredPermission: string): bo
 
     // Super admins bypass all permission checks
     if (user.is_super_admin) return true;
+
+    // Explicit revokes always win, even if the policy still grants a module wildcard.
+    if (isPermissionRevoked(user, requiredPermission)) return false;
 
     // Check for exact permission match
     if (user.permissions.includes(requiredPermission)) return true;
