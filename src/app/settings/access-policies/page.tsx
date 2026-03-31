@@ -47,6 +47,8 @@ import {
     type AccessPolicy,
     type UserRole,
 } from "@/types/auth";
+import { useToken } from "@/lib/auth/use-token";
+import { hasPermission } from "@/lib/auth/permissions";
 
 const ROLES: UserRole[] = ["ADMIN", "LOGISTICS", "CLIENT"];
 
@@ -57,6 +59,7 @@ function getPermissionGroupsForRole(role: UserRole): Record<string, string[]> {
 }
 
 export default function AccessPoliciesPage() {
+    const { user } = useToken();
     const { data, isLoading } = useAccessPolicies();
     const createAccessPolicy = useCreateAccessPolicy();
     const updateAccessPolicy = useUpdateAccessPolicy();
@@ -74,6 +77,7 @@ export default function AccessPoliciesPage() {
     });
 
     const policies = useMemo(() => data?.data || [], [data?.data]);
+    const canManagePolicies = hasPermission(user, "access_policies:update");
 
     const activePermissionGroups = useMemo(
         () => getPermissionGroupsForRole(form.role),
@@ -112,6 +116,7 @@ export default function AccessPoliciesPage() {
     };
 
     const handleSubmit = async () => {
+        if (!canManagePolicies) return;
         if (!form.code.trim() || !form.name.trim()) {
             return toast.error("Code and name are required");
         }
@@ -143,6 +148,7 @@ export default function AccessPoliciesPage() {
     };
 
     const handleDelete = async () => {
+        if (!canManagePolicies) return;
         if (!confirmDeletePolicy) return;
         try {
             await deleteAccessPolicy.mutateAsync(confirmDeletePolicy.id);
@@ -175,16 +181,18 @@ export default function AccessPoliciesPage() {
                 description="Define · Assign · Control"
                 stats={{ label: "Policies", value: policies.length }}
                 actions={
-                    <Button
-                        size="sm"
-                        onClick={() => {
-                            reset();
-                            setIsOpen(true);
-                        }}
-                    >
-                        <Plus className="h-4 w-4 mr-1" />
-                        Add Policy
-                    </Button>
+                    canManagePolicies ? (
+                        <Button
+                            size="sm"
+                            onClick={() => {
+                                reset();
+                                setIsOpen(true);
+                            }}
+                        >
+                            <Plus className="h-4 w-4 mr-1" />
+                            Add Policy
+                        </Button>
+                    ) : undefined
                 }
             />
 
@@ -306,40 +314,42 @@ export default function AccessPoliciesPage() {
                                                                 </span>
                                                             </Button>
                                                         </CollapsibleTrigger>
-                                                        <Button
-                                                            type="button"
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            className="text-xs"
-                                                            onClick={() => {
-                                                                if (allSelected) {
-                                                                    setForm((prev) => ({
-                                                                        ...prev,
-                                                                        permissions:
-                                                                            prev.permissions.filter(
-                                                                                (p) =>
-                                                                                    !permissions.includes(
-                                                                                        p
-                                                                                    )
-                                                                            ),
-                                                                    }));
-                                                                } else {
-                                                                    setForm((prev) => ({
-                                                                        ...prev,
-                                                                        permissions: [
-                                                                            ...new Set([
-                                                                                ...prev.permissions,
-                                                                                ...permissions,
-                                                                            ]),
-                                                                        ],
-                                                                    }));
-                                                                }
-                                                            }}
-                                                        >
-                                                            {allSelected
-                                                                ? "Deselect All"
-                                                                : "Select All"}
-                                                        </Button>
+                                                        {canManagePolicies ? (
+                                                            <Button
+                                                                type="button"
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                className="text-xs"
+                                                                onClick={() => {
+                                                                    if (allSelected) {
+                                                                        setForm((prev) => ({
+                                                                            ...prev,
+                                                                            permissions:
+                                                                                prev.permissions.filter(
+                                                                                    (p) =>
+                                                                                        !permissions.includes(
+                                                                                            p
+                                                                                        )
+                                                                                ),
+                                                                        }));
+                                                                    } else {
+                                                                        setForm((prev) => ({
+                                                                            ...prev,
+                                                                            permissions: [
+                                                                                ...new Set([
+                                                                                    ...prev.permissions,
+                                                                                    ...permissions,
+                                                                                ]),
+                                                                            ],
+                                                                        }));
+                                                                    }
+                                                                }}
+                                                            >
+                                                                {allSelected
+                                                                    ? "Deselect All"
+                                                                    : "Select All"}
+                                                            </Button>
+                                                        ) : null}
                                                     </div>
                                                     <CollapsibleContent>
                                                         <div className="grid grid-cols-2 gap-2 pt-2 pb-3">
@@ -352,6 +362,9 @@ export default function AccessPoliciesPage() {
                                                                         checked={form.permissions.includes(
                                                                             permission
                                                                         )}
+                                                                        disabled={
+                                                                            !canManagePolicies
+                                                                        }
                                                                         onCheckedChange={(
                                                                             checked
                                                                         ) =>
@@ -379,9 +392,11 @@ export default function AccessPoliciesPage() {
                             <Button variant="outline" onClick={() => setIsOpen(false)}>
                                 Cancel
                             </Button>
-                            <Button onClick={handleSubmit}>
-                                {editingId ? "Save Changes" : "Create Policy"}
-                            </Button>
+                            {canManagePolicies ? (
+                                <Button onClick={handleSubmit}>
+                                    {editingId ? "Save Changes" : "Create Policy"}
+                                </Button>
+                            ) : null}
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
@@ -440,20 +455,26 @@ export default function AccessPoliciesPage() {
                                                 </Badge>
                                             </TableCell>
                                             <TableCell className="text-right space-x-2">
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    onClick={() => openEdit(policy)}
-                                                >
-                                                    Edit
-                                                </Button>
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    onClick={() => setConfirmDeletePolicy(policy)}
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
+                                                {canManagePolicies ? (
+                                                    <>
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={() => openEdit(policy)}
+                                                        >
+                                                            Edit
+                                                        </Button>
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={() =>
+                                                                setConfirmDeletePolicy(policy)
+                                                            }
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    </>
+                                                ) : null}
                                             </TableCell>
                                         </TableRow>
                                     ))}

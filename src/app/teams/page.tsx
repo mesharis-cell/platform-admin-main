@@ -55,6 +55,8 @@ import {
     UsersRound,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useToken } from "@/lib/auth/use-token";
+import { hasPermission } from "@/lib/auth/permissions";
 
 type TeamFormData = {
     company_id: string;
@@ -73,6 +75,7 @@ const defaultForm: TeamFormData = {
 };
 
 export default function TeamsPage() {
+    const { user } = useToken();
     const [filterCompany, setFilterCompany] = useState<string>("");
     const [createOpen, setCreateOpen] = useState(false);
     const [editTeam, setEditTeam] = useState<Team | null>(null);
@@ -95,13 +98,19 @@ export default function TeamsPage() {
     const teams = teamsData?.data || [];
     const companies = companiesData?.data || [];
     const users = usersData?.data || [];
+    const canCreateTeam = hasPermission(user, "teams:create");
+    const canUpdateTeam = hasPermission(user, "teams:update");
+    const canDeleteTeam = hasPermission(user, "teams:delete");
+    const canManageTeamMembers = hasPermission(user, "teams:manage_members");
 
     function openCreate() {
+        if (!canCreateTeam) return;
         setForm({ ...defaultForm, company_id: filterCompany });
         setCreateOpen(true);
     }
 
     function openEdit(team: Team) {
+        if (!canUpdateTeam) return;
         setForm({
             company_id: team.company_id,
             name: team.name,
@@ -113,6 +122,7 @@ export default function TeamsPage() {
     }
 
     async function handleCreate() {
+        if (!canCreateTeam) return;
         if (!form.company_id || !form.name.trim()) {
             toast.error("Company and team name are required");
             return;
@@ -133,6 +143,7 @@ export default function TeamsPage() {
     }
 
     async function handleUpdate() {
+        if (!canUpdateTeam) return;
         if (!editTeam) return;
         try {
             await updateMutation.mutateAsync({
@@ -152,6 +163,7 @@ export default function TeamsPage() {
     }
 
     async function handleDelete() {
+        if (!canDeleteTeam) return;
         if (!deleteTeam) return;
         try {
             await deleteMutation.mutateAsync(deleteTeam.id);
@@ -163,6 +175,7 @@ export default function TeamsPage() {
     }
 
     async function handleAddMember() {
+        if (!canManageTeamMembers) return;
         if (!addMemberTeam || !selectedUserId) return;
         try {
             await addMemberMutation.mutateAsync({
@@ -177,6 +190,7 @@ export default function TeamsPage() {
     }
 
     async function handleRemoveMember(teamId: string, userId: string) {
+        if (!canManageTeamMembers) return;
         try {
             await removeMemberMutation.mutateAsync({ teamId, userId });
             toast.success("Member removed");
@@ -185,14 +199,14 @@ export default function TeamsPage() {
         }
     }
 
-    const TeamForm = () => (
+    const TeamForm = ({ disabled }: { disabled: boolean }) => (
         <div className="space-y-4">
             <div className="space-y-1.5">
                 <Label>Company</Label>
                 <Select
                     value={form.company_id}
                     onValueChange={(v) => setForm((p) => ({ ...p, company_id: v }))}
-                    disabled={!!editTeam}
+                    disabled={disabled || !!editTeam}
                 >
                     <SelectTrigger>
                         <SelectValue placeholder="Select company" />
@@ -210,6 +224,7 @@ export default function TeamsPage() {
                 <Label>Team Name</Label>
                 <Input
                     value={form.name}
+                    disabled={disabled}
                     onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
                     placeholder="e.g. Abu Dhabi Team"
                 />
@@ -218,6 +233,7 @@ export default function TeamsPage() {
                 <Label>Description (optional)</Label>
                 <Input
                     value={form.description}
+                    disabled={disabled}
                     onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
                     placeholder="Brief description"
                 />
@@ -232,6 +248,7 @@ export default function TeamsPage() {
                     </div>
                     <Switch
                         checked={form.can_other_teams_see}
+                        disabled={disabled}
                         onCheckedChange={(v) => setForm((p) => ({ ...p, can_other_teams_see: v }))}
                     />
                 </div>
@@ -244,6 +261,7 @@ export default function TeamsPage() {
                     </div>
                     <Switch
                         checked={form.can_other_teams_book}
+                        disabled={disabled}
                         onCheckedChange={(v) => setForm((p) => ({ ...p, can_other_teams_book: v }))}
                     />
                 </div>
@@ -258,10 +276,12 @@ export default function TeamsPage() {
                 title="Teams"
                 description="Segment assets by team within a company. Control visibility and booking access between teams."
                 actions={
-                    <Button onClick={openCreate} size="sm">
-                        <Plus className="h-4 w-4 mr-1.5" />
-                        New Team
-                    </Button>
+                    canCreateTeam ? (
+                        <Button onClick={openCreate} size="sm">
+                            <Plus className="h-4 w-4 mr-1.5" />
+                            New Team
+                        </Button>
+                    ) : null
                 }
             />
 
@@ -306,22 +326,26 @@ export default function TeamsPage() {
                                             )}
                                         </div>
                                         <div className="flex gap-1 shrink-0">
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-7 w-7"
-                                                onClick={() => openEdit(team)}
-                                            >
-                                                <Pencil className="h-3.5 w-3.5" />
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-7 w-7 text-destructive hover:text-destructive"
-                                                onClick={() => setDeleteTeam(team)}
-                                            >
-                                                <Trash2 className="h-3.5 w-3.5" />
-                                            </Button>
+                                            {canUpdateTeam ? (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-7 w-7"
+                                                    onClick={() => openEdit(team)}
+                                                >
+                                                    <Pencil className="h-3.5 w-3.5" />
+                                                </Button>
+                                            ) : null}
+                                            {canDeleteTeam ? (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-7 w-7 text-destructive hover:text-destructive"
+                                                    onClick={() => setDeleteTeam(team)}
+                                                >
+                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                </Button>
+                                            ) : null}
                                         </div>
                                     </div>
                                 </CardHeader>
@@ -356,18 +380,20 @@ export default function TeamsPage() {
                                             <p className="text-xs font-medium text-muted-foreground">
                                                 Members ({team.members.length})
                                             </p>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="h-6 px-2 text-xs"
-                                                onClick={() => {
-                                                    setAddMemberTeam(team);
-                                                    setSelectedUserId("");
-                                                }}
-                                            >
-                                                <UserPlus className="h-3 w-3 mr-1" />
-                                                Add
-                                            </Button>
+                                            {canManageTeamMembers ? (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="h-6 px-2 text-xs"
+                                                    onClick={() => {
+                                                        setAddMemberTeam(team);
+                                                        setSelectedUserId("");
+                                                    }}
+                                                >
+                                                    <UserPlus className="h-3 w-3 mr-1" />
+                                                    Add
+                                                </Button>
+                                            ) : null}
                                         </div>
                                         <div className="space-y-1">
                                             {team.members.length === 0 ? (
@@ -386,19 +412,21 @@ export default function TeamsPage() {
                                                                 ({m.user.email})
                                                             </span>
                                                         </span>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="h-5 w-5 text-muted-foreground hover:text-destructive shrink-0"
-                                                            onClick={() =>
-                                                                handleRemoveMember(
-                                                                    team.id,
-                                                                    m.user.id
-                                                                )
-                                                            }
-                                                        >
-                                                            <UserMinus className="h-3 w-3" />
-                                                        </Button>
+                                                        {canManageTeamMembers ? (
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-5 w-5 text-muted-foreground hover:text-destructive shrink-0"
+                                                                onClick={() =>
+                                                                    handleRemoveMember(
+                                                                        team.id,
+                                                                        m.user.id
+                                                                    )
+                                                                }
+                                                            >
+                                                                <UserMinus className="h-3 w-3" />
+                                                            </Button>
+                                                        ) : null}
                                                     </div>
                                                 ))
                                             )}
@@ -417,14 +445,16 @@ export default function TeamsPage() {
                     <DialogHeader>
                         <DialogTitle>Create Team</DialogTitle>
                     </DialogHeader>
-                    <TeamForm />
+                    <TeamForm disabled={!canCreateTeam} />
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setCreateOpen(false)}>
                             Cancel
                         </Button>
-                        <Button onClick={handleCreate} disabled={createMutation.isPending}>
-                            {createMutation.isPending ? "Creating..." : "Create Team"}
-                        </Button>
+                        {canCreateTeam ? (
+                            <Button onClick={handleCreate} disabled={createMutation.isPending}>
+                                {createMutation.isPending ? "Creating..." : "Create Team"}
+                            </Button>
+                        ) : null}
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -435,14 +465,16 @@ export default function TeamsPage() {
                     <DialogHeader>
                         <DialogTitle>Edit Team</DialogTitle>
                     </DialogHeader>
-                    <TeamForm />
+                    <TeamForm disabled={!canUpdateTeam} />
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setEditTeam(null)}>
                             Cancel
                         </Button>
-                        <Button onClick={handleUpdate} disabled={updateMutation.isPending}>
-                            {updateMutation.isPending ? "Saving..." : "Save Changes"}
-                        </Button>
+                        {canUpdateTeam ? (
+                            <Button onClick={handleUpdate} disabled={updateMutation.isPending}>
+                                {updateMutation.isPending ? "Saving..." : "Save Changes"}
+                            </Button>
+                        ) : null}
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -454,7 +486,11 @@ export default function TeamsPage() {
                         <DialogTitle>Add Member to {addMemberTeam?.name}</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-3">
-                        <Select value={selectedUserId} onValueChange={setSelectedUserId}>
+                        <Select
+                            value={selectedUserId}
+                            onValueChange={setSelectedUserId}
+                            disabled={!canManageTeamMembers}
+                        >
                             <SelectTrigger>
                                 <SelectValue placeholder="Select user" />
                             </SelectTrigger>
@@ -481,12 +517,14 @@ export default function TeamsPage() {
                         <Button variant="outline" onClick={() => setAddMemberTeam(null)}>
                             Cancel
                         </Button>
-                        <Button
-                            onClick={handleAddMember}
-                            disabled={!selectedUserId || addMemberMutation.isPending}
-                        >
-                            Add Member
-                        </Button>
+                        {canManageTeamMembers ? (
+                            <Button
+                                onClick={handleAddMember}
+                                disabled={!selectedUserId || addMemberMutation.isPending}
+                            >
+                                Add Member
+                            </Button>
+                        ) : null}
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -504,12 +542,14 @@ export default function TeamsPage() {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            onClick={handleDelete}
-                        >
-                            Delete
-                        </AlertDialogAction>
+                        {canDeleteTeam ? (
+                            <AlertDialogAction
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                onClick={handleDelete}
+                            >
+                                Delete
+                            </AlertDialogAction>
+                        ) : null}
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>

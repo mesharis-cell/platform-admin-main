@@ -20,7 +20,7 @@ export function UnauthorizedState({
     title = "Access Denied",
     message = "You do not have permission to access this resource. Contact your administrator if you believe this is an error.",
     showBackButton = true,
-    backHref = "/admin/orders",
+    backHref = "/orders",
 }: UnauthorizedStateProps) {
     return (
         <div className="min-h-[60vh] flex items-center justify-center p-8">

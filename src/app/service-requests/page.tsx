@@ -36,6 +36,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { useCompanies } from "@/hooks/use-companies";
 import { useSearchAssets } from "@/hooks/use-assets";
 import { useCreateServiceRequest, useListServiceRequests } from "@/hooks/use-service-requests";
+import { ADMIN_ACTION_PERMISSIONS } from "@/lib/auth/permission-map";
+import { hasPermission } from "@/lib/auth/permissions";
+import { useToken } from "@/lib/auth/use-token";
 import type {
     ServiceRequestBillingMode,
     ServiceRequestStatus,
@@ -106,6 +109,7 @@ const COMMERCIAL_STATUS_CONFIG: Record<string, { label: string; color: string }>
 };
 
 export default function ServiceRequestsPage() {
+    const { user } = useToken();
     const [page, setPage] = useState(1);
     const [limit] = useState(20);
     const [searchTerm, setSearchTerm] = useState("");
@@ -129,6 +133,10 @@ export default function ServiceRequestsPage() {
     const [activeItemIdx, setActiveItemIdx] = useState<number | null>(null);
     const [itemSearchTerm, setItemSearchTerm] = useState("");
     const closeDropdownTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const canCreateServiceRequest = hasPermission(
+        user,
+        ADMIN_ACTION_PERMISSIONS.serviceRequestsCreate
+    );
 
     const filters = useMemo(
         () => ({
@@ -275,316 +283,324 @@ export default function ServiceRequestsPage() {
                 description="Manage · Track · Fulfill"
                 stats={data ? { label: "TOTAL REQUESTS", value: totalRequests } : undefined}
                 actions={
-                    <Dialog
-                        open={createOpen}
-                        onOpenChange={(open) => {
-                            setCreateOpen(open);
-                            if (!open) resetCreateForm();
-                        }}
-                    >
-                        <DialogTrigger asChild>
-                            <Button className="font-mono gap-2">
-                                <Plus className="h-4 w-4" />
-                                NEW REQUEST
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-2xl">
-                            <DialogHeader>
-                                <DialogTitle>Create Service Request</DialogTitle>
-                                <DialogDescription>
-                                    Create a standalone maintenance/reskin request with one starter
-                                    item.
-                                </DialogDescription>
-                            </DialogHeader>
+                    canCreateServiceRequest ? (
+                        <Dialog
+                            open={createOpen}
+                            onOpenChange={(open) => {
+                                setCreateOpen(open);
+                                if (!open) resetCreateForm();
+                            }}
+                        >
+                            <DialogTrigger asChild>
+                                <Button className="font-mono gap-2">
+                                    <Plus className="h-4 w-4" />
+                                    NEW REQUEST
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-2xl">
+                                <DialogHeader>
+                                    <DialogTitle>Create Service Request</DialogTitle>
+                                    <DialogDescription>
+                                        Create a standalone maintenance/reskin request with one
+                                        starter item.
+                                    </DialogDescription>
+                                </DialogHeader>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <Label>
-                                        Company <span className="text-destructive">*</span>
-                                    </Label>
-                                    <Select value={companyId} onValueChange={setCompanyId}>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Select company" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {companies.map((c) => (
-                                                <SelectItem key={c.id} value={c.id}>
-                                                    {c.name}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div>
-                                    <Label>
-                                        Request Type <span className="text-destructive">*</span>
-                                    </Label>
-                                    <Select
-                                        value={requestType}
-                                        onValueChange={(v) =>
-                                            setRequestType(v as ServiceRequestType)
-                                        }
-                                    >
-                                        <SelectTrigger>
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {REQUEST_TYPES.map((t) => (
-                                                <SelectItem key={t} value={t}>
-                                                    {t.replace(/_/g, " ")}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div>
-                                    <Label>
-                                        Billing Mode <span className="text-destructive">*</span>
-                                    </Label>
-                                    <Select
-                                        value={billingMode}
-                                        onValueChange={(v) =>
-                                            setBillingMode(v as ServiceRequestBillingMode)
-                                        }
-                                    >
-                                        <SelectTrigger>
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {BILLING_MODES.map((m) => (
-                                                <SelectItem key={m} value={m}>
-                                                    {m.replace(/_/g, " ")}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div>
-                                    <Label>Requested Start</Label>
-                                    <Input
-                                        type="datetime-local"
-                                        value={requestedStartAt}
-                                        onChange={(e) => setRequestedStartAt(e.target.value)}
-                                    />
-                                </div>
-                                <div className="md:col-span-2">
-                                    <Label>
-                                        Title <span className="text-destructive">*</span>
-                                    </Label>
-                                    <Input
-                                        value={title}
-                                        onChange={(e) => setTitle(e.target.value)}
-                                        placeholder="Fix booth panel skin and repaint edges"
-                                    />
-                                </div>
-                                <div className="md:col-span-2">
-                                    <Label>Description</Label>
-                                    <Textarea
-                                        rows={3}
-                                        value={description}
-                                        onChange={(e) => setDescription(e.target.value)}
-                                        placeholder="Operational details and context..."
-                                    />
-                                </div>
-                                <div>
-                                    <Label>Requested Due</Label>
-                                    <Input
-                                        type="datetime-local"
-                                        value={requestedDueAt}
-                                        onChange={(e) => setRequestedDueAt(e.target.value)}
-                                    />
-                                </div>
-                                <div className="md:col-span-2 space-y-3">
-                                    <div className="flex items-center justify-between">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
                                         <Label>
-                                            Assets / Items{" "}
-                                            <span className="text-destructive">*</span>
+                                            Company <span className="text-destructive">*</span>
                                         </Label>
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="sm"
-                                            className="h-7 text-xs gap-1"
-                                            onClick={addItem}
-                                            disabled={!companyId}
-                                        >
-                                            <Plus className="h-3 w-3" /> Add Asset
-                                        </Button>
+                                        <Select value={companyId} onValueChange={setCompanyId}>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select company" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {companies.map((c) => (
+                                                    <SelectItem key={c.id} value={c.id}>
+                                                        {c.name}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
                                     </div>
-                                    {srItems.map((item, idx) => (
-                                        <div
-                                            key={idx}
-                                            className="rounded-md p-3 space-y-2 bg-muted/50"
+                                    <div>
+                                        <Label>
+                                            Request Type <span className="text-destructive">*</span>
+                                        </Label>
+                                        <Select
+                                            value={requestType}
+                                            onValueChange={(v) =>
+                                                setRequestType(v as ServiceRequestType)
+                                            }
                                         >
-                                            <div className="relative">
-                                                <div className="flex items-center gap-1 mb-1">
-                                                    <Label className="text-xs text-muted-foreground">
-                                                        {srItems.length > 1
-                                                            ? `Asset ${idx + 1}`
-                                                            : "Asset / Item"}
-                                                    </Label>
-                                                    {item.asset_id && (
-                                                        <span className="text-xs text-primary font-medium">
-                                                            · linked
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                <div className="flex gap-1">
-                                                    <div className="relative flex-1">
-                                                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/60" />
-                                                        <Input
-                                                            className="pl-8 pr-8 text-sm"
-                                                            placeholder={
-                                                                companyId
-                                                                    ? "Search existing assets or type name…"
-                                                                    : "Select company first"
-                                                            }
-                                                            disabled={!companyId}
-                                                            value={item.asset_name}
-                                                            onChange={(e) => {
-                                                                updateItem(idx, {
-                                                                    asset_id: undefined,
-                                                                    asset_name: e.target.value,
-                                                                });
-                                                                openDropdown(idx, e.target.value);
-                                                            }}
-                                                            onFocus={() =>
-                                                                openDropdown(idx, item.asset_name)
-                                                            }
-                                                            onBlur={scheduleCloseDropdown}
-                                                        />
+                                            <SelectTrigger>
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {REQUEST_TYPES.map((t) => (
+                                                    <SelectItem key={t} value={t}>
+                                                        {t.replace(/_/g, " ")}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div>
+                                        <Label>
+                                            Billing Mode <span className="text-destructive">*</span>
+                                        </Label>
+                                        <Select
+                                            value={billingMode}
+                                            onValueChange={(v) =>
+                                                setBillingMode(v as ServiceRequestBillingMode)
+                                            }
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {BILLING_MODES.map((m) => (
+                                                    <SelectItem key={m} value={m}>
+                                                        {m.replace(/_/g, " ")}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div>
+                                        <Label>Requested Start</Label>
+                                        <Input
+                                            type="datetime-local"
+                                            value={requestedStartAt}
+                                            onChange={(e) => setRequestedStartAt(e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="md:col-span-2">
+                                        <Label>
+                                            Title <span className="text-destructive">*</span>
+                                        </Label>
+                                        <Input
+                                            value={title}
+                                            onChange={(e) => setTitle(e.target.value)}
+                                            placeholder="Fix booth panel skin and repaint edges"
+                                        />
+                                    </div>
+                                    <div className="md:col-span-2">
+                                        <Label>Description</Label>
+                                        <Textarea
+                                            rows={3}
+                                            value={description}
+                                            onChange={(e) => setDescription(e.target.value)}
+                                            placeholder="Operational details and context..."
+                                        />
+                                    </div>
+                                    <div>
+                                        <Label>Requested Due</Label>
+                                        <Input
+                                            type="datetime-local"
+                                            value={requestedDueAt}
+                                            onChange={(e) => setRequestedDueAt(e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="md:col-span-2 space-y-3">
+                                        <div className="flex items-center justify-between">
+                                            <Label>
+                                                Assets / Items{" "}
+                                                <span className="text-destructive">*</span>
+                                            </Label>
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-7 text-xs gap-1"
+                                                onClick={addItem}
+                                                disabled={!companyId}
+                                            >
+                                                <Plus className="h-3 w-3" /> Add Asset
+                                            </Button>
+                                        </div>
+                                        {srItems.map((item, idx) => (
+                                            <div
+                                                key={idx}
+                                                className="rounded-md p-3 space-y-2 bg-muted/50"
+                                            >
+                                                <div className="relative">
+                                                    <div className="flex items-center gap-1 mb-1">
+                                                        <Label className="text-xs text-muted-foreground">
+                                                            {srItems.length > 1
+                                                                ? `Asset ${idx + 1}`
+                                                                : "Asset / Item"}
+                                                        </Label>
                                                         {item.asset_id && (
-                                                            <button
-                                                                type="button"
-                                                                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground/60 hover:text-destructive"
-                                                                onMouseDown={(e) => {
-                                                                    e.preventDefault();
+                                                            <span className="text-xs text-primary font-medium">
+                                                                · linked
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex gap-1">
+                                                        <div className="relative flex-1">
+                                                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/60" />
+                                                            <Input
+                                                                className="pl-8 pr-8 text-sm"
+                                                                placeholder={
+                                                                    companyId
+                                                                        ? "Search existing assets or type name…"
+                                                                        : "Select company first"
+                                                                }
+                                                                disabled={!companyId}
+                                                                value={item.asset_name}
+                                                                onChange={(e) => {
                                                                     updateItem(idx, {
                                                                         asset_id: undefined,
-                                                                        asset_name: "",
+                                                                        asset_name: e.target.value,
                                                                     });
+                                                                    openDropdown(
+                                                                        idx,
+                                                                        e.target.value
+                                                                    );
                                                                 }}
+                                                                onFocus={() =>
+                                                                    openDropdown(
+                                                                        idx,
+                                                                        item.asset_name
+                                                                    )
+                                                                }
+                                                                onBlur={scheduleCloseDropdown}
+                                                            />
+                                                            {item.asset_id && (
+                                                                <button
+                                                                    type="button"
+                                                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground/60 hover:text-destructive"
+                                                                    onMouseDown={(e) => {
+                                                                        e.preventDefault();
+                                                                        updateItem(idx, {
+                                                                            asset_id: undefined,
+                                                                            asset_name: "",
+                                                                        });
+                                                                    }}
+                                                                >
+                                                                    <X className="h-3.5 w-3.5" />
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                        {srItems.length > 1 && (
+                                                            <button
+                                                                type="button"
+                                                                className="p-2 text-destructive hover:bg-destructive/10 rounded"
+                                                                onClick={() => removeItem(idx)}
                                                             >
-                                                                <X className="h-3.5 w-3.5" />
+                                                                <Trash2 className="h-4 w-4" />
                                                             </button>
                                                         )}
                                                     </div>
-                                                    {srItems.length > 1 && (
-                                                        <button
-                                                            type="button"
-                                                            className="p-2 text-destructive hover:bg-destructive/10 rounded"
-                                                            onClick={() => removeItem(idx)}
-                                                        >
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </button>
-                                                    )}
+                                                    {activeItemIdx === idx &&
+                                                        itemSearchTerm.length >= 2 && (
+                                                            <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-md max-h-48 overflow-y-auto">
+                                                                {assetSearching ? (
+                                                                    <p className="p-3 text-xs text-muted-foreground">
+                                                                        Searching…
+                                                                    </p>
+                                                                ) : assetResults.length === 0 ? (
+                                                                    <p className="p-3 text-xs text-muted-foreground">
+                                                                        No assets found — name will
+                                                                        be saved as typed.
+                                                                    </p>
+                                                                ) : (
+                                                                    assetResults.map((asset) => (
+                                                                        <button
+                                                                            key={asset.id}
+                                                                            type="button"
+                                                                            className="w-full text-left px-3 py-2 text-sm hover:bg-accent flex items-center gap-2"
+                                                                            onMouseDown={(e) => {
+                                                                                e.preventDefault();
+                                                                                selectAsset(
+                                                                                    idx,
+                                                                                    asset.id,
+                                                                                    asset.name
+                                                                                );
+                                                                            }}
+                                                                        >
+                                                                            <span className="font-medium flex-1">
+                                                                                {asset.name}
+                                                                            </span>
+                                                                            <span className="text-xs text-muted-foreground">
+                                                                                {asset.qr_code}
+                                                                            </span>
+                                                                        </button>
+                                                                    ))
+                                                                )}
+                                                            </div>
+                                                        )}
                                                 </div>
-                                                {activeItemIdx === idx &&
-                                                    itemSearchTerm.length >= 2 && (
-                                                        <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-md max-h-48 overflow-y-auto">
-                                                            {assetSearching ? (
-                                                                <p className="p-3 text-xs text-muted-foreground">
-                                                                    Searching…
-                                                                </p>
-                                                            ) : assetResults.length === 0 ? (
-                                                                <p className="p-3 text-xs text-muted-foreground">
-                                                                    No assets found — name will be
-                                                                    saved as typed.
-                                                                </p>
-                                                            ) : (
-                                                                assetResults.map((asset) => (
-                                                                    <button
-                                                                        key={asset.id}
-                                                                        type="button"
-                                                                        className="w-full text-left px-3 py-2 text-sm hover:bg-accent flex items-center gap-2"
-                                                                        onMouseDown={(e) => {
-                                                                            e.preventDefault();
-                                                                            selectAsset(
-                                                                                idx,
-                                                                                asset.id,
-                                                                                asset.name
-                                                                            );
-                                                                        }}
-                                                                    >
-                                                                        <span className="font-medium flex-1">
-                                                                            {asset.name}
-                                                                        </span>
-                                                                        <span className="text-xs text-muted-foreground">
-                                                                            {asset.qr_code}
-                                                                        </span>
-                                                                    </button>
-                                                                ))
-                                                            )}
-                                                        </div>
-                                                    )}
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    <div>
+                                                        <Label className="text-xs text-muted-foreground">
+                                                            Quantity
+                                                        </Label>
+                                                        <Input
+                                                            type="number"
+                                                            min="1"
+                                                            className="text-sm"
+                                                            value={item.quantity}
+                                                            onChange={(e) =>
+                                                                updateItem(idx, {
+                                                                    quantity: e.target.value,
+                                                                })
+                                                            }
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <Label className="text-xs text-muted-foreground">
+                                                            Refurb Days
+                                                        </Label>
+                                                        <Input
+                                                            type="number"
+                                                            min="0"
+                                                            className="text-sm"
+                                                            value={item.refurb_days_estimate}
+                                                            onChange={(e) =>
+                                                                updateItem(idx, {
+                                                                    refurb_days_estimate:
+                                                                        e.target.value,
+                                                                })
+                                                            }
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <Input
+                                                    className="text-sm"
+                                                    placeholder="Notes (damage area, paint code…)"
+                                                    value={item.notes}
+                                                    onChange={(e) =>
+                                                        updateItem(idx, { notes: e.target.value })
+                                                    }
+                                                />
                                             </div>
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <div>
-                                                    <Label className="text-xs text-muted-foreground">
-                                                        Quantity
-                                                    </Label>
-                                                    <Input
-                                                        type="number"
-                                                        min="1"
-                                                        className="text-sm"
-                                                        value={item.quantity}
-                                                        onChange={(e) =>
-                                                            updateItem(idx, {
-                                                                quantity: e.target.value,
-                                                            })
-                                                        }
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <Label className="text-xs text-muted-foreground">
-                                                        Refurb Days
-                                                    </Label>
-                                                    <Input
-                                                        type="number"
-                                                        min="0"
-                                                        className="text-sm"
-                                                        value={item.refurb_days_estimate}
-                                                        onChange={(e) =>
-                                                            updateItem(idx, {
-                                                                refurb_days_estimate:
-                                                                    e.target.value,
-                                                            })
-                                                        }
-                                                    />
-                                                </div>
-                                            </div>
-                                            <Input
-                                                className="text-sm"
-                                                placeholder="Notes (damage area, paint code…)"
-                                                value={item.notes}
-                                                onChange={(e) =>
-                                                    updateItem(idx, { notes: e.target.value })
-                                                }
-                                            />
-                                        </div>
-                                    ))}
+                                        ))}
+                                    </div>
                                 </div>
-                            </div>
 
-                            <div className="flex justify-end gap-2">
-                                <Button
-                                    variant="outline"
-                                    onClick={() => setCreateOpen(false)}
-                                    disabled={createServiceRequest.isPending}
-                                >
-                                    Cancel
-                                </Button>
-                                <Button
-                                    onClick={handleCreate}
-                                    disabled={createServiceRequest.isPending}
-                                >
-                                    {createServiceRequest.isPending
-                                        ? "Creating..."
-                                        : "Create Request"}
-                                </Button>
-                            </div>
-                        </DialogContent>
-                    </Dialog>
+                                <div className="flex justify-end gap-2">
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => setCreateOpen(false)}
+                                        disabled={createServiceRequest.isPending}
+                                    >
+                                        Cancel
+                                    </Button>
+                                    <Button
+                                        onClick={handleCreate}
+                                        disabled={createServiceRequest.isPending}
+                                    >
+                                        {createServiceRequest.isPending
+                                            ? "Creating..."
+                                            : "Create Request"}
+                                    </Button>
+                                </div>
+                            </DialogContent>
+                        </Dialog>
+                    ) : null
                 }
             />
 

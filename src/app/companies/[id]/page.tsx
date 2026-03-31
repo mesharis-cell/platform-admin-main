@@ -31,6 +31,9 @@ import { useCompanies, useUpdateCompany } from "@/hooks/use-companies";
 import { useUploadImage } from "@/hooks/use-assets";
 import { usePlatform as usePlatformSettings } from "@/lib/hooks/use-platform";
 import type { Company } from "@/types";
+import { useToken } from "@/lib/auth/use-token";
+import { hasPermission } from "@/lib/auth/permissions";
+import { ADMIN_ACTION_PERMISSIONS } from "@/lib/auth/permission-map";
 
 const FEATURE_FLAGS = [
     {
@@ -92,11 +95,19 @@ export default function CompanyEditPage() {
     const params = useParams();
     const router = useRouter();
     const companyId = params.id as string;
+    const { user } = useToken();
 
     const { data, isLoading } = useCompanies({ limit: "100", page: "1" });
     const { data: platformSettings } = usePlatformSettings();
     const updateMutation = useUpdateCompany();
     const uploadMutation = useUploadImage();
+    const canReadWarehouseOpsRate =
+        hasPermission(user, ADMIN_ACTION_PERMISSIONS.warehouseOpsRatesRead) ||
+        hasPermission(user, ADMIN_ACTION_PERMISSIONS.warehouseOpsRatesUpdate);
+    const canUpdateWarehouseOpsRate = hasPermission(
+        user,
+        ADMIN_ACTION_PERMISSIONS.warehouseOpsRatesUpdate
+    );
 
     const companies = data?.data || [];
     const company = companies.find((c: Company) => c.id === companyId) || null;
@@ -231,6 +242,11 @@ export default function CompanyEditPage() {
 
             const { domain: _domain, ...updatePayload } = {
                 ...formData,
+                ...(canUpdateWarehouseOpsRate
+                    ? {}
+                    : {
+                          warehouse_ops_rate: undefined,
+                      }),
                 settings: {
                     ...formData.settings,
                     branding: {
@@ -413,31 +429,37 @@ export default function CompanyEditPage() {
                                     </span>
                                 </div>
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="warehouse_ops_rate" className="font-mono text-xs">
-                                    WAREHOUSE OPS RATE
-                                </Label>
-                                <Input
-                                    id="warehouse_ops_rate"
-                                    type="number"
-                                    step="0.01"
-                                    min="0"
-                                    value={formData.warehouse_ops_rate ?? ""}
-                                    onChange={(e) =>
-                                        setFormData({
-                                            ...formData,
-                                            warehouse_ops_rate:
-                                                e.target.value === ""
-                                                    ? null
-                                                    : parseFloat(e.target.value),
-                                        })
-                                    }
-                                    className="font-mono"
-                                />
-                                <p className="text-xs text-muted-foreground font-mono">
-                                    Default rate applied to orders (2 decimal places)
-                                </p>
-                            </div>
+                            {canReadWarehouseOpsRate && (
+                                <div className="space-y-2">
+                                    <Label
+                                        htmlFor="warehouse_ops_rate"
+                                        className="font-mono text-xs"
+                                    >
+                                        WAREHOUSE OPS RATE
+                                    </Label>
+                                    <Input
+                                        id="warehouse_ops_rate"
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        value={formData.warehouse_ops_rate ?? ""}
+                                        onChange={(e) =>
+                                            setFormData({
+                                                ...formData,
+                                                warehouse_ops_rate:
+                                                    e.target.value === ""
+                                                        ? null
+                                                        : parseFloat(e.target.value),
+                                            })
+                                        }
+                                        disabled={!canUpdateWarehouseOpsRate}
+                                        className="font-mono"
+                                    />
+                                    <p className="text-xs text-muted-foreground font-mono">
+                                        Default rate applied to orders (2 decimal places)
+                                    </p>
+                                </div>
+                            )}
                             <div className="space-y-2">
                                 <Label htmlFor="minimum_lead_hours" className="font-mono text-xs">
                                     LEAD TIME OVERRIDE (HOURS)

@@ -61,6 +61,13 @@ export default function CompaniesPage() {
     const canCreateCompany = hasPermission(user, ADMIN_ACTION_PERMISSIONS.companiesCreate);
     const canUpdateCompany = hasPermission(user, ADMIN_ACTION_PERMISSIONS.companiesUpdate);
     const canArchiveCompany = hasPermission(user, ADMIN_ACTION_PERMISSIONS.companiesArchive);
+    const canReadWarehouseOpsRate =
+        hasPermission(user, ADMIN_ACTION_PERMISSIONS.warehouseOpsRatesRead) ||
+        hasPermission(user, ADMIN_ACTION_PERMISSIONS.warehouseOpsRatesUpdate);
+    const canUpdateWarehouseOpsRate = hasPermission(
+        user,
+        ADMIN_ACTION_PERMISSIONS.warehouseOpsRatesUpdate
+    );
     const canManageCompanies = canUpdateCompany || canArchiveCompany;
 
     // Create form state
@@ -174,6 +181,11 @@ export default function CompaniesPage() {
 
             const payload = {
                 ...formData,
+                ...(canUpdateWarehouseOpsRate
+                    ? {}
+                    : {
+                          warehouse_ops_rate: undefined,
+                      }),
                 settings: {
                     ...formData.settings,
                     branding: {
@@ -360,35 +372,36 @@ export default function CompaniesPage() {
                             </div>
                         </div>
 
-                        {/* Warehouse Ops Rate */}
-                        <div className="space-y-2">
-                            <Label
-                                htmlFor="warehouse_ops_rate"
-                                className="font-mono text-xs flex items-center gap-2"
-                            >
-                                WAREHOUSE OPS RATE
-                            </Label>
-                            <Input
-                                id="warehouse_ops_rate"
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                value={formData.warehouse_ops_rate ?? ""}
-                                onChange={(e) =>
-                                    setFormData({
-                                        ...formData,
-                                        warehouse_ops_rate:
-                                            e.target.value === ""
-                                                ? null
-                                                : parseFloat(e.target.value),
-                                    })
-                                }
-                                className="font-mono"
-                            />
-                            <p className="text-xs text-muted-foreground font-mono">
-                                Default rate applied to orders (2 decimal places)
-                            </p>
-                        </div>
+                        {canUpdateWarehouseOpsRate && (
+                            <div className="space-y-2">
+                                <Label
+                                    htmlFor="warehouse_ops_rate"
+                                    className="font-mono text-xs flex items-center gap-2"
+                                >
+                                    WAREHOUSE OPS RATE
+                                </Label>
+                                <Input
+                                    id="warehouse_ops_rate"
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={formData.warehouse_ops_rate ?? ""}
+                                    onChange={(e) =>
+                                        setFormData({
+                                            ...formData,
+                                            warehouse_ops_rate:
+                                                e.target.value === ""
+                                                    ? null
+                                                    : parseFloat(e.target.value),
+                                        })
+                                    }
+                                    className="font-mono"
+                                />
+                                <p className="text-xs text-muted-foreground font-mono">
+                                    Default rate applied to orders (2 decimal places)
+                                </p>
+                            </div>
+                        )}
 
                         {/* Contact Information */}
                         <div className="grid grid-cols-2 gap-4">
@@ -637,7 +650,9 @@ export default function CompaniesPage() {
                     "COMPANY",
                     "PRIMARY DOMAIN",
                     { label: "PLATFORM MARGIN PERCENT", className: "text-right" },
-                    { label: "WAREHOUSE OPS RATE", className: "text-right" },
+                    ...(canReadWarehouseOpsRate
+                        ? ([{ label: "WAREHOUSE OPS RATE", className: "text-right" }] as const)
+                        : []),
                     { label: "VAT OVERRIDE", className: "text-right" },
                     "CONTACT",
                     "STATUS",
@@ -695,11 +710,13 @@ export default function CompaniesPage() {
                                 {parseFloat(String(company.platform_margin_percent)).toFixed(2)}%
                             </span>
                         </TableCell>
-                        <TableCell className="text-center">
-                            <span className="font-mono font-bold text-primary">
-                                {parseFloat(String(company.warehouse_ops_rate)).toFixed(2)}
-                            </span>
-                        </TableCell>
+                        {canReadWarehouseOpsRate && (
+                            <TableCell className="text-center">
+                                <span className="font-mono font-bold text-primary">
+                                    {parseFloat(String(company.warehouse_ops_rate)).toFixed(2)}
+                                </span>
+                            </TableCell>
+                        )}
                         <TableCell className="text-center">
                             <span className="font-mono font-bold text-primary">
                                 {company.vat_percent_override !== null &&

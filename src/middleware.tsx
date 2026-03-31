@@ -33,11 +33,11 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL("/", request.url));
     }
 
-    if (
-        pathname.startsWith("/orders/pricing-review") ||
-        pathname === "/scanning" ||
-        pathname.startsWith("/scanning/")
-    ) {
+    if (pathname.startsWith("/orders/pricing-review")) {
+        return NextResponse.redirect(new URL("/orders/pending-approval", request.url));
+    }
+
+    if (pathname === "/scanning" || pathname.startsWith("/scanning/")) {
         return NextResponse.redirect(new URL("/orders", request.url));
     }
     return NextResponse.next();

@@ -54,6 +54,11 @@ export function DataTableSearch({
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
                 className="pl-10 font-mono text-sm"
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="none"
+                spellCheck={false}
+                name="table-search"
             />
         </div>
     );

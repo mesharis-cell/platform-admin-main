@@ -13,6 +13,9 @@
 import { useState } from "react";
 import { useInboundRequests } from "@/hooks/use-inbound-requests";
 import { CreateInboundRequestDialog } from "@/components/assets/create-inbound-request-dialog";
+import { ADMIN_ACTION_PERMISSIONS } from "@/lib/auth/permission-map";
+import { hasPermission } from "@/lib/auth/permissions";
+import { useToken } from "@/lib/auth/use-token";
 import { Plus, Search, Package, PackagePlus, Loader2 } from "lucide-react";
 import { AdminHeader } from "@/components/admin-header";
 import { Button } from "@/components/ui/button";
@@ -41,9 +44,14 @@ const STATUS_COLORS: Record<InboundRequestStatus, string> = {
 };
 
 export default function AssetsInboundPage() {
+    const { user } = useToken();
     const [search, setSearch] = useState("");
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const { data, isLoading, refetch } = useInboundRequests({ limit: "100", search_term: search });
+    const canCreateInboundRequest = hasPermission(
+        user,
+        ADMIN_ACTION_PERMISSIONS.inboundRequestsCreate
+    );
 
     return (
         <div className="min-h-screen bg-background">
@@ -53,10 +61,16 @@ export default function AssetsInboundPage() {
                 description="Stock Intake · Receiving · Processing"
                 stats={data?.meta ? { label: "TOTAL REQUESTS", value: data.meta.total } : undefined}
                 actions={
-                    <Button size="lg" className="font-mono" onClick={() => setIsCreateOpen(true)}>
-                        <Plus className="w-4 h-4 mr-2" />
-                        Create Request
-                    </Button>
+                    canCreateInboundRequest ? (
+                        <Button
+                            size="lg"
+                            className="font-mono"
+                            onClick={() => setIsCreateOpen(true)}
+                        >
+                            <Plus className="w-4 h-4 mr-2" />
+                            Create Request
+                        </Button>
+                    ) : null
                 }
             />
 
@@ -110,7 +124,7 @@ export default function AssetsInboundPage() {
                                                 ? "No requests match your search"
                                                 : "No new stock requests yet"}
                                         </p>
-                                        {!search && (
+                                        {!search && canCreateInboundRequest && (
                                             <Button
                                                 variant="outline"
                                                 size="sm"
@@ -161,14 +175,16 @@ export default function AssetsInboundPage() {
                 </div>
 
                 {/* Create dialog */}
-                <CreateInboundRequestDialog
-                    open={isCreateOpen}
-                    onOpenChange={setIsCreateOpen}
-                    onSuccess={() => {
-                        setIsCreateOpen(false);
-                        refetch();
-                    }}
-                />
+                {canCreateInboundRequest ? (
+                    <CreateInboundRequestDialog
+                        open={isCreateOpen}
+                        onOpenChange={setIsCreateOpen}
+                        onSuccess={() => {
+                            setIsCreateOpen(false);
+                            refetch();
+                        }}
+                    />
+                ) : null}
             </div>
         </div>
     );

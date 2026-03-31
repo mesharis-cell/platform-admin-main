@@ -24,6 +24,11 @@ async function fetchUsers(params?: Record<string, string>): Promise<{
     return response.data;
 }
 
+async function fetchUser(userId: string): Promise<{ success: boolean; data: User }> {
+    const response = await apiClient.get(`/operations/v1/user/${userId}`);
+    return response.data;
+}
+
 // Create user
 async function createUser(data: CreateUserRequest): Promise<User> {
     const response = await apiClient.post("/operations/v1/user", data);
@@ -66,6 +71,14 @@ export function useUsers(params?: Record<string, string>) {
     });
 }
 
+export function useUser(userId: string) {
+    return useQuery({
+        queryKey: userKeys.detail(userId),
+        queryFn: () => fetchUser(userId),
+        enabled: Boolean(userId),
+    });
+}
+
 export function useCreateUser() {
     const queryClient = useQueryClient();
 
@@ -83,8 +96,9 @@ export function useUpdateUser() {
     return useMutation({
         mutationFn: ({ userId, data }: { userId: string; data: UpdateUserRequest }) =>
             updateUser(userId, data),
-        onSuccess: () => {
+        onSuccess: (_, variables) => {
             queryClient.invalidateQueries({ queryKey: userKeys.lists() });
+            queryClient.invalidateQueries({ queryKey: userKeys.detail(variables.userId) });
         },
     });
 }
@@ -95,8 +109,9 @@ export function useSetUserPassword() {
     return useMutation({
         mutationFn: ({ userId, newPassword }: { userId: string; newPassword: string }) =>
             setUserPassword(userId, newPassword),
-        onSuccess: () => {
+        onSuccess: (_, variables) => {
             queryClient.invalidateQueries({ queryKey: userKeys.lists() });
+            queryClient.invalidateQueries({ queryKey: userKeys.detail(variables.userId) });
         },
     });
 }
@@ -107,8 +122,9 @@ export function useGenerateUserPassword() {
     return useMutation({
         mutationFn: ({ userId, length }: { userId: string; length?: number }) =>
             generateUserPassword(userId, length),
-        onSuccess: () => {
+        onSuccess: (_, variables) => {
             queryClient.invalidateQueries({ queryKey: userKeys.lists() });
+            queryClient.invalidateQueries({ queryKey: userKeys.detail(variables.userId) });
         },
     });
 }
