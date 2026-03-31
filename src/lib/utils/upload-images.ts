@@ -12,8 +12,8 @@ export interface UploadImagesInput {
     profile?: UploadProfile;
 }
 
-const PHOTO_MAX_DIMENSION = 1920;
-const PHOTO_JPEG_QUALITY = 0.85;
+const PHOTO_MAX_DIMENSION = 1440;
+const PHOTO_JPEG_QUALITY = 0.75;
 const LOGO_MAX_DIMENSION = 2048;
 const LOGO_MAX_FILE_BYTES = 1_500_000;
 
