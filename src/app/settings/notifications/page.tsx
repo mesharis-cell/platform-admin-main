@@ -53,6 +53,8 @@ import {
     useResetEventRules,
 } from "@/lib/hooks/use-notification-rules";
 import { useCompanies } from "@/hooks/use-companies";
+import { useToken } from "@/lib/auth/use-token";
+import { hasPermission } from "@/lib/auth/permissions";
 import type {
     NotificationCondition,
     NotificationRule,
@@ -147,9 +149,11 @@ function RecipientLabel({ rule }: { rule: NotificationRule }) {
 function ConditionBuilder({
     conditions,
     onChange,
+    disabled = false,
 }: {
     conditions: NotificationCondition[];
     onChange: (conditions: NotificationCondition[]) => void;
+    disabled?: boolean;
 }) {
     const setCondition = (index: number, patch: Partial<NotificationCondition>) => {
         onChange(
@@ -168,6 +172,7 @@ function ConditionBuilder({
                 >
                     <Select
                         value={condition.field}
+                        disabled={disabled}
                         onValueChange={(value) =>
                             setCondition(index, { field: value as NotificationCondition["field"] })
                         }
@@ -189,6 +194,7 @@ function ConditionBuilder({
                     </Select>
                     <Select
                         value={condition.operator}
+                        disabled={disabled}
                         onValueChange={(value) =>
                             setCondition(index, {
                                 operator: value as NotificationCondition["operator"],
@@ -226,6 +232,7 @@ function ConditionBuilder({
                         placeholder={
                             condition.operator === "in" ? "comma,separated,values" : "value"
                         }
+                        disabled={disabled}
                         className="h-8 text-xs"
                     />
                     <Button
@@ -233,6 +240,7 @@ function ConditionBuilder({
                         variant="ghost"
                         size="sm"
                         className="h-8 w-8 p-0"
+                        disabled={disabled}
                         onClick={() =>
                             onChange(conditions.filter((_, currentIndex) => currentIndex !== index))
                         }
@@ -251,6 +259,7 @@ function AddRuleDialog({
     availableTemplates,
     existingRules,
     scopeCompanyId,
+    canManage,
     open,
     onClose,
 }: {
@@ -258,6 +267,7 @@ function AddRuleDialog({
     availableTemplates: TemplateMeta[];
     existingRules: NotificationRule[];
     scopeCompanyId: string | null;
+    canManage: boolean;
     open: boolean;
     onClose: () => void;
 }) {
@@ -287,6 +297,7 @@ function AddRuleDialog({
     };
 
     const handleSubmit = async () => {
+        if (!canManage) return;
         if (!validateConditions(conditions)) {
             toast.error("Every notification condition must have a value");
             return;
@@ -370,7 +381,7 @@ function AddRuleDialog({
                                     <input
                                         type="checkbox"
                                         checked={isChecked}
-                                        disabled={already}
+                                        disabled={!canManage || already}
                                         onChange={() => !already && toggle(t.key)}
                                         className="h-4 w-4 rounded accent-primary shrink-0"
                                     />
@@ -401,12 +412,17 @@ function AddRuleDialog({
                         <div className="grid grid-cols-2 gap-2">
                             <Input
                                 value={customEmail}
+                                disabled={!canManage}
                                 onChange={(e) => setCustomEmail(e.target.value)}
                                 placeholder="ops@example.com"
                                 type="email"
                                 className="text-xs h-8"
                             />
-                            <Select value={customTemplate} onValueChange={setCustomTemplate}>
+                            <Select
+                                value={customTemplate}
+                                onValueChange={setCustomTemplate}
+                                disabled={!canManage}
+                            >
                                 <SelectTrigger className="h-8 text-xs">
                                     <SelectValue placeholder="Pick template…" />
                                 </SelectTrigger>
@@ -437,6 +453,7 @@ function AddRuleDialog({
                                 variant="outline"
                                 size="sm"
                                 className="h-8 text-xs"
+                                disabled={!canManage}
                                 onClick={() => setShowConditions((prev) => !prev)}
                             >
                                 {showConditions ? "Hide" : "Show"}
@@ -447,12 +464,14 @@ function AddRuleDialog({
                                 <ConditionBuilder
                                     conditions={conditions}
                                     onChange={setConditions}
+                                    disabled={!canManage}
                                 />
                                 <Button
                                     type="button"
                                     variant="ghost"
                                     size="sm"
                                     className="h-8 text-xs"
+                                    disabled={!canManage}
                                     onClick={() =>
                                         setConditions((prev) => [
                                             ...prev,
@@ -484,7 +503,7 @@ function AddRuleDialog({
                     </Button>
                     <Button
                         onClick={handleSubmit}
-                        disabled={totalToAdd === 0 || createRule.isPending}
+                        disabled={!canManage || totalToAdd === 0 || createRule.isPending}
                     >
                         {createRule.isPending
                             ? "Adding…"
@@ -502,11 +521,13 @@ function AddRuleDialog({
 function ResetConfirmDialog({
     eventType,
     scopeCompanyId,
+    canManage,
     open,
     onClose,
 }: {
     eventType: string;
     scopeCompanyId: string | null;
+    canManage: boolean;
     open: boolean;
     onClose: () => void;
 }) {
@@ -533,13 +554,14 @@ function ResetConfirmDialog({
                         variant="destructive"
                         size="sm"
                         onClick={async () => {
+                            if (!canManage) return;
                             await resetRules.mutateAsync({
                                 event_type: eventType,
                                 company_id: scopeCompanyId,
                             });
                             onClose();
                         }}
-                        disabled={resetRules.isPending}
+                        disabled={!canManage || resetRules.isPending}
                     >
                         {resetRules.isPending ? "Deleting…" : "Delete all rules"}
                     </Button>
@@ -552,9 +574,11 @@ function ResetConfirmDialog({
 function EditRuleDialog({
     rule,
     availableTemplates,
+    canManage,
 }: {
     rule: NotificationRule;
     availableTemplates: TemplateMeta[];
+    canManage: boolean;
 }) {
     const updateRule = useUpdateNotificationRule();
     const [open, setOpen] = useState(false);
@@ -569,6 +593,7 @@ function EditRuleDialog({
     };
 
     const handleSave = async () => {
+        if (!canManage) return;
         if (!validateConditions(conditions)) {
             toast.error("Every notification condition must have a value");
             return;
@@ -608,7 +633,7 @@ function EditRuleDialog({
                         <div className="space-y-2">
                             <Label>Template</Label>
                             <Select value={templateKey} onValueChange={setTemplateKey}>
-                                <SelectTrigger className="h-9 text-xs">
+                                <SelectTrigger className="h-9 text-xs" disabled={!canManage}>
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -629,6 +654,7 @@ function EditRuleDialog({
                             <Input
                                 type="number"
                                 value={sortOrder}
+                                disabled={!canManage}
                                 onChange={(event) => setSortOrder(event.target.value)}
                                 className="h-9 text-xs"
                             />
@@ -649,6 +675,7 @@ function EditRuleDialog({
                                 variant="ghost"
                                 size="sm"
                                 className="h-8 text-xs"
+                                disabled={!canManage}
                                 onClick={() =>
                                     setConditions((prev) => [
                                         ...prev,
@@ -664,14 +691,18 @@ function EditRuleDialog({
                                 Add condition
                             </Button>
                         </div>
-                        <ConditionBuilder conditions={conditions} onChange={setConditions} />
+                        <ConditionBuilder
+                            conditions={conditions}
+                            onChange={setConditions}
+                            disabled={!canManage}
+                        />
                     </div>
                 </div>
                 <DialogFooter>
                     <Button variant="outline" onClick={() => setOpen(false)}>
                         Cancel
                     </Button>
-                    <Button onClick={handleSave} disabled={updateRule.isPending}>
+                    <Button onClick={handleSave} disabled={!canManage || updateRule.isPending}>
                         {updateRule.isPending ? "Saving…" : "Save changes"}
                     </Button>
                 </DialogFooter>
@@ -685,10 +716,12 @@ function RuleRow({
     rule,
     templateLabelMap,
     availableTemplates,
+    canManage,
 }: {
     rule: NotificationRule;
     templateLabelMap: Record<string, string>;
     availableTemplates: TemplateMeta[];
+    canManage: boolean;
 }) {
     const updateRule = useUpdateNotificationRule();
     const deleteRule = useDeleteNotificationRule();
@@ -732,7 +765,7 @@ function RuleRow({
                     onCheckedChange={() =>
                         updateRule.mutate({ id: rule.id, is_enabled: !rule.is_enabled })
                     }
-                    disabled={updateRule.isPending}
+                    disabled={!canManage || updateRule.isPending}
                 />
                 <div className="min-w-0">
                     <RecipientLabel rule={rule} />
@@ -752,15 +785,23 @@ function RuleRow({
                 </div>
             </div>
             <div className="flex items-center gap-1 shrink-0">
-                <EditRuleDialog rule={rule} availableTemplates={availableTemplates} />
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-muted-foreground hover:text-destructive h-7 w-7 p-0"
-                    onClick={() => setConfirmDelete(true)}
-                >
-                    <Trash2 className="h-3.5 w-3.5" />
-                </Button>
+                {canManage ? (
+                    <EditRuleDialog
+                        rule={rule}
+                        availableTemplates={availableTemplates}
+                        canManage={canManage}
+                    />
+                ) : null}
+                {canManage ? (
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-muted-foreground hover:text-destructive h-7 w-7 p-0"
+                        onClick={() => setConfirmDelete(true)}
+                    >
+                        <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                ) : null}
             </div>
         </div>
     );
@@ -768,6 +809,7 @@ function RuleRow({
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function NotificationSettingsPage() {
+    const { user } = useToken();
     const { data: meta } = useNotificationMeta();
     const { event_groups, templates_by_event } = meta ?? EMPTY_META;
     const { data: companiesData } = useCompanies({ limit: "200" });
@@ -795,6 +837,7 @@ export default function NotificationSettingsPage() {
         enabled: scopeReady,
     });
     const updateRule = useUpdateNotificationRule();
+    const canManageNotificationRules = hasPermission(user, "notification_rules:update");
 
     const ruleCountByEvent = useMemo(
         () =>
@@ -837,11 +880,13 @@ export default function NotificationSettingsPage() {
     const totalCount = (rules ?? []).length;
     const allEnabled = totalCount > 0 && enabledCount === totalCount;
 
-    const handleMuteToggle = () =>
+    const handleMuteToggle = () => {
+        if (!canManageNotificationRules) return;
         (rules ?? []).forEach((r) => {
             if (r.is_enabled === allEnabled)
                 updateRule.mutate({ id: r.id, is_enabled: !allEnabled });
         });
+    };
 
     return (
         <TooltipProvider>
@@ -1008,60 +1053,68 @@ export default function NotificationSettingsPage() {
                                                 <span className="text-xs text-muted-foreground whitespace-nowrap">
                                                     {enabledCount}/{totalCount} active
                                                 </span>
-                                                <Tooltip>
-                                                    <TooltipTrigger asChild>
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            className="h-8 w-8 p-0"
-                                                            onClick={handleMuteToggle}
-                                                            disabled={updateRule.isPending}
-                                                        >
-                                                            {allEnabled ? (
-                                                                <VolumeX className="h-3.5 w-3.5" />
-                                                            ) : (
-                                                                <Volume2 className="h-3.5 w-3.5" />
-                                                            )}
-                                                        </Button>
-                                                    </TooltipTrigger>
-                                                    <TooltipContent
-                                                        side="bottom"
-                                                        className="text-xs"
-                                                    >
-                                                        {allEnabled
-                                                            ? "Mute all (disable without deleting)"
-                                                            : "Unmute all"}
-                                                    </TooltipContent>
-                                                </Tooltip>
-                                                <Tooltip>
-                                                    <TooltipTrigger asChild>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
-                                                            onClick={() => setResetDialogOpen(true)}
-                                                        >
-                                                            <RotateCcw className="h-3.5 w-3.5" />
-                                                        </Button>
-                                                    </TooltipTrigger>
-                                                    <TooltipContent
-                                                        side="bottom"
-                                                        className="text-xs"
-                                                    >
-                                                        Delete all rules for this event
-                                                    </TooltipContent>
-                                                </Tooltip>
+                                                {canManageNotificationRules ? (
+                                                    <>
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <Button
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    className="h-8 w-8 p-0"
+                                                                    onClick={handleMuteToggle}
+                                                                    disabled={updateRule.isPending}
+                                                                >
+                                                                    {allEnabled ? (
+                                                                        <VolumeX className="h-3.5 w-3.5" />
+                                                                    ) : (
+                                                                        <Volume2 className="h-3.5 w-3.5" />
+                                                                    )}
+                                                                </Button>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent
+                                                                side="bottom"
+                                                                className="text-xs"
+                                                            >
+                                                                {allEnabled
+                                                                    ? "Mute all (disable without deleting)"
+                                                                    : "Unmute all"}
+                                                            </TooltipContent>
+                                                        </Tooltip>
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+                                                                    onClick={() =>
+                                                                        setResetDialogOpen(true)
+                                                                    }
+                                                                >
+                                                                    <RotateCcw className="h-3.5 w-3.5" />
+                                                                </Button>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent
+                                                                side="bottom"
+                                                                className="text-xs"
+                                                            >
+                                                                Delete all rules for this event
+                                                            </TooltipContent>
+                                                        </Tooltip>
+                                                    </>
+                                                ) : null}
                                             </>
                                         )}
-                                        <Button
-                                            size="sm"
-                                            className="gap-1"
-                                            onClick={() => setAddDialogOpen(true)}
-                                            disabled={!scopeReady}
-                                        >
-                                            <Plus className="h-3.5 w-3.5" />
-                                            Add rules
-                                        </Button>
+                                        {canManageNotificationRules ? (
+                                            <Button
+                                                size="sm"
+                                                className="gap-1"
+                                                onClick={() => setAddDialogOpen(true)}
+                                                disabled={!scopeReady}
+                                            >
+                                                <Plus className="h-3.5 w-3.5" />
+                                                Add rules
+                                            </Button>
+                                        ) : null}
                                     </div>
                                 </div>
                             </CardHeader>
@@ -1086,15 +1139,17 @@ export default function NotificationSettingsPage() {
                                         <p className="text-xs text-muted-foreground/60 mt-1 mb-4">
                                             No emails will be sent when this event fires.
                                         </p>
-                                        <Button
-                                            size="sm"
-                                            variant="outline"
-                                            onClick={() => setAddDialogOpen(true)}
-                                            className="gap-1"
-                                        >
-                                            <Plus className="h-3.5 w-3.5" />
-                                            Add rules
-                                        </Button>
+                                        {canManageNotificationRules ? (
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={() => setAddDialogOpen(true)}
+                                                className="gap-1"
+                                            >
+                                                <Plus className="h-3.5 w-3.5" />
+                                                Add rules
+                                            </Button>
+                                        ) : null}
                                     </div>
                                 ) : (
                                     <div className="space-y-2">
@@ -1106,6 +1161,7 @@ export default function NotificationSettingsPage() {
                                                 availableTemplates={
                                                     templates_by_event[rule.event_type] ?? []
                                                 }
+                                                canManage={canManageNotificationRules}
                                             />
                                         ))}
                                     </div>
@@ -1120,12 +1176,14 @@ export default function NotificationSettingsPage() {
                     availableTemplates={availableTemplates}
                     existingRules={rules ?? []}
                     scopeCompanyId={effectiveCompanyScope ?? null}
+                    canManage={canManageNotificationRules}
                     open={addDialogOpen}
                     onClose={() => setAddDialogOpen(false)}
                 />
                 <ResetConfirmDialog
                     eventType={activeEvent}
                     scopeCompanyId={effectiveCompanyScope ?? null}
+                    canManage={canManageNotificationRules}
                     open={resetDialogOpen}
                     onClose={() => setResetDialogOpen(false)}
                 />

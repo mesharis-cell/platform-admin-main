@@ -35,8 +35,11 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { useToken } from "@/lib/auth/use-token";
+import { hasPermission } from "@/lib/auth/permissions";
 
 export default function Cities() {
+    const { user } = useToken();
     const [searchQuery, setSearchQuery] = useState("");
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [editingCity, setEditingCity] = useState<City | null>(null);
@@ -66,6 +69,9 @@ export default function Cities() {
     // Fetch countries for dropdown
     const { data: countriesData } = useCountries({ limit: "100" });
     const countries = countriesData?.data || [];
+    const canCreateCity = hasPermission(user, "cities:create");
+    const canUpdateCity = hasPermission(user, "cities:update");
+    const canDeleteCity = hasPermission(user, "cities:delete");
 
     const resetForm = () => {
         setEditingCity(null);
@@ -74,6 +80,7 @@ export default function Cities() {
     };
 
     const openEditDialog = (city: City) => {
+        if (!canUpdateCity) return;
         setEditingCity(city);
         setFormData({ name: city.name, country_id: city.country_id });
         setIsCreateOpen(true);
@@ -81,6 +88,7 @@ export default function Cities() {
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
+        if (!(editingCity ? canUpdateCity : canCreateCity)) return;
         if (!formData.name || !formData.country_id) {
             toast.error("Please fill in all required fields");
             return;
@@ -112,6 +120,7 @@ export default function Cities() {
     };
 
     const handleDeleteRestore = async () => {
+        if (!canDeleteCity) return;
         try {
             if (confirmDelete) {
                 const res = await deleteCity.mutateAsync({
@@ -146,113 +155,115 @@ export default function Cities() {
                 description="Cities"
                 stats={{ label: "REGISTERED CITIES", value: cities.length }}
                 actions={
-                    <Dialog
-                        open={isCreateOpen}
-                        onOpenChange={(open) => {
-                            setIsCreateOpen(open);
-                            if (!open) {
-                                setEditingCity(null);
-                                resetForm();
-                            }
-                        }}
-                    >
-                        <DialogTrigger asChild>
-                            <Button className="gap-2 font-mono">
-                                <Plus className="h-4 w-4" />
-                                NEW CITY
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-2xl">
-                            <DialogHeader>
-                                <DialogTitle className="font-mono">
-                                    {editingCity ? "EDIT CITY" : "CREATE NEW CITY"}
-                                </DialogTitle>
-                                <DialogDescription className="font-mono text-xs">
-                                    {editingCity
-                                        ? "Update city details and location"
-                                        : "Add new city for asset localization"}
-                                </DialogDescription>
-                            </DialogHeader>
-                            <form onSubmit={handleSubmit} className="space-y-6">
-                                <div className="space-y-2">
-                                    <Label htmlFor="cityName" className="font-mono text-xs">
-                                        CITY NAME *
-                                    </Label>
-                                    <Input
-                                        id="cityName"
-                                        value={formData.name}
-                                        onChange={(e) =>
-                                            setFormData({
-                                                ...formData,
-                                                name: e.target.value,
-                                            })
-                                        }
-                                        placeholder="e.g., Dubai"
-                                        required
-                                        className="font-mono"
-                                    />
-                                </div>
+                    canCreateCity ? (
+                        <Dialog
+                            open={isCreateOpen}
+                            onOpenChange={(open) => {
+                                setIsCreateOpen(open);
+                                if (!open) {
+                                    setEditingCity(null);
+                                    resetForm();
+                                }
+                            }}
+                        >
+                            <DialogTrigger asChild>
+                                <Button className="gap-2 font-mono">
+                                    <Plus className="h-4 w-4" />
+                                    NEW CITY
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-2xl">
+                                <DialogHeader>
+                                    <DialogTitle className="font-mono">
+                                        {editingCity ? "EDIT CITY" : "CREATE NEW CITY"}
+                                    </DialogTitle>
+                                    <DialogDescription className="font-mono text-xs">
+                                        {editingCity
+                                            ? "Update city details and location"
+                                            : "Add new city for asset localization"}
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <form onSubmit={handleSubmit} className="space-y-6">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="cityName" className="font-mono text-xs">
+                                            CITY NAME *
+                                        </Label>
+                                        <Input
+                                            id="cityName"
+                                            value={formData.name}
+                                            onChange={(e) =>
+                                                setFormData({
+                                                    ...formData,
+                                                    name: e.target.value,
+                                                })
+                                            }
+                                            placeholder="e.g., Dubai"
+                                            required
+                                            className="font-mono"
+                                        />
+                                    </div>
 
-                                <div className="space-y-2">
-                                    <Label htmlFor="countryId" className="font-mono text-xs">
-                                        COUNTRY *
-                                    </Label>
-                                    <Select
-                                        value={formData.country_id}
-                                        onValueChange={(value) =>
-                                            setFormData({
-                                                ...formData,
-                                                country_id: value,
-                                            })
-                                        }
-                                        required
-                                    >
-                                        <SelectTrigger className="font-mono">
-                                            <SelectValue placeholder="Select a country" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {countries.map((country) => (
-                                                <SelectItem
-                                                    key={country.id}
-                                                    value={country.id}
-                                                    className="font-mono"
-                                                >
-                                                    {country.name}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="countryId" className="font-mono text-xs">
+                                            COUNTRY *
+                                        </Label>
+                                        <Select
+                                            value={formData.country_id}
+                                            onValueChange={(value) =>
+                                                setFormData({
+                                                    ...formData,
+                                                    country_id: value,
+                                                })
+                                            }
+                                            required
+                                        >
+                                            <SelectTrigger className="font-mono">
+                                                <SelectValue placeholder="Select a country" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {countries.map((country) => (
+                                                    <SelectItem
+                                                        key={country.id}
+                                                        value={country.id}
+                                                        className="font-mono"
+                                                    >
+                                                        {country.name}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
 
-                                <div className="flex justify-end gap-3 pt-4 border-t border-border">
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        onClick={() => {
-                                            setIsCreateOpen(false);
-                                            setEditingCity(null);
-                                            resetForm();
-                                        }}
-                                        disabled={createCity.isPending || updateCity.isPending}
-                                        className="font-mono"
-                                    >
-                                        CANCEL
-                                    </Button>
-                                    <Button
-                                        type="submit"
-                                        disabled={createCity.isPending || updateCity.isPending}
-                                        className="font-mono"
-                                    >
-                                        {createCity.isPending || updateCity.isPending
-                                            ? "PROCESSING..."
-                                            : editingCity
-                                              ? "UPDATE"
-                                              : "CREATE"}
-                                    </Button>
-                                </div>
-                            </form>
-                        </DialogContent>
-                    </Dialog>
+                                    <div className="flex justify-end gap-3 pt-4 border-t border-border">
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            onClick={() => {
+                                                setIsCreateOpen(false);
+                                                setEditingCity(null);
+                                                resetForm();
+                                            }}
+                                            disabled={createCity.isPending || updateCity.isPending}
+                                            className="font-mono"
+                                        >
+                                            CANCEL
+                                        </Button>
+                                        <Button
+                                            type="submit"
+                                            disabled={createCity.isPending || updateCity.isPending}
+                                            className="font-mono"
+                                        >
+                                            {createCity.isPending || updateCity.isPending
+                                                ? "PROCESSING..."
+                                                : editingCity
+                                                  ? "UPDATE"
+                                                  : "CREATE"}
+                                        </Button>
+                                    </div>
+                                </form>
+                            </DialogContent>
+                        </Dialog>
+                    ) : undefined
                 }
             />
 
@@ -301,14 +312,16 @@ export default function Cities() {
                     <div className="text-center py-12 space-y-3">
                         <MapPin className="h-12 w-12 mx-auto text-muted-foreground opacity-50" />
                         <p className="font-mono text-sm text-muted-foreground">NO CITIES FOUND</p>
-                        <Button
-                            onClick={() => setIsCreateOpen(true)}
-                            variant="outline"
-                            className="font-mono text-xs"
-                        >
-                            <Plus className="h-3.5 w-3.5 mr-2" />
-                            CREATE FIRST CITY
-                        </Button>
+                        {canCreateCity ? (
+                            <Button
+                                onClick={() => setIsCreateOpen(true)}
+                                variant="outline"
+                                className="font-mono text-xs"
+                            >
+                                <Plus className="h-3.5 w-3.5 mr-2" />
+                                CREATE FIRST CITY
+                            </Button>
+                        ) : null}
                     </div>
                 ) : (
                     <div className="border border-border rounded-lg overflow-hidden bg-card">
@@ -357,24 +370,28 @@ export default function Cities() {
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-2">
-                                                <Button
-                                                    size="sm"
-                                                    variant="ghost"
-                                                    onClick={() => openEditDialog(city)}
-                                                    className="font-mono text-xs"
-                                                >
-                                                    <Edit className="h-3 w-3 mr-1" />
-                                                    Edit
-                                                </Button>
-                                                <Button
-                                                    size="sm"
-                                                    variant="ghost"
-                                                    onClick={() => setConfirmDelete(city)}
-                                                    className="font-mono text-xs text-destructive"
-                                                >
-                                                    <Trash2 className="h-3.5 w-3.5 mr-2" />
-                                                    Delete City
-                                                </Button>
+                                                {canUpdateCity ? (
+                                                    <Button
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        onClick={() => openEditDialog(city)}
+                                                        className="font-mono text-xs"
+                                                    >
+                                                        <Edit className="h-3 w-3 mr-1" />
+                                                        Edit
+                                                    </Button>
+                                                ) : null}
+                                                {canDeleteCity ? (
+                                                    <Button
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        onClick={() => setConfirmDelete(city)}
+                                                        className="font-mono text-xs text-destructive"
+                                                    >
+                                                        <Trash2 className="h-3.5 w-3.5 mr-2" />
+                                                        Delete City
+                                                    </Button>
+                                                ) : null}
                                             </div>
                                         </TableCell>
                                     </TableRow>

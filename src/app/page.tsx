@@ -14,6 +14,7 @@ import { jwtDecode, JwtPayload } from "jwt-decode";
 import { LoadingState } from "@/components/loading-state";
 import { usePlatform } from "@/contexts/platform-context";
 import { login } from "@/actions/login";
+import { getFirstAccessibleAdminRoute } from "@/lib/auth/admin-route-registry";
 
 export interface CustomJwtPayload extends JwtPayload {
     role: string;
@@ -25,23 +26,22 @@ export default function HomePage() {
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
-    const { access_token, loading, logout } = useToken();
+    const { access_token, loading, logout, user } = useToken();
     const { platform } = usePlatform();
 
     useEffect(() => {
-        if (access_token) {
+        if (access_token && user) {
             // User is authenticated, redirect based on role
             const role = jwtDecode<CustomJwtPayload>(access_token).role;
 
             if (role === "ADMIN") {
-                // Platform Admin goes to analytics dashboard
-                router.push("/analytics");
+                router.push(getFirstAccessibleAdminRoute(user, platform));
             } else {
                 // User is not an admin, sign out and invalidate token
                 logout();
             }
         }
-    }, [access_token, loading, router]);
+    }, [access_token, loading, logout, platform, router, user]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -55,10 +55,10 @@ export default function HomePage() {
                     description: "Welcome to the fulfillment platform.",
                 });
 
-                const { access_token, refresh_token, ...user } = res.data;
-                localStorage.setItem("user", JSON.stringify(user));
+                const { access_token, refresh_token, ...nextUser } = res.data;
+                localStorage.setItem("user", JSON.stringify(nextUser));
 
-                router.push("/analytics");
+                router.push(getFirstAccessibleAdminRoute(nextUser, platform));
             } else {
                 // User is not an admin, sign out and invalidate token
                 logout();

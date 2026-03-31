@@ -65,25 +65,17 @@ import {
 import { useCompanies } from "@/hooks/use-companies";
 import { apiClient } from "@/lib/api/api-client";
 import { throwApiError } from "@/lib/utils/throw-api-error";
+import { DEFAULT_PLATFORM_FEATURES } from "@/lib/platform-features";
+import { useToken } from "@/lib/auth/use-token";
+import { hasPermission } from "@/lib/auth/permissions";
 
 const BASE = "/operations/v1/platform";
 
 type StrictFeatures = Required<PlatformFeatures>;
-
-const DEFAULT_FEATURES: StrictFeatures = {
-    enable_inbound_requests: true,
-    show_estimate_on_order_creation: true,
-    enable_kadence_invoicing: false,
-    enable_base_operations: true,
-    enable_asset_bulk_upload: false,
-    enable_attachments: true,
-    enable_workflows: true,
-    enable_service_requests: true,
-    enable_event_calendar: true,
-    enable_client_stock_requests: true,
-};
+const DEFAULT_FEATURES: StrictFeatures = DEFAULT_PLATFORM_FEATURES;
 
 export default function PlatformSettingsPage() {
+    const { user } = useToken();
     const qc = useQueryClient();
     const { data: platform, isLoading } = usePlatform();
     const { data: diagnostics, isLoading: diagnosticsLoading } = usePlatformUrlDiagnostics();
@@ -96,6 +88,7 @@ export default function PlatformSettingsPage() {
     const deleteDomain = useDeleteCompanyDomain();
     const { data: companiesData } = useCompanies();
     const companies = companiesData?.data ?? [];
+    const canManagePlatformSettings = hasPermission(user, "platform_settings:update");
 
     const [fromEmail, setFromEmail] = useState("");
     const [supportEmail, setSupportEmail] = useState("");
@@ -197,6 +190,7 @@ export default function PlatformSettingsPage() {
     }, [companyDomains]);
 
     const handleSaveConfig = () => {
+        if (!canManagePlatformSettings) return;
         updateConfig.mutate({
             from_email: fromEmail || undefined,
             support_email: supportEmail || undefined,
@@ -212,6 +206,7 @@ export default function PlatformSettingsPage() {
     };
 
     const handleSaveFeasibility = () => {
+        if (!canManagePlatformSettings) return;
         updateConfig.mutate({
             feasibility: {
                 minimum_lead_hours: minimumLeadHours,
@@ -223,6 +218,7 @@ export default function PlatformSettingsPage() {
     };
 
     const handleSaveFeatures = async () => {
+        if (!canManagePlatformSettings) return;
         setSavingFeatures(true);
         try {
             await apiClient.patch(`${BASE}/features`, features);
@@ -236,6 +232,7 @@ export default function PlatformSettingsPage() {
     };
 
     const openEditDialog = (domain: CompanyDomain) => {
+        if (!canManagePlatformSettings) return;
         setEditDomain(domain);
         setEditFields({
             hostname: domain.hostname,
@@ -247,6 +244,7 @@ export default function PlatformSettingsPage() {
     };
 
     const handleCreateDomain = () => {
+        if (!canManagePlatformSettings) return;
         createDomain.mutate(newDomain, {
             onSuccess: () => {
                 setAddDomainOpen(false);
@@ -264,6 +262,7 @@ export default function PlatformSettingsPage() {
     };
 
     const handleUpdateDomain = () => {
+        if (!canManagePlatformSettings) return;
         if (!editDomain) return;
         updateDomain.mutate(
             { id: editDomain.id, ...editFields },
@@ -277,6 +276,7 @@ export default function PlatformSettingsPage() {
     };
 
     const handleSetPrimary = (domain: CompanyDomain) => {
+        if (!canManagePlatformSettings) return;
         updateDomain.mutate(
             { id: domain.id, is_primary: true, is_active: true },
             {
@@ -288,6 +288,7 @@ export default function PlatformSettingsPage() {
     };
 
     const handleDeleteDomain = () => {
+        if (!canManagePlatformSettings) return;
         if (!deleteDomainId) return;
         deleteDomain.mutate(deleteDomainId, {
             onSuccess: () => {
@@ -337,6 +338,7 @@ export default function PlatformSettingsPage() {
                             <Input
                                 placeholder="notifications@platform.com"
                                 value={fromEmail}
+                                disabled={!canManagePlatformSettings}
                                 onChange={(e) => setFromEmail(e.target.value)}
                                 type="email"
                             />
@@ -346,6 +348,7 @@ export default function PlatformSettingsPage() {
                             <Input
                                 placeholder="support@platform.com"
                                 value={supportEmail}
+                                disabled={!canManagePlatformSettings}
                                 onChange={(e) => setSupportEmail(e.target.value)}
                                 type="email"
                             />
@@ -355,6 +358,7 @@ export default function PlatformSettingsPage() {
                             <Input
                                 placeholder="AED"
                                 value={currency}
+                                disabled={!canManagePlatformSettings}
                                 onChange={(e) =>
                                     setCurrency(e.target.value.toUpperCase().slice(0, 3))
                                 }
@@ -367,6 +371,7 @@ export default function PlatformSettingsPage() {
                             <Input
                                 placeholder="5"
                                 value={vatPercent}
+                                disabled={!canManagePlatformSettings}
                                 onChange={(e) => setVatPercent(e.target.value)}
                                 type="number"
                                 min={0}
@@ -390,6 +395,7 @@ export default function PlatformSettingsPage() {
                             <Input
                                 placeholder="https://cdn.example.com/logo.png"
                                 value={logoUrl}
+                                disabled={!canManagePlatformSettings}
                                 onChange={(e) => setLogoUrl(e.target.value)}
                             />
                         </div>
@@ -399,6 +405,7 @@ export default function PlatformSettingsPage() {
                                 <Input
                                     placeholder="#0F172A"
                                     value={primaryColor}
+                                    disabled={!canManagePlatformSettings}
                                     onChange={(e) => setPrimaryColor(e.target.value)}
                                 />
                             </div>
@@ -407,6 +414,7 @@ export default function PlatformSettingsPage() {
                                 <Input
                                     placeholder="#64748B"
                                     value={secondaryColor}
+                                    disabled={!canManagePlatformSettings}
                                     onChange={(e) => setSecondaryColor(e.target.value)}
                                 />
                             </div>
@@ -414,11 +422,13 @@ export default function PlatformSettingsPage() {
                     </CardContent>
                 </Card>
 
-                <div className="flex justify-end">
-                    <Button onClick={handleSaveConfig} disabled={updateConfig.isPending}>
-                        {updateConfig.isPending ? "Saving..." : "Save Config"}
-                    </Button>
-                </div>
+                {canManagePlatformSettings ? (
+                    <div className="flex justify-end">
+                        <Button onClick={handleSaveConfig} disabled={updateConfig.isPending}>
+                            {updateConfig.isPending ? "Saving..." : "Save Config"}
+                        </Button>
+                    </div>
+                ) : null}
 
                 {/* ── Feasibility & Lead Time ── */}
                 <Card>
@@ -438,6 +448,7 @@ export default function PlatformSettingsPage() {
                                 type="number"
                                 min={0}
                                 value={minimumLeadHours}
+                                disabled={!canManagePlatformSettings}
                                 onChange={(e) =>
                                     setMinimumLeadHours(
                                         Number.isNaN(Number(e.target.value))
@@ -461,6 +472,7 @@ export default function PlatformSettingsPage() {
                             </div>
                             <Switch
                                 checked={excludeWeekends}
+                                disabled={!canManagePlatformSettings}
                                 onCheckedChange={setExcludeWeekends}
                             />
                         </div>
@@ -484,6 +496,7 @@ export default function PlatformSettingsPage() {
                                         >
                                             <Checkbox
                                                 checked={weekendDays.includes(day.value)}
+                                                disabled={!canManagePlatformSettings}
                                                 onCheckedChange={(checked) => {
                                                     setWeekendDays((prev) =>
                                                         checked
@@ -503,6 +516,7 @@ export default function PlatformSettingsPage() {
                             <Label>Timezone</Label>
                             <Select
                                 value={feasibilityTimezone}
+                                disabled={!canManagePlatformSettings}
                                 onValueChange={setFeasibilityTimezone}
                             >
                                 <SelectTrigger className="w-64">
@@ -538,11 +552,13 @@ export default function PlatformSettingsPage() {
                     </CardContent>
                 </Card>
 
-                <div className="flex justify-end">
-                    <Button onClick={handleSaveFeasibility} disabled={updateConfig.isPending}>
-                        {updateConfig.isPending ? "Saving..." : "Save Feasibility"}
-                    </Button>
-                </div>
+                {canManagePlatformSettings ? (
+                    <div className="flex justify-end">
+                        <Button onClick={handleSaveFeasibility} disabled={updateConfig.isPending}>
+                            {updateConfig.isPending ? "Saving..." : "Save Feasibility"}
+                        </Button>
+                    </div>
+                ) : null}
 
                 {/* ── Maintenance Mode ── */}
                 <Card>
@@ -564,6 +580,7 @@ export default function PlatformSettingsPage() {
                             </div>
                             <Switch
                                 checked={maintenanceMode}
+                                disabled={!canManagePlatformSettings}
                                 onCheckedChange={setMaintenanceMode}
                             />
                         </div>
@@ -573,6 +590,7 @@ export default function PlatformSettingsPage() {
                             <Textarea
                                 placeholder="We are currently undergoing scheduled maintenance..."
                                 value={maintenanceMessage}
+                                disabled={!canManagePlatformSettings}
                                 onChange={(e) => setMaintenanceMessage(e.target.value)}
                                 rows={3}
                             />
@@ -583,6 +601,7 @@ export default function PlatformSettingsPage() {
                             <Input
                                 type="datetime-local"
                                 value={maintenanceUntil}
+                                disabled={!canManagePlatformSettings}
                                 onChange={(e) => setMaintenanceUntil(e.target.value)}
                                 className="w-64"
                             />
@@ -683,7 +702,10 @@ export default function PlatformSettingsPage() {
                                 </div>
                                 <Switch
                                     checked={features[item.key]}
-                                    disabled={"comingSoon" in item && item.comingSoon}
+                                    disabled={
+                                        !canManagePlatformSettings ||
+                                        ("comingSoon" in item && item.comingSoon)
+                                    }
                                     onCheckedChange={(checked) =>
                                         setFeatures((prev) => ({ ...prev, [item.key]: checked }))
                                     }
@@ -693,11 +715,13 @@ export default function PlatformSettingsPage() {
                     </CardContent>
                 </Card>
 
-                <div className="flex justify-end">
-                    <Button onClick={handleSaveFeatures} disabled={savingFeatures}>
-                        {savingFeatures ? "Saving..." : "Save Features"}
-                    </Button>
-                </div>
+                {canManagePlatformSettings ? (
+                    <div className="flex justify-end">
+                        <Button onClick={handleSaveFeatures} disabled={savingFeatures}>
+                            {savingFeatures ? "Saving..." : "Save Features"}
+                        </Button>
+                    </div>
+                ) : null}
 
                 <Card>
                     <CardHeader>
@@ -713,25 +737,28 @@ export default function PlatformSettingsPage() {
                             <Input
                                 placeholder="kadence.ae"
                                 value={platformDomain}
+                                disabled={!canManagePlatformSettings}
                                 onChange={(e) => setPlatformDomain(e.target.value)}
                                 className="font-mono"
                             />
-                            <Button
-                                onClick={() =>
-                                    updatePlatformDomain.mutate(platformDomain, {
-                                        onSuccess: () =>
-                                            qc.invalidateQueries({
-                                                queryKey: ["platform-url-diagnostics"],
-                                            }),
-                                    })
-                                }
-                                disabled={
-                                    updatePlatformDomain.isPending ||
-                                    platformDomain === (platform?.domain ?? "")
-                                }
-                            >
-                                {updatePlatformDomain.isPending ? "Saving..." : "Save"}
-                            </Button>
+                            {canManagePlatformSettings ? (
+                                <Button
+                                    onClick={() =>
+                                        updatePlatformDomain.mutate(platformDomain, {
+                                            onSuccess: () =>
+                                                qc.invalidateQueries({
+                                                    queryKey: ["platform-url-diagnostics"],
+                                                }),
+                                        })
+                                    }
+                                    disabled={
+                                        updatePlatformDomain.isPending ||
+                                        platformDomain === (platform?.domain ?? "")
+                                    }
+                                >
+                                    {updatePlatformDomain.isPending ? "Saving..." : "Save"}
+                                </Button>
+                            ) : null}
                         </div>
                     </CardContent>
                 </Card>
@@ -822,9 +849,11 @@ export default function PlatformSettingsPage() {
                                 company.
                             </CardDescription>
                         </div>
-                        <Button size="sm" onClick={() => setAddDomainOpen(true)}>
-                            <Plus className="h-4 w-4 mr-1" /> Add Domain
-                        </Button>
+                        {canManagePlatformSettings ? (
+                            <Button size="sm" onClick={() => setAddDomainOpen(true)}>
+                                <Plus className="h-4 w-4 mr-1" /> Add Domain
+                            </Button>
+                        ) : null}
                     </CardHeader>
                     <CardContent>
                         {domainsLoading ? (
@@ -873,37 +902,47 @@ export default function PlatformSettingsPage() {
                                             </TableCell>
                                             <TableCell>
                                                 <div className="flex items-center gap-2">
-                                                    {!domain.is_primary && domain.is_active && (
+                                                    {canManagePlatformSettings &&
+                                                        !domain.is_primary &&
+                                                        domain.is_active && (
+                                                            <Button
+                                                                size="sm"
+                                                                variant="outline"
+                                                                onClick={() =>
+                                                                    handleSetPrimary(domain)
+                                                                }
+                                                            >
+                                                                Set Primary
+                                                            </Button>
+                                                        )}
+                                                    {canManagePlatformSettings ? (
                                                         <Button
-                                                            size="sm"
-                                                            variant="outline"
-                                                            onClick={() => handleSetPrimary(domain)}
+                                                            size="icon"
+                                                            variant="ghost"
+                                                            onClick={() => openEditDialog(domain)}
                                                         >
-                                                            Set Primary
+                                                            <Pencil className="h-4 w-4" />
                                                         </Button>
-                                                    )}
-                                                    <Button
-                                                        size="icon"
-                                                        variant="ghost"
-                                                        onClick={() => openEditDialog(domain)}
-                                                    >
-                                                        <Pencil className="h-4 w-4" />
-                                                    </Button>
-                                                    <Button
-                                                        size="icon"
-                                                        variant="ghost"
-                                                        className="text-destructive hover:text-destructive"
-                                                        onClick={() => setDeleteDomainId(domain.id)}
-                                                        disabled={
-                                                            (
-                                                                groupedDomains.get(
-                                                                    domain.company_id
-                                                                ) || []
-                                                            ).length <= 1
-                                                        }
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
+                                                    ) : null}
+                                                    {canManagePlatformSettings ? (
+                                                        <Button
+                                                            size="icon"
+                                                            variant="ghost"
+                                                            className="text-destructive hover:text-destructive"
+                                                            onClick={() =>
+                                                                setDeleteDomainId(domain.id)
+                                                            }
+                                                            disabled={
+                                                                (
+                                                                    groupedDomains.get(
+                                                                        domain.company_id
+                                                                    ) || []
+                                                                ).length <= 1
+                                                            }
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    ) : null}
                                                 </div>
                                             </TableCell>
                                         </TableRow>
@@ -924,6 +963,7 @@ export default function PlatformSettingsPage() {
                                 <Label>Company</Label>
                                 <Select
                                     value={newDomain.company_id}
+                                    disabled={!canManagePlatformSettings}
                                     onValueChange={(value) =>
                                         setNewDomain((prev) => ({ ...prev, company_id: value }))
                                     }
@@ -944,6 +984,7 @@ export default function PlatformSettingsPage() {
                                 <Label>Hostname</Label>
                                 <Input
                                     value={newDomain.hostname}
+                                    disabled={!canManagePlatformSettings}
                                     onChange={(e) =>
                                         setNewDomain((prev) => ({
                                             ...prev,
@@ -957,6 +998,7 @@ export default function PlatformSettingsPage() {
                                 <Label>Type</Label>
                                 <Select
                                     value={newDomain.type}
+                                    disabled={!canManagePlatformSettings}
                                     onValueChange={(value: "VANITY" | "CUSTOM") =>
                                         setNewDomain((prev) => ({ ...prev, type: value }))
                                     }
@@ -974,6 +1016,7 @@ export default function PlatformSettingsPage() {
                                 <label className="flex items-center gap-2 text-sm cursor-pointer">
                                     <Switch
                                         checked={newDomain.is_active}
+                                        disabled={!canManagePlatformSettings}
                                         onCheckedChange={(checked) =>
                                             setNewDomain((prev) => ({
                                                 ...prev,
@@ -986,6 +1029,7 @@ export default function PlatformSettingsPage() {
                                 <label className="flex items-center gap-2 text-sm cursor-pointer">
                                     <Switch
                                         checked={newDomain.is_primary}
+                                        disabled={!canManagePlatformSettings}
                                         onCheckedChange={(checked) =>
                                             setNewDomain((prev) => ({
                                                 ...prev,
@@ -1001,16 +1045,18 @@ export default function PlatformSettingsPage() {
                             <Button variant="outline" onClick={() => setAddDomainOpen(false)}>
                                 Cancel
                             </Button>
-                            <Button
-                                onClick={handleCreateDomain}
-                                disabled={
-                                    createDomain.isPending ||
-                                    !newDomain.company_id ||
-                                    !newDomain.hostname
-                                }
-                            >
-                                {createDomain.isPending ? "Adding..." : "Add Domain"}
-                            </Button>
+                            {canManagePlatformSettings ? (
+                                <Button
+                                    onClick={handleCreateDomain}
+                                    disabled={
+                                        createDomain.isPending ||
+                                        !newDomain.company_id ||
+                                        !newDomain.hostname
+                                    }
+                                >
+                                    {createDomain.isPending ? "Adding..." : "Add Domain"}
+                                </Button>
+                            ) : null}
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
@@ -1025,6 +1071,7 @@ export default function PlatformSettingsPage() {
                                 <Label>Hostname</Label>
                                 <Input
                                     value={editFields.hostname}
+                                    disabled={!canManagePlatformSettings}
                                     onChange={(e) =>
                                         setEditFields((prev) => ({
                                             ...prev,
@@ -1037,6 +1084,7 @@ export default function PlatformSettingsPage() {
                                 <Label>Type</Label>
                                 <Select
                                     value={editFields.type}
+                                    disabled={!canManagePlatformSettings}
                                     onValueChange={(value: "VANITY" | "CUSTOM") =>
                                         setEditFields((prev) => ({ ...prev, type: value }))
                                     }
@@ -1054,6 +1102,7 @@ export default function PlatformSettingsPage() {
                                 <label className="flex items-center gap-2 text-sm cursor-pointer">
                                     <Switch
                                         checked={editFields.is_active}
+                                        disabled={!canManagePlatformSettings}
                                         onCheckedChange={(checked) =>
                                             setEditFields((prev) => ({
                                                 ...prev,
@@ -1066,6 +1115,7 @@ export default function PlatformSettingsPage() {
                                 <label className="flex items-center gap-2 text-sm cursor-pointer">
                                     <Switch
                                         checked={editFields.is_primary}
+                                        disabled={!canManagePlatformSettings}
                                         onCheckedChange={(checked) =>
                                             setEditFields((prev) => ({
                                                 ...prev,
@@ -1081,9 +1131,14 @@ export default function PlatformSettingsPage() {
                             <Button variant="outline" onClick={() => setEditDomain(null)}>
                                 Cancel
                             </Button>
-                            <Button onClick={handleUpdateDomain} disabled={updateDomain.isPending}>
-                                {updateDomain.isPending ? "Saving..." : "Save"}
-                            </Button>
+                            {canManagePlatformSettings ? (
+                                <Button
+                                    onClick={handleUpdateDomain}
+                                    disabled={updateDomain.isPending}
+                                >
+                                    {updateDomain.isPending ? "Saving..." : "Save"}
+                                </Button>
+                            ) : null}
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
@@ -1103,13 +1158,15 @@ export default function PlatformSettingsPage() {
                             <Button variant="outline" onClick={() => setDeleteDomainId(null)}>
                                 Cancel
                             </Button>
-                            <Button
-                                variant="destructive"
-                                onClick={handleDeleteDomain}
-                                disabled={deleteDomain.isPending}
-                            >
-                                {deleteDomain.isPending ? "Deleting..." : "Delete"}
-                            </Button>
+                            {canManagePlatformSettings ? (
+                                <Button
+                                    variant="destructive"
+                                    onClick={handleDeleteDomain}
+                                    disabled={deleteDomain.isPending}
+                                >
+                                    {deleteDomain.isPending ? "Deleting..." : "Delete"}
+                                </Button>
+                            ) : null}
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>

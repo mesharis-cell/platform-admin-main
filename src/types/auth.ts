@@ -51,6 +51,15 @@ export type Permission =
     | "brands:read"
     | "brands:update"
     | "brands:delete"
+    // Location Management
+    | "countries:create"
+    | "countries:read"
+    | "countries:update"
+    | "countries:delete"
+    | "cities:create"
+    | "cities:read"
+    | "cities:update"
+    | "cities:delete"
     // Asset Management (Phase 3)
     | "assets:create"
     | "assets:read"
@@ -68,7 +77,66 @@ export type Permission =
     | "collections:delete"
     | "collections:assign_assets"
     | "collections:check_availability"
-    // Pricing Configuration (Phase 5)
+    // Teams & Stock Intake
+    | "teams:create"
+    | "teams:read"
+    | "teams:update"
+    | "teams:delete"
+    | "teams:manage_members"
+    | "inbound_requests:create"
+    | "inbound_requests:read"
+    | "inbound_requests:update"
+    | "service_requests:create"
+    | "service_requests:read"
+    | "service_requests:update"
+    | "line_item_requests:create"
+    | "line_item_requests:read"
+    | "line_item_requests:review"
+    | "workflow_requests:read"
+    | "workflow_requests:update"
+    | "workflow_definitions:read"
+    | "workflow_definitions:update"
+    | "attachment_types:read"
+    | "attachment_types:update"
+    | "notification_rules:read"
+    | "notification_rules:update"
+    | "access_policies:read"
+    | "access_policies:update"
+    | "platform_settings:read"
+    | "platform_settings:update"
+    | "warehouse_ops_rates:read"
+    | "warehouse_ops_rates:update"
+    | "service_types:manage"
+    // Page visibility
+    | "analytics:view_page"
+    | "analytics:view_reports_page"
+    | "orders:view_page"
+    | "orders:view_pending_approval_page"
+    | "service_requests:view_page"
+    | "workflow_requests:view_page"
+    | "line_item_requests:view_page"
+    | "self_bookings:view_page"
+    | "calendar:view_page"
+    | "invoices:view_page"
+    | "assets:view_page"
+    | "collections:view_page"
+    | "inbound_requests:view_page"
+    | "conditions:view_page"
+    | "warehouses:view_page"
+    | "zones:view_page"
+    | "users:view_page"
+    | "companies:view_page"
+    | "brands:view_page"
+    | "teams:view_page"
+    | "platform_settings:view_page"
+    | "notification_rules:view_page"
+    | "attachment_types:view_page"
+    | "workflow_definitions:view_page"
+    | "access_policies:view_page"
+    | "service_types:view_page"
+    | "warehouse_ops_rates:view_page"
+    | "countries:view_page"
+    | "cities:view_page"
     // Pricing & Quoting (Phase 8)
     | "pricing:review"
     | "pricing:adjust"
@@ -145,8 +213,22 @@ export type Permission =
     | "warehouses:*"
     | "zones:*"
     | "brands:*"
+    | "countries:*"
+    | "cities:*"
     | "assets:*"
     | "collections:*"
+    | "teams:*"
+    | "inbound_requests:*"
+    | "service_requests:*"
+    | "line_item_requests:*"
+    | "workflow_requests:*"
+    | "workflow_definitions:*"
+    | "attachment_types:*"
+    | "notification_rules:*"
+    | "access_policies:*"
+    | "platform_settings:*"
+    | "warehouse_ops_rates:*"
+    | "service_types:*"
     | "pricing:*"
     | "quotes:*"
     | "orders:*"
@@ -283,7 +365,40 @@ export const PERMISSION_GROUPS = {
         "collections:delete",
         "collections:assign_assets",
     ],
-    "Pricing Configuration": [],
+    "Location Management": [
+        "countries:create",
+        "countries:read",
+        "countries:update",
+        "countries:delete",
+        "cities:create",
+        "cities:read",
+        "cities:update",
+        "cities:delete",
+    ],
+    Teams: ["teams:create", "teams:read", "teams:update", "teams:delete", "teams:manage_members"],
+    "Inbound Requests": [
+        "inbound_requests:create",
+        "inbound_requests:read",
+        "inbound_requests:update",
+    ],
+    "Service Requests": [
+        "service_requests:create",
+        "service_requests:read",
+        "service_requests:update",
+    ],
+    "Line Item Requests": [
+        "line_item_requests:create",
+        "line_item_requests:read",
+        "line_item_requests:review",
+    ],
+    "Workflow Inbox": ["workflow_requests:read", "workflow_requests:update"],
+    "Workflow Definitions": ["workflow_definitions:read", "workflow_definitions:update"],
+    "Attachment Types": ["attachment_types:read", "attachment_types:update"],
+    "Notification Rules": ["notification_rules:read", "notification_rules:update"],
+    "Access Policies": ["access_policies:read", "access_policies:update"],
+    "Platform Settings": ["platform_settings:read", "platform_settings:update"],
+    "Warehouse Ops Rates": ["warehouse_ops_rates:read", "warehouse_ops_rates:update"],
+    "Service Types": ["service_types:manage"],
     "Pricing & Quoting": [
         "pricing:review",
         "pricing:adjust",
@@ -331,6 +446,37 @@ export const PERMISSION_GROUPS = {
 
 // Role-specific permission groups for ADMIN users
 export const ADMIN_PERMISSION_GROUPS: Record<string, string[]> = {
+    "Admin Pages": [
+        "analytics:view_page",
+        "analytics:view_reports_page",
+        "orders:view_page",
+        "orders:view_pending_approval_page",
+        "service_requests:view_page",
+        "workflow_requests:view_page",
+        "line_item_requests:view_page",
+        "self_bookings:view_page",
+        "calendar:view_page",
+        "invoices:view_page",
+        "assets:view_page",
+        "collections:view_page",
+        "inbound_requests:view_page",
+        "conditions:view_page",
+        "warehouses:view_page",
+        "zones:view_page",
+        "users:view_page",
+        "companies:view_page",
+        "brands:view_page",
+        "teams:view_page",
+        "platform_settings:view_page",
+        "notification_rules:view_page",
+        "attachment_types:view_page",
+        "workflow_definitions:view_page",
+        "access_policies:view_page",
+        "service_types:view_page",
+        "warehouse_ops_rates:view_page",
+        "countries:view_page",
+        "cities:view_page",
+    ],
     Authentication: ["auth:login", "auth:reset_password", "auth:*"],
     "User Management": [
         "users:create",
@@ -387,7 +533,68 @@ export const ADMIN_PERMISSION_GROUPS: Record<string, string[]> = {
         "collections:assign_assets",
         "collections:*",
     ],
-    "Pricing Configuration": [],
+    "Location Management": [
+        "countries:create",
+        "countries:read",
+        "countries:update",
+        "countries:delete",
+        "cities:create",
+        "cities:read",
+        "cities:update",
+        "cities:delete",
+        "countries:*",
+        "cities:*",
+    ],
+    Teams: [
+        "teams:create",
+        "teams:read",
+        "teams:update",
+        "teams:delete",
+        "teams:manage_members",
+        "teams:*",
+    ],
+    "Inbound Requests": [
+        "inbound_requests:create",
+        "inbound_requests:read",
+        "inbound_requests:update",
+        "inbound_requests:*",
+    ],
+    "Service Requests": [
+        "service_requests:create",
+        "service_requests:read",
+        "service_requests:update",
+        "service_requests:*",
+    ],
+    "Line Item Requests": [
+        "line_item_requests:create",
+        "line_item_requests:read",
+        "line_item_requests:review",
+        "line_item_requests:*",
+    ],
+    "Workflow Inbox": ["workflow_requests:read", "workflow_requests:update", "workflow_requests:*"],
+    "Workflow Definitions": [
+        "workflow_definitions:read",
+        "workflow_definitions:update",
+        "workflow_definitions:*",
+    ],
+    "Attachment Types": ["attachment_types:read", "attachment_types:update", "attachment_types:*"],
+    "Notification Rules": [
+        "notification_rules:read",
+        "notification_rules:update",
+        "notification_rules:*",
+    ],
+    "Access Policies": ["access_policies:read", "access_policies:update", "access_policies:*"],
+    "Platform Settings": [
+        "platform_settings:read",
+        "platform_settings:update",
+        "platform_settings:*",
+    ],
+    "Warehouse Ops Rates": [
+        "warehouse_ops_rates:read",
+        "warehouse_ops_rates:update",
+        "warehouse_ops_rates:*",
+    ],
+    "Service Types": ["service_types:manage", "service_types:*"],
     "Pricing Review": [
         "pricing:review",
         "pricing:adjust",
@@ -481,6 +688,7 @@ export const LOGISTICS_PERMISSION_GROUPS: Record<string, string[]> = {
         "conditions:*",
     ],
     "Company Management": ["companies:read", "companies:*"],
+    "Location Management": ["countries:read", "countries:*", "cities:read", "cities:*"],
     "Warehouse Management": ["warehouses:read", "warehouses:*"],
     "Zone Management": ["zones:read", "zones:create", "zones:*"],
     "Brand Management": ["brands:read", "brands:*"],
@@ -501,4 +709,20 @@ export const LOGISTICS_PERMISSION_GROUPS: Record<string, string[]> = {
         "collections:assign_assets",
         "collections:*",
     ],
+    Teams: ["teams:read", "teams:*"],
+    "Inbound Requests": [
+        "inbound_requests:create",
+        "inbound_requests:read",
+        "inbound_requests:update",
+        "inbound_requests:*",
+    ],
+    "Service Requests": ["service_requests:read", "service_requests:update", "service_requests:*"],
+    "Line Item Requests": [
+        "line_item_requests:create",
+        "line_item_requests:read",
+        "line_item_requests:*",
+    ],
+    "Workflow Inbox": ["workflow_requests:read", "workflow_requests:update", "workflow_requests:*"],
+    "Attachment Types": ["attachment_types:read", "attachment_types:*"],
+    "Service Types": ["service_types:manage", "service_types:*"],
 };

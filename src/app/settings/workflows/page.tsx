@@ -32,6 +32,8 @@ import {
     type WorkflowRole,
 } from "@/hooks/use-workflow-requests";
 import { useCompanies } from "@/hooks/use-companies";
+import { useToken } from "@/lib/auth/use-token";
+import { hasPermission } from "@/lib/auth/permissions";
 
 const ENTITY_TYPES: WorkflowEntityType[] = ["ORDER", "INBOUND_REQUEST", "SERVICE_REQUEST"];
 const ROLE_OPTIONS: WorkflowRole[] = ["ADMIN", "LOGISTICS", "CLIENT"];
@@ -78,6 +80,7 @@ const toggleArrayValue = <T extends string>(values: T[], value: T, checked: bool
     checked ? Array.from(new Set([...values, value])) : values.filter((item) => item !== value);
 
 export default function WorkflowSettingsPage() {
+    const { user } = useToken();
     const { data, isLoading } = useWorkflowDefinitions();
     const { data: metaData } = useWorkflowDefinitionMeta();
     const { data: companiesData } = useCompanies({ limit: "200", page: "1" });
@@ -100,6 +103,7 @@ export default function WorkflowSettingsPage() {
     const companies = companiesData?.data || [];
     const workflowFamilies = metaData?.data.workflow_families || [];
     const statusModels = metaData?.data.status_models || [];
+    const canManageWorkflowDefinitions = hasPermission(user, "workflow_definitions:update");
 
     useEffect(() => {
         if (form.workflow_family || workflowFamilies.length === 0) return;
@@ -128,6 +132,7 @@ export default function WorkflowSettingsPage() {
     }, [availableStatusModels, form.status_model_key, selectedFamily]);
 
     const startCreate = () => {
+        if (!canManageWorkflowDefinitions) return;
         setEditingId(null);
         setForm({
             ...emptyForm,
@@ -137,6 +142,7 @@ export default function WorkflowSettingsPage() {
     };
 
     const startEdit = (definition: WorkflowDefinitionRecord) => {
+        if (!canManageWorkflowDefinitions) return;
         setEditingId(definition.id);
         setForm({
             code: definition.code,
@@ -156,6 +162,7 @@ export default function WorkflowSettingsPage() {
     };
 
     const handleSave = async () => {
+        if (!canManageWorkflowDefinitions) return;
         if (!form.code.trim() || !form.label.trim()) {
             toast.error("Code and label are required");
             return;
@@ -198,6 +205,7 @@ export default function WorkflowSettingsPage() {
     };
 
     const handleDelete = async (id: string) => {
+        if (!canManageWorkflowDefinitions) return;
         try {
             await deleteDefinition.mutateAsync(id);
             toast.success("Workflow definition deleted");
@@ -208,6 +216,7 @@ export default function WorkflowSettingsPage() {
     };
 
     const handlePlatformToggle = async (id: string, isActive: boolean) => {
+        if (!canManageWorkflowDefinitions) return;
         try {
             setSavingDefinitionId(id);
             await updateDefinition.mutateAsync({ id, payload: { is_active: isActive } });
@@ -284,6 +293,7 @@ export default function WorkflowSettingsPage() {
         }> = [],
         fallbackIsEnabled: boolean
     ) => {
+        if (!canManageWorkflowDefinitions) return;
         try {
             setSavingDefinitionId(workflowDefinitionId);
             const draft = getCompanyOverrideDraft(
@@ -329,10 +339,12 @@ export default function WorkflowSettingsPage() {
                 description="Create · Configure · Control"
                 stats={{ label: "Definitions", value: definitions.length }}
                 actions={
-                    <Button size="sm" onClick={startCreate}>
-                        <Plus className="mr-1 h-4 w-4" />
-                        New Definition
-                    </Button>
+                    canManageWorkflowDefinitions ? (
+                        <Button size="sm" onClick={startCreate}>
+                            <Plus className="mr-1 h-4 w-4" />
+                            New Definition
+                        </Button>
+                    ) : null
                 }
             />
 
@@ -350,6 +362,7 @@ export default function WorkflowSettingsPage() {
                                     <Label>Code</Label>
                                     <Input
                                         value={form.code}
+                                        disabled={!canManageWorkflowDefinitions}
                                         onChange={(event) =>
                                             setForm((prev) => ({
                                                 ...prev,
@@ -363,6 +376,7 @@ export default function WorkflowSettingsPage() {
                                     <Label>Label</Label>
                                     <Input
                                         value={form.label}
+                                        disabled={!canManageWorkflowDefinitions}
                                         onChange={(event) =>
                                             setForm((prev) => ({
                                                 ...prev,
@@ -378,6 +392,7 @@ export default function WorkflowSettingsPage() {
                                 <Label>Description</Label>
                                 <Textarea
                                     value={form.description}
+                                    disabled={!canManageWorkflowDefinitions}
                                     onChange={(event) =>
                                         setForm((prev) => ({
                                             ...prev,
@@ -393,6 +408,7 @@ export default function WorkflowSettingsPage() {
                                     <Label>Workflow Family</Label>
                                     <Select
                                         value={form.workflow_family}
+                                        disabled={!canManageWorkflowDefinitions}
                                         onValueChange={(value) =>
                                             setForm((prev) => ({
                                                 ...prev,
@@ -416,6 +432,7 @@ export default function WorkflowSettingsPage() {
                                     <Label>Status Model</Label>
                                     <Select
                                         value={form.status_model_key}
+                                        disabled={!canManageWorkflowDefinitions}
                                         onValueChange={(value) =>
                                             setForm((prev) => ({
                                                 ...prev,
@@ -446,6 +463,7 @@ export default function WorkflowSettingsPage() {
                                     <Input
                                         type="number"
                                         value={form.sort_order}
+                                        disabled={!canManageWorkflowDefinitions}
                                         onChange={(event) =>
                                             setForm((prev) => ({
                                                 ...prev,
@@ -459,6 +477,7 @@ export default function WorkflowSettingsPage() {
                                     <Input
                                         type="number"
                                         value={form.sla_hours}
+                                        disabled={!canManageWorkflowDefinitions}
                                         onChange={(event) =>
                                             setForm((prev) => ({
                                                 ...prev,
@@ -482,6 +501,7 @@ export default function WorkflowSettingsPage() {
                                                 checked={form.allowed_entity_types.includes(
                                                     entityType
                                                 )}
+                                                disabled={!canManageWorkflowDefinitions}
                                                 onCheckedChange={(value) =>
                                                     setForm((prev) => ({
                                                         ...prev,
@@ -513,6 +533,7 @@ export default function WorkflowSettingsPage() {
                                                         checked={form.requester_roles.includes(
                                                             role
                                                         )}
+                                                        disabled={!canManageWorkflowDefinitions}
                                                         onCheckedChange={(value) =>
                                                             setForm((prev) => ({
                                                                 ...prev,
@@ -529,6 +550,7 @@ export default function WorkflowSettingsPage() {
                                                 <label className="flex items-center gap-3">
                                                     <Checkbox
                                                         checked={form.viewer_roles.includes(role)}
+                                                        disabled={!canManageWorkflowDefinitions}
                                                         onCheckedChange={(value) =>
                                                             setForm((prev) => ({
                                                                 ...prev,
@@ -545,6 +567,7 @@ export default function WorkflowSettingsPage() {
                                                 <label className="flex items-center gap-3">
                                                     <Checkbox
                                                         checked={form.actor_roles.includes(role)}
+                                                        disabled={!canManageWorkflowDefinitions}
                                                         onCheckedChange={(value) =>
                                                             setForm((prev) => ({
                                                                 ...prev,
@@ -569,6 +592,7 @@ export default function WorkflowSettingsPage() {
                                     Priority Enabled
                                     <Switch
                                         checked={form.priority_enabled}
+                                        disabled={!canManageWorkflowDefinitions}
                                         onCheckedChange={(checked) =>
                                             setForm((prev) => ({
                                                 ...prev,
@@ -581,6 +605,7 @@ export default function WorkflowSettingsPage() {
                                     Blocks Fulfillment By Default
                                     <Switch
                                         checked={form.blocks_fulfillment_default}
+                                        disabled={!canManageWorkflowDefinitions}
                                         onCheckedChange={(checked) =>
                                             setForm((prev) => ({
                                                 ...prev,
@@ -591,12 +616,16 @@ export default function WorkflowSettingsPage() {
                                 </label>
                             </div>
 
-                            <Button
-                                onClick={handleSave}
-                                disabled={createDefinition.isPending || updateDefinition.isPending}
-                            >
-                                {editingId ? "Save Definition" : "Create Definition"}
-                            </Button>
+                            {canManageWorkflowDefinitions ? (
+                                <Button
+                                    onClick={handleSave}
+                                    disabled={
+                                        createDefinition.isPending || updateDefinition.isPending
+                                    }
+                                >
+                                    {editingId ? "Save Definition" : "Create Definition"}
+                                </Button>
+                            ) : null}
                         </CardContent>
                     </Card>
 
@@ -640,22 +669,26 @@ export default function WorkflowSettingsPage() {
                                                     </div>
                                                 </div>
                                                 <div className="flex items-center gap-2">
-                                                    <Button
-                                                        variant="outline"
-                                                        size="sm"
-                                                        onClick={() => startEdit(definition)}
-                                                    >
-                                                        Edit
-                                                    </Button>
-                                                    <Button
-                                                        variant="outline"
-                                                        size="icon"
-                                                        onClick={() =>
-                                                            setConfirmDeleteDef(definition)
-                                                        }
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
+                                                    {canManageWorkflowDefinitions ? (
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={() => startEdit(definition)}
+                                                        >
+                                                            Edit
+                                                        </Button>
+                                                    ) : null}
+                                                    {canManageWorkflowDefinitions ? (
+                                                        <Button
+                                                            variant="outline"
+                                                            size="icon"
+                                                            onClick={() =>
+                                                                setConfirmDeleteDef(definition)
+                                                            }
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    ) : null}
                                                     <div className="flex items-center gap-3 pl-2">
                                                         <Label
                                                             htmlFor={`workflow-active-${definition.id}`}
@@ -666,6 +699,7 @@ export default function WorkflowSettingsPage() {
                                                             id={`workflow-active-${definition.id}`}
                                                             checked={definition.is_active}
                                                             disabled={
+                                                                !canManageWorkflowDefinitions ||
                                                                 savingDefinitionId === definition.id
                                                             }
                                                             onCheckedChange={(checked) =>
@@ -739,8 +773,9 @@ export default function WorkflowSettingsPage() {
                                                                                 draft.is_enabled
                                                                             }
                                                                             disabled={
+                                                                                !canManageWorkflowDefinitions ||
                                                                                 savingDefinitionId ===
-                                                                                definition.id
+                                                                                    definition.id
                                                                             }
                                                                             onCheckedChange={(
                                                                                 value
@@ -777,6 +812,9 @@ export default function WorkflowSettingsPage() {
                                                                             value={
                                                                                 draft.label_override
                                                                             }
+                                                                            disabled={
+                                                                                !canManageWorkflowDefinitions
+                                                                            }
                                                                             placeholder="Optional label override"
                                                                             onChange={(event) =>
                                                                                 setCompanyOverrideDraft(
@@ -799,6 +837,9 @@ export default function WorkflowSettingsPage() {
                                                                             value={
                                                                                 draft.sort_order_override
                                                                             }
+                                                                            disabled={
+                                                                                !canManageWorkflowDefinitions
+                                                                            }
                                                                             placeholder="Sort override"
                                                                             onChange={(event) =>
                                                                                 setCompanyOverrideDraft(
@@ -816,24 +857,26 @@ export default function WorkflowSettingsPage() {
                                                                                 )
                                                                             }
                                                                         />
-                                                                        <Button
-                                                                            variant="outline"
-                                                                            disabled={
-                                                                                savingDefinitionId ===
-                                                                                definition.id
-                                                                            }
-                                                                            onClick={() =>
-                                                                                handleCompanyOverrideSave(
-                                                                                    definition.id,
-                                                                                    company.id,
-                                                                                    definition.company_overrides ||
-                                                                                        [],
-                                                                                    definition.is_active
-                                                                                )
-                                                                            }
-                                                                        >
-                                                                            Save
-                                                                        </Button>
+                                                                        {canManageWorkflowDefinitions ? (
+                                                                            <Button
+                                                                                variant="outline"
+                                                                                disabled={
+                                                                                    savingDefinitionId ===
+                                                                                    definition.id
+                                                                                }
+                                                                                onClick={() =>
+                                                                                    handleCompanyOverrideSave(
+                                                                                        definition.id,
+                                                                                        company.id,
+                                                                                        definition.company_overrides ||
+                                                                                            [],
+                                                                                        definition.is_active
+                                                                                    )
+                                                                                }
+                                                                            >
+                                                                                Save
+                                                                            </Button>
+                                                                        ) : null}
                                                                     </div>
                                                                 </div>
                                                             );

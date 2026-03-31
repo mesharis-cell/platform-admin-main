@@ -33,8 +33,11 @@ import { Label } from "@/components/ui/label";
 import { formatDate } from "date-fns";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useToken } from "@/lib/auth/use-token";
+import { hasPermission } from "@/lib/auth/permissions";
 
 export default function Countries() {
+    const { user } = useToken();
     const [searchQuery, setSearchQuery] = useState("");
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [editingCountry, setEditingCountry] = useState<Country | null>(null);
@@ -58,6 +61,9 @@ export default function Countries() {
     const countries = data?.data || [];
     const { data: citiesData } = useCities({ limit: "500", offset: "0" });
     const cityCountryIds = new Set((citiesData?.data || []).map((city) => city.country_id));
+    const canCreateCountry = hasPermission(user, "countries:create");
+    const canUpdateCountry = hasPermission(user, "countries:update");
+    const canDeleteCountry = hasPermission(user, "countries:delete");
 
     const resetForm = () => {
         setEditingCountry(null);
@@ -66,6 +72,7 @@ export default function Countries() {
     };
 
     const openEditDialog = (country: Country) => {
+        if (!canUpdateCountry) return;
         setEditingCountry(country);
         setFormData({ name: country.name });
         setIsCreateOpen(true);
@@ -73,6 +80,7 @@ export default function Countries() {
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
+        if (!(editingCountry ? canUpdateCountry : canCreateCountry)) return;
         try {
             if (editingCountry) {
                 const res = await updateCountry.mutateAsync({
@@ -99,6 +107,7 @@ export default function Countries() {
     };
 
     const handleDeleteRestore = async () => {
+        if (!canDeleteCountry) return;
         try {
             if (confirmDelete) {
                 const res = await deleteCountry.mutateAsync({
@@ -133,86 +142,88 @@ export default function Countries() {
                 description="Countries"
                 stats={{ label: "REGISTERED COUNTRIES", value: data?.meta.total }}
                 actions={
-                    <Dialog
-                        open={isCreateOpen}
-                        onOpenChange={(open) => {
-                            setIsCreateOpen(open);
-                            if (!open) {
-                                setEditingCountry(null);
-                                resetForm();
-                            }
-                        }}
-                    >
-                        <DialogTrigger asChild>
-                            <Button className="gap-2 font-mono">
-                                <Plus className="h-4 w-4" />
-                                NEW COUNTRY
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-2xl">
-                            <DialogHeader>
-                                <DialogTitle className="font-mono">
-                                    {editingCountry ? "EDIT COUNTRY" : "CREATE NEW COUNTRY"}
-                                </DialogTitle>
-                                <DialogDescription className="font-mono text-xs">
-                                    {editingCountry
-                                        ? "Update country details and identity"
-                                        : "Add new country for asset categorization"}
-                                </DialogDescription>
-                            </DialogHeader>
-                            <form onSubmit={handleSubmit} className="space-y-6">
-                                <div className="space-y-2">
-                                    <Label htmlFor="countryName" className="font-mono text-xs">
-                                        COUNTRY NAME *
-                                    </Label>
-                                    <Input
-                                        id="countryName"
-                                        value={formData.name}
-                                        onChange={(e) =>
-                                            setFormData({
-                                                ...formData,
-                                                name: e.target.value,
-                                            })
-                                        }
-                                        placeholder="e.g., United States"
-                                        required
-                                        className="font-mono"
-                                    />
-                                </div>
+                    canCreateCountry ? (
+                        <Dialog
+                            open={isCreateOpen}
+                            onOpenChange={(open) => {
+                                setIsCreateOpen(open);
+                                if (!open) {
+                                    setEditingCountry(null);
+                                    resetForm();
+                                }
+                            }}
+                        >
+                            <DialogTrigger asChild>
+                                <Button className="gap-2 font-mono">
+                                    <Plus className="h-4 w-4" />
+                                    NEW COUNTRY
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-2xl">
+                                <DialogHeader>
+                                    <DialogTitle className="font-mono">
+                                        {editingCountry ? "EDIT COUNTRY" : "CREATE NEW COUNTRY"}
+                                    </DialogTitle>
+                                    <DialogDescription className="font-mono text-xs">
+                                        {editingCountry
+                                            ? "Update country details and identity"
+                                            : "Add new country for asset categorization"}
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <form onSubmit={handleSubmit} className="space-y-6">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="countryName" className="font-mono text-xs">
+                                            COUNTRY NAME *
+                                        </Label>
+                                        <Input
+                                            id="countryName"
+                                            value={formData.name}
+                                            onChange={(e) =>
+                                                setFormData({
+                                                    ...formData,
+                                                    name: e.target.value,
+                                                })
+                                            }
+                                            placeholder="e.g., United States"
+                                            required
+                                            className="font-mono"
+                                        />
+                                    </div>
 
-                                <div className="flex justify-end gap-3 pt-4 border-t border-border">
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        onClick={() => {
-                                            setIsCreateOpen(false);
-                                            setEditingCountry(null);
-                                            resetForm();
-                                        }}
-                                        disabled={
-                                            createCountry.isPending || updateCountry.isPending
-                                        }
-                                        className="font-mono"
-                                    >
-                                        CANCEL
-                                    </Button>
-                                    <Button
-                                        type="submit"
-                                        disabled={
-                                            createCountry.isPending || updateCountry.isPending
-                                        }
-                                        className="font-mono"
-                                    >
-                                        {createCountry.isPending || updateCountry.isPending
-                                            ? "PROCESSING..."
-                                            : editingCountry
-                                              ? "UPDATE"
-                                              : "CREATE"}
-                                    </Button>
-                                </div>
-                            </form>
-                        </DialogContent>
-                    </Dialog>
+                                    <div className="flex justify-end gap-3 pt-4 border-t border-border">
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            onClick={() => {
+                                                setIsCreateOpen(false);
+                                                setEditingCountry(null);
+                                                resetForm();
+                                            }}
+                                            disabled={
+                                                createCountry.isPending || updateCountry.isPending
+                                            }
+                                            className="font-mono"
+                                        >
+                                            CANCEL
+                                        </Button>
+                                        <Button
+                                            type="submit"
+                                            disabled={
+                                                createCountry.isPending || updateCountry.isPending
+                                            }
+                                            className="font-mono"
+                                        >
+                                            {createCountry.isPending || updateCountry.isPending
+                                                ? "PROCESSING..."
+                                                : editingCountry
+                                                  ? "UPDATE"
+                                                  : "CREATE"}
+                                        </Button>
+                                    </div>
+                                </form>
+                            </DialogContent>
+                        </Dialog>
+                    ) : undefined
                 }
             />
 
@@ -244,14 +255,16 @@ export default function Countries() {
                         <p className="font-mono text-sm text-muted-foreground">
                             NO COUNTRIES FOUND
                         </p>
-                        <Button
-                            onClick={() => setIsCreateOpen(true)}
-                            variant="outline"
-                            className="font-mono text-xs"
-                        >
-                            <Plus className="h-3.5 w-3.5 mr-2" />
-                            CREATE FIRST COUNTRY
-                        </Button>
+                        {canCreateCountry ? (
+                            <Button
+                                onClick={() => setIsCreateOpen(true)}
+                                variant="outline"
+                                className="font-mono text-xs"
+                            >
+                                <Plus className="h-3.5 w-3.5 mr-2" />
+                                CREATE FIRST COUNTRY
+                            </Button>
+                        ) : null}
                     </div>
                 ) : (
                     <div className="border border-border rounded-lg overflow-hidden bg-card">
@@ -289,25 +302,29 @@ export default function Countries() {
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-2">
-                                                <Button
-                                                    size="sm"
-                                                    variant="ghost"
-                                                    onClick={() => openEditDialog(country)}
-                                                    className="font-mono text-xs"
-                                                >
-                                                    <Edit className="h-3 w-3 mr-1" />
-                                                    Edit
-                                                </Button>
-                                                <Button
-                                                    size="sm"
-                                                    variant="ghost"
-                                                    onClick={() => setConfirmDelete(country)}
-                                                    className="font-mono text-xs text-destructive"
-                                                    disabled={cityCountryIds.has(country.id)}
-                                                >
-                                                    <Trash2 className="h-3.5 w-3.5 mr-2" />
-                                                    Delete Country
-                                                </Button>
+                                                {canUpdateCountry ? (
+                                                    <Button
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        onClick={() => openEditDialog(country)}
+                                                        className="font-mono text-xs"
+                                                    >
+                                                        <Edit className="h-3 w-3 mr-1" />
+                                                        Edit
+                                                    </Button>
+                                                ) : null}
+                                                {canDeleteCountry ? (
+                                                    <Button
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        onClick={() => setConfirmDelete(country)}
+                                                        className="font-mono text-xs text-destructive"
+                                                        disabled={cityCountryIds.has(country.id)}
+                                                    >
+                                                        <Trash2 className="h-3.5 w-3.5 mr-2" />
+                                                        Delete Country
+                                                    </Button>
+                                                ) : null}
                                                 {cityCountryIds.has(country.id) && (
                                                     <span className="text-[11px] text-muted-foreground">
                                                         Remove linked cities first

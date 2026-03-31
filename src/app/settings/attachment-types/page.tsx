@@ -30,6 +30,8 @@ import {
     type AttachmentEntityType,
 } from "@/hooks/use-attachments";
 import { Plus } from "lucide-react";
+import { useToken } from "@/lib/auth/use-token";
+import { hasPermission } from "@/lib/auth/permissions";
 
 const ENTITY_OPTIONS: AttachmentEntityType[] = [
     "ORDER",
@@ -40,6 +42,7 @@ const ENTITY_OPTIONS: AttachmentEntityType[] = [
 const ROLE_OPTIONS = ["ADMIN", "LOGISTICS", "CLIENT"] as const;
 
 export default function AttachmentTypesPage() {
+    const { user } = useToken();
     const { data, isLoading } = useAttachmentTypes();
     const createAttachmentType = useCreateAttachmentType();
     const updateAttachmentType = useUpdateAttachmentType();
@@ -61,6 +64,7 @@ export default function AttachmentTypesPage() {
         () => [...(data?.data || [])].sort((a, b) => a.sort_order - b.sort_order),
         [data?.data]
     );
+    const canManageAttachmentTypes = hasPermission(user, "attachment_types:update");
 
     const reset = () => {
         setEditingId(null);
@@ -78,6 +82,7 @@ export default function AttachmentTypesPage() {
     };
 
     const handleSubmit = async () => {
+        if (!canManageAttachmentTypes) return;
         if (!form.code.trim() || !form.label.trim()) {
             return toast.error("Code and label are required");
         }
@@ -134,12 +139,14 @@ export default function AttachmentTypesPage() {
                             if (!open) reset();
                         }}
                     >
-                        <DialogTrigger asChild>
-                            <Button>
-                                <Plus className="h-4 w-4 mr-1" />
-                                Add Type
-                            </Button>
-                        </DialogTrigger>
+                        {canManageAttachmentTypes ? (
+                            <DialogTrigger asChild>
+                                <Button>
+                                    <Plus className="h-4 w-4 mr-1" />
+                                    Add Type
+                                </Button>
+                            </DialogTrigger>
+                        ) : null}
                         <DialogContent className="sm:max-w-xl">
                             <DialogHeader>
                                 <DialogTitle>
@@ -353,9 +360,11 @@ export default function AttachmentTypesPage() {
                                 <Button variant="outline" onClick={() => setIsOpen(false)}>
                                     Cancel
                                 </Button>
-                                <Button onClick={handleSubmit}>
-                                    {editingId ? "Save Changes" : "Create Type"}
-                                </Button>
+                                {canManageAttachmentTypes ? (
+                                    <Button onClick={handleSubmit}>
+                                        {editingId ? "Save Changes" : "Create Type"}
+                                    </Button>
+                                ) : null}
                             </DialogFooter>
                         </DialogContent>
                     </Dialog>
@@ -413,30 +422,32 @@ export default function AttachmentTypesPage() {
                                             </TableCell>
                                             <TableCell>{type.sort_order}</TableCell>
                                             <TableCell className="text-right">
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    onClick={() => {
-                                                        setEditingId(type.id);
-                                                        setForm({
-                                                            code: type.code,
-                                                            label: type.label,
-                                                            allowed_entity_types:
-                                                                type.allowed_entity_types,
-                                                            upload_roles: type.upload_roles,
-                                                            view_roles: type.view_roles,
-                                                            default_visible_to_client:
-                                                                type.default_visible_to_client,
-                                                            required_note:
-                                                                type.required_note ?? false,
-                                                            is_active: type.is_active,
-                                                            sort_order: type.sort_order,
-                                                        });
-                                                        setIsOpen(true);
-                                                    }}
-                                                >
-                                                    Edit
-                                                </Button>
+                                                {canManageAttachmentTypes ? (
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => {
+                                                            setEditingId(type.id);
+                                                            setForm({
+                                                                code: type.code,
+                                                                label: type.label,
+                                                                allowed_entity_types:
+                                                                    type.allowed_entity_types,
+                                                                upload_roles: type.upload_roles,
+                                                                view_roles: type.view_roles,
+                                                                default_visible_to_client:
+                                                                    type.default_visible_to_client,
+                                                                required_note:
+                                                                    type.required_note ?? false,
+                                                                is_active: type.is_active,
+                                                                sort_order: type.sort_order,
+                                                            });
+                                                            setIsOpen(true);
+                                                        }}
+                                                    >
+                                                        Edit
+                                                    </Button>
+                                                ) : null}
                                             </TableCell>
                                         </TableRow>
                                     ))}

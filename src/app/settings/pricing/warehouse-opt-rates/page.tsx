@@ -24,8 +24,11 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useCompanies, useUpdateCompany } from "@/hooks/use-companies";
 import { Company } from "@/types";
+import { useToken } from "@/lib/auth/use-token";
+import { hasPermission } from "@/lib/auth/permissions";
 
 export default function WarehouseOptRates() {
+    const { user } = useToken();
     const [searchQuery, setSearchQuery] = useState("");
     const [editCompany, setEditCompany] = useState<Company | null>(null);
 
@@ -36,6 +39,7 @@ export default function WarehouseOptRates() {
     });
 
     const updateCompany = useUpdateCompany();
+    const canUpdateWarehouseOpsRates = hasPermission(user, "warehouse_ops_rates:update");
 
     // Query params
     const queryParams = useMemo(() => {
@@ -56,6 +60,7 @@ export default function WarehouseOptRates() {
     };
 
     const openEditDialog = (company: Company) => {
+        if (!canUpdateWarehouseOpsRates) return;
         setEditCompany(company);
         setFormData({
             id: company.id,
@@ -65,6 +70,7 @@ export default function WarehouseOptRates() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!canUpdateWarehouseOpsRates) return;
 
         if (!formData.id) {
             toast.error("Company ID is required");
@@ -134,7 +140,9 @@ export default function WarehouseOptRates() {
                                     <TableHead className="font-mono text-xs font-bold">
                                         WAREHOUSE OPS RATE
                                     </TableHead>
-                                    <TableHead className="w-12"></TableHead>
+                                    {canUpdateWarehouseOpsRates ? (
+                                        <TableHead className="w-12"></TableHead>
+                                    ) : null}
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -158,19 +166,21 @@ export default function WarehouseOptRates() {
                                                 ? `${company.warehouse_ops_rate} AED`
                                                 : "-"}
                                         </TableCell>
-                                        <TableCell>
-                                            <div className="flex items-center gap-2">
-                                                <Button
-                                                    size="sm"
-                                                    variant="ghost"
-                                                    onClick={() => openEditDialog(company)}
-                                                    className="font-mono text-xs"
-                                                >
-                                                    <Edit className="h-3 w-3 mr-1" />
-                                                    Edit
-                                                </Button>
-                                            </div>
-                                        </TableCell>
+                                        {canUpdateWarehouseOpsRates ? (
+                                            <TableCell>
+                                                <div className="flex items-center gap-2">
+                                                    <Button
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        onClick={() => openEditDialog(company)}
+                                                        className="font-mono text-xs"
+                                                    >
+                                                        <Edit className="h-3 w-3 mr-1" />
+                                                        Edit
+                                                    </Button>
+                                                </div>
+                                            </TableCell>
+                                        ) : null}
                                     </TableRow>
                                 ))}
                             </TableBody>
@@ -226,6 +236,7 @@ export default function WarehouseOptRates() {
                                 step="0.01"
                                 min="0"
                                 value={formData.warehouse_ops_rate}
+                                disabled={!canUpdateWarehouseOpsRates}
                                 onChange={(e) =>
                                     setFormData({
                                         ...formData,
@@ -253,17 +264,19 @@ export default function WarehouseOptRates() {
                             >
                                 CANCEL
                             </Button>
-                            <Button
-                                type="submit"
-                                disabled={updateCompany.isPending}
-                                className="font-mono"
-                            >
-                                {updateCompany.isPending
-                                    ? "PROCESSING..."
-                                    : editCompany
-                                      ? "UPDATE"
-                                      : "CREATE"}
-                            </Button>
+                            {canUpdateWarehouseOpsRates ? (
+                                <Button
+                                    type="submit"
+                                    disabled={updateCompany.isPending}
+                                    className="font-mono"
+                                >
+                                    {updateCompany.isPending
+                                        ? "PROCESSING..."
+                                        : editCompany
+                                          ? "UPDATE"
+                                          : "CREATE"}
+                                </Button>
+                            ) : null}
                         </div>
                     </form>
                 </DialogContent>
