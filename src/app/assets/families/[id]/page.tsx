@@ -191,7 +191,7 @@ export default function AssetFamilyDetailPage({ params }: { params: Promise<{ id
                     <div className="flex flex-col gap-6 lg:flex-row">
                         {/* Image gallery */}
                         <div
-                            className="relative h-64 w-full overflow-hidden rounded-lg bg-muted lg:w-[420px] shrink-0"
+                            className="relative aspect-[4/3] w-full overflow-hidden rounded-lg bg-muted lg:w-[420px] shrink-0"
                             data-testid={
                                 hasImages || heroImage ? "family-image-gallery" : "family-no-image"
                             }
@@ -202,7 +202,7 @@ export default function AssetFamilyDetailPage({ params }: { params: Promise<{ id
                                         src={images[imgIdx]?.url || heroImage || ""}
                                         alt={family.name}
                                         fill
-                                        className="object-cover"
+                                        className="object-contain"
                                     />
                                     {images.length > 1 && (
                                         <>
@@ -236,7 +236,7 @@ export default function AssetFamilyDetailPage({ params }: { params: Promise<{ id
                                     src={heroImage}
                                     alt={family.name}
                                     fill
-                                    className="object-cover"
+                                    className="object-contain"
                                 />
                             ) : (
                                 <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
@@ -452,7 +452,7 @@ export default function AssetFamilyDetailPage({ params }: { params: Promise<{ id
                                                         src={asset.images[0].url}
                                                         alt={asset.name}
                                                         fill
-                                                        className="object-cover"
+                                                        className="object-contain"
                                                     />
                                                 ) : (
                                                     <div className="flex h-full w-full items-center justify-center">

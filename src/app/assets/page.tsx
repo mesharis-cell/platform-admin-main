@@ -45,13 +45,13 @@ function FamilyCard({ family, compact = false }: { family: AssetFamily; compact?
     return (
         <Link href={`/assets/families/${family.id}`}>
             <Card className="group h-full overflow-hidden transition-colors hover:border-primary/50">
-                <div className={`relative bg-muted ${compact ? "h-32" : "aspect-[4/3]"}`}>
+                <div className={`relative bg-muted ${compact ? "aspect-[3/2]" : "aspect-[4/3]"}`}>
                     {imageUrl ? (
                         <Image
                             src={imageUrl}
                             alt={family.name}
                             fill
-                            className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+                            className="object-contain transition-transform duration-300 group-hover:scale-[1.02]"
                         />
                     ) : (
                         <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
