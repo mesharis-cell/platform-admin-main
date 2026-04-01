@@ -112,6 +112,8 @@ export default function AssetsPage() {
     const [searchQuery, setSearchQuery] = useState("");
     const [debouncedSearch, setDebouncedSearch] = useState("");
     const [showWizard, setShowWizard] = useState(false);
+    const [page, setPage] = useState(1);
+    const ITEMS_PER_PAGE = 24;
     const [filters, setFilters] = useState({
         company: "all",
         category: "all",
@@ -130,16 +132,26 @@ export default function AssetsPage() {
     const bulkUploadEnabled = platform?.features?.enable_asset_bulk_upload === true;
 
     const queryParams = useMemo(() => {
-        const params: Record<string, string> = {};
+        const params: Record<string, string> = {
+            page: String(page),
+            limit: String(ITEMS_PER_PAGE),
+        };
         if (debouncedSearch) params.search_term = debouncedSearch;
         if (filters.company !== "all") params.company_id = filters.company;
         if (filters.category !== "all") params.category = filters.category;
         if (filters.stockMode !== "all") params.stock_mode = filters.stockMode;
         return params;
-    }, [filters, debouncedSearch]);
+    }, [filters, debouncedSearch, page]);
+
+    // Reset page when filters change
+    useEffect(() => {
+        setPage(1);
+    }, [debouncedSearch, filters]);
 
     const { data, isLoading } = useAssetFamilies(queryParams);
     const families = data?.data || [];
+    const totalFamilies = Number((data as any)?.meta?.total || families.length);
+    const totalPages = Math.max(1, Math.ceil(totalFamilies / ITEMS_PER_PAGE));
 
     return (
         <div className="min-h-screen bg-background">
@@ -147,7 +159,7 @@ export default function AssetsPage() {
                 icon={Layers3}
                 title="ASSET FAMILIES"
                 description="Catalog Identity · Stock Overview · Physical Records"
-                stats={{ label: "TOTAL FAMILIES", value: families.length }}
+                stats={{ label: "TOTAL FAMILIES", value: totalFamilies }}
                 actions={
                     canCreateAsset || (canBulkUploadAsset && bulkUploadEnabled) ? (
                         <div className="flex gap-2">
@@ -310,6 +322,35 @@ export default function AssetsPage() {
                         {families.map((family) => (
                             <FamilyCard key={family.id} family={family} compact />
                         ))}
+                    </div>
+                )}
+                {/* Pagination */}
+                {totalPages > 1 && (
+                    <div className="flex items-center justify-between pt-6">
+                        <p className="text-sm text-muted-foreground font-mono">
+                            Showing {families.length} of {totalFamilies}
+                        </p>
+                        <div className="flex items-center gap-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={page <= 1}
+                                onClick={() => setPage((p) => p - 1)}
+                            >
+                                Previous
+                            </Button>
+                            <span className="text-sm font-mono text-muted-foreground">
+                                Page {page} of {totalPages}
+                            </span>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={page >= totalPages}
+                                onClick={() => setPage((p) => p + 1)}
+                            >
+                                Next
+                            </Button>
+                        </div>
                     </div>
                 )}
             </div>
