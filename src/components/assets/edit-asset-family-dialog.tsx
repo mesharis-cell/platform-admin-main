@@ -46,6 +46,7 @@ export function EditAssetFamilyDialog({
         brand_id: "" as string | null,
         team_id: "" as string | null,
         name: "",
+        company_item_code: "" as string | null,
         description: "" as string | null,
         category: "",
         stock_mode: "SERIALIZED" as "SERIALIZED" | "POOLED",
@@ -62,6 +63,7 @@ export function EditAssetFamilyDialog({
                 brand_id: family.brand_id || null,
                 team_id: family.team_id || null,
                 name: family.name || "",
+                company_item_code: family.company_item_code || null,
                 description: family.description || null,
                 category: family.category || "",
                 stock_mode: (family.stock_mode as "SERIALIZED" | "POOLED") || "SERIALIZED",
@@ -101,6 +103,7 @@ export function EditAssetFamilyDialog({
                 brand_id: formData.brand_id || null,
                 team_id: formData.team_id || null,
                 name: formData.name.trim(),
+                company_item_code: formData.company_item_code?.trim() || null,
                 description: formData.description?.trim() || null,
                 category: formData.category.trim(),
                 stock_mode: formData.stock_mode,
@@ -138,6 +141,20 @@ export function EditAssetFamilyDialog({
                             value={formData.name}
                             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                             placeholder="e.g. Pedestrian Fan"
+                            className="font-mono"
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label className="font-mono text-xs">Company Item Code</Label>
+                        <Input
+                            value={formData.company_item_code || ""}
+                            onChange={(e) =>
+                                setFormData({
+                                    ...formData,
+                                    company_item_code: e.target.value || null,
+                                })
+                            }
+                            placeholder="External or client-specific item code"
                             className="font-mono"
                         />
                     </div>

@@ -90,6 +90,15 @@ export function WizardFamilyForm({ state, update }: Props) {
             </div>
 
             <div className="space-y-2">
+                <Label>Company Item Code</Label>
+                <Input
+                    value={state.companyItemCode}
+                    onChange={(e) => update({ companyItemCode: e.target.value })}
+                    placeholder="External or client-specific item code"
+                />
+            </div>
+
+            <div className="space-y-2">
                 <Label>Category *</Label>
                 <Select value={state.category} onValueChange={(v) => update({ category: v })}>
                     <SelectTrigger>

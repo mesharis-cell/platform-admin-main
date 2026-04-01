@@ -67,6 +67,9 @@ export type Permission =
     | "assets:delete"
     | "assets:generate_qr"
     | "assets:upload_photos"
+    | "assets:check_availability"
+    | "assets:availability_stats"
+    | "assets:scan_history"
     | "assets:set_specifications"
     | "assets:add_handling_tags"
     | "assets:assign_zone"
@@ -357,6 +360,9 @@ export const PERMISSION_GROUPS = {
         "assets:delete",
         "assets:generate_qr",
         "assets:upload_photos",
+        "assets:check_availability",
+        "assets:availability_stats",
+        "assets:scan_history",
     ],
     "Collection Management": [
         "collections:create",
@@ -523,6 +529,9 @@ export const ADMIN_PERMISSION_GROUPS: Record<string, string[]> = {
         "assets:delete",
         "assets:generate_qr",
         "assets:upload_photos",
+        "assets:check_availability",
+        "assets:availability_stats",
+        "assets:scan_history",
         "assets:*",
     ],
     "Collection Management": [
@@ -699,6 +708,9 @@ export const LOGISTICS_PERMISSION_GROUPS: Record<string, string[]> = {
         "assets:delete",
         "assets:generate_qr",
         "assets:upload_photos",
+        "assets:check_availability",
+        "assets:availability_stats",
+        "assets:scan_history",
         "assets:*",
     ],
     "Collection Management": [

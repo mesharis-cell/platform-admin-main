@@ -401,9 +401,7 @@ export default function UserEditPage() {
                             <div className="space-y-3">
                                 <Input
                                     value={overrideSearchTerm}
-                                    onChange={(event) =>
-                                        setOverrideSearchTerm(event.target.value)
-                                    }
+                                    onChange={(event) => setOverrideSearchTerm(event.target.value)}
                                     placeholder="Filter permissions or groups"
                                     autoComplete="off"
                                     autoCorrect="off"
@@ -451,7 +449,9 @@ export default function UserEditPage() {
                                                     const granted =
                                                         form.permission_grants.includes(permission);
                                                     const revoked =
-                                                        form.permission_revokes.includes(permission);
+                                                        form.permission_revokes.includes(
+                                                            permission
+                                                        );
 
                                                     return (
                                                         <div
@@ -503,7 +503,9 @@ export default function UserEditPage() {
                                                                 <label className="flex items-center gap-2 text-xs">
                                                                     <Checkbox
                                                                         checked={granted}
-                                                                        onCheckedChange={(checked) =>
+                                                                        onCheckedChange={(
+                                                                            checked
+                                                                        ) =>
                                                                             toggleOverride(
                                                                                 "grant",
                                                                                 permission,
@@ -516,7 +518,9 @@ export default function UserEditPage() {
                                                                 <label className="flex items-center gap-2 text-xs">
                                                                     <Checkbox
                                                                         checked={revoked}
-                                                                        onCheckedChange={(checked) =>
+                                                                        onCheckedChange={(
+                                                                            checked
+                                                                        ) =>
                                                                             toggleOverride(
                                                                                 "revoke",
                                                                                 permission,
@@ -648,7 +652,8 @@ export default function UserEditPage() {
                                             ) : null}
                                         </div>
                                         <p className="text-xs text-muted-foreground">
-                                            This temporary password is shown once. Share it securely.
+                                            This temporary password is shown once. Share it
+                                            securely.
                                         </p>
                                     </div>
 

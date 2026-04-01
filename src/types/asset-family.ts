@@ -21,6 +21,7 @@ export interface AssetFamily {
     brand_id: string | null;
     team_id: string | null;
     name: string;
+    company_item_code: string | null;
     description: string | null;
     category: string;
     images: AssetImage[];

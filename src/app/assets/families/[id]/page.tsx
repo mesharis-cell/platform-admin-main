@@ -270,6 +270,14 @@ export default function AssetFamilyDetailPage({ params }: { params: Promise<{ id
                                 <p className="mt-1 text-sm font-mono text-muted-foreground">
                                     {family.company?.name || "Unknown company"}
                                 </p>
+                                {family.company_item_code && (
+                                    <p className="mt-1 text-xs font-mono text-muted-foreground">
+                                        Company Item Code:{" "}
+                                        <span className="text-foreground">
+                                            {family.company_item_code}
+                                        </span>
+                                    </p>
+                                )}
                                 {family.description && (
                                     <p className="mt-3 max-w-2xl text-sm text-muted-foreground leading-relaxed">
                                         {family.description}

@@ -139,6 +139,7 @@ export function AssetWizard({
                     brand_id: state.brandId || undefined,
                     team_id: state.teamId || undefined,
                     name: state.itemName.trim(),
+                    company_item_code: state.companyItemCode.trim() || undefined,
                     description: state.itemDescription.trim() || undefined,
                     category: state.category,
                     stock_mode: state.stockMode === "POOLED" ? "POOLED" : "SERIALIZED",

@@ -44,6 +44,7 @@ export interface WizardState {
 
     // Item name — single field, used for both family and stock record
     itemName: string;
+    companyItemCode: string;
     itemDescription: string;
     category: string;
 
@@ -124,6 +125,7 @@ export const INITIAL_STATE: WizardState = {
     brandId: "",
     teamId: "",
     itemName: "",
+    companyItemCode: "",
     itemDescription: "",
     category: "",
     warehouseId: "",
