@@ -42,7 +42,7 @@ export type NotificationStatus =
     | "FAILED"
     | "RETRYING"
     | "SKIPPED";
-export type EntityType = "ORDER" | "INBOUND_REQUEST" | "SERVICE_REQUEST" | "USER" | "SELF_BOOKING";
+export type EntityType = "ORDER" | "INBOUND_REQUEST" | "SERVICE_REQUEST" | "USER" | "SELF_BOOKING" | "SELF_PICKUP";
 
 export interface SystemEvent {
     id: string;

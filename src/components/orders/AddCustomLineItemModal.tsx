@@ -32,7 +32,7 @@ interface AddCustomLineItemModalProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     targetId: string;
-    purposeType?: "ORDER" | "INBOUND_REQUEST" | "SERVICE_REQUEST";
+    purposeType?: "ORDER" | "INBOUND_REQUEST" | "SERVICE_REQUEST" | "SELF_PICKUP";
 }
 
 export function AddCustomLineItemModal({

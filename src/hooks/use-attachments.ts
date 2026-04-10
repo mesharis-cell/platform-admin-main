@@ -8,7 +8,8 @@ export type AttachmentEntityType =
     | "ORDER"
     | "INBOUND_REQUEST"
     | "SERVICE_REQUEST"
-    | "WORKFLOW_REQUEST";
+    | "WORKFLOW_REQUEST"
+    | "SELF_PICKUP";
 
 export interface AttachmentTypeRecord {
     id: string;
@@ -60,7 +61,7 @@ type AttachmentTypeQueryParams = {
     entityType?: AttachmentEntityType;
     mode?: "view" | "upload";
     entityId?: string | null;
-    contextEntityType?: "ORDER" | "INBOUND_REQUEST" | "SERVICE_REQUEST";
+    contextEntityType?: "ORDER" | "INBOUND_REQUEST" | "SERVICE_REQUEST" | "SELF_PICKUP";
     contextEntityId?: string | null;
     enabled?: boolean;
 };
