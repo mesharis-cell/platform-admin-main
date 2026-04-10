@@ -407,6 +407,42 @@ export default function AssetFamilyDetailPage({ params }: { params: Promise<{ id
                 </div>
             </div>
 
+            {/* Stock Settings & History (for pooled families) */}
+            {family?.stock_mode === "POOLED" && (
+                <div className="mx-auto max-w-[1400px] px-6 py-3">
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between py-3 px-6">
+                            <CardTitle className="font-mono text-sm">
+                                Stock Settings
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="px-6 pb-4">
+                            <div className="flex items-center gap-4">
+                                <div className="space-y-1">
+                                    <p className="text-xs text-muted-foreground">Low Stock Threshold</p>
+                                    <p className="font-mono text-sm font-bold">
+                                        {family?.low_stock_threshold != null
+                                            ? `${family.low_stock_threshold} units`
+                                            : "Not set"}
+                                    </p>
+                                </div>
+                                {family?.low_stock_threshold != null &&
+                                    availabilityStats?.data?.available_quantity != null &&
+                                    Number(availabilityStats.data.available_quantity) < family.low_stock_threshold && (
+                                    <Badge variant="destructive" className="text-xs">
+                                        LOW STOCK
+                                    </Badge>
+                                )}
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-2">
+                                Set via the edit dialog. Stock movements are tracked in the
+                                stock history (accessible via the API).
+                            </p>
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
+
             {/* Inventory */}
             <div className="mx-auto max-w-[1400px] px-6 py-6">
                 <Card data-testid="family-stock-list">
