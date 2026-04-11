@@ -67,6 +67,12 @@ function FamilyCard({ family, compact = false }: { family: AssetFamily; compact?
                                 {redCount} red / {orangeCount} orange
                             </Badge>
                         )}
+                        {family.low_stock_threshold != null &&
+                            Number(family.available_quantity || 0) < Number(family.low_stock_threshold) && (
+                            <Badge variant="destructive" className="font-mono text-[10px] bg-amber-500">
+                                LOW STOCK
+                            </Badge>
+                        )}
                     </div>
                 </div>
                 <CardContent className="space-y-3 p-4">
