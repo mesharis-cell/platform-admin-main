@@ -31,7 +31,7 @@ interface AddCatalogLineItemModalProps {
     onOpenChange: (open: boolean) => void;
     targetId?: string;
     orderId?: string;
-    purposeType?: "ORDER" | "INBOUND_REQUEST" | "SERVICE_REQUEST";
+    purposeType?: "ORDER" | "INBOUND_REQUEST" | "SERVICE_REQUEST" | "SELF_PICKUP";
 }
 
 type ServiceRow = {

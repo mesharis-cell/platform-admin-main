@@ -8,6 +8,7 @@
 import { useState, useMemo } from "react";
 import Link from "next/link";
 import { useClientCalendar } from "@/hooks/use-client-orders";
+import { useAdminSelfPickups } from "@/hooks/use-self-pickups";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -126,35 +127,49 @@ export default function EventCalendarPage() {
     const formattedMonth = `${selectedYear}-${String(selectedMonth).padStart(2, "0")}`;
 
     const { data, isLoading, error } = useClientCalendar({
-        month: formattedMonth, // Now passes "2024-12" format
+        month: formattedMonth,
     });
+
+    // Also fetch self-pickups for the same period (they appear on their pickup date)
+    const { data: pickupsData } = useAdminSelfPickups({ limit: 100 });
+    const selfPickups = pickupsData?.data?.self_pickups || [];
 
     // Group events by date - spread multi-day events across all dates
     const eventsByDate = useMemo(() => {
-        if (!data?.data) return {};
+        const grouped: Record<string, any[]> = {};
 
-        const grouped: Record<string, typeof data.data> = {};
-
-        data.data.forEach((event) => {
-            const startDate = new Date(event.event_start_date);
-            const endDate = new Date(event.event_end_date);
-
-            // Loop through each day from start to end (inclusive)
-            const currentDate = new Date(startDate);
-            while (currentDate <= endDate) {
-                const dateKey = currentDate.toISOString().split("T")[0];
-                if (!grouped[dateKey]) {
-                    grouped[dateKey] = [];
+        // Orders (multi-day spread)
+        if (data?.data) {
+            data.data.forEach((event: any) => {
+                const startDate = new Date(event.event_start_date);
+                const endDate = new Date(event.event_end_date);
+                const currentDate = new Date(startDate);
+                while (currentDate <= endDate) {
+                    const dateKey = currentDate.toISOString().split("T")[0];
+                    if (!grouped[dateKey]) grouped[dateKey] = [];
+                    grouped[dateKey].push({ ...event, _type: "ORDER" });
+                    currentDate.setDate(currentDate.getDate() + 1);
                 }
-                grouped[dateKey].push(event);
+            });
+        }
 
-                // Move to next day
-                currentDate.setDate(currentDate.getDate() + 1);
-            }
+        // Self-pickups (single-day on pickup window start)
+        selfPickups.forEach((pickup: any) => {
+            const pw = pickup.pickup_window as any;
+            if (!pw?.start) return;
+            const dateKey = new Date(pw.start).toISOString().split("T")[0];
+            if (!grouped[dateKey]) grouped[dateKey] = [];
+            grouped[dateKey].push({
+                ...pickup,
+                _type: "SELF_PICKUP",
+                order_id: pickup.self_pickup_id,
+                order_status: pickup.self_pickup_status,
+                venue_name: `Pickup: ${pickup.collector_name}`,
+            });
         });
 
         return grouped;
-    }, [data]);
+    }, [data, selfPickups]);
 
     // Generate calendar days for the selected month
     const calendarDays = useMemo(() => {
@@ -312,10 +327,12 @@ export default function EventCalendarPage() {
                                                             ? dayEvents.length
                                                             : 2
                                                     )
-                                                    .map((event) => (
+                                                    .map((event: any) => (
                                                         <Link
                                                             key={event.id}
-                                                            href={`/orders/${event.order_id}`}
+                                                            href={event._type === "SELF_PICKUP"
+                                                                ? `/self-pickups/${event.id}`
+                                                                : `/orders/${event.order_id}`}
                                                         >
                                                             <div
                                                                 className={`text-xs p-1.5 rounded border truncate cursor-pointer hover:opacity-80 transition-opacity ${getStatusColor(event.status)}`}
