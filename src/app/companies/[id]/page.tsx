@@ -87,6 +87,12 @@ const FEATURE_FLAGS = [
         label: "Enable Client Stock Requests",
         description: "Allow clients to submit new stock / inbound requests",
     },
+    {
+        key: "enable_self_pickup",
+        label: "Enable Self Pickup",
+        description:
+            "Allow clients to choose self-pickup at checkout. Adds a separate commercial flow with collector details, pickup window, and warehouse handover scanning.",
+    },
 ] as const;
 
 type FeatureOverrides = Record<string, boolean | null>;
