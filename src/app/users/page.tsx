@@ -238,7 +238,7 @@ export default function UsersPage() {
         try {
             await createUser.mutateAsync({
                 name: form.name.trim(),
-                email: form.email.trim(),
+                email: form.email.trim().toLowerCase(),
                 password: form.password,
                 role: form.role,
                 access_policy_id: form.access_policy_id,
