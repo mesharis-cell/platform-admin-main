@@ -100,6 +100,7 @@ export default function UsersPage() {
     const [showCustomPassword, setShowCustomPassword] = useState(false);
     const [overrideSearchTerm, setOverrideSearchTerm] = useState("");
     const [overrideFilter, setOverrideFilter] = useState<OverrideFilter>("all");
+    const [duplicateSource, setDuplicateSource] = useState<User | null>(null);
 
     const queryParams = useMemo(() => {
         const params: Record<string, string> = { limit: "100", page: "1" };
@@ -199,6 +200,28 @@ export default function UsersPage() {
         setGeneratedPassword(null);
         setCustomPassword("");
         setShowCustomPassword(false);
+        setDuplicateSource(null);
+        setIsCreateOpen(true);
+    };
+    const openDuplicate = (source: User) => {
+        // Copy everything that defines "who this user is" except identity
+        // (name/email) and credentials (password). Admin fills those in.
+        setForm({
+            name: "",
+            email: "",
+            password: "",
+            role: source.role,
+            access_policy_id: source.access_policy_id ?? source.access_policy?.id ?? null,
+            permission_grants: source.permission_grants ?? [],
+            permission_revokes: source.permission_revokes ?? [],
+            company_id: source.company?.id ?? null,
+            is_active: source.is_active,
+            is_super_admin: source.is_super_admin,
+        });
+        setGeneratedPassword(null);
+        setCustomPassword("");
+        setShowCustomPassword(false);
+        setDuplicateSource(source);
         setIsCreateOpen(true);
     };
     const openPasswordDialog = (user: User) => {
@@ -252,6 +275,7 @@ export default function UsersPage() {
             setIsCreateOpen(false);
             setForm(EMPTY_FORM);
             setShowPassword(false);
+            setDuplicateSource(null);
         } catch (error: any) {
             toast.error(error.message || "Failed to save user");
         }
@@ -408,6 +432,13 @@ export default function UsersPage() {
                                 >
                                     Edit
                                 </Button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => openDuplicate(user)}
+                                >
+                                    Duplicate
+                                </Button>
                                 {canManagePasswords ? (
                                     <Button
                                         variant="outline"
@@ -426,10 +457,15 @@ export default function UsersPage() {
             <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
                     <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
                         <DialogHeader>
-                            <DialogTitle>Create User</DialogTitle>
+                            <DialogTitle>
+                                {duplicateSource
+                                    ? `Duplicate User — copying from ${duplicateSource.name}`
+                                    : "Create User"}
+                            </DialogTitle>
                             <DialogDescription>
-                                Role sets the boundary. Access Policy sets the default permission
-                                bundle. Grants and revokes are explicit per-user overrides.
+                                {duplicateSource
+                                    ? "Role, access policy, permission overrides, company, and status were copied from the source user. Fill in a new name, email, and password."
+                                    : "Role sets the boundary. Access Policy sets the default permission bundle. Grants and revokes are explicit per-user overrides."}
                         </DialogDescription>
                     </DialogHeader>
 
