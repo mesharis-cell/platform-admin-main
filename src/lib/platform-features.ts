@@ -11,6 +11,7 @@ export const DEFAULT_PLATFORM_FEATURES = {
     enable_service_requests: true,
     enable_event_calendar: true,
     enable_client_stock_requests: true,
+    enable_self_pickup: false,
 } as const;
 
 export type PlatformFeatureKey = keyof typeof DEFAULT_PLATFORM_FEATURES;

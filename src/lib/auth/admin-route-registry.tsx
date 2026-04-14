@@ -13,6 +13,7 @@ import {
     Mail,
     MapPin,
     Package,
+    PackageCheck,
     Receipt,
     Settings,
     Shield,
@@ -99,6 +100,15 @@ export const ADMIN_ROUTE_REGISTRY: AdminRouteDefinition[] = [
         section: "Operations",
         requiredPagePermission: ADMIN_PAGE_PERMISSIONS.selfBookings,
         requiredAnyPermission: ADMIN_NAV_PERMISSIONS.selfBookings,
+    },
+    {
+        name: "Self Pickups",
+        href: "/self-pickups",
+        icon: PackageCheck,
+        section: "Operations",
+        requiredPagePermission: ADMIN_PAGE_PERMISSIONS.selfPickups,
+        requiredAnyPermission: ADMIN_NAV_PERMISSIONS.selfPickups,
+        requiredFeature: "enable_self_pickup",
     },
     {
         name: "Events Calendar",

@@ -30,6 +30,7 @@ import {
     ChevronLeft,
     ChevronRight,
     Package,
+    PackageCheck,
     Calendar,
     User,
 } from "lucide-react";
@@ -92,6 +93,7 @@ export default function SelfPickupsListPage() {
     return (
         <div className="space-y-6">
             <AdminHeader
+                icon={PackageCheck}
                 title="Self Pickups"
                 description="Manage self-pickup orders"
             />

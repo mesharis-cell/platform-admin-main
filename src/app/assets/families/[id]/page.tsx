@@ -744,7 +744,7 @@ export default function AssetFamilyDetailPage({ params }: { params: Promise<{ id
                                             setAdjustmentNote("");
                                             setAdjustmentAssetId("");
                                         },
-                                        onError: (e) => toast.error(e.message),
+                                        onError: (e: unknown) => toast.error((e as Error).message),
                                     }
                                 );
                             }}

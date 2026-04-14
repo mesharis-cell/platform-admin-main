@@ -58,4 +58,5 @@ export interface AssetFamily {
     available_quantity?: number;
     status_summary?: AssetFamilySummary;
     condition_summary?: AssetFamilyConditionSummary;
+    low_stock_threshold?: number | null;
 }

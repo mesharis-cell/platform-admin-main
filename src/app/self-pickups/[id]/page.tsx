@@ -121,7 +121,7 @@ export default function SelfPickupDetailPage({
                                 submitForApproval.mutate(id, {
                                     onSuccess: () =>
                                         toast.success("Submitted for approval"),
-                                    onError: (e) => toast.error(e.message),
+                                    onError: (e: unknown) => toast.error((e as Error).message),
                                 });
                             }}
                             disabled={submitForApproval.isPending}
@@ -134,7 +134,7 @@ export default function SelfPickupDetailPage({
                             onClick={() => {
                                 approveQuote.mutate(id, {
                                     onSuccess: () => toast.success("Quote approved"),
-                                    onError: (e) => toast.error(e.message),
+                                    onError: (e: unknown) => toast.error((e as Error).message),
                                 });
                             }}
                             disabled={approveQuote.isPending}
@@ -148,7 +148,7 @@ export default function SelfPickupDetailPage({
                                 markReady.mutate(id, {
                                     onSuccess: () =>
                                         toast.success("Marked as ready for pickup"),
-                                    onError: (e) => toast.error(e.message),
+                                    onError: (e: unknown) => toast.error((e as Error).message),
                                 });
                             }}
                             disabled={markReady.isPending}

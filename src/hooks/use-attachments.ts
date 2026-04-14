@@ -70,6 +70,7 @@ const entityBasePath: Record<Exclude<AttachmentEntityType, "WORKFLOW_REQUEST">, 
     ORDER: "order",
     INBOUND_REQUEST: "inbound-request",
     SERVICE_REQUEST: "service-request",
+    SELF_PICKUP: "self-pickup",
 };
 
 export function useAttachmentTypes(params?: AttachmentTypeQueryParams) {
