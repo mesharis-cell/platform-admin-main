@@ -100,6 +100,7 @@ export default function UsersPage() {
     const [showCustomPassword, setShowCustomPassword] = useState(false);
     const [overrideSearchTerm, setOverrideSearchTerm] = useState("");
     const [overrideFilter, setOverrideFilter] = useState<OverrideFilter>("all");
+    const [duplicateSource, setDuplicateSource] = useState<User | null>(null);
 
     const queryParams = useMemo(() => {
         const params: Record<string, string> = { limit: "100", page: "1" };
@@ -199,6 +200,28 @@ export default function UsersPage() {
         setGeneratedPassword(null);
         setCustomPassword("");
         setShowCustomPassword(false);
+        setDuplicateSource(null);
+        setIsCreateOpen(true);
+    };
+    const openDuplicate = (source: User) => {
+        // Copy everything that defines "who this user is" except identity
+        // (name/email) and credentials (password). Admin fills those in.
+        setForm({
+            name: "",
+            email: "",
+            password: "",
+            role: source.role,
+            access_policy_id: source.access_policy_id ?? source.access_policy?.id ?? null,
+            permission_grants: source.permission_grants ?? [],
+            permission_revokes: source.permission_revokes ?? [],
+            company_id: source.company?.id ?? null,
+            is_active: source.is_active,
+            is_super_admin: source.is_super_admin,
+        });
+        setGeneratedPassword(null);
+        setCustomPassword("");
+        setShowCustomPassword(false);
+        setDuplicateSource(source);
         setIsCreateOpen(true);
     };
     const openPasswordDialog = (user: User) => {
@@ -238,7 +261,7 @@ export default function UsersPage() {
         try {
             await createUser.mutateAsync({
                 name: form.name.trim(),
-                email: form.email.trim(),
+                email: form.email.trim().toLowerCase(),
                 password: form.password,
                 role: form.role,
                 access_policy_id: form.access_policy_id,
@@ -252,6 +275,7 @@ export default function UsersPage() {
             setIsCreateOpen(false);
             setForm(EMPTY_FORM);
             setShowPassword(false);
+            setDuplicateSource(null);
         } catch (error: any) {
             toast.error(error.message || "Failed to save user");
         }
@@ -408,6 +432,13 @@ export default function UsersPage() {
                                 >
                                     Edit
                                 </Button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => openDuplicate(user)}
+                                >
+                                    Duplicate
+                                </Button>
                                 {canManagePasswords ? (
                                     <Button
                                         variant="outline"
@@ -424,12 +455,17 @@ export default function UsersPage() {
             </DataTable>
 
             <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-                <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
-                    <DialogHeader>
-                        <DialogTitle>Create User</DialogTitle>
-                        <DialogDescription>
-                            Role sets the boundary. Access Policy sets the default permission
-                            bundle. Grants and revokes are explicit per-user overrides.
+                    <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+                        <DialogHeader>
+                            <DialogTitle>
+                                {duplicateSource
+                                    ? `Duplicate User — copying from ${duplicateSource.name}`
+                                    : "Create User"}
+                            </DialogTitle>
+                            <DialogDescription>
+                                {duplicateSource
+                                    ? "Role, access policy, permission overrides, company, and status were copied from the source user. Fill in a new name, email, and password."
+                                    : "Role sets the boundary. Access Policy sets the default permission bundle. Grants and revokes are explicit per-user overrides."}
                         </DialogDescription>
                     </DialogHeader>
 
@@ -637,118 +673,112 @@ export default function UsersPage() {
                                                 No matching permissions.
                                             </div>
                                         ) : (
-                                            filteredPermissionGroups.map(
-                                                ([groupName, permissions]) => (
-                                                    <div key={groupName} className="space-y-2">
-                                                        <p className="text-sm font-medium">
-                                                            {groupName}
-                                                        </p>
-                                                        <div className="space-y-2">
-                                                            {permissions.map((permission) => {
-                                                                const inPolicy =
-                                                                    permissionIsImpliedByPolicy(
-                                                                        permission
-                                                                    );
-                                                                const granted =
-                                                                    form.permission_grants.includes(
-                                                                        permission
-                                                                    );
-                                                                const revoked =
-                                                                    form.permission_revokes.includes(
-                                                                        permission
-                                                                    );
-
-                                                                return (
-                                                                    <div
-                                                                        key={permission}
-                                                                        className={cn(
-                                                                            "space-y-2 rounded-md border p-3",
-                                                                            inPolicy
-                                                                                ? "border-primary/25 bg-primary/5"
-                                                                                : "border-border/60 bg-muted/40"
-                                                                        )}
-                                                                    >
-                                                                        <div className="flex flex-wrap items-center gap-2">
-                                                                            <span className="text-xs font-mono">
-                                                                                {permission}
-                                                                            </span>
-                                                                            {inPolicy ? (
-                                                                                <Badge variant="outline">
-                                                                                    In policy
-                                                                                </Badge>
-                                                                            ) : null}
-                                                                            {granted ? (
-                                                                                <Badge
-                                                                                    variant={
-                                                                                        inPolicy
-                                                                                            ? "outline"
-                                                                                            : "secondary"
-                                                                                    }
-                                                                                >
-                                                                                    {inPolicy
-                                                                                        ? "Grant no-op"
-                                                                                        : "Granted"}
-                                                                                </Badge>
-                                                                            ) : null}
-                                                                            {revoked ? (
-                                                                                <Badge
-                                                                                    variant={
-                                                                                        inPolicy
-                                                                                            ? "destructive"
-                                                                                            : "outline"
-                                                                                    }
-                                                                                >
-                                                                                    {inPolicy
-                                                                                        ? "Revoked"
-                                                                                        : "Revoke no-op"}
-                                                                                </Badge>
-                                                                            ) : null}
-                                                                        </div>
-                                                                        <div className="grid grid-cols-[auto_auto] justify-start gap-4">
-                                                                            <label className="flex items-center gap-2 text-xs">
-                                                                                <Checkbox
-                                                                                    checked={
-                                                                                        granted
-                                                                                    }
-                                                                                    onCheckedChange={(
-                                                                                        checked
-                                                                                    ) =>
-                                                                                        toggleOverride(
-                                                                                            "grant",
-                                                                                            permission,
-                                                                                            checked ===
-                                                                                                true
-                                                                                        )
-                                                                                    }
-                                                                                />
-                                                                                Grant
-                                                                            </label>
-                                                                            <label className="flex items-center gap-2 text-xs">
-                                                                                <Checkbox
-                                                                                    checked={
-                                                                                        revoked
-                                                                                    }
-                                                                                    onCheckedChange={(
-                                                                                        checked
-                                                                                    ) =>
-                                                                                        toggleOverride(
-                                                                                            "revoke",
-                                                                                            permission,
-                                                                                            checked ===
-                                                                                                true
-                                                                                        )
-                                                                                    }
-                                                                                />
-                                                                                Revoke
-                                                                            </label>
-                                                                        </div>
-                                                                    </div>
+                                            filteredPermissionGroups.map(([groupName, permissions]) => (
+                                                <div key={groupName} className="space-y-2">
+                                                    <p className="text-sm font-medium">
+                                                        {groupName}
+                                                    </p>
+                                                    <div className="space-y-2">
+                                                        {permissions.map((permission) => {
+                                                            const inPolicy =
+                                                                permissionIsImpliedByPolicy(
+                                                                    permission
                                                                 );
-                                                            })}
-                                                        </div>
+                                                            const granted =
+                                                                form.permission_grants.includes(
+                                                                    permission
+                                                                );
+                                                            const revoked =
+                                                                form.permission_revokes.includes(
+                                                                    permission
+                                                                );
+
+                                                            return (
+                                                                <div
+                                                                    key={permission}
+                                                                    className={cn(
+                                                                        "space-y-2 rounded-md border p-3",
+                                                                        inPolicy
+                                                                            ? "border-primary/25 bg-primary/5"
+                                                                            : "border-border/60 bg-muted/40"
+                                                                    )}
+                                                                >
+                                                                    <div className="flex flex-wrap items-center gap-2">
+                                                                        <span className="text-xs font-mono">
+                                                                            {permission}
+                                                                        </span>
+                                                                        {inPolicy ? (
+                                                                            <Badge variant="outline">
+                                                                                In policy
+                                                                            </Badge>
+                                                                        ) : null}
+                                                                        {granted ? (
+                                                                            <Badge
+                                                                                variant={
+                                                                                    inPolicy
+                                                                                        ? "outline"
+                                                                                        : "secondary"
+                                                                                }
+                                                                            >
+                                                                                {inPolicy
+                                                                                    ? "Grant no-op"
+                                                                                    : "Granted"}
+                                                                            </Badge>
+                                                                        ) : null}
+                                                                        {revoked ? (
+                                                                            <Badge
+                                                                                variant={
+                                                                                    inPolicy
+                                                                                        ? "destructive"
+                                                                                        : "outline"
+                                                                                }
+                                                                            >
+                                                                                {inPolicy
+                                                                                    ? "Revoked"
+                                                                                    : "Revoke no-op"}
+                                                                            </Badge>
+                                                                        ) : null}
+                                                                    </div>
+                                                                    <div className="grid grid-cols-[auto_auto] justify-start gap-4">
+                                                                        <label className="flex items-center gap-2 text-xs">
+                                                                            <Checkbox
+                                                                                checked={granted}
+                                                                                onCheckedChange={(
+                                                                                    checked
+                                                                                ) =>
+                                                                                    toggleOverride(
+                                                                                        "grant",
+                                                                                        permission,
+                                                                                        checked ===
+                                                                                            true
+                                                                                    )
+                                                                                }
+                                                                            />
+                                                                            Grant
+                                                                        </label>
+                                                                        <label className="flex items-center gap-2 text-xs">
+                                                                            <Checkbox
+                                                                                checked={revoked}
+                                                                                onCheckedChange={(
+                                                                                    checked
+                                                                                ) =>
+                                                                                    toggleOverride(
+                                                                                        "revoke",
+                                                                                        permission,
+                                                                                        checked ===
+                                                                                            true
+                                                                                    )
+                                                                                }
+                                                                            />
+                                                                            Revoke
+                                                                        </label>
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
                                                     </div>
-                                                )
-                                            )
+                                                </div>
+                                            ))
                                         )}
                                     </div>
                                 </CardContent>
