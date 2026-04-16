@@ -66,22 +66,27 @@ import { useCompanies } from "@/hooks/use-companies";
 import { apiClient } from "@/lib/api/api-client";
 import { throwApiError } from "@/lib/utils/throw-api-error";
 import {
-    DEFAULT_PLATFORM_FEATURES,
-    FEATURE_META,
-    PLATFORM_FEATURE_KEYS,
+    getFeatureRegistry,
+    getPlatformFeatureKeys,
+    getDefaultPlatformFeatures,
 } from "@/lib/platform-features";
+import { usePlatform as usePlatformContext } from "@/contexts/platform-context";
 import { useToken } from "@/lib/auth/use-token";
 import { hasPermission } from "@/lib/auth/permissions";
 
 const BASE = "/operations/v1/platform";
 
-type StrictFeatures = Required<PlatformFeatures>;
-const DEFAULT_FEATURES: StrictFeatures = DEFAULT_PLATFORM_FEATURES;
+type StrictFeatures = Record<string, boolean>;
 
 export default function PlatformSettingsPage() {
     const { user } = useToken();
     const qc = useQueryClient();
     const { data: platform, isLoading } = usePlatform();
+    // platform context carries the feature_registry served by /auth/context;
+    // usePlatform (data hook) above is the GET platform record and does not
+    // include the registry. Keep them separate so the registry source stays
+    // the one place it's actually shipped from.
+    const { platform: platformContext } = usePlatformContext();
     const { data: diagnostics, isLoading: diagnosticsLoading } = usePlatformUrlDiagnostics();
     const updateConfig = useUpdatePlatformConfig();
     const updatePlatformDomain = useUpdatePlatformDomain();
@@ -102,7 +107,7 @@ export default function PlatformSettingsPage() {
     const [secondaryColor, setSecondaryColor] = useState("");
     const [logoUrl, setLogoUrl] = useState("");
     const [platformDomain, setPlatformDomain] = useState("");
-    const [features, setFeatures] = useState<StrictFeatures>(DEFAULT_FEATURES);
+    const [features, setFeatures] = useState<StrictFeatures>({});
     const [savingFeatures, setSavingFeatures] = useState(false);
 
     // Feasibility & Lead Time
@@ -153,15 +158,15 @@ export default function PlatformSettingsPage() {
         setWeekendDays(f?.weekend_days ?? [0, 6]);
         setFeasibilityTimezone(f?.timezone ?? "Asia/Dubai");
 
-        // Derived from FEATURE_META so new flags flow through automatically.
-        const loaded = PLATFORM_FEATURE_KEYS.reduce(
-            (acc, key) => {
-                const incoming = platform.features?.[key];
-                acc[key] = incoming === undefined ? DEFAULT_FEATURES[key] : Boolean(incoming);
-                return acc;
-            },
-            {} as StrictFeatures
-        );
+        // Derived from the runtime feature registry served by the API on
+        // /auth/context, so new flags flow through without a frontend deploy.
+        const keys = getPlatformFeatureKeys(platformContext);
+        const defaults = getDefaultPlatformFeatures(platformContext);
+        const loaded = keys.reduce<StrictFeatures>((acc, key) => {
+            const incoming = platform.features?.[key];
+            acc[key] = incoming === undefined ? Boolean(defaults[key]) : Boolean(incoming);
+            return acc;
+        }, {});
         setFeatures(loaded);
     }, [platform]);
 
@@ -611,10 +616,12 @@ export default function PlatformSettingsPage() {
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        {PLATFORM_FEATURE_KEYS.map((key) => {
-                            const meta = FEATURE_META[key];
-                            return { key, ...meta };
-                        }).map((item) => (
+                        {getPlatformFeatureKeys(platformContext)
+                            .map((key) => {
+                                const meta = getFeatureRegistry(platformContext)[key];
+                                return { key, ...meta };
+                            })
+                            .map((item) => (
                             <div key={item.key} className="flex items-center justify-between">
                                 <div>
                                     <p className="text-sm font-medium">

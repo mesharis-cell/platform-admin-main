@@ -18,4 +18,15 @@ export interface PlatformDomain {
      * company enables enable_self_pickup) actually surfaces in admin UI.
      */
     effective_admin_features?: Record<string, boolean>;
+    /**
+     * Canonical feature registry served by the API on /auth/context for
+     * admin + warehouse subdomains. Admin UIs render toggle labels +
+     * descriptions from this so new flags flow through without a frontend
+     * deploy. Missing on older API deployments — consumers must fall back
+     * to an empty object gracefully.
+     */
+    feature_registry?: Record<
+        string,
+        { default: boolean; label: string; description: string; comingSoon?: boolean }
+    >;
 }

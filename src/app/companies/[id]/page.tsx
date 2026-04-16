@@ -34,16 +34,8 @@ import type { Company } from "@/types";
 import { useToken } from "@/lib/auth/use-token";
 import { hasPermission } from "@/lib/auth/permissions";
 import { ADMIN_ACTION_PERMISSIONS } from "@/lib/auth/permission-map";
-import { FEATURE_META, PLATFORM_FEATURE_KEYS } from "@/lib/platform-features";
-
-// Per-company feature overrides. Rendered list derived from FEATURE_META
-// (the single source of truth) — adding a new flag in platform-features.ts
-// automatically surfaces here. Do NOT hand-code the list again.
-const FEATURE_FLAGS = PLATFORM_FEATURE_KEYS.map((key) => ({
-    key,
-    label: FEATURE_META[key].label,
-    description: FEATURE_META[key].description,
-}));
+import { getFeatureRegistry } from "@/lib/platform-features";
+import { usePlatform } from "@/contexts/platform-context";
 
 type FeatureOverrides = Record<string, boolean | null>;
 
@@ -55,8 +47,19 @@ export default function CompanyEditPage() {
 
     const { data, isLoading } = useCompanies({ limit: "100", page: "1" });
     const { data: platformSettings } = usePlatformSettings();
+    const { platform } = usePlatform();
     const updateMutation = useUpdateCompany();
     const uploadMutation = useUploadImage();
+
+    // Per-company feature overrides. Rendered list derived from the runtime
+    // feature_registry served by the API. Adding a flag on the API surfaces
+    // here automatically. See CLAUDE.md <feature_flag_discipline>.
+    const featureRegistry = getFeatureRegistry(platform);
+    const FEATURE_FLAGS = Object.keys(featureRegistry).map((key) => ({
+        key,
+        label: featureRegistry[key].label,
+        description: featureRegistry[key].description,
+    }));
     const canReadWarehouseOpsRate =
         hasPermission(user, ADMIN_ACTION_PERMISSIONS.warehouseOpsRatesRead) ||
         hasPermission(user, ADMIN_ACTION_PERMISSIONS.warehouseOpsRatesUpdate);
