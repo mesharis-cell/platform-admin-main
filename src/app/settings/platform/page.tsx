@@ -65,7 +65,11 @@ import {
 import { useCompanies } from "@/hooks/use-companies";
 import { apiClient } from "@/lib/api/api-client";
 import { throwApiError } from "@/lib/utils/throw-api-error";
-import { DEFAULT_PLATFORM_FEATURES } from "@/lib/platform-features";
+import {
+    DEFAULT_PLATFORM_FEATURES,
+    FEATURE_META,
+    PLATFORM_FEATURE_KEYS,
+} from "@/lib/platform-features";
 import { useToken } from "@/lib/auth/use-token";
 import { hasPermission } from "@/lib/auth/permissions";
 
@@ -149,36 +153,16 @@ export default function PlatformSettingsPage() {
         setWeekendDays(f?.weekend_days ?? [0, 6]);
         setFeasibilityTimezone(f?.timezone ?? "Asia/Dubai");
 
-        setFeatures({
-            enable_inbound_requests:
-                platform.features.enable_inbound_requests ??
-                DEFAULT_FEATURES.enable_inbound_requests,
-            show_estimate_on_order_creation:
-                platform.features.show_estimate_on_order_creation ??
-                DEFAULT_FEATURES.show_estimate_on_order_creation,
-            enable_kadence_invoicing:
-                platform.features.enable_kadence_invoicing ??
-                DEFAULT_FEATURES.enable_kadence_invoicing,
-            enable_base_operations:
-                platform.features.enable_base_operations ?? DEFAULT_FEATURES.enable_base_operations,
-            enable_asset_bulk_upload:
-                platform.features.enable_asset_bulk_upload ??
-                DEFAULT_FEATURES.enable_asset_bulk_upload,
-            enable_attachments:
-                platform.features.enable_attachments ?? DEFAULT_FEATURES.enable_attachments,
-            enable_workflows:
-                platform.features.enable_workflows ?? DEFAULT_FEATURES.enable_workflows,
-            enable_service_requests:
-                platform.features.enable_service_requests ??
-                DEFAULT_FEATURES.enable_service_requests,
-            enable_event_calendar:
-                platform.features.enable_event_calendar ?? DEFAULT_FEATURES.enable_event_calendar,
-            enable_client_stock_requests:
-                platform.features.enable_client_stock_requests ??
-                DEFAULT_FEATURES.enable_client_stock_requests,
-            enable_self_pickup:
-                platform.features.enable_self_pickup ?? DEFAULT_FEATURES.enable_self_pickup,
-        });
+        // Derived from FEATURE_META so new flags flow through automatically.
+        const loaded = PLATFORM_FEATURE_KEYS.reduce(
+            (acc, key) => {
+                const incoming = platform.features?.[key];
+                acc[key] = incoming === undefined ? DEFAULT_FEATURES[key] : Boolean(incoming);
+                return acc;
+            },
+            {} as StrictFeatures
+        );
+        setFeatures(loaded);
     }, [platform]);
 
     const groupedDomains = useMemo(() => {
@@ -627,70 +611,10 @@ export default function PlatformSettingsPage() {
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        {[
-                            {
-                                key: "enable_inbound_requests" as const,
-                                label: "Enable Inbound Requests",
-                                description: "Allow inbound request workflows",
-                            },
-                            {
-                                key: "show_estimate_on_order_creation" as const,
-                                label: "Show Estimate on Order Creation",
-                                description: "Display estimate immediately in order creation flow",
-                            },
-                            {
-                                key: "enable_kadence_invoicing" as const,
-                                label: "Enable Invoicing",
-                                description:
-                                    "Enable invoice generation and payment confirmation flows",
-                                comingSoon: true,
-                            },
-                            {
-                                key: "enable_attachments" as const,
-                                label: "Enable Attachments",
-                                description:
-                                    "Allow typed documents across order, inbound, service request, and workflow records",
-                            },
-                            {
-                                key: "enable_asset_bulk_upload" as const,
-                                label: "Enable Asset Bulk Upload",
-                                description:
-                                    "Allow bulk uploading of assets via spreadsheet import",
-                            },
-                            {
-                                key: "enable_workflows" as const,
-                                label: "Enable Internal Workflows",
-                                description:
-                                    "Expose workflow sections, workflow inboxes, and workflow request creation",
-                            },
-                            {
-                                key: "enable_base_operations" as const,
-                                label: "Enable Picking & Handling",
-                                description:
-                                    "Include Picking & Handling (base operations) in pricing calculations",
-                            },
-                            {
-                                key: "enable_service_requests" as const,
-                                label: "Enable Service Requests",
-                                description: "Show service requests section in client portal",
-                            },
-                            {
-                                key: "enable_event_calendar" as const,
-                                label: "Enable Event Calendar",
-                                description: "Show event calendar page in client portal",
-                            },
-                            {
-                                key: "enable_client_stock_requests" as const,
-                                label: "Enable Client Stock Requests",
-                                description: "Allow clients to submit new stock / inbound requests",
-                            },
-                            {
-                                key: "enable_self_pickup" as const,
-                                label: "Enable Self Pickup",
-                                description:
-                                    "Allow self-pickup fulfillment — clients collect items themselves. Gates self-pickup surfaces across admin, client, and warehouse.",
-                            },
-                        ].map((item) => (
+                        {PLATFORM_FEATURE_KEYS.map((key) => {
+                            const meta = FEATURE_META[key];
+                            return { key, ...meta };
+                        }).map((item) => (
                             <div key={item.key} className="flex items-center justify-between">
                                 <div>
                                     <p className="text-sm font-medium">
