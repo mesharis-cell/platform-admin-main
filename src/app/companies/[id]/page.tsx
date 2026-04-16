@@ -259,6 +259,15 @@ export default function CompanyEditPage() {
                         ...formData.settings.branding,
                         logo_url: logoUrl || undefined,
                     },
+                    feasibility: {
+                        ...(formData.settings.feasibility.minimum_lead_hours !== null &&
+                        formData.settings.feasibility.minimum_lead_hours !== undefined
+                            ? {
+                                  minimum_lead_hours:
+                                      formData.settings.feasibility.minimum_lead_hours,
+                              }
+                            : {}),
+                    },
                 },
                 features,
             };

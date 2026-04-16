@@ -27,7 +27,7 @@ import type { User } from "@/types/auth";
 import type { PlatformDomain } from "@/types/platform-domain";
 import { ADMIN_NAV_PERMISSIONS, ADMIN_PAGE_PERMISSIONS } from "@/lib/auth/permission-map";
 import { hasAnyPermission, hasPermission } from "@/lib/auth/permissions";
-import { isPlatformFeatureEnabled, type PlatformFeatureKey } from "@/lib/platform-features";
+import { isAdminFeatureAvailable, type PlatformFeatureKey } from "@/lib/platform-features";
 
 export type AdminRouteSection =
     | "Operations"
@@ -365,7 +365,7 @@ export function isAdminRouteFeatureEnabled(
     route: AdminRouteDefinition,
     platform: PlatformDomain | null | undefined
 ): boolean {
-    return isPlatformFeatureEnabled(platform, route.requiredFeature);
+    return isAdminFeatureAvailable(platform, route.requiredFeature);
 }
 
 export function canAccessAdminRoute(

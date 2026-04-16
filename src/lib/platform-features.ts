@@ -29,3 +29,22 @@ export function isPlatformFeatureEnabled(
 
     return Boolean(featureValue);
 }
+
+/**
+ * Admin-side feature availability: true if the platform default is on OR any
+ * company on the platform has overridden the flag to true. Mirrors the API
+ * featureValidator middleware union check for ADMIN/LOGISTICS roles.
+ *
+ * Use this for admin nav visibility + page guards. Use isPlatformFeatureEnabled
+ * only when you specifically need the platform default (e.g. settings UI).
+ */
+export function isAdminFeatureAvailable(
+    platform: PlatformDomain | null | undefined,
+    featureKey?: PlatformFeatureKey
+): boolean {
+    if (!featureKey) return true;
+
+    if (isPlatformFeatureEnabled(platform, featureKey)) return true;
+
+    return Boolean(platform?.effective_admin_features?.[featureKey]);
+}
