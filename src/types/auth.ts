@@ -292,12 +292,14 @@ export interface CreateUserRequest {
 // Update user request
 export interface UpdateUserRequest {
     name?: string;
+    email?: string;
     role?: UserRole;
     access_policy_id?: string | null;
     permission_grants?: string[];
     permission_revokes?: string[];
     company_id?: string | null;
     is_active?: boolean;
+    is_super_admin?: boolean;
 }
 
 // User list query params

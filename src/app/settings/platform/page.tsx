@@ -176,6 +176,8 @@ export default function PlatformSettingsPage() {
             enable_client_stock_requests:
                 platform.features.enable_client_stock_requests ??
                 DEFAULT_FEATURES.enable_client_stock_requests,
+            enable_self_pickup:
+                platform.features.enable_self_pickup ?? DEFAULT_FEATURES.enable_self_pickup,
         });
     }, [platform]);
 
@@ -681,6 +683,12 @@ export default function PlatformSettingsPage() {
                                 key: "enable_client_stock_requests" as const,
                                 label: "Enable Client Stock Requests",
                                 description: "Allow clients to submit new stock / inbound requests",
+                            },
+                            {
+                                key: "enable_self_pickup" as const,
+                                label: "Enable Self Pickup",
+                                description:
+                                    "Allow self-pickup fulfillment — clients collect items themselves. Gates self-pickup surfaces across admin, client, and warehouse.",
                             },
                         ].map((item) => (
                             <div key={item.key} className="flex items-center justify-between">
