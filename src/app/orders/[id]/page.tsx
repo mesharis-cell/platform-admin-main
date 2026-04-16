@@ -1254,32 +1254,111 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                             </Card>
                         )}
 
-                        {/* Delivery Windows */}
-                        {(order?.data?.requested_delivery_window || order?.data?.delivery_window) && (
+                        {/* Fulfillment Windows (delivery in, pickup out) */}
+                        {(order?.data?.requested_delivery_window ||
+                            order?.data?.delivery_window ||
+                            order?.data?.requested_pickup_window ||
+                            order?.data?.pickup_window) && (
                             <Card>
                                 <CardHeader>
                                     <CardTitle className="font-mono text-sm flex items-center gap-2">
                                         <Clock className="h-4 w-4 text-primary" />
-                                        DELIVERY WINDOW
+                                        FULFILLMENT WINDOWS
                                     </CardTitle>
                                 </CardHeader>
-                                <CardContent className="space-y-3">
-                                    {order?.data?.requested_delivery_window && (
-                                        <div>
-                                            <p className="text-xs text-muted-foreground">Client Requested</p>
-                                            <p className="font-mono text-sm">
-                                                {new Date((order.data.requested_delivery_window as any).start).toLocaleString()} –{" "}
-                                                {new Date((order.data.requested_delivery_window as any).end).toLocaleString()}
+                                <CardContent className="space-y-4">
+                                    {/* Delivery */}
+                                    {(order?.data?.requested_delivery_window ||
+                                        order?.data?.delivery_window) && (
+                                        <div className="space-y-2">
+                                            <p className="text-[10px] font-mono uppercase tracking-[0.15em] text-muted-foreground">
+                                                Delivery
                                             </p>
+                                            {order?.data?.requested_delivery_window && (
+                                                <div>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        Client Requested
+                                                    </p>
+                                                    <p className="font-mono text-sm">
+                                                        {new Date(
+                                                            (order.data
+                                                                .requested_delivery_window as any)
+                                                                .start
+                                                        ).toLocaleString()}{" "}
+                                                        –{" "}
+                                                        {new Date(
+                                                            (order.data
+                                                                .requested_delivery_window as any)
+                                                                .end
+                                                        ).toLocaleString()}
+                                                    </p>
+                                                </div>
+                                            )}
+                                            {order?.data?.delivery_window && (
+                                                <div>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        Confirmed by Logistics
+                                                    </p>
+                                                    <p className="font-mono text-sm font-bold">
+                                                        {new Date(
+                                                            (order.data.delivery_window as any)
+                                                                .start
+                                                        ).toLocaleString()}{" "}
+                                                        –{" "}
+                                                        {new Date(
+                                                            (order.data.delivery_window as any)
+                                                                .end
+                                                        ).toLocaleString()}
+                                                    </p>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
-                                    {order?.data?.delivery_window && (
-                                        <div>
-                                            <p className="text-xs text-muted-foreground">Confirmed by Logistics</p>
-                                            <p className="font-mono text-sm font-bold">
-                                                {new Date((order.data.delivery_window as any).start).toLocaleString()} –{" "}
-                                                {new Date((order.data.delivery_window as any).end).toLocaleString()}
+
+                                    {/* Pickup */}
+                                    {(order?.data?.requested_pickup_window ||
+                                        order?.data?.pickup_window) && (
+                                        <div className="space-y-2 pt-2 border-t border-border/40">
+                                            <p className="text-[10px] font-mono uppercase tracking-[0.15em] text-muted-foreground">
+                                                Pickup
                                             </p>
+                                            {order?.data?.requested_pickup_window && (
+                                                <div>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        Client Requested
+                                                    </p>
+                                                    <p className="font-mono text-sm">
+                                                        {new Date(
+                                                            (order.data
+                                                                .requested_pickup_window as any)
+                                                                .start
+                                                        ).toLocaleString()}{" "}
+                                                        –{" "}
+                                                        {new Date(
+                                                            (order.data
+                                                                .requested_pickup_window as any)
+                                                                .end
+                                                        ).toLocaleString()}
+                                                    </p>
+                                                </div>
+                                            )}
+                                            {order?.data?.pickup_window && (
+                                                <div>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        Confirmed by Logistics
+                                                    </p>
+                                                    <p className="font-mono text-sm font-bold">
+                                                        {new Date(
+                                                            (order.data.pickup_window as any)
+                                                                .start
+                                                        ).toLocaleString()}{" "}
+                                                        –{" "}
+                                                        {new Date(
+                                                            (order.data.pickup_window as any).end
+                                                        ).toLocaleString()}
+                                                    </p>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
                                 </CardContent>
