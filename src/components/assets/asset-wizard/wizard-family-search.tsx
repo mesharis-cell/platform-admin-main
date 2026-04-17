@@ -102,7 +102,7 @@ export function WizardFamilySearch({ onSelect }: Props) {
                                     <p className="font-medium text-sm truncate">{family.name}</p>
                                     <div className="flex items-center gap-2 mt-0.5">
                                         <span className="text-xs text-muted-foreground">
-                                            {family.category}
+                                            {family.category?.name || "Uncategorized"}
                                         </span>
                                         <Badge variant="outline" className="text-[10px] py-0">
                                             {isSerialized ? "Serialized" : "Pooled"}

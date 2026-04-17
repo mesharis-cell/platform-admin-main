@@ -12,7 +12,7 @@ export interface PhotoEntry {
 export interface FamilySummary {
     id: string;
     name: string;
-    category: string;
+    category: { id: string; name: string; slug: string; color: string } | null;
     stockMode: string;
     images: Array<{ url: string }>;
     brand?: { id: string; name: string } | null;
@@ -46,7 +46,8 @@ export interface WizardState {
     itemName: string;
     companyItemCode: string;
     itemDescription: string;
-    category: string;
+    category_id: string | null;
+    new_category: { name: string; color?: string } | null;
 
     // Stock record fields
     warehouseId: string;
@@ -127,7 +128,8 @@ export const INITIAL_STATE: WizardState = {
     itemName: "",
     companyItemCode: "",
     itemDescription: "",
-    category: "",
+    category_id: null,
+    new_category: null,
     warehouseId: "",
     zoneId: "",
     quantity: 1,
@@ -168,7 +170,7 @@ export function wizardReducer(state: WizardState, action: WizardAction): WizardS
                 stockMode: f.stockMode === "POOLED" ? "POOLED" : "SERIALIZED",
                 companyId: f.company?.id || state.companyId,
                 brandId: f.brand?.id || state.brandId,
-                category: f.category || state.category,
+                category_id: f.category?.id || state.category_id,
                 itemName: f.name || state.itemName,
                 dimLength: Number(f.dimensions?.length) || state.dimLength,
                 dimWidth: Number(f.dimensions?.width) || state.dimWidth,

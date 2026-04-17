@@ -270,9 +270,22 @@ export default function AssetFamilyDetailPage({ params }: { params: Promise<{ id
                                     <Badge variant="secondary" className="font-mono text-xs">
                                         {isSerialized ? "Serialized" : "Pooled"}
                                     </Badge>
-                                    <Badge variant="outline" className="font-mono text-xs">
-                                        {family.category}
-                                    </Badge>
+                                    {family.category && (
+                                        <Badge
+                                            variant="outline"
+                                            className="font-mono text-xs"
+                                            style={{
+                                                borderColor: family.category.color,
+                                                color: family.category.color,
+                                            }}
+                                        >
+                                            <span
+                                                className="mr-1.5 inline-block h-2 w-2 rounded-full"
+                                                style={{ backgroundColor: family.category.color }}
+                                            />
+                                            {family.category.name}
+                                        </Badge>
+                                    )}
                                     {family.brand?.name && (
                                         <Badge variant="outline" className="font-mono text-xs">
                                             {family.brand.name}

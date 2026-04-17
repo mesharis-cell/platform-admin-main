@@ -25,9 +25,8 @@ import { useToken } from "@/lib/auth/use-token";
 import { hasPermission } from "@/lib/auth/permissions";
 import { ADMIN_ACTION_PERMISSIONS } from "@/lib/auth/permission-map";
 import { usePlatform } from "@/contexts/platform-context";
+import { useAssetCategories } from "@/hooks/use-asset-categories";
 import type { AssetFamily } from "@/types/asset-family";
-
-const DEFAULT_CATEGORIES = ["Furniture", "Glassware", "Installation", "Decor"];
 
 const formatStockMode = (stockMode?: string | null) =>
     stockMode ? stockMode.replace(/_/g, " ") : "Unknown";
@@ -81,7 +80,19 @@ function FamilyCard({ family, compact = false }: { family: AssetFamily; compact?
                             {family.name}
                         </h3>
                         <p className="mt-1 text-xs font-mono text-muted-foreground">
-                            {family.company?.name || "Unknown company"} • {family.category}
+                            {family.company?.name || "Unknown company"}
+                            {family.category && (
+                                <>
+                                    {" "}&bull;{" "}
+                                    <span className="inline-flex items-center gap-1">
+                                        <span
+                                            className="inline-block h-2 w-2 rounded-full"
+                                            style={{ backgroundColor: family.category.color }}
+                                        />
+                                        {family.category.name}
+                                    </span>
+                                </>
+                            )}
                         </p>
                         {family.brand?.name && (
                             <p className="mt-1 text-xs font-mono text-muted-foreground">
@@ -122,7 +133,7 @@ export default function AssetsPage() {
     const ITEMS_PER_PAGE = 24;
     const [filters, setFilters] = useState({
         company: "all",
-        category: "all",
+        category_id: "all",
         stockMode: "all",
     });
 
@@ -133,6 +144,8 @@ export default function AssetsPage() {
     }, [searchQuery]);
 
     const { data: companies } = useCompanies({ limit: "100" });
+    const { data: categoriesData } = useAssetCategories();
+    const categoryList = categoriesData?.data || [];
     const canCreateAsset = hasPermission(user, ADMIN_ACTION_PERMISSIONS.assetsCreate);
     const canBulkUploadAsset = hasPermission(user, ADMIN_ACTION_PERMISSIONS.assetsBulkUpload);
     const bulkUploadEnabled = platform?.features?.enable_asset_bulk_upload === true;
@@ -144,7 +157,7 @@ export default function AssetsPage() {
         };
         if (debouncedSearch) params.search_term = debouncedSearch;
         if (filters.company !== "all") params.company_id = filters.company;
-        if (filters.category !== "all") params.category = filters.category;
+        if (filters.category_id !== "all") params.category_id = filters.category_id;
         if (filters.stockMode !== "all") params.stock_mode = filters.stockMode;
         return params;
     }, [filters, debouncedSearch, page]);
@@ -225,9 +238,9 @@ export default function AssetsPage() {
                             </Select>
 
                             <Select
-                                value={filters.category}
+                                value={filters.category_id}
                                 onValueChange={(value) =>
-                                    setFilters((current) => ({ ...current, category: value }))
+                                    setFilters((current) => ({ ...current, category_id: value }))
                                 }
                             >
                                 <SelectTrigger className="w-[160px] font-mono">
@@ -235,9 +248,15 @@ export default function AssetsPage() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="all">All Categories</SelectItem>
-                                    {DEFAULT_CATEGORIES.map((category) => (
-                                        <SelectItem key={category} value={category}>
-                                            {category}
+                                    {categoryList.map((cat) => (
+                                        <SelectItem key={cat.id} value={cat.id}>
+                                            <span className="inline-flex items-center gap-2">
+                                                <span
+                                                    className="inline-block h-2 w-2 rounded-full shrink-0"
+                                                    style={{ backgroundColor: cat.color }}
+                                                />
+                                                {cat.name}
+                                            </span>
                                         </SelectItem>
                                     ))}
                                 </SelectContent>

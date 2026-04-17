@@ -23,7 +23,12 @@ export interface AssetFamily {
     name: string;
     company_item_code: string | null;
     description: string | null;
-    category: string;
+    category: {
+        id: string;
+        name: string;
+        slug: string;
+        color: string;
+    } | null;
     images: AssetImage[];
     on_display_image: string | null;
     stock_mode: StockMode;

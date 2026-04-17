@@ -392,7 +392,7 @@ export default function ItemsNeedingAttentionPage() {
                                                                 {family.name}
                                                             </h3>
                                                             <p className="text-sm text-muted-foreground">
-                                                                {family.category}
+                                                                {family.category?.name || "Uncategorized"}
                                                             </p>
                                                         </div>
                                                         <ChevronRight className="h-5 w-5 text-muted-foreground transition-transform group-hover:translate-x-1" />

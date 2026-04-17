@@ -13,9 +13,8 @@ import {
 } from "@/components/ui/select";
 import { useCompanies } from "@/hooks/use-companies";
 import { useBrands } from "@/hooks/use-brands";
+import { CategoryCombobox } from "@/components/assets/category-combobox";
 import type { WizardState } from "./types";
-
-const CATEGORIES = ["Furniture", "Glassware", "Installation", "Decor"];
 const HANDLING_TAGS = ["Fragile", "HighValue", "HeavyLift", "AssemblyRequired"];
 
 interface Props {
@@ -100,18 +99,14 @@ export function WizardFamilyForm({ state, update }: Props) {
 
             <div className="space-y-2">
                 <Label>Category *</Label>
-                <Select value={state.category} onValueChange={(v) => update({ category: v })}>
-                    <SelectTrigger>
-                        <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {CATEGORIES.map((c) => (
-                            <SelectItem key={c} value={c}>
-                                {c}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
+                <CategoryCombobox
+                    companyId={state.companyId || null}
+                    value={state.category_id}
+                    newCategory={state.new_category}
+                    onChange={(categoryId, newCat) =>
+                        update({ category_id: categoryId, new_category: newCat })
+                    }
+                />
             </div>
 
             <div className="space-y-2">

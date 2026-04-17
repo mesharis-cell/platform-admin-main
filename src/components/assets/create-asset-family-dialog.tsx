@@ -26,8 +26,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-
-const DEFAULT_CATEGORIES = ["Furniture", "Glassware", "Installation", "Decor"];
+import { CategoryCombobox } from "@/components/assets/category-combobox";
 const HANDLING_TAGS = ["Fragile", "HighValue", "HeavyLift", "AssemblyRequired"];
 
 interface CreateAssetFamilyDialogProps {
@@ -47,7 +46,8 @@ export function CreateAssetFamilyDialog({
         team_id: "" as string | null,
         name: "",
         description: "" as string | null,
-        category: "",
+        category_id: null as string | null,
+        new_category: null as { name: string; color?: string } | null,
         stock_mode: "SERIALIZED" as "SERIALIZED" | "POOLED",
         packaging: "" as string | null,
         weight_per_unit: null as number | null,
@@ -78,18 +78,17 @@ export function CreateAssetFamilyDialog({
     }
 
     async function handleSubmit() {
-        if (!formData.company_id || !formData.name?.trim() || !formData.category?.trim()) {
+        if (!formData.company_id || !formData.name?.trim() || (!formData.category_id && !formData.new_category)) {
             toast.error("Company, name, and category are required");
             return;
         }
         try {
-            const payload = {
+            const payload: Record<string, unknown> = {
                 company_id: formData.company_id,
                 brand_id: formData.brand_id || null,
                 team_id: formData.team_id || null,
                 name: formData.name.trim(),
                 description: formData.description?.trim() || null,
-                category: formData.category.trim(),
                 stock_mode: formData.stock_mode,
                 packaging: formData.packaging?.trim() || null,
                 weight_per_unit: formData.weight_per_unit,
@@ -97,6 +96,11 @@ export function CreateAssetFamilyDialog({
                 handling_tags: formData.handling_tags,
                 is_active: formData.is_active,
             };
+            if (formData.new_category) {
+                payload.new_category = formData.new_category;
+            } else {
+                payload.category_id = formData.category_id;
+            }
             await createMutation.mutateAsync(payload);
             toast.success("Asset family created");
             onOpenChange(false);
@@ -107,7 +111,8 @@ export function CreateAssetFamilyDialog({
                 team_id: null,
                 name: "",
                 description: null,
-                category: "",
+                category_id: null,
+                new_category: null,
                 stock_mode: "SERIALIZED",
                 packaging: null,
                 weight_per_unit: null,
@@ -202,21 +207,14 @@ export function CreateAssetFamilyDialog({
                     </div>
                     <div className="space-y-2">
                         <Label className="font-mono text-xs">Category *</Label>
-                        <Select
-                            value={formData.category}
-                            onValueChange={(v) => setFormData({ ...formData, category: v })}
-                        >
-                            <SelectTrigger className="font-mono">
-                                <SelectValue placeholder="Select category" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {DEFAULT_CATEGORIES.map((c) => (
-                                    <SelectItem key={c} value={c}>
-                                        {c}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                        <CategoryCombobox
+                            companyId={formData.company_id || null}
+                            value={formData.category_id}
+                            newCategory={formData.new_category}
+                            onChange={(categoryId, newCat) =>
+                                setFormData({ ...formData, category_id: categoryId, new_category: newCat })
+                            }
+                        />
                     </div>
                     <div className="space-y-2">
                         <Label className="font-mono text-xs">Stock Mode *</Label>

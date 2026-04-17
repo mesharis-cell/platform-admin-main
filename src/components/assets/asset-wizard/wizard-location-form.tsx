@@ -46,7 +46,7 @@ export function WizardLocationForm({ state, update }: Props) {
                     <p className="font-medium text-sm">{itemName}</p>
                     <p className="text-xs text-muted-foreground">
                         {isSerialized ? "Serialized" : "Pooled"} &middot;{" "}
-                        {state.category || state.selectedFamily?.category || "—"}
+                        {state.new_category?.name || state.selectedFamily?.category?.name || "—"}
                     </p>
                 </div>
             </div>
