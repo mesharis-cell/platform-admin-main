@@ -4,10 +4,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Grid3x3, Layers3, List, Plus, Search, Upload } from "lucide-react";
+import { Grid3x3, Layers3, List, Package, Plus, Search, Upload } from "lucide-react";
 import { useAssetFamilies } from "@/hooks/use-asset-families";
 import { useCompanies } from "@/hooks/use-companies";
 import { AssetWizard } from "@/components/assets/asset-wizard";
+import { AssetTable } from "@/components/assets/asset-table";
 import { AdminHeader } from "@/components/admin-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -121,14 +122,10 @@ function FamilyCard({ family, compact = false }: { family: AssetFamily; compact?
     );
 }
 
-export default function AssetsPage() {
-    const { user } = useToken();
-    const { platform } = usePlatform();
-    const router = useRouter();
+function FamiliesTab() {
     const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
     const [searchQuery, setSearchQuery] = useState("");
     const [debouncedSearch, setDebouncedSearch] = useState("");
-    const [showWizard, setShowWizard] = useState(false);
     const [page, setPage] = useState(1);
     const ITEMS_PER_PAGE = 24;
     const [filters, setFilters] = useState({
@@ -146,9 +143,6 @@ export default function AssetsPage() {
     const { data: companies } = useCompanies({ limit: "100" });
     const { data: categoriesData } = useAssetCategories();
     const categoryList = categoriesData?.data || [];
-    const canCreateAsset = hasPermission(user, ADMIN_ACTION_PERMISSIONS.assetsCreate);
-    const canBulkUploadAsset = hasPermission(user, ADMIN_ACTION_PERMISSIONS.assetsBulkUpload);
-    const bulkUploadEnabled = platform?.features?.enable_asset_bulk_upload === true;
 
     const queryParams = useMemo(() => {
         const params: Record<string, string> = {
@@ -162,7 +156,6 @@ export default function AssetsPage() {
         return params;
     }, [filters, debouncedSearch, page]);
 
-    // Reset page when filters change
     useEffect(() => {
         setPage(1);
     }, [debouncedSearch, filters]);
@@ -173,12 +166,205 @@ export default function AssetsPage() {
     const totalPages = Math.max(1, Math.ceil(totalFamilies / ITEMS_PER_PAGE));
 
     return (
+        <>
+            <div className="mb-6 space-y-4">
+                <div className="flex flex-col gap-4 lg:flex-row">
+                    <div className="relative flex-1">
+                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                            value={searchQuery}
+                            onChange={(event) => setSearchQuery(event.target.value)}
+                            placeholder="Search asset families..."
+                            className="bg-background pl-10 font-mono"
+                        />
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                        <Select
+                            value={filters.company}
+                            onValueChange={(value) =>
+                                setFilters((current) => ({ ...current, company: value }))
+                            }
+                        >
+                            <SelectTrigger className="w-[180px] font-mono">
+                                <SelectValue placeholder="Company" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Companies</SelectItem>
+                                {(companies?.data || []).map((company) => (
+                                    <SelectItem key={company.id} value={company.id}>
+                                        {company.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+
+                        <Select
+                            value={filters.category_id}
+                            onValueChange={(value) =>
+                                setFilters((current) => ({ ...current, category_id: value }))
+                            }
+                        >
+                            <SelectTrigger className="w-[160px] font-mono">
+                                <SelectValue placeholder="Category" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Categories</SelectItem>
+                                {categoryList.map((cat) => (
+                                    <SelectItem key={cat.id} value={cat.id}>
+                                        <span className="inline-flex items-center gap-2">
+                                            <span
+                                                className="inline-block h-2 w-2 rounded-full shrink-0"
+                                                style={{ backgroundColor: cat.color }}
+                                            />
+                                            {cat.name}
+                                        </span>
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+
+                        <Select
+                            value={filters.stockMode}
+                            onValueChange={(value) =>
+                                setFilters((current) => ({ ...current, stockMode: value }))
+                            }
+                        >
+                            <SelectTrigger className="w-[160px] font-mono">
+                                <SelectValue placeholder="Stock Mode" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Stock Modes</SelectItem>
+                                <SelectItem value="SERIALIZED">Serialized</SelectItem>
+                                <SelectItem value="POOLED">Pooled</SelectItem>
+                            </SelectContent>
+                        </Select>
+
+                        <div className="flex overflow-hidden rounded-lg border border-border">
+                            <Button
+                                variant={viewMode === "grid" ? "default" : "ghost"}
+                                size="sm"
+                                onClick={() => setViewMode("grid")}
+                                className="rounded-none border-r border-border"
+                            >
+                                <Grid3x3 className="h-4 w-4" />
+                            </Button>
+                            <Button
+                                variant={viewMode === "list" ? "default" : "ghost"}
+                                size="sm"
+                                onClick={() => setViewMode("list")}
+                                className="rounded-none"
+                            >
+                                <List className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {isLoading ? (
+                <div
+                    className={
+                        viewMode === "grid"
+                            ? "grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3"
+                            : "space-y-4"
+                    }
+                >
+                    {Array.from({ length: 6 }).map((_, index) => (
+                        <Card key={index} className="overflow-hidden">
+                            <Skeleton className="h-48 w-full" />
+                            <CardContent className="space-y-3 p-4">
+                                <Skeleton className="h-4 w-1/2" />
+                                <Skeleton className="h-3 w-2/3" />
+                                <Skeleton className="h-16 w-full" />
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
+            ) : families.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 text-center">
+                    <div className="mb-4 rounded-full bg-muted/50 p-4">
+                        <Layers3 className="h-12 w-12 text-muted-foreground" />
+                    </div>
+                    <h3 className="mb-2 font-mono text-lg font-semibold">
+                        No asset families found
+                    </h3>
+                    <p className="mb-6 max-w-md text-sm font-mono text-muted-foreground">
+                        Existing stock records are grouped, but new family-first browsing only
+                        shows families. Adjust filters or create stock from the current asset
+                        workflows.
+                    </p>
+                </div>
+            ) : viewMode === "grid" ? (
+                <div
+                    className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3"
+                    data-testid="family-list"
+                >
+                    {families.map((family) => (
+                        <FamilyCard key={family.id} family={family} />
+                    ))}
+                </div>
+            ) : (
+                <div className="space-y-4" data-testid="family-list">
+                    {families.map((family) => (
+                        <FamilyCard key={family.id} family={family} compact />
+                    ))}
+                </div>
+            )}
+            {/* Pagination */}
+            {totalPages > 1 && (
+                <div className="flex items-center justify-between pt-6">
+                    <p className="text-sm text-muted-foreground font-mono">
+                        Showing {families.length} of {totalFamilies}
+                    </p>
+                    <div className="flex items-center gap-2">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={page <= 1}
+                            onClick={() => setPage((p) => p - 1)}
+                        >
+                            Previous
+                        </Button>
+                        <span className="text-sm font-mono text-muted-foreground">
+                            Page {page} of {totalPages}
+                        </span>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={page >= totalPages}
+                            onClick={() => setPage((p) => p + 1)}
+                        >
+                            Next
+                        </Button>
+                    </div>
+                </div>
+            )}
+        </>
+    );
+}
+
+export default function AssetsPage() {
+    const { user } = useToken();
+    const { platform } = usePlatform();
+    const router = useRouter();
+    const [showWizard, setShowWizard] = useState(false);
+    const [activeTab, setActiveTab] = useState<"assets" | "families">("assets");
+
+    const canCreateAsset = hasPermission(user, ADMIN_ACTION_PERMISSIONS.assetsCreate);
+    const canBulkUploadAsset = hasPermission(user, ADMIN_ACTION_PERMISSIONS.assetsBulkUpload);
+    const bulkUploadEnabled = platform?.features?.enable_asset_bulk_upload === true;
+
+    return (
         <div className="min-h-screen bg-background">
             <AdminHeader
-                icon={Layers3}
-                title="ASSET FAMILIES"
-                description="Catalog Identity · Stock Overview · Physical Records"
-                stats={{ label: "TOTAL FAMILIES", value: totalFamilies }}
+                icon={activeTab === "assets" ? Package : Layers3}
+                title={activeTab === "assets" ? "INVENTORY" : "ASSET FAMILIES"}
+                description={
+                    activeTab === "assets"
+                        ? "Individual Assets · Stock Records · Physical Items"
+                        : "Catalog Identity · Stock Overview · Physical Records"
+                }
                 actions={
                     canCreateAsset || (canBulkUploadAsset && bulkUploadEnabled) ? (
                         <div className="flex gap-2">
@@ -204,180 +390,32 @@ export default function AssetsPage() {
                 }
             />
 
-            <div className="mx-auto max-w-[1600px] px-6 py-8">
-                <div className="mb-6 space-y-4">
-                    <div className="flex flex-col gap-4 lg:flex-row">
-                        <div className="relative flex-1">
-                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                            <Input
-                                value={searchQuery}
-                                onChange={(event) => setSearchQuery(event.target.value)}
-                                placeholder="Search asset families..."
-                                className="bg-background pl-10 font-mono"
-                            />
-                        </div>
-
-                        <div className="flex flex-wrap gap-2">
-                            <Select
-                                value={filters.company}
-                                onValueChange={(value) =>
-                                    setFilters((current) => ({ ...current, company: value }))
-                                }
-                            >
-                                <SelectTrigger className="w-[180px] font-mono">
-                                    <SelectValue placeholder="Company" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">All Companies</SelectItem>
-                                    {(companies?.data || []).map((company) => (
-                                        <SelectItem key={company.id} value={company.id}>
-                                            {company.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-
-                            <Select
-                                value={filters.category_id}
-                                onValueChange={(value) =>
-                                    setFilters((current) => ({ ...current, category_id: value }))
-                                }
-                            >
-                                <SelectTrigger className="w-[160px] font-mono">
-                                    <SelectValue placeholder="Category" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">All Categories</SelectItem>
-                                    {categoryList.map((cat) => (
-                                        <SelectItem key={cat.id} value={cat.id}>
-                                            <span className="inline-flex items-center gap-2">
-                                                <span
-                                                    className="inline-block h-2 w-2 rounded-full shrink-0"
-                                                    style={{ backgroundColor: cat.color }}
-                                                />
-                                                {cat.name}
-                                            </span>
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-
-                            <Select
-                                value={filters.stockMode}
-                                onValueChange={(value) =>
-                                    setFilters((current) => ({ ...current, stockMode: value }))
-                                }
-                            >
-                                <SelectTrigger className="w-[160px] font-mono">
-                                    <SelectValue placeholder="Stock Mode" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">All Stock Modes</SelectItem>
-                                    <SelectItem value="SERIALIZED">Serialized</SelectItem>
-                                    <SelectItem value="POOLED">Pooled</SelectItem>
-                                </SelectContent>
-                            </Select>
-
-                            <div className="flex overflow-hidden rounded-lg border border-border">
-                                <Button
-                                    variant={viewMode === "grid" ? "default" : "ghost"}
-                                    size="sm"
-                                    onClick={() => setViewMode("grid")}
-                                    className="rounded-none border-r border-border"
-                                >
-                                    <Grid3x3 className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                    variant={viewMode === "list" ? "default" : "ghost"}
-                                    size="sm"
-                                    onClick={() => setViewMode("list")}
-                                    className="rounded-none"
-                                >
-                                    <List className="h-4 w-4" />
-                                </Button>
-                            </div>
-                        </div>
-                    </div>
+            {/* Tab toggle */}
+            <div className="mx-auto max-w-[1600px] px-6 pt-6">
+                <div className="flex overflow-hidden rounded-lg border border-border w-fit">
+                    <Button
+                        variant={activeTab === "assets" ? "default" : "ghost"}
+                        size="sm"
+                        onClick={() => setActiveTab("assets")}
+                        className="rounded-none border-r border-border font-mono text-xs gap-2"
+                    >
+                        <Package className="h-3.5 w-3.5" />
+                        Assets
+                    </Button>
+                    <Button
+                        variant={activeTab === "families" ? "default" : "ghost"}
+                        size="sm"
+                        onClick={() => setActiveTab("families")}
+                        className="rounded-none font-mono text-xs gap-2"
+                    >
+                        <Layers3 className="h-3.5 w-3.5" />
+                        Families
+                    </Button>
                 </div>
+            </div>
 
-                {isLoading ? (
-                    <div
-                        className={
-                            viewMode === "grid"
-                                ? "grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3"
-                                : "space-y-4"
-                        }
-                    >
-                        {Array.from({ length: 6 }).map((_, index) => (
-                            <Card key={index} className="overflow-hidden">
-                                <Skeleton className="h-48 w-full" />
-                                <CardContent className="space-y-3 p-4">
-                                    <Skeleton className="h-4 w-1/2" />
-                                    <Skeleton className="h-3 w-2/3" />
-                                    <Skeleton className="h-16 w-full" />
-                                </CardContent>
-                            </Card>
-                        ))}
-                    </div>
-                ) : families.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-16 text-center">
-                        <div className="mb-4 rounded-full bg-muted/50 p-4">
-                            <Layers3 className="h-12 w-12 text-muted-foreground" />
-                        </div>
-                        <h3 className="mb-2 font-mono text-lg font-semibold">
-                            No asset families found
-                        </h3>
-                        <p className="mb-6 max-w-md text-sm font-mono text-muted-foreground">
-                            Existing stock records are grouped, but new family-first browsing only
-                            shows families. Adjust filters or create stock from the current asset
-                            workflows.
-                        </p>
-                    </div>
-                ) : viewMode === "grid" ? (
-                    <div
-                        className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3"
-                        data-testid="family-list"
-                    >
-                        {families.map((family) => (
-                            <FamilyCard key={family.id} family={family} />
-                        ))}
-                    </div>
-                ) : (
-                    <div className="space-y-4" data-testid="family-list">
-                        {families.map((family) => (
-                            <FamilyCard key={family.id} family={family} compact />
-                        ))}
-                    </div>
-                )}
-                {/* Pagination */}
-                {totalPages > 1 && (
-                    <div className="flex items-center justify-between pt-6">
-                        <p className="text-sm text-muted-foreground font-mono">
-                            Showing {families.length} of {totalFamilies}
-                        </p>
-                        <div className="flex items-center gap-2">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                disabled={page <= 1}
-                                onClick={() => setPage((p) => p - 1)}
-                            >
-                                Previous
-                            </Button>
-                            <span className="text-sm font-mono text-muted-foreground">
-                                Page {page} of {totalPages}
-                            </span>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                disabled={page >= totalPages}
-                                onClick={() => setPage((p) => p + 1)}
-                            >
-                                Next
-                            </Button>
-                        </div>
-                    </div>
-                )}
+            <div className="mx-auto max-w-[1600px] px-6 py-8">
+                {activeTab === "assets" ? <AssetTable /> : <FamiliesTab />}
             </div>
 
             <AssetWizard open={showWizard} onOpenChange={setShowWizard} />

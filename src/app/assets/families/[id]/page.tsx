@@ -21,6 +21,9 @@ import {
     Search,
     MapPin,
     CircleDot,
+    MoreVertical,
+    Eye,
+    ArrowRightLeft,
 } from "lucide-react";
 import { useAssetFamilyAvailabilityStats } from "@/hooks/use-asset-family-availability-stats";
 import { useAssetFamily, useDeleteAssetFamily } from "@/hooks/use-asset-families";
@@ -43,8 +46,15 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { AssetWizard } from "@/components/assets/asset-wizard";
+import { MoveToFamilyModal } from "@/components/assets/move-to-family-modal";
 import { useAssetFamilyStockHistory, useManualStockAdjustment } from "@/hooks/use-stock-movements";
 import type { Asset } from "@/types/asset";
 
@@ -77,6 +87,7 @@ export default function AssetFamilyDetailPage({ params }: { params: Promise<{ id
     const [adjustmentDelta, setAdjustmentDelta] = useState(0);
     const [adjustmentNote, setAdjustmentNote] = useState("");
     const [adjustmentAssetId, setAdjustmentAssetId] = useState("");
+    const [movingAsset, setMovingAsset] = useState<Asset | null>(null);
 
     const { data: familyResponse, isLoading: familyLoading } = useAssetFamily(id);
     const { data: availabilityStats, isLoading: availLoading } =
@@ -581,8 +592,9 @@ export default function AssetFamilyDetailPage({ params }: { params: Promise<{ id
                         ) : (
                             <div className="divide-y divide-border">
                                 {filtered.map((asset) => (
-                                    <Link key={asset.id} href={`/assets/${asset.id}`}>
-                                        <div className="flex items-center gap-4 py-3 px-2 -mx-2 rounded-md transition-colors hover:bg-muted/50">
+                                    <div key={asset.id} className="group flex items-center gap-4 py-3 px-2 -mx-2 rounded-md transition-colors hover:bg-muted/50">
+                                        {/* Thumbnail + Name — clickable link */}
+                                        <Link href={`/assets/${asset.id}`} className="flex items-center gap-4 flex-1 min-w-0">
                                             {/* Thumbnail */}
                                             <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-md bg-muted border border-border">
                                                 {asset.images?.[0]?.url ? (
@@ -621,38 +633,67 @@ export default function AssetFamilyDetailPage({ params }: { params: Promise<{ id
                                                     </Badge>
                                                 </div>
                                             </div>
+                                        </Link>
 
-                                            {/* Location */}
-                                            <div className="hidden md:flex items-center gap-1 text-xs font-mono text-muted-foreground shrink-0">
-                                                <MapPin className="h-3 w-3" />
-                                                {asset.warehouse?.name || "—"} /{" "}
-                                                {asset.zone?.name || "—"}
-                                            </div>
-
-                                            {/* Quantity */}
-                                            {!isSerialized && (
-                                                <div className="text-right shrink-0">
-                                                    <div className="text-sm font-mono font-semibold">
-                                                        {asset.available_quantity}
-                                                        <span className="text-muted-foreground font-normal">
-                                                            /{asset.total_quantity}
-                                                        </span>
-                                                    </div>
-                                                    <div className="text-[10px] font-mono text-muted-foreground">
-                                                        avail / total
-                                                    </div>
-                                                </div>
-                                            )}
-
-                                            {/* QR */}
-                                            <div className="hidden lg:flex items-center gap-1 text-xs font-mono text-muted-foreground shrink-0">
-                                                <QrCode className="h-3 w-3" />
-                                                <span className="max-w-[120px] truncate">
-                                                    {asset.qr_code}
-                                                </span>
-                                            </div>
+                                        {/* Location */}
+                                        <div className="hidden md:flex items-center gap-1 text-xs font-mono text-muted-foreground shrink-0">
+                                            <MapPin className="h-3 w-3" />
+                                            {asset.warehouse?.name || "—"} /{" "}
+                                            {asset.zone?.name || "—"}
                                         </div>
-                                    </Link>
+
+                                        {/* Quantity */}
+                                        {!isSerialized && (
+                                            <div className="text-right shrink-0">
+                                                <div className="text-sm font-mono font-semibold">
+                                                    {asset.available_quantity}
+                                                    <span className="text-muted-foreground font-normal">
+                                                        /{asset.total_quantity}
+                                                    </span>
+                                                </div>
+                                                <div className="text-[10px] font-mono text-muted-foreground">
+                                                    avail / total
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* QR */}
+                                        <div className="hidden lg:flex items-center gap-1 text-xs font-mono text-muted-foreground shrink-0">
+                                            <QrCode className="h-3 w-3" />
+                                            <span className="max-w-[120px] truncate">
+                                                {asset.qr_code}
+                                            </span>
+                                        </div>
+
+                                        {/* Actions dropdown */}
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                                                >
+                                                    <MoreVertical className="h-4 w-4" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                <DropdownMenuItem
+                                                    onClick={() => router.push(`/assets/${asset.id}`)}
+                                                    className="font-mono text-xs"
+                                                >
+                                                    <Eye className="h-3.5 w-3.5 mr-2" />
+                                                    View Details
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem
+                                                    onClick={() => setMovingAsset(asset)}
+                                                    className="font-mono text-xs"
+                                                >
+                                                    <ArrowRightLeft className="h-3.5 w-3.5 mr-2" />
+                                                    Move to Another Family
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </div>
                                 ))}
                             </div>
                         )}
@@ -681,6 +722,16 @@ export default function AssetFamilyDetailPage({ params }: { params: Promise<{ id
                 onOpenChange={setShowCreateAsset}
                 preselectedFamilyId={family.id}
             />
+
+            {movingAsset && (
+                <MoveToFamilyModal
+                    open={!!movingAsset}
+                    onOpenChange={(o) => !o && setMovingAsset(null)}
+                    asset={movingAsset}
+                    currentFamilyName={family?.name}
+                    onSuccess={() => setMovingAsset(null)}
+                />
+            )}
 
             {/* Manual Stock Adjustment Dialog */}
             <Dialog open={showAdjustmentDialog} onOpenChange={setShowAdjustmentDialog}>
