@@ -10,9 +10,18 @@ import {
 import { AdminHeader } from "@/components/admin-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
+import {
+    Dialog,
+    DialogContent,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+    DialogTrigger,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import {
     Table,
     TableBody,
@@ -29,6 +38,7 @@ import {
     Check,
     X,
     Pencil,
+    Search,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -39,19 +49,29 @@ export default function CategoriesSettingsPage() {
     const updateMutation = useUpdateAssetCategory();
     const categories = categoriesData?.data || [];
 
+    const [searchQuery, setSearchQuery] = useState("");
+    const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [newName, setNewName] = useState("");
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editingName, setEditingName] = useState("");
 
-    const handleCreate = async () => {
+    const filtered = searchQuery
+        ? categories.filter((c) =>
+              c.name.toLowerCase().includes(searchQuery.toLowerCase())
+          )
+        : categories;
+
+    const handleCreate = async (e: React.FormEvent) => {
+        e.preventDefault();
         const name = newName.trim();
         if (!name) return;
         try {
             await createMutation.mutateAsync({ name });
             setNewName("");
+            setIsCreateOpen(false);
             toast.success(`Category "${name}" created`);
-        } catch (e: unknown) {
-            toast.error((e as Error).message || "Failed to create category");
+        } catch (err: unknown) {
+            toast.error((err as Error).message || "Failed to create category");
         }
     };
 
@@ -75,16 +95,16 @@ export default function CategoriesSettingsPage() {
             await updateMutation.mutateAsync({ id: cat.id, data: { name } });
             cancelEditing();
             toast.success(`Renamed to "${name}"`);
-        } catch (e: unknown) {
-            toast.error((e as Error).message || "Failed to rename");
+        } catch (err: unknown) {
+            toast.error((err as Error).message || "Failed to rename");
         }
     };
 
     const handleColorChange = async (cat: AssetCategory, color: string) => {
         try {
             await updateMutation.mutateAsync({ id: cat.id, data: { color } });
-        } catch (e: unknown) {
-            toast.error((e as Error).message || "Failed to update color");
+        } catch (err: unknown) {
+            toast.error((err as Error).message || "Failed to update color");
         }
     };
 
@@ -95,8 +115,8 @@ export default function CategoriesSettingsPage() {
                 data: { is_active: !cat.is_active },
             });
             toast.success(cat.is_active ? "Category archived" : "Category restored");
-        } catch (e: unknown) {
-            toast.error((e as Error).message || "Failed to update");
+        } catch (err: unknown) {
+            toast.error((err as Error).message || "Failed to update");
         }
     };
 
@@ -106,8 +126,8 @@ export default function CategoriesSettingsPage() {
         direction: "up" | "down"
     ) => {
         const swapIdx = direction === "up" ? index - 1 : index + 1;
-        if (swapIdx < 0 || swapIdx >= categories.length) return;
-        const other = categories[swapIdx];
+        if (swapIdx < 0 || swapIdx >= filtered.length) return;
+        const other = filtered[swapIdx];
         try {
             await Promise.all([
                 updateMutation.mutateAsync({
@@ -124,239 +144,265 @@ export default function CategoriesSettingsPage() {
         }
     };
 
+    if (!isLoading && categories.length === 0) {
+        return (
+            <div className="min-h-screen bg-background">
+                <AdminHeader
+                    icon={Tag}
+                    title="ASSET CATEGORIES"
+                    description="Category taxonomy for asset families"
+                    stats={{ label: "CATEGORIES", value: 0 }}
+                />
+                <div className="text-center py-12 space-y-3">
+                    <Tag className="h-12 w-12 mx-auto text-muted-foreground opacity-50" />
+                    <p className="font-mono text-sm text-muted-foreground">
+                        NO CATEGORIES CONFIGURED
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="min-h-screen bg-background">
             <AdminHeader
                 icon={Tag}
                 title="ASSET CATEGORIES"
-                description="Manage the category taxonomy for asset families. Categories appear in create/edit dropdowns and as filter options across admin, warehouse, and client."
-                stats={{
-                    label: "TOTAL CATEGORIES",
-                    value: categories.length,
-                }}
+                description="Category taxonomy for asset families. Categories appear in create/edit dropdowns and as filter options across admin, warehouse, and client."
+                stats={{ label: "CATEGORIES", value: categories.length }}
+                actions={
+                    <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+                        <DialogTrigger asChild>
+                            <Button className="gap-2 font-mono">
+                                <Plus className="h-4 w-4" />
+                                NEW CATEGORY
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-md">
+                            <DialogHeader>
+                                <DialogTitle className="font-mono">
+                                    CREATE NEW CATEGORY
+                                </DialogTitle>
+                                <DialogDescription className="font-mono text-xs">
+                                    New categories are universal (visible to all companies).
+                                    Company-specific categories are created inline during asset
+                                    family creation.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <form onSubmit={handleCreate} className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label
+                                        htmlFor="categoryName"
+                                        className="font-mono text-xs"
+                                    >
+                                        CATEGORY NAME *
+                                    </Label>
+                                    <Input
+                                        id="categoryName"
+                                        placeholder="e.g. Beverages, Signage, AV Equipment..."
+                                        value={newName}
+                                        onChange={(e) => setNewName(e.target.value)}
+                                        className="font-mono"
+                                        autoFocus
+                                    />
+                                </div>
+                                <DialogFooter>
+                                    <Button
+                                        type="submit"
+                                        disabled={
+                                            !newName.trim() || createMutation.isPending
+                                        }
+                                        className="font-mono"
+                                    >
+                                        {createMutation.isPending
+                                            ? "CREATING..."
+                                            : "CREATE CATEGORY"}
+                                    </Button>
+                                </DialogFooter>
+                            </form>
+                        </DialogContent>
+                    </Dialog>
+                }
             />
 
-            <div className="container mx-auto px-6 py-8 space-y-6">
-                {/* Add new category */}
-                <Card>
-                    <CardContent className="pt-6">
-                        <div className="flex gap-3 items-end">
-                            <div className="flex-1 space-y-1.5">
-                                <label
-                                    htmlFor="new-category"
-                                    className="text-xs font-mono uppercase tracking-wide text-muted-foreground"
-                                >
-                                    New Category
-                                </label>
-                                <Input
-                                    id="new-category"
-                                    placeholder="e.g. Beverages, Signage, AV Equipment..."
-                                    value={newName}
-                                    onChange={(e) => setNewName(e.target.value)}
-                                    onKeyDown={(e) => {
-                                        if (e.key === "Enter") handleCreate();
-                                    }}
-                                    className="font-mono"
-                                />
-                            </div>
-                            <Button
-                                onClick={handleCreate}
-                                disabled={!newName.trim() || createMutation.isPending}
-                            >
-                                <Plus className="h-4 w-4 mr-2" />
-                                {createMutation.isPending ? "Creating..." : "Add Category"}
-                            </Button>
+            {/* Search bar strip */}
+            <div className="border-b border-border bg-card px-8 py-4">
+                <div className="flex items-center gap-4">
+                    <div className="relative flex-1 max-w-md">
+                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                            placeholder="Search categories..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="pl-10 font-mono text-sm"
+                        />
+                    </div>
+                </div>
+            </div>
+
+            {/* Table */}
+            <div className="px-8 py-6">
+                {isLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                        <div className="text-sm font-mono text-muted-foreground animate-pulse">
+                            LOADING CATEGORIES...
                         </div>
-                        <p className="text-xs text-muted-foreground mt-2">
-                            New categories are created as universal (visible to all companies).
-                            Company-specific categories are created inline when logistics assigns
-                            a category during asset family creation.
+                    </div>
+                ) : filtered.length === 0 ? (
+                    <div className="text-center py-12 space-y-3">
+                        <Tag className="h-12 w-12 mx-auto text-muted-foreground opacity-50" />
+                        <p className="font-mono text-sm text-muted-foreground">
+                            NO CATEGORIES FOUND
                         </p>
-                    </CardContent>
-                </Card>
+                    </div>
+                ) : (
+                    <div className="border border-border rounded-lg overflow-hidden bg-card">
+                        <Table>
+                            <TableHeader>
+                                <TableRow className="bg-muted/50 border-border/50">
+                                    <TableHead className="font-mono text-xs font-bold w-[60px]">
+                                        COLOR
+                                    </TableHead>
+                                    <TableHead className="font-mono text-xs font-bold">
+                                        NAME
+                                    </TableHead>
+                                    <TableHead className="font-mono text-xs font-bold w-[120px]">
+                                        SCOPE
+                                    </TableHead>
+                                    <TableHead className="font-mono text-xs font-bold w-[80px] text-center">
+                                        ORDER
+                                    </TableHead>
+                                    <TableHead className="font-mono text-xs font-bold w-[80px] text-center">
+                                        ACTIVE
+                                    </TableHead>
+                                    <TableHead className="w-12" />
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {filtered.map((cat, i) => (
+                                    <TableRow
+                                        key={cat.id}
+                                        className={cn(!cat.is_active && "opacity-50")}
+                                    >
+                                        <TableCell>
+                                            <label className="relative cursor-pointer inline-block">
+                                                <span
+                                                    className="block h-6 w-6 rounded-full border-2 border-border shadow-sm"
+                                                    style={{
+                                                        backgroundColor: cat.color,
+                                                    }}
+                                                />
+                                                <input
+                                                    type="color"
+                                                    value={cat.color}
+                                                    onChange={(e) =>
+                                                        handleColorChange(cat, e.target.value)
+                                                    }
+                                                    className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                                                />
+                                            </label>
+                                        </TableCell>
 
-                {/* Categories table */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <Tag className="h-4 w-4" />
-                            Configured Categories
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        {isLoading ? (
-                            <p className="text-sm text-muted-foreground">
-                                Loading categories...
-                            </p>
-                        ) : categories.length === 0 ? (
-                            <p className="text-sm text-muted-foreground">
-                                No categories yet. Add one above.
-                            </p>
-                        ) : (
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead className="w-[50px]">Color</TableHead>
-                                        <TableHead>Name</TableHead>
-                                        <TableHead className="w-[120px]">Scope</TableHead>
-                                        <TableHead className="w-[80px] text-center">
-                                            Order
-                                        </TableHead>
-                                        <TableHead className="w-[80px] text-center">
-                                            Active
-                                        </TableHead>
-                                        <TableHead className="w-[60px] text-right">Actions</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {categories.map((cat, i) => (
-                                        <TableRow
-                                            key={cat.id}
-                                            className={cn(
-                                                !cat.is_active && "opacity-50"
-                                            )}
-                                        >
-                                            {/* Color */}
-                                            <TableCell>
-                                                <label className="relative cursor-pointer inline-block">
-                                                    <span
-                                                        className="block h-6 w-6 rounded-full border-2 border-border shadow-sm"
-                                                        style={{
-                                                            backgroundColor: cat.color,
-                                                        }}
-                                                    />
-                                                    <input
-                                                        type="color"
-                                                        value={cat.color}
+                                        <TableCell>
+                                            {editingId === cat.id ? (
+                                                <div className="flex items-center gap-2">
+                                                    <Input
+                                                        autoFocus
+                                                        value={editingName}
                                                         onChange={(e) =>
-                                                            handleColorChange(
-                                                                cat,
-                                                                e.target.value
-                                                            )
+                                                            setEditingName(e.target.value)
                                                         }
-                                                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === "Enter")
+                                                                handleRename(cat);
+                                                            if (e.key === "Escape")
+                                                                cancelEditing();
+                                                        }}
+                                                        className="h-8 text-sm font-mono max-w-[300px]"
                                                     />
-                                                </label>
-                                            </TableCell>
-
-                                            {/* Name (inline editable) */}
-                                            <TableCell>
-                                                {editingId === cat.id ? (
-                                                    <div className="flex items-center gap-2">
-                                                        <Input
-                                                            autoFocus
-                                                            value={editingName}
-                                                            onChange={(e) =>
-                                                                setEditingName(
-                                                                    e.target.value
-                                                                )
-                                                            }
-                                                            onKeyDown={(e) => {
-                                                                if (e.key === "Enter")
-                                                                    handleRename(cat);
-                                                                if (e.key === "Escape")
-                                                                    cancelEditing();
-                                                            }}
-                                                            className="h-8 text-sm font-mono max-w-[300px]"
-                                                        />
-                                                        <Button
-                                                            size="sm"
-                                                            variant="ghost"
-                                                            className="h-7 w-7 p-0"
-                                                            onClick={() =>
-                                                                handleRename(cat)
-                                                            }
-                                                        >
-                                                            <Check className="h-3.5 w-3.5" />
-                                                        </Button>
-                                                        <Button
-                                                            size="sm"
-                                                            variant="ghost"
-                                                            className="h-7 w-7 p-0"
-                                                            onClick={cancelEditing}
-                                                        >
-                                                            <X className="h-3.5 w-3.5" />
-                                                        </Button>
-                                                    </div>
-                                                ) : (
-                                                    <span className="font-mono text-sm font-medium">
-                                                        {cat.name}
-                                                    </span>
-                                                )}
-                                            </TableCell>
-
-                                            {/* Scope */}
-                                            <TableCell>
-                                                <Badge
-                                                    variant="outline"
-                                                    className="text-[10px] font-mono"
-                                                >
-                                                    {cat.company_id
-                                                        ? "Company"
-                                                        : "Universal"}
-                                                </Badge>
-                                            </TableCell>
-
-                                            {/* Sort order */}
-                                            <TableCell>
-                                                <div className="flex items-center justify-center gap-1">
                                                     <Button
                                                         size="sm"
                                                         variant="ghost"
                                                         className="h-7 w-7 p-0"
-                                                        disabled={i === 0}
-                                                        onClick={() =>
-                                                            handleMove(cat, i, "up")
-                                                        }
+                                                        onClick={() => handleRename(cat)}
                                                     >
-                                                        <ArrowUp className="h-3.5 w-3.5" />
+                                                        <Check className="h-3.5 w-3.5" />
                                                     </Button>
                                                     <Button
                                                         size="sm"
                                                         variant="ghost"
                                                         className="h-7 w-7 p-0"
-                                                        disabled={
-                                                            i === categories.length - 1
-                                                        }
-                                                        onClick={() =>
-                                                            handleMove(cat, i, "down")
-                                                        }
+                                                        onClick={cancelEditing}
                                                     >
-                                                        <ArrowDown className="h-3.5 w-3.5" />
+                                                        <X className="h-3.5 w-3.5" />
                                                     </Button>
                                                 </div>
-                                            </TableCell>
+                                            ) : (
+                                                <span className="font-mono text-sm font-medium">
+                                                    {cat.name}
+                                                </span>
+                                            )}
+                                        </TableCell>
 
-                                            {/* Active toggle */}
-                                            <TableCell className="text-center">
-                                                <Switch
-                                                    checked={cat.is_active}
-                                                    onCheckedChange={() =>
-                                                        handleToggleActive(cat)
-                                                    }
-                                                />
-                                            </TableCell>
+                                        <TableCell>
+                                            <Badge
+                                                variant="outline"
+                                                className="text-[10px] font-mono"
+                                            >
+                                                {cat.company_id ? "COMPANY" : "UNIVERSAL"}
+                                            </Badge>
+                                        </TableCell>
 
-                                            {/* Edit action */}
-                                            <TableCell>
-                                                {editingId !== cat.id ? (
-                                                    <Button
-                                                        size="sm"
-                                                        variant="ghost"
-                                                        className="h-7 w-7 p-0"
-                                                        onClick={() => startEditing(cat)}
-                                                    >
-                                                        <Pencil className="h-3.5 w-3.5" />
-                                                    </Button>
-                                                ) : null}
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        )}
-                    </CardContent>
-                </Card>
+                                        <TableCell>
+                                            <div className="flex items-center justify-center gap-1">
+                                                <Button
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    className="h-7 w-7 p-0"
+                                                    disabled={i === 0}
+                                                    onClick={() => handleMove(cat, i, "up")}
+                                                >
+                                                    <ArrowUp className="h-3.5 w-3.5" />
+                                                </Button>
+                                                <Button
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    className="h-7 w-7 p-0"
+                                                    disabled={i === filtered.length - 1}
+                                                    onClick={() => handleMove(cat, i, "down")}
+                                                >
+                                                    <ArrowDown className="h-3.5 w-3.5" />
+                                                </Button>
+                                            </div>
+                                        </TableCell>
+
+                                        <TableCell className="text-center">
+                                            <Switch
+                                                checked={cat.is_active}
+                                                onCheckedChange={() =>
+                                                    handleToggleActive(cat)
+                                                }
+                                            />
+                                        </TableCell>
+
+                                        <TableCell>
+                                            {editingId !== cat.id ? (
+                                                <Button
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    className="h-7 w-7 p-0"
+                                                    onClick={() => startEditing(cat)}
+                                                >
+                                                    <Pencil className="h-3.5 w-3.5" />
+                                                </Button>
+                                            ) : null}
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
+                )}
             </div>
         </div>
     );
