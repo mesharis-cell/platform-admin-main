@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
     Table,
     TableBody,
@@ -136,7 +136,7 @@ export default function CategoriesSettingsPage() {
                 }}
             />
 
-            <div className="mx-auto max-w-[1000px] px-6 py-8 space-y-6">
+            <div className="container mx-auto px-6 py-8 space-y-6">
                 {/* Add new category */}
                 <Card>
                     <CardContent className="pt-6">
@@ -177,15 +177,21 @@ export default function CategoriesSettingsPage() {
 
                 {/* Categories table */}
                 <Card>
-                    <CardContent className="p-0">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Tag className="h-4 w-4" />
+                            Configured Categories
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
                         {isLoading ? (
-                            <div className="p-8 text-center text-sm text-muted-foreground">
+                            <p className="text-sm text-muted-foreground">
                                 Loading categories...
-                            </div>
+                            </p>
                         ) : categories.length === 0 ? (
-                            <div className="p-8 text-center text-sm text-muted-foreground">
+                            <p className="text-sm text-muted-foreground">
                                 No categories yet. Add one above.
-                            </div>
+                            </p>
                         ) : (
                             <Table>
                                 <TableHeader>
@@ -199,7 +205,7 @@ export default function CategoriesSettingsPage() {
                                         <TableHead className="w-[80px] text-center">
                                             Active
                                         </TableHead>
-                                        <TableHead className="w-[60px]" />
+                                        <TableHead className="w-[60px] text-right">Actions</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
