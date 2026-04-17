@@ -268,6 +268,14 @@ export const ADMIN_ROUTE_REGISTRY: AdminRouteDefinition[] = [
         requiredAnyPermission: ADMIN_NAV_PERMISSIONS.accessPolicies,
     },
     {
+        name: "Asset Categories",
+        href: "/settings/categories",
+        icon: Tag,
+        section: "Platform Settings",
+        requiredPagePermission: ADMIN_PAGE_PERMISSIONS.assets,
+        requiredAnyPermission: ADMIN_NAV_PERMISSIONS.assets,
+    },
+    {
         name: "Service Types",
         href: "/settings/pricing/service-types",
         icon: ClipboardList,
