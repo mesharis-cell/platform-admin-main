@@ -26,6 +26,7 @@ import { hasPermission } from "@/lib/auth/permissions";
 import { ADMIN_ACTION_PERMISSIONS } from "@/lib/auth/permission-map";
 import { usePlatform } from "@/contexts/platform-context";
 import { useAssetCategories } from "@/hooks/use-asset-categories";
+import { CategoryManager } from "@/components/assets/category-manager";
 import type { AssetFamily } from "@/types/asset-family";
 
 const formatStockMode = (stockMode?: string | null) =>
@@ -333,7 +334,12 @@ export default function AssetsPage() {
                             workflows.
                         </p>
                     </div>
-                ) : viewMode === "grid" ? (
+                ) : null}
+
+                {/* Category Management (admin-only, collapsible) */}
+                <CategoryManager />
+
+                {families.length === 0 ? null : viewMode === "grid" ? (
                     <div
                         className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3"
                         data-testid="family-list"
