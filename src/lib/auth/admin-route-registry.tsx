@@ -13,6 +13,7 @@ import {
     Mail,
     MapPin,
     Package,
+    PackageCheck,
     Receipt,
     Settings,
     Shield,
@@ -26,7 +27,7 @@ import type { User } from "@/types/auth";
 import type { PlatformDomain } from "@/types/platform-domain";
 import { ADMIN_NAV_PERMISSIONS, ADMIN_PAGE_PERMISSIONS } from "@/lib/auth/permission-map";
 import { hasAnyPermission, hasPermission } from "@/lib/auth/permissions";
-import { isPlatformFeatureEnabled, type PlatformFeatureKey } from "@/lib/platform-features";
+import { isAdminFeatureAvailable, type PlatformFeatureKey } from "@/lib/platform-features";
 
 export type AdminRouteSection =
     | "Operations"
@@ -99,6 +100,15 @@ export const ADMIN_ROUTE_REGISTRY: AdminRouteDefinition[] = [
         section: "Operations",
         requiredPagePermission: ADMIN_PAGE_PERMISSIONS.selfBookings,
         requiredAnyPermission: ADMIN_NAV_PERMISSIONS.selfBookings,
+    },
+    {
+        name: "Self Pickups",
+        href: "/self-pickups",
+        icon: PackageCheck,
+        section: "Operations",
+        requiredPagePermission: ADMIN_PAGE_PERMISSIONS.selfPickups,
+        requiredAnyPermission: ADMIN_NAV_PERMISSIONS.selfPickups,
+        requiredFeature: "enable_self_pickup",
     },
     {
         name: "Events Calendar",
@@ -258,6 +268,14 @@ export const ADMIN_ROUTE_REGISTRY: AdminRouteDefinition[] = [
         requiredAnyPermission: ADMIN_NAV_PERMISSIONS.accessPolicies,
     },
     {
+        name: "Asset Categories",
+        href: "/settings/categories",
+        icon: Tag,
+        section: "Platform Settings",
+        requiredPagePermission: ADMIN_PAGE_PERMISSIONS.assets,
+        requiredAnyPermission: ADMIN_NAV_PERMISSIONS.assets,
+    },
+    {
         name: "Service Types",
         href: "/settings/pricing/service-types",
         icon: ClipboardList,
@@ -355,7 +373,7 @@ export function isAdminRouteFeatureEnabled(
     route: AdminRouteDefinition,
     platform: PlatformDomain | null | undefined
 ): boolean {
-    return isPlatformFeatureEnabled(platform, route.requiredFeature);
+    return isAdminFeatureAvailable(platform, route.requiredFeature);
 }
 
 export function canAccessAdminRoute(

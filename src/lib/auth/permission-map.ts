@@ -36,6 +36,7 @@ export const ADMIN_NAV_PERMISSIONS = {
     cities: ["cities:read", "cities:*"],
     resetPassword: ["auth:reset_password", "auth:*"],
     selfBookings: ["self_bookings:read", "self_bookings:create", "self_bookings:*"],
+    selfPickups: ["self_pickups:read", "self_pickups:*"],
 } as const;
 
 export const ADMIN_PAGE_PERMISSIONS = {
@@ -46,6 +47,7 @@ export const ADMIN_PAGE_PERMISSIONS = {
     pendingApproval: "orders:view_pending_approval_page",
     lineItemRequests: "line_item_requests:view_page",
     selfBookings: "self_bookings:view_page",
+    selfPickups: "self_pickups:view_page",
     eventCalendar: "calendar:view_page",
     invoices: "invoices:view_page",
     reports: "analytics:view_reports_page",

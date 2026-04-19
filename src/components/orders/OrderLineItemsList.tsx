@@ -30,7 +30,7 @@ import type { LineItemBillingMode, OrderLineItem } from "@/types/hybrid-pricing"
 interface OrderLineItemsListProps {
     targetId: string;
     canManage?: boolean;
-    purposeType?: "ORDER" | "INBOUND_REQUEST" | "SERVICE_REQUEST";
+    purposeType?: "ORDER" | "INBOUND_REQUEST" | "SERVICE_REQUEST" | "SELF_PICKUP";
     allowClientVisibilityControls?: boolean;
 }
 

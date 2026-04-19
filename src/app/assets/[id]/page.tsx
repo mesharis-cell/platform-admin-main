@@ -75,7 +75,11 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
     const orderHistoryData: any[] = orderHistory || [];
 
     // Fetch availability stats
-    const { data: availabilityStats, isLoading: statsLoading } = useAssetAvailabilityStats(id);
+    const {
+        data: availabilityStats,
+        isLoading: statsLoading,
+        error: availabilityStatsError,
+    } = useAssetAvailabilityStats(id);
 
     // Generate QR code
     const [qrCodeImage, setQrCodeImage] = useState<string | null>(null);
@@ -715,7 +719,7 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                                             <Skeleton className="h-6 w-full" />
                                             <Skeleton className="h-6 w-full" />
                                         </div>
-                                    ) : availabilityStats.data ? (
+                                    ) : availabilityStats?.data ? (
                                         <div className="space-y-2">
                                             <div className="flex items-center justify-between text-sm font-mono">
                                                 <span className="text-emerald-600">Available</span>
@@ -756,6 +760,12 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                                                     </span>
                                                 </div>
                                             )}
+                                        </div>
+                                    ) : availabilityStatsError ? (
+                                        <div className="p-3 bg-muted/40 border border-border rounded-md">
+                                            <p className="text-xs font-mono text-muted-foreground">
+                                                Availability stats unavailable for this user.
+                                            </p>
                                         </div>
                                     ) : (
                                         <div className="p-3 bg-blue-500/5 border border-blue-500/20 rounded-md">

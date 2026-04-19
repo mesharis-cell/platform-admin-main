@@ -107,9 +107,9 @@ export default function NewSelfBookingPage() {
 
         return familyOptions
             .filter((family) =>
-                [family.name, family.category, family.company?.name, family.brand?.name]
+                [family.name, family.category?.name, family.company?.name, family.brand?.name]
                     .filter(Boolean)
-                    .some((value) => value!.toLowerCase().includes(query))
+                    .some((value) => (value as string).toLowerCase().includes(query))
             )
             .slice(0, FAMILY_PREVIEW_SIZE);
     }, [familyOptions, familySearchQuery]);
@@ -548,7 +548,7 @@ export default function NewSelfBookingPage() {
                                                         {selectedFamily.name}
                                                     </p>
                                                     <p className="text-xs font-mono text-muted-foreground">
-                                                        {selectedFamily.category} ·{" "}
+                                                        {selectedFamily.category?.name || "Uncategorized"} ·{" "}
                                                         {selectedFamily.available_quantity || 0} /{" "}
                                                         {selectedFamily.total_quantity || 0} units
                                                         available
@@ -591,7 +591,7 @@ export default function NewSelfBookingPage() {
                                                                 {family.name}
                                                             </p>
                                                             <p className="text-xs text-muted-foreground font-mono">
-                                                                {family.category} ·{" "}
+                                                                {family.category?.name || "Uncategorized"} ·{" "}
                                                                 {family.company?.name ||
                                                                     "No company"}
                                                             </p>

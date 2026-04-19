@@ -77,7 +77,7 @@ export interface UpdateServiceTypeRequest {
 // ============================================================
 
 export type LineItemType = "CATALOG" | "CUSTOM" | "SYSTEM";
-export type PurposeType = "ORDER" | "INBOUND_REQUEST" | "SERVICE_REQUEST";
+export type PurposeType = "ORDER" | "INBOUND_REQUEST" | "SERVICE_REQUEST" | "SELF_PICKUP";
 export type LineItemBillingMode = "BILLABLE" | "NON_BILLABLE" | "COMPLIMENTARY";
 export type LineItemRequestStatus = "REQUESTED" | "APPROVED" | "REJECTED";
 export type TransportTripLeg = "DELIVERY" | "PICKUP" | "ACCESS" | "TRANSFER";

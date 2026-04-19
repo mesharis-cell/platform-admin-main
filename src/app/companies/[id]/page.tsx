@@ -34,60 +34,8 @@ import type { Company } from "@/types";
 import { useToken } from "@/lib/auth/use-token";
 import { hasPermission } from "@/lib/auth/permissions";
 import { ADMIN_ACTION_PERMISSIONS } from "@/lib/auth/permission-map";
-
-const FEATURE_FLAGS = [
-    {
-        key: "enable_inbound_requests",
-        label: "Enable Inbound Requests",
-        description: "Allow inbound request workflows",
-    },
-    {
-        key: "show_estimate_on_order_creation",
-        label: "Show Estimate on Order Creation",
-        description: "Display estimate immediately in order creation flow",
-    },
-    {
-        key: "enable_kadence_invoicing",
-        label: "Enable Invoicing",
-        description: "Enable invoice generation and payment confirmation flows",
-    },
-    {
-        key: "enable_attachments",
-        label: "Enable Attachments",
-        description:
-            "Allow typed documents across order, inbound, service request, and workflow records",
-    },
-    {
-        key: "enable_asset_bulk_upload",
-        label: "Enable Asset Bulk Upload",
-        description: "Allow bulk uploading of assets via spreadsheet import",
-    },
-    {
-        key: "enable_workflows",
-        label: "Enable Internal Workflows",
-        description: "Expose workflow sections, workflow inboxes, and workflow request creation",
-    },
-    {
-        key: "enable_base_operations",
-        label: "Enable Picking & Handling",
-        description: "Include Picking & Handling (base operations) in pricing calculations",
-    },
-    {
-        key: "enable_service_requests",
-        label: "Enable Service Requests",
-        description: "Show service requests section in client portal",
-    },
-    {
-        key: "enable_event_calendar",
-        label: "Enable Event Calendar",
-        description: "Show event calendar page in client portal",
-    },
-    {
-        key: "enable_client_stock_requests",
-        label: "Enable Client Stock Requests",
-        description: "Allow clients to submit new stock / inbound requests",
-    },
-] as const;
+import { getFeatureRegistry } from "@/lib/platform-features";
+import { usePlatform } from "@/contexts/platform-context";
 
 type FeatureOverrides = Record<string, boolean | null>;
 
@@ -99,8 +47,19 @@ export default function CompanyEditPage() {
 
     const { data, isLoading } = useCompanies({ limit: "100", page: "1" });
     const { data: platformSettings } = usePlatformSettings();
+    const { platform } = usePlatform();
     const updateMutation = useUpdateCompany();
     const uploadMutation = useUploadImage();
+
+    // Per-company feature overrides. Rendered list derived from the runtime
+    // feature_registry served by the API. Adding a flag on the API surfaces
+    // here automatically. See CLAUDE.md <feature_flag_discipline>.
+    const featureRegistry = getFeatureRegistry(platform);
+    const FEATURE_FLAGS = Object.keys(featureRegistry).map((key) => ({
+        key,
+        label: featureRegistry[key].label,
+        description: featureRegistry[key].description,
+    }));
     const canReadWarehouseOpsRate =
         hasPermission(user, ADMIN_ACTION_PERMISSIONS.warehouseOpsRatesRead) ||
         hasPermission(user, ADMIN_ACTION_PERMISSIONS.warehouseOpsRatesUpdate);
@@ -252,6 +211,15 @@ export default function CompanyEditPage() {
                     branding: {
                         ...formData.settings.branding,
                         logo_url: logoUrl || undefined,
+                    },
+                    feasibility: {
+                        ...(formData.settings.feasibility.minimum_lead_hours !== null &&
+                        formData.settings.feasibility.minimum_lead_hours !== undefined
+                            ? {
+                                  minimum_lead_hours:
+                                      formData.settings.feasibility.minimum_lead_hours,
+                              }
+                            : {}),
                     },
                 },
                 features,

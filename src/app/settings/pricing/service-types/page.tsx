@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -16,9 +15,11 @@ import {
 import {
     Dialog,
     DialogContent,
+    DialogDescription,
     DialogHeader,
     DialogTitle,
     DialogFooter,
+    DialogTrigger,
 } from "@/components/ui/dialog";
 import {
     Table,
@@ -108,6 +109,7 @@ export default function ServiceTypesPage() {
 
     const totalItems = data?.meta?.total || 0;
     const totalPages = Math.ceil(totalItems / PAGE_SIZE) || 1;
+    const services = data?.data || [];
 
     const handleCreate = async () => {
         if (!formData.name || !formData.unit) {
@@ -204,203 +206,228 @@ export default function ServiceTypesPage() {
     };
 
     return (
-        <div className="min-h-screen bg-background">
+        <div>
             <AdminHeader
                 icon={Wrench}
                 title="SERVICE TYPES CATALOG"
-                description="Billable Services Configuration"
-                stats={{ label: "TOTAL", value: totalItems }}
+                description="Billable services configuration"
+                stats={{ label: "TOTAL SERVICE TYPES", value: totalItems }}
                 actions={
                     <Button
                         onClick={() => {
                             resetForm();
                             setCreateDialogOpen(true);
                         }}
-                        className="gap-2"
+                        className="gap-2 font-mono"
                     >
                         <Plus className="h-4 w-4" />
-                        Add Service
+                        NEW SERVICE TYPE
                     </Button>
                 }
             />
 
-            <div className="container mx-auto px-4 py-8">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Service Catalog</CardTitle>
-                        <p className="text-xs text-muted-foreground">
-                            Default rates here are logistics base rates. Margin is applied
-                            separately in order pricing and is never embedded in these base values.
-                        </p>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        {/* Filters */}
-                        <div className="flex flex-col sm:flex-row gap-3">
-                            <div className="relative flex-1">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                <Input
-                                    placeholder="Search by name..."
-                                    value={searchTerm}
-                                    onChange={(e) => {
-                                        setSearchTerm(e.target.value);
-                                        setPage(1);
-                                    }}
-                                    className="pl-9"
-                                />
-                            </div>
-                            <Select
-                                value={categoryFilter}
-                                onValueChange={(v) => {
-                                    setCategoryFilter(v);
-                                    setPage(1);
-                                }}
-                            >
-                                <SelectTrigger className="w-full sm:w-[180px]">
-                                    <SelectValue placeholder="All Categories" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">All Categories</SelectItem>
-                                    {CATEGORIES.map((cat) => (
-                                        <SelectItem key={cat.value} value={cat.value}>
-                                            {cat.label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            <Select
-                                value={statusFilter}
-                                onValueChange={(v: StatusFilter) => {
-                                    setStatusFilter(v);
-                                    setPage(1);
-                                }}
-                            >
-                                <SelectTrigger className="w-full sm:w-[160px]">
-                                    <SelectValue placeholder="Status" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="active">Active</SelectItem>
-                                    <SelectItem value="both">Both</SelectItem>
-                                    <SelectItem value="disabled">Disabled</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
+            {/* Search strip */}
+            <div className="border-b border-border bg-card px-8 py-4">
+                <div className="flex items-center gap-4">
+                    <div className="relative flex-1 max-w-md">
+                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                            placeholder="Search by name..."
+                            value={searchTerm}
+                            onChange={(e) => {
+                                setSearchTerm(e.target.value);
+                                setPage(1);
+                            }}
+                            className="pl-10 font-mono text-sm"
+                        />
+                    </div>
+                    <Select
+                        value={categoryFilter}
+                        onValueChange={(v) => {
+                            setCategoryFilter(v);
+                            setPage(1);
+                        }}
+                    >
+                        <SelectTrigger className="w-[180px] font-mono text-xs">
+                            <SelectValue placeholder="All Categories" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all" className="font-mono text-xs">
+                                ALL CATEGORIES
+                            </SelectItem>
+                            {CATEGORIES.map((cat) => (
+                                <SelectItem
+                                    key={cat.value}
+                                    value={cat.value}
+                                    className="font-mono text-xs"
+                                >
+                                    {cat.label.toUpperCase()}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    <Select
+                        value={statusFilter}
+                        onValueChange={(v: StatusFilter) => {
+                            setStatusFilter(v);
+                            setPage(1);
+                        }}
+                    >
+                        <SelectTrigger className="w-[160px] font-mono text-xs">
+                            <SelectValue placeholder="Status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="active" className="font-mono text-xs">
+                                ACTIVE
+                            </SelectItem>
+                            <SelectItem value="both" className="font-mono text-xs">
+                                ALL STATUSES
+                            </SelectItem>
+                            <SelectItem value="disabled" className="font-mono text-xs">
+                                DISABLED
+                            </SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+            </div>
 
-                        {/* Table */}
-                        {isLoading ? (
-                            <p className="text-muted-foreground text-center py-8">Loading...</p>
-                        ) : !data?.data || data.data.length === 0 ? (
-                            <p className="text-muted-foreground text-center py-8">
-                                No service types found
-                            </p>
-                        ) : (
-                            <div className="border rounded-md">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Name</TableHead>
-                                            <TableHead>Category</TableHead>
-                                            <TableHead>Unit</TableHead>
-                                            <TableHead className="text-right">
-                                                Default Rate
-                                            </TableHead>
-                                            <TableHead>Status</TableHead>
-                                            <TableHead className="text-right">Actions</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {data.data.map((service: ServiceType) => (
-                                            <TableRow key={service.id}>
-                                                <TableCell>
-                                                    <div>
-                                                        <span className="font-medium text-sm">
-                                                            {service.name}
-                                                        </span>
-                                                        {service.description && (
-                                                            <p className="text-xs text-muted-foreground mt-0.5 max-w-[300px] truncate">
-                                                                {service.description}
-                                                            </p>
-                                                        )}
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Badge
-                                                        variant="outline"
+            {/* Content */}
+            <div className="px-8 py-6">
+                {isLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                        <div className="text-sm font-mono text-muted-foreground animate-pulse">
+                            LOADING SERVICE TYPES...
+                        </div>
+                    </div>
+                ) : services.length === 0 ? (
+                    <div className="text-center py-12 space-y-3">
+                        <Wrench className="h-12 w-12 mx-auto text-muted-foreground opacity-50" />
+                        <p className="font-mono text-sm text-muted-foreground">
+                            NO SERVICE TYPES FOUND
+                        </p>
+                    </div>
+                ) : (
+                    <>
+                        <div className="border border-border rounded-lg overflow-hidden bg-card">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow className="bg-muted/50 border-border/50">
+                                        <TableHead className="font-mono text-xs font-bold">
+                                            NAME
+                                        </TableHead>
+                                        <TableHead className="font-mono text-xs font-bold">
+                                            CATEGORY
+                                        </TableHead>
+                                        <TableHead className="font-mono text-xs font-bold">
+                                            UNIT
+                                        </TableHead>
+                                        <TableHead className="font-mono text-xs font-bold text-right">
+                                            DEFAULT RATE
+                                        </TableHead>
+                                        <TableHead className="font-mono text-xs font-bold">
+                                            STATUS
+                                        </TableHead>
+                                        <TableHead className="w-12"></TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {services.map((service: ServiceType, index: number) => (
+                                        <TableRow
+                                            key={service.id}
+                                            className="group hover:bg-muted/30 transition-colors border-border/50"
+                                            style={{ animationDelay: `${index * 50}ms` }}
+                                        >
+                                            <TableCell className="font-mono">
+                                                <div>
+                                                    <span className="font-medium text-sm">
+                                                        {service.name}
+                                                    </span>
+                                                    {service.description && (
+                                                        <p className="text-xs text-muted-foreground mt-0.5 max-w-[300px] truncate">
+                                                            {service.description}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <Badge
+                                                    variant="outline"
+                                                    className="font-mono text-xs"
+                                                >
+                                                    {service.category}
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell className="font-mono text-sm">
+                                                {service.unit}
+                                            </TableCell>
+                                            <TableCell className="text-right font-mono text-sm">
+                                                {service.default_rate != null
+                                                    ? `${service.default_rate.toFixed(2)} AED`
+                                                    : "—"}
+                                            </TableCell>
+                                            <TableCell>
+                                                <Badge
+                                                    variant={
+                                                        service.is_active ? "default" : "destructive"
+                                                    }
+                                                    className="text-xs"
+                                                >
+                                                    {service.is_active ? "Active" : "Inactive"}
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="flex items-center gap-1">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => openEdit(service)}
                                                         className="font-mono text-xs"
                                                     >
-                                                        {service.category}
-                                                    </Badge>
-                                                </TableCell>
-                                                <TableCell className="font-mono text-sm">
-                                                    {service.unit}
-                                                </TableCell>
-                                                <TableCell className="text-right font-mono text-sm">
-                                                    {service.default_rate != null
-                                                        ? `${service.default_rate.toFixed(2)} AED`
-                                                        : "—"}
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Badge
-                                                        variant={
-                                                            service.is_active
-                                                                ? "default"
-                                                                : "destructive"
+                                                        <Pencil className="h-3.5 w-3.5" />
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() =>
+                                                            handleToggleStatus(
+                                                                service,
+                                                                !service.is_active
+                                                            )
                                                         }
-                                                        className="text-xs"
+                                                        title={
+                                                            service.is_active
+                                                                ? "Disable service type"
+                                                                : "Enable service type"
+                                                        }
+                                                        className="font-mono text-xs"
                                                     >
-                                                        {service.is_active ? "Active" : "Inactive"}
-                                                    </Badge>
-                                                </TableCell>
-                                                <TableCell className="text-right">
-                                                    <div className="flex justify-end gap-1">
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            onClick={() => openEdit(service)}
-                                                        >
-                                                            <Pencil className="h-3.5 w-3.5" />
-                                                        </Button>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            onClick={() =>
-                                                                handleToggleStatus(
-                                                                    service,
-                                                                    !service.is_active
-                                                                )
-                                                            }
-                                                            title={
-                                                                service.is_active
-                                                                    ? "Disable service type"
-                                                                    : "Enable service type"
-                                                            }
-                                                        >
-                                                            {service.is_active ? (
-                                                                <Ban className="h-3.5 w-3.5" />
-                                                            ) : (
-                                                                <RotateCcw className="h-3.5 w-3.5" />
-                                                            )}
-                                                        </Button>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            onClick={() => handleDelete(service)}
-                                                            title="Delete service type"
-                                                        >
-                                                            <Trash2 className="h-3.5 w-3.5" />
-                                                        </Button>
-                                                    </div>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            </div>
-                        )}
+                                                        {service.is_active ? (
+                                                            <Ban className="h-3.5 w-3.5" />
+                                                        ) : (
+                                                            <RotateCcw className="h-3.5 w-3.5" />
+                                                        )}
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => handleDelete(service)}
+                                                        title="Delete service type"
+                                                        className="font-mono text-xs text-destructive"
+                                                    >
+                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                    </Button>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
 
                         {/* Pagination */}
                         {totalPages > 1 && (
-                            <div className="flex items-center justify-between pt-2">
-                                <p className="text-sm text-muted-foreground">
+                            <div className="flex items-center justify-between pt-4">
+                                <p className="text-sm text-muted-foreground font-mono">
                                     Page {page} of {totalPages} ({totalItems} total)
                                 </p>
                                 <div className="flex gap-2">
@@ -409,6 +436,7 @@ export default function ServiceTypesPage() {
                                         size="sm"
                                         disabled={page <= 1}
                                         onClick={() => setPage((p) => p - 1)}
+                                        className="gap-1 font-mono"
                                     >
                                         <ChevronLeft className="h-4 w-4" />
                                         Prev
@@ -418,6 +446,7 @@ export default function ServiceTypesPage() {
                                         size="sm"
                                         disabled={page >= totalPages}
                                         onClick={() => setPage((p) => p + 1)}
+                                        className="gap-1 font-mono"
                                     >
                                         Next
                                         <ChevronRight className="h-4 w-4" />
@@ -425,8 +454,8 @@ export default function ServiceTypesPage() {
                                 </div>
                             </div>
                         )}
-                    </CardContent>
-                </Card>
+                    </>
+                )}
             </div>
 
             {/* Create/Edit Dialog */}
@@ -441,55 +470,62 @@ export default function ServiceTypesPage() {
                     }
                 }}
             >
-                <DialogContent>
+                <DialogContent className="max-w-2xl">
                     <DialogHeader>
-                        <DialogTitle>{selectedService ? "Edit" : "Add"} Service Type</DialogTitle>
+                        <DialogTitle className="font-mono">
+                            {selectedService ? "EDIT SERVICE TYPE" : "CREATE SERVICE TYPE"}
+                        </DialogTitle>
+                        <DialogDescription className="font-mono text-xs">
+                            {selectedService
+                                ? "Update service type configuration"
+                                : "Add a new billable service to the catalog"}
+                        </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4">
-                        <div>
-                            <Label>
-                                Name <span className="text-destructive">*</span>
-                            </Label>
+                        <div className="space-y-2">
+                            <Label className="font-mono text-xs">NAME *</Label>
                             <Input
                                 value={formData.name}
                                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                 placeholder="Assembly (Regular Hours)"
+                                className="font-mono"
                             />
                         </div>
-                        <div>
-                            <Label>
-                                Category <span className="text-destructive">*</span>
-                            </Label>
+                        <div className="space-y-2">
+                            <Label className="font-mono text-xs">CATEGORY *</Label>
                             <Select
                                 value={formData.category}
                                 onValueChange={(v: ServiceCategory) =>
                                     setFormData({ ...formData, category: v })
                                 }
                             >
-                                <SelectTrigger>
+                                <SelectTrigger className="font-mono">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {CATEGORIES.map((cat) => (
-                                        <SelectItem key={cat.value} value={cat.value}>
+                                        <SelectItem
+                                            key={cat.value}
+                                            value={cat.value}
+                                            className="font-mono"
+                                        >
                                             {cat.label}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
                         </div>
-                        <div>
-                            <Label>
-                                Unit <span className="text-destructive">*</span>
-                            </Label>
+                        <div className="space-y-2">
+                            <Label className="font-mono text-xs">UNIT *</Label>
                             <Input
                                 value={formData.unit}
                                 onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
                                 placeholder="hour, day, trip, unit"
+                                className="font-mono"
                             />
                         </div>
-                        <div>
-                            <Label>Default Rate (AED)</Label>
+                        <div className="space-y-2">
+                            <Label className="font-mono text-xs">DEFAULT RATE (AED)</Label>
                             <Input
                                 type="number"
                                 step="1"
@@ -499,10 +535,11 @@ export default function ServiceTypesPage() {
                                     setFormData({ ...formData, defaultRate: e.target.value })
                                 }
                                 placeholder="18.00"
+                                className="font-mono"
                             />
                         </div>
-                        <div>
-                            <Label>Description</Label>
+                        <div className="space-y-2">
+                            <Label className="font-mono text-xs">DESCRIPTION</Label>
                             <Textarea
                                 value={formData.description}
                                 onChange={(e) =>
@@ -510,10 +547,11 @@ export default function ServiceTypesPage() {
                                 }
                                 placeholder="Optional description"
                                 rows={3}
+                                className="font-mono"
                             />
                         </div>
                     </div>
-                    <DialogFooter>
+                    <div className="flex justify-end gap-3 pt-4 border-t border-border">
                         <Button
                             variant="outline"
                             onClick={() => {
@@ -521,20 +559,22 @@ export default function ServiceTypesPage() {
                                 setEditDialogOpen(false);
                                 resetForm();
                             }}
+                            className="font-mono"
                         >
-                            Cancel
+                            CANCEL
                         </Button>
                         <Button
                             onClick={selectedService ? handleEdit : handleCreate}
                             disabled={createService.isPending || updateService.isPending}
+                            className="font-mono"
                         >
                             {createService.isPending || updateService.isPending
-                                ? "Saving..."
+                                ? "PROCESSING..."
                                 : selectedService
-                                  ? "Update"
-                                  : "Create"}
+                                  ? "UPDATE"
+                                  : "CREATE"}
                         </Button>
-                    </DialogFooter>
+                    </div>
                 </DialogContent>
             </Dialog>
         </div>

@@ -126,8 +126,15 @@ export default function WarehouseOptRates() {
                 {isLoading ? (
                     <div className="flex items-center justify-center py-12">
                         <div className="text-sm font-mono text-muted-foreground animate-pulse">
-                            LOADING SERVICES...
+                            LOADING RATES...
                         </div>
+                    </div>
+                ) : companies.length === 0 ? (
+                    <div className="text-center py-12 space-y-3">
+                        <Wrench className="h-12 w-12 mx-auto text-muted-foreground opacity-50" />
+                        <p className="font-mono text-sm text-muted-foreground">
+                            NO COMPANIES FOUND
+                        </p>
                     </div>
                 ) : (
                     <div className="border border-border rounded-lg overflow-hidden bg-card">

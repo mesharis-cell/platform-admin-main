@@ -201,6 +201,10 @@ export default function UserEditPage() {
         }
 
         try {
+            const trimmedEmail = form.email.trim().toLowerCase();
+            const emailChanged =
+                authUser?.is_super_admin && trimmedEmail && trimmedEmail !== existingUser?.email;
+
             await updateUser.mutateAsync({
                 userId,
                 data: {
@@ -210,6 +214,7 @@ export default function UserEditPage() {
                     permission_revokes: form.permission_revokes,
                     company_id: form.role === "CLIENT" ? form.company_id : null,
                     is_active: form.is_active,
+                    ...(emailChanged ? { email: trimmedEmail } : {}),
                     ...(authUser?.is_super_admin ? { is_super_admin: form.is_super_admin } : {}),
                 },
             });
@@ -325,13 +330,25 @@ export default function UserEditPage() {
                         <Label>Email</Label>
                         <Input
                             value={form.email}
-                            disabled
+                            disabled={!authUser?.is_super_admin}
+                            onChange={(event) =>
+                                setForm((prev) => ({
+                                    ...prev,
+                                    email: event.target.value,
+                                }))
+                            }
                             autoComplete="off"
                             autoCorrect="off"
                             autoCapitalize="none"
                             spellCheck={false}
                             name="managed-user-email"
                         />
+                        {authUser?.is_super_admin ? (
+                            <p className="text-xs text-muted-foreground">
+                                Super admins can edit user emails. Email will be normalized
+                                to lowercase on save.
+                            </p>
+                        ) : null}
                     </div>
                 </div>
 
@@ -401,9 +418,7 @@ export default function UserEditPage() {
                             <div className="space-y-3">
                                 <Input
                                     value={overrideSearchTerm}
-                                    onChange={(event) =>
-                                        setOverrideSearchTerm(event.target.value)
-                                    }
+                                    onChange={(event) => setOverrideSearchTerm(event.target.value)}
                                     placeholder="Filter permissions or groups"
                                     autoComplete="off"
                                     autoCorrect="off"
@@ -451,7 +466,9 @@ export default function UserEditPage() {
                                                     const granted =
                                                         form.permission_grants.includes(permission);
                                                     const revoked =
-                                                        form.permission_revokes.includes(permission);
+                                                        form.permission_revokes.includes(
+                                                            permission
+                                                        );
 
                                                     return (
                                                         <div
@@ -503,7 +520,9 @@ export default function UserEditPage() {
                                                                 <label className="flex items-center gap-2 text-xs">
                                                                     <Checkbox
                                                                         checked={granted}
-                                                                        onCheckedChange={(checked) =>
+                                                                        onCheckedChange={(
+                                                                            checked
+                                                                        ) =>
                                                                             toggleOverride(
                                                                                 "grant",
                                                                                 permission,
@@ -516,7 +535,9 @@ export default function UserEditPage() {
                                                                 <label className="flex items-center gap-2 text-xs">
                                                                     <Checkbox
                                                                         checked={revoked}
-                                                                        onCheckedChange={(checked) =>
+                                                                        onCheckedChange={(
+                                                                            checked
+                                                                        ) =>
                                                                             toggleOverride(
                                                                                 "revoke",
                                                                                 permission,
@@ -648,7 +669,8 @@ export default function UserEditPage() {
                                             ) : null}
                                         </div>
                                         <p className="text-xs text-muted-foreground">
-                                            This temporary password is shown once. Share it securely.
+                                            This temporary password is shown once. Share it
+                                            securely.
                                         </p>
                                     </div>
 

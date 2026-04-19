@@ -17,9 +17,9 @@ import {
     Image as ImageIcon,
     MoreVertical,
     Undo2,
+    Search,
 } from "lucide-react";
 import { AdminHeader } from "@/components/admin-header";
-import { DataTable, DataTableSearch, DataTableRow } from "@/components/ui/data-table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,7 +31,14 @@ import {
     DialogTrigger,
     DialogDescription,
 } from "@/components/ui/dialog";
-import { TableCell } from "@/components/ui/table";
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -65,11 +72,9 @@ export default function BrandsPage() {
         logo_url: "",
     });
 
-    // Fetch companies for reference
     const { data: companiesData } = useCompanies({ limit: "100" });
     const companies = companiesData?.data || [];
 
-    // Build query params for brands
     const queryParams = useMemo(() => {
         const params: Record<string, string> = {
             limit: "100",
@@ -81,12 +86,10 @@ export default function BrandsPage() {
         return params;
     }, [searchQuery, companyFilter, includeDeleted]);
 
-    // Fetch brands
-    const { data, isLoading: loading } = useBrands(queryParams);
+    const { data, isLoading } = useBrands(queryParams);
     const brands = data?.data || [];
     const total = data?.meta?.total || 0;
 
-    // Mutations
     const createMutation = useCreateBrand();
     const updateMutation = useUpdateBrand();
     const deleteMutation = useDeleteRestoreBrand();
@@ -96,7 +99,6 @@ export default function BrandsPage() {
 
         try {
             if (editingBrand) {
-                // Exclude company field when updating (cannot be changed)
                 const { company_id, ...updateData } = formData;
                 await updateMutation.mutateAsync({
                     id: editingBrand.id,
@@ -151,7 +153,7 @@ export default function BrandsPage() {
     const openEditDialog = (brand: Brand) => {
         setEditingBrand(brand);
         setFormData({
-            company_id: brand.company.id, // Note: cannot be changed
+            company_id: brand.company.id,
             name: brand.name,
             description: brand.description || "",
             logo_url: brand.logo_url || "",
@@ -160,7 +162,7 @@ export default function BrandsPage() {
     };
 
     return (
-        <div className="min-h-screen bg-background">
+        <div>
             <AdminHeader
                 icon={Tag}
                 title="BRAND REGISTRY"
@@ -211,7 +213,7 @@ export default function BrandsPage() {
                                                 company_id: value,
                                             })
                                         }
-                                        disabled={!!editingBrand} // Cannot change company for existing brand
+                                        disabled={!!editingBrand}
                                         required
                                     >
                                         <SelectTrigger className="font-mono">
@@ -302,7 +304,7 @@ export default function BrandsPage() {
                                     </p>
                                 </div>
 
-                                <div className="flex justify-end gap-3 pt-4 border-t">
+                                <div className="flex justify-end gap-3 pt-4 border-t border-border">
                                     <Button
                                         type="button"
                                         variant="outline"
@@ -338,54 +340,57 @@ export default function BrandsPage() {
                 }
             />
 
-            <DataTable
-                filters={
-                    <>
-                        <DataTableSearch
-                            value={searchQuery}
-                            onChange={setSearchQuery}
+            {/* Search strip */}
+            <div className="border-b border-border bg-card px-8 py-4">
+                <div className="flex items-center gap-4">
+                    <div className="relative flex-1 max-w-md">
+                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
                             placeholder="Search brands..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="pl-10 font-mono text-sm"
                         />
-                        <Select value={companyFilter} onValueChange={setCompanyFilter}>
-                            <SelectTrigger className="w-[250px] font-mono text-sm">
-                                <SelectValue placeholder="All Companies" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all" className="font-mono">
-                                    All Companies
+                    </div>
+                    <Select value={companyFilter} onValueChange={setCompanyFilter}>
+                        <SelectTrigger className="w-[250px] font-mono text-xs">
+                            <SelectValue placeholder="All Companies" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all" className="font-mono text-xs">
+                                ALL COMPANIES
+                            </SelectItem>
+                            {companies.map((co) => (
+                                <SelectItem key={co.id} value={co.id} className="font-mono text-xs">
+                                    {co.name.toUpperCase()}
                                 </SelectItem>
-                                {companies.map((co) => (
-                                    <SelectItem key={co.id} value={co.id} className="font-mono">
-                                        {co.name}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        <Button
-                            variant={includeDeleted ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => setIncludeDeleted(!includeDeleted)}
-                            className="gap-2 font-mono text-xs"
-                        >
-                            <Trash2 className="h-3.5 w-3.5" />
-                            {includeDeleted ? "HIDE DELETED" : "SHOW DELETED"}
-                        </Button>
-                    </>
-                }
-                columns={[
-                    "BRAND",
-                    "COMPANY",
-                    "DESCRIPTION",
-                    "LOGO",
-                    "STATUS",
-                    { label: "", className: "w-12" },
-                ]}
-                loading={loading}
-                hasData={brands.length > 0}
-                empty={{
-                    icon: Tag,
-                    message: "NO BRANDS FOUND",
-                    action: (
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    <Button
+                        variant={includeDeleted ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setIncludeDeleted(!includeDeleted)}
+                        className="gap-2 font-mono text-xs"
+                    >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        {includeDeleted ? "HIDE DELETED" : "SHOW DELETED"}
+                    </Button>
+                </div>
+            </div>
+
+            {/* Content */}
+            <div className="px-8 py-6">
+                {isLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                        <div className="text-sm font-mono text-muted-foreground animate-pulse">
+                            LOADING BRANDS...
+                        </div>
+                    </div>
+                ) : brands.length === 0 ? (
+                    <div className="text-center py-12 space-y-3">
+                        <Tag className="h-12 w-12 mx-auto text-muted-foreground opacity-50" />
+                        <p className="font-mono text-sm text-muted-foreground">NO BRANDS FOUND</p>
                         <Button
                             onClick={() => setIsCreateOpen(true)}
                             variant="outline"
@@ -394,114 +399,148 @@ export default function BrandsPage() {
                             <Plus className="h-3.5 w-3.5 mr-2" />
                             CREATE FIRST BRAND
                         </Button>
-                    ),
-                }}
-            >
-                {brands.map((brand, index) => (
-                    <DataTableRow key={brand.id} index={index}>
-                        <TableCell className="font-mono font-medium">
-                            <div className="flex items-center gap-3">
-                                <div className="h-10 w-10 rounded-md border-2 border-primary/20 flex items-center justify-center overflow-hidden bg-linear-gradient-to-br from-primary/5 to-primary/10">
-                                    {brand.logo_url ? (
-                                        <img
-                                            src={brand.logo_url}
-                                            alt={brand.name}
-                                            className="h-full w-full object-contain"
-                                        />
-                                    ) : (
-                                        <Tag className="h-5 w-5 text-primary" />
-                                    )}
-                                </div>
-                                <div>
-                                    <div className="font-bold text-base">{brand.name}</div>
-                                    <div className="text-xs text-muted-foreground">
-                                        ID: {brand.id.slice(0, 8)}
-                                        ...
-                                    </div>
-                                </div>
-                            </div>
-                        </TableCell>
-                        <TableCell className="font-mono">
-                            <div className="flex items-center gap-2">
-                                <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
-                                <span className="text-sm">{brand.company.name || "Unknown"}</span>
-                            </div>
-                        </TableCell>
-                        <TableCell className="font-mono text-sm text-muted-foreground max-w-md">
-                            {brand.description || "—"}
-                        </TableCell>
-                        <TableCell className="font-mono text-xs">
-                            {brand.logo_url ? (
-                                <a
-                                    href={brand.logo_url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-primary hover:underline flex items-center gap-1"
-                                >
-                                    <ImageIcon className="h-3 w-3" />
-                                    View
-                                </a>
-                            ) : (
-                                <span className="text-muted-foreground">No logo</span>
-                            )}
-                        </TableCell>
-                        <TableCell>
-                            {brand.is_active ? (
-                                <Badge
-                                    variant="outline"
-                                    className="font-mono text-xs border-primary/30 text-primary"
-                                >
-                                    ACTIVE
-                                </Badge>
-                            ) : (
-                                <Badge
-                                    variant="outline"
-                                    className="font-mono text-xs border-destructive/30 text-destructive"
-                                >
-                                    DELETED
-                                </Badge>
-                            )}
-                        </TableCell>
-                        <TableCell>
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                    </div>
+                ) : (
+                    <div className="border border-border rounded-lg overflow-hidden bg-card">
+                        <Table>
+                            <TableHeader>
+                                <TableRow className="bg-muted/50 border-border/50">
+                                    <TableHead className="font-mono text-xs font-bold">
+                                        BRAND
+                                    </TableHead>
+                                    <TableHead className="font-mono text-xs font-bold">
+                                        COMPANY
+                                    </TableHead>
+                                    <TableHead className="font-mono text-xs font-bold">
+                                        DESCRIPTION
+                                    </TableHead>
+                                    <TableHead className="font-mono text-xs font-bold">
+                                        LOGO
+                                    </TableHead>
+                                    <TableHead className="font-mono text-xs font-bold">
+                                        STATUS
+                                    </TableHead>
+                                    <TableHead className="w-12"></TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {brands.map((brand, index) => (
+                                    <TableRow
+                                        key={brand.id}
+                                        className="group hover:bg-muted/30 transition-colors border-border/50"
+                                        style={{ animationDelay: `${index * 50}ms` }}
                                     >
-                                        <MoreVertical className="h-4 w-4" />
-                                    </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                    <DropdownMenuItem
-                                        onClick={() => openEditDialog(brand)}
-                                        className="font-mono text-xs"
-                                    >
-                                        <Pencil className="h-3.5 w-3.5 mr-2" />
-                                        Edit Brand
-                                    </DropdownMenuItem>
+                                        <TableCell className="font-mono font-medium">
+                                            <div className="flex items-center gap-3">
+                                                <div className="h-10 w-10 rounded-md border-2 border-primary/20 flex items-center justify-center overflow-hidden bg-linear-gradient-to-br from-primary/5 to-primary/10">
+                                                    {brand.logo_url ? (
+                                                        <img
+                                                            src={brand.logo_url}
+                                                            alt={brand.name}
+                                                            className="h-full w-full object-contain"
+                                                        />
+                                                    ) : (
+                                                        <Tag className="h-5 w-5 text-primary" />
+                                                    )}
+                                                </div>
+                                                <div>
+                                                    <div className="font-bold text-base">
+                                                        {brand.name}
+                                                    </div>
+                                                    <div className="text-xs text-muted-foreground">
+                                                        ID: {brand.id.slice(0, 8)}
+                                                        ...
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="font-mono">
+                                            <div className="flex items-center gap-2">
+                                                <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
+                                                <span className="text-sm">
+                                                    {brand.company.name || "Unknown"}
+                                                </span>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="font-mono text-sm text-muted-foreground max-w-md">
+                                            {brand.description || "—"}
+                                        </TableCell>
+                                        <TableCell className="font-mono text-xs">
+                                            {brand.logo_url ? (
+                                                <a
+                                                    href={brand.logo_url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-primary hover:underline flex items-center gap-1"
+                                                >
+                                                    <ImageIcon className="h-3 w-3" />
+                                                    View
+                                                </a>
+                                            ) : (
+                                                <span className="text-muted-foreground">
+                                                    No logo
+                                                </span>
+                                            )}
+                                        </TableCell>
+                                        <TableCell>
+                                            {brand.is_active ? (
+                                                <Badge
+                                                    variant="outline"
+                                                    className="font-mono text-xs border-primary/30 text-primary"
+                                                >
+                                                    ACTIVE
+                                                </Badge>
+                                            ) : (
+                                                <Badge
+                                                    variant="outline"
+                                                    className="font-mono text-xs border-destructive/30 text-destructive"
+                                                >
+                                                    DELETED
+                                                </Badge>
+                                            )}
+                                        </TableCell>
+                                        <TableCell>
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    >
+                                                        <MoreVertical className="h-4 w-4" />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    <DropdownMenuItem
+                                                        onClick={() => openEditDialog(brand)}
+                                                        className="font-mono text-xs"
+                                                    >
+                                                        <Pencil className="h-3.5 w-3.5 mr-2" />
+                                                        Edit Brand
+                                                    </DropdownMenuItem>
 
-                                    <DropdownMenuItem
-                                        onClick={() => setConfirmDelete(brand)}
-                                        className={`font-mono text-xs ${brand.is_active ? "text-destructive" : "text-primary"}`}
-                                    >
-                                        {brand.is_active ? (
-                                            <Trash2 className="h-3.5 w-3.5 mr-2" />
-                                        ) : (
-                                            <Undo2 className="h-3.5 w-3.5 mr-2" />
-                                        )}
-                                        {brand.is_active ? "Delete Brand" : "Restore Brand"}
-                                    </DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-                        </TableCell>
-                    </DataTableRow>
-                ))}
-            </DataTable>
-
-            <div className="fixed bottom-4 right-4 font-mono text-xs text-muted-foreground/40">
-                ZONE: ADMIN-BRANDS · SEC-LEVEL: PLATFORM-ADMIN
+                                                    <DropdownMenuItem
+                                                        onClick={() => setConfirmDelete(brand)}
+                                                        className={`font-mono text-xs ${brand.is_active ? "text-destructive" : "text-primary"}`}
+                                                    >
+                                                        {brand.is_active ? (
+                                                            <Trash2 className="h-3.5 w-3.5 mr-2" />
+                                                        ) : (
+                                                            <Undo2 className="h-3.5 w-3.5 mr-2" />
+                                                        )}
+                                                        {brand.is_active
+                                                            ? "Delete Brand"
+                                                            : "Restore Brand"}
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
+                )}
             </div>
 
             {/* Confirm Delete Dialog */}

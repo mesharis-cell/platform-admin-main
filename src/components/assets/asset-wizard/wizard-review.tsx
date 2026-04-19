@@ -36,7 +36,7 @@ export function WizardReview({ state }: Props) {
             <div className="divide-y divide-border">
                 <Row label="Item" value={itemName} />
                 <Row label="Type" value={isSerialized ? "Serialized" : "Pooled"} />
-                <Row label="Category" value={state.category || state.selectedFamily?.category} />
+                <Row label="Category" value={state.new_category?.name || state.selectedFamily?.category?.name || "—"} />
                 {isSerialized && state.quantity > 1 && (
                     <Row
                         label="Units to create"

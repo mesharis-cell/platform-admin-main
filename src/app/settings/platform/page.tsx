@@ -65,19 +65,28 @@ import {
 import { useCompanies } from "@/hooks/use-companies";
 import { apiClient } from "@/lib/api/api-client";
 import { throwApiError } from "@/lib/utils/throw-api-error";
-import { DEFAULT_PLATFORM_FEATURES } from "@/lib/platform-features";
+import {
+    getFeatureRegistry,
+    getPlatformFeatureKeys,
+    getDefaultPlatformFeatures,
+} from "@/lib/platform-features";
+import { usePlatform as usePlatformContext } from "@/contexts/platform-context";
 import { useToken } from "@/lib/auth/use-token";
 import { hasPermission } from "@/lib/auth/permissions";
 
 const BASE = "/operations/v1/platform";
 
-type StrictFeatures = Required<PlatformFeatures>;
-const DEFAULT_FEATURES: StrictFeatures = DEFAULT_PLATFORM_FEATURES;
+type StrictFeatures = Record<string, boolean>;
 
 export default function PlatformSettingsPage() {
     const { user } = useToken();
     const qc = useQueryClient();
     const { data: platform, isLoading } = usePlatform();
+    // platform context carries the feature_registry served by /auth/context;
+    // usePlatform (data hook) above is the GET platform record and does not
+    // include the registry. Keep them separate so the registry source stays
+    // the one place it's actually shipped from.
+    const { platform: platformContext } = usePlatformContext();
     const { data: diagnostics, isLoading: diagnosticsLoading } = usePlatformUrlDiagnostics();
     const updateConfig = useUpdatePlatformConfig();
     const updatePlatformDomain = useUpdatePlatformDomain();
@@ -98,7 +107,7 @@ export default function PlatformSettingsPage() {
     const [secondaryColor, setSecondaryColor] = useState("");
     const [logoUrl, setLogoUrl] = useState("");
     const [platformDomain, setPlatformDomain] = useState("");
-    const [features, setFeatures] = useState<StrictFeatures>(DEFAULT_FEATURES);
+    const [features, setFeatures] = useState<StrictFeatures>({});
     const [savingFeatures, setSavingFeatures] = useState(false);
 
     // Feasibility & Lead Time
@@ -149,34 +158,16 @@ export default function PlatformSettingsPage() {
         setWeekendDays(f?.weekend_days ?? [0, 6]);
         setFeasibilityTimezone(f?.timezone ?? "Asia/Dubai");
 
-        setFeatures({
-            enable_inbound_requests:
-                platform.features.enable_inbound_requests ??
-                DEFAULT_FEATURES.enable_inbound_requests,
-            show_estimate_on_order_creation:
-                platform.features.show_estimate_on_order_creation ??
-                DEFAULT_FEATURES.show_estimate_on_order_creation,
-            enable_kadence_invoicing:
-                platform.features.enable_kadence_invoicing ??
-                DEFAULT_FEATURES.enable_kadence_invoicing,
-            enable_base_operations:
-                platform.features.enable_base_operations ?? DEFAULT_FEATURES.enable_base_operations,
-            enable_asset_bulk_upload:
-                platform.features.enable_asset_bulk_upload ??
-                DEFAULT_FEATURES.enable_asset_bulk_upload,
-            enable_attachments:
-                platform.features.enable_attachments ?? DEFAULT_FEATURES.enable_attachments,
-            enable_workflows:
-                platform.features.enable_workflows ?? DEFAULT_FEATURES.enable_workflows,
-            enable_service_requests:
-                platform.features.enable_service_requests ??
-                DEFAULT_FEATURES.enable_service_requests,
-            enable_event_calendar:
-                platform.features.enable_event_calendar ?? DEFAULT_FEATURES.enable_event_calendar,
-            enable_client_stock_requests:
-                platform.features.enable_client_stock_requests ??
-                DEFAULT_FEATURES.enable_client_stock_requests,
-        });
+        // Derived from the runtime feature registry served by the API on
+        // /auth/context, so new flags flow through without a frontend deploy.
+        const keys = getPlatformFeatureKeys(platformContext);
+        const defaults = getDefaultPlatformFeatures(platformContext);
+        const loaded = keys.reduce<StrictFeatures>((acc, key) => {
+            const incoming = platform.features?.[key];
+            acc[key] = incoming === undefined ? Boolean(defaults[key]) : Boolean(incoming);
+            return acc;
+        }, {});
+        setFeatures(loaded);
     }, [platform]);
 
     const groupedDomains = useMemo(() => {
@@ -625,64 +616,12 @@ export default function PlatformSettingsPage() {
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        {[
-                            {
-                                key: "enable_inbound_requests" as const,
-                                label: "Enable Inbound Requests",
-                                description: "Allow inbound request workflows",
-                            },
-                            {
-                                key: "show_estimate_on_order_creation" as const,
-                                label: "Show Estimate on Order Creation",
-                                description: "Display estimate immediately in order creation flow",
-                            },
-                            {
-                                key: "enable_kadence_invoicing" as const,
-                                label: "Enable Invoicing",
-                                description:
-                                    "Enable invoice generation and payment confirmation flows",
-                                comingSoon: true,
-                            },
-                            {
-                                key: "enable_attachments" as const,
-                                label: "Enable Attachments",
-                                description:
-                                    "Allow typed documents across order, inbound, service request, and workflow records",
-                            },
-                            {
-                                key: "enable_asset_bulk_upload" as const,
-                                label: "Enable Asset Bulk Upload",
-                                description:
-                                    "Allow bulk uploading of assets via spreadsheet import",
-                            },
-                            {
-                                key: "enable_workflows" as const,
-                                label: "Enable Internal Workflows",
-                                description:
-                                    "Expose workflow sections, workflow inboxes, and workflow request creation",
-                            },
-                            {
-                                key: "enable_base_operations" as const,
-                                label: "Enable Picking & Handling",
-                                description:
-                                    "Include Picking & Handling (base operations) in pricing calculations",
-                            },
-                            {
-                                key: "enable_service_requests" as const,
-                                label: "Enable Service Requests",
-                                description: "Show service requests section in client portal",
-                            },
-                            {
-                                key: "enable_event_calendar" as const,
-                                label: "Enable Event Calendar",
-                                description: "Show event calendar page in client portal",
-                            },
-                            {
-                                key: "enable_client_stock_requests" as const,
-                                label: "Enable Client Stock Requests",
-                                description: "Allow clients to submit new stock / inbound requests",
-                            },
-                        ].map((item) => (
+                        {getPlatformFeatureKeys(platformContext)
+                            .map((key) => {
+                                const meta = getFeatureRegistry(platformContext)[key];
+                                return { key, ...meta };
+                            })
+                            .map((item) => (
                             <div key={item.key} className="flex items-center justify-between">
                                 <div>
                                     <p className="text-sm font-medium">

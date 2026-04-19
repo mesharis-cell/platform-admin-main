@@ -35,6 +35,13 @@ export interface Asset {
         id: string;
         name: string;
     };
+    family?: {
+        id: string;
+        name: string;
+        stock_mode: string;
+        category_id: string | null;
+        category?: { id: string; name: string; slug: string; color: string } | null;
+    } | null;
     warehouse: {
         id: string;
         name: string;

@@ -3,9 +3,8 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Eye, EyeOff, KeyRound, Shield, UserPlus, Users } from "lucide-react";
+import { Eye, EyeOff, KeyRound, Search, Shield, UserPlus, Users } from "lucide-react";
 import { AdminHeader } from "@/components/admin-header";
-import { DataTable, DataTableSearch, DataTableRow } from "@/components/ui/data-table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -27,7 +26,14 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { TableCell } from "@/components/ui/table";
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
 import { useAccessPolicies } from "@/hooks/use-access-policies";
 import { useCompanies } from "@/hooks/use-companies";
 import {
@@ -332,7 +338,7 @@ export default function UsersPage() {
     };
 
     return (
-        <div className="min-h-screen bg-background">
+        <div>
             <AdminHeader
                 icon={Users}
                 title="USER MANAGEMENT"
@@ -342,117 +348,144 @@ export default function UsersPage() {
                 }
             />
 
-            <DataTable
-                filters={
-                    <>
-                        <DataTableSearch
-                            value={searchTerm}
-                            onChange={setSearchTerm}
+            {/* Search strip */}
+            <div className="border-b border-border bg-card px-8 py-4">
+                <div className="flex items-center gap-4">
+                    <div className="relative flex-1 max-w-md">
+                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
                             placeholder="Search users by name or email"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="pl-10 font-mono text-sm"
                         />
-                        <Select value={roleFilter} onValueChange={setRoleFilter}>
-                            <SelectTrigger className="w-[180px]">
-                                <SelectValue placeholder="Role" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All Roles</SelectItem>
-                                {ROLES.map((role) => (
-                                    <SelectItem key={role} value={role}>
-                                        {role}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        <Select value={statusFilter} onValueChange={setStatusFilter}>
-                            <SelectTrigger className="w-[180px]">
-                                <SelectValue placeholder="Status" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All Statuses</SelectItem>
-                                <SelectItem value="active">Active</SelectItem>
-                                <SelectItem value="inactive">Inactive</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        <div className="flex gap-2">
-                            <Button variant="outline" onClick={() => openCreate("ADMIN")}>
-                                <UserPlus className="mr-1 h-4 w-4" />
-                                Admin
-                            </Button>
-                            <Button variant="outline" onClick={() => openCreate("LOGISTICS")}>
-                                <UserPlus className="mr-1 h-4 w-4" />
-                                Logistics
-                            </Button>
-                            <Button onClick={() => openCreate("CLIENT")}>
-                                <UserPlus className="mr-1 h-4 w-4" />
-                                Client
-                            </Button>
+                    </div>
+                    <Select value={roleFilter} onValueChange={setRoleFilter}>
+                        <SelectTrigger className="w-[180px] font-mono text-xs">
+                            <SelectValue placeholder="Role" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all" className="font-mono text-xs">ALL ROLES</SelectItem>
+                            {ROLES.map((role) => (
+                                <SelectItem key={role} value={role} className="font-mono text-xs">
+                                    {role}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                        <SelectTrigger className="w-[180px] font-mono text-xs">
+                            <SelectValue placeholder="Status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all" className="font-mono text-xs">ALL STATUSES</SelectItem>
+                            <SelectItem value="active" className="font-mono text-xs">ACTIVE</SelectItem>
+                            <SelectItem value="inactive" className="font-mono text-xs">INACTIVE</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <div className="flex gap-2">
+                        <Button variant="outline" onClick={() => openCreate("ADMIN")} className="font-mono text-xs">
+                            <UserPlus className="mr-1 h-4 w-4" />
+                            Admin
+                        </Button>
+                        <Button variant="outline" onClick={() => openCreate("LOGISTICS")} className="font-mono text-xs">
+                            <UserPlus className="mr-1 h-4 w-4" />
+                            Logistics
+                        </Button>
+                        <Button onClick={() => openCreate("CLIENT")} className="font-mono text-xs">
+                            <UserPlus className="mr-1 h-4 w-4" />
+                            Client
+                        </Button>
+                    </div>
+                </div>
+            </div>
+
+            {/* Content */}
+            <div className="px-8 py-6">
+                {isLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                        <div className="text-sm font-mono text-muted-foreground animate-pulse">
+                            LOADING USERS...
                         </div>
-                    </>
-                }
-                columns={[
-                    "User",
-                    "Role",
-                    "Company",
-                    "Access Policy",
-                    "Overrides",
-                    "Effective Permissions",
-                    "Status",
-                    { label: "Action", className: "text-right" },
-                ]}
-                loading={isLoading}
-                hasData={users.length > 0}
-                empty={{
-                    icon: Users,
-                    message: "NO USERS FOUND",
-                }}
-            >
-                {users.map((user, index) => (
-                    <DataTableRow key={user.id} index={index}>
-                        <TableCell>
-                            <div>
-                                <p className="font-medium">{user.name}</p>
-                                <p className="text-xs text-muted-foreground">{user.email}</p>
-                            </div>
-                        </TableCell>
-                        <TableCell>{user.role}</TableCell>
-                        <TableCell>{user.company?.name || "Platform-wide"}</TableCell>
-                        <TableCell>{user.access_policy?.name || "No policy"}</TableCell>
-                        <TableCell>
-                            +{user.permission_grants?.length || 0} / -
-                            {user.permission_revokes?.length || 0}
-                        </TableCell>
-                        <TableCell>{user.permissions.length}</TableCell>
-                        <TableCell>{user.is_active ? "Active" : "Inactive"}</TableCell>
-                        <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-2">
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => router.push(`/users/${user.id}`)}
-                                >
-                                    Edit
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => openDuplicate(user)}
-                                >
-                                    Duplicate
-                                </Button>
-                                {canManagePasswords ? (
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => openPasswordDialog(user)}
+                    </div>
+                ) : users.length === 0 ? (
+                    <div className="text-center py-12 space-y-3">
+                        <Users className="h-12 w-12 mx-auto text-muted-foreground opacity-50" />
+                        <p className="font-mono text-sm text-muted-foreground">NO USERS FOUND</p>
+                    </div>
+                ) : (
+                    <div className="border border-border rounded-lg overflow-hidden bg-card">
+                        <Table>
+                            <TableHeader>
+                                <TableRow className="bg-muted/50 border-border/50">
+                                    <TableHead className="font-mono text-xs font-bold">USER</TableHead>
+                                    <TableHead className="font-mono text-xs font-bold">ROLE</TableHead>
+                                    <TableHead className="font-mono text-xs font-bold">COMPANY</TableHead>
+                                    <TableHead className="font-mono text-xs font-bold">ACCESS POLICY</TableHead>
+                                    <TableHead className="font-mono text-xs font-bold">OVERRIDES</TableHead>
+                                    <TableHead className="font-mono text-xs font-bold">EFFECTIVE</TableHead>
+                                    <TableHead className="font-mono text-xs font-bold">STATUS</TableHead>
+                                    <TableHead className="w-12"></TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {users.map((user, index) => (
+                                    <TableRow
+                                        key={user.id}
+                                        className="group hover:bg-muted/30 transition-colors border-border/50"
+                                        style={{ animationDelay: `${index * 50}ms` }}
                                     >
-                                        Password
-                                    </Button>
-                                ) : null}
-                            </div>
-                        </TableCell>
-                    </DataTableRow>
-                ))}
-            </DataTable>
+                                        <TableCell className="font-mono">
+                                            <div>
+                                                <p className="font-medium text-sm">{user.name}</p>
+                                                <p className="text-xs text-muted-foreground">{user.email}</p>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="font-mono text-xs">{user.role}</TableCell>
+                                        <TableCell className="font-mono text-sm">{user.company?.name || "Platform-wide"}</TableCell>
+                                        <TableCell className="font-mono text-sm">{user.access_policy?.name || "No policy"}</TableCell>
+                                        <TableCell className="font-mono text-xs">
+                                            +{user.permission_grants?.length || 0} / -{user.permission_revokes?.length || 0}
+                                        </TableCell>
+                                        <TableCell className="font-mono text-xs">{user.permissions.length}</TableCell>
+                                        <TableCell className="font-mono text-xs">{user.is_active ? "Active" : "Inactive"}</TableCell>
+                                        <TableCell>
+                                            <div className="flex items-center justify-end gap-2">
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => router.push(`/users/${user.id}`)}
+                                                    className="font-mono text-xs"
+                                                >
+                                                    Edit
+                                                </Button>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => openDuplicate(user)}
+                                                    className="font-mono text-xs"
+                                                >
+                                                    Duplicate
+                                                </Button>
+                                                {canManagePasswords ? (
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => openPasswordDialog(user)}
+                                                        className="font-mono text-xs"
+                                                    >
+                                                        Password
+                                                    </Button>
+                                                ) : null}
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
+                )}
+            </div>
 
             <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
                     <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">

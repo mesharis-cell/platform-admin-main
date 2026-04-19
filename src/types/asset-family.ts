@@ -21,8 +21,14 @@ export interface AssetFamily {
     brand_id: string | null;
     team_id: string | null;
     name: string;
+    company_item_code: string | null;
     description: string | null;
-    category: string;
+    category: {
+        id: string;
+        name: string;
+        slug: string;
+        color: string;
+    } | null;
     images: AssetImage[];
     on_display_image: string | null;
     stock_mode: StockMode;
@@ -57,4 +63,5 @@ export interface AssetFamily {
     available_quantity?: number;
     status_summary?: AssetFamilySummary;
     condition_summary?: AssetFamilyConditionSummary;
+    low_stock_threshold?: number | null;
 }
