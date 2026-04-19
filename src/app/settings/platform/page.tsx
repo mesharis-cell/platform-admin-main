@@ -160,7 +160,12 @@ export default function PlatformSettingsPage() {
 
         // Derived from the runtime feature registry served by the API on
         // /auth/context, so new flags flow through without a frontend deploy.
+        // IMPORTANT: include platformContext in the deps — this effect must
+        // re-run when the feature_registry arrives on /auth/context, otherwise
+        // the registry-derived keys are empty on first pass and saved flag
+        // values silently revert to defaults on reload.
         const keys = getPlatformFeatureKeys(platformContext);
+        if (keys.length === 0) return;
         const defaults = getDefaultPlatformFeatures(platformContext);
         const loaded = keys.reduce<StrictFeatures>((acc, key) => {
             const incoming = platform.features?.[key];
@@ -168,7 +173,7 @@ export default function PlatformSettingsPage() {
             return acc;
         }, {});
         setFeatures(loaded);
-    }, [platform]);
+    }, [platform, platformContext]);
 
     const groupedDomains = useMemo(() => {
         const byCompany = new Map<string, CompanyDomain[]>();
