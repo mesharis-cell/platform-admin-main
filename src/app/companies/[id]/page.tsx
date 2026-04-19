@@ -97,9 +97,14 @@ export default function CompanyEditPage() {
     const [logoPreview, setLogoPreview] = useState<string>("");
     const [initialized, setInitialized] = useState(false);
 
-    // Populate form when company data loads
+    // Populate form when company data loads.
+    // Gate on FEATURE_FLAGS.length > 0 as well — if this effect fires before
+    // the platform feature_registry has arrived from /auth/context, iterating
+    // an empty FEATURE_FLAGS would leave every override as `null` and the
+    // `initialized` flag would then block a re-run once the registry loads.
+    // Result: saved overrides silently "revert to platform default" on reload.
     useEffect(() => {
-        if (!company || initialized) return;
+        if (!company || initialized || FEATURE_FLAGS.length === 0) return;
         setFormData({
             name: company.name,
             domain: company.primary_domain_hostname || company.domain,
