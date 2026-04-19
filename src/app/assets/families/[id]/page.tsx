@@ -35,16 +35,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Textarea } from "@/components/ui/textarea";
-import {
-    Dialog,
-    DialogContent,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
     DropdownMenu,
@@ -55,7 +46,6 @@ import {
 import { toast } from "sonner";
 import { AssetWizard } from "@/components/assets/asset-wizard";
 import { MoveToFamilyModal } from "@/components/assets/move-to-family-modal";
-import { useAssetFamilyStockHistory, useManualStockAdjustment } from "@/hooks/use-stock-movements";
 import type { Asset } from "@/types/asset";
 
 const formatCount = (value?: number) => (typeof value === "number" ? value : 0);
@@ -83,10 +73,6 @@ export default function AssetFamilyDetailPage({ params }: { params: Promise<{ id
     const [showEditDialog, setShowEditDialog] = useState(false);
     const [showCreateAsset, setShowCreateAsset] = useState(false);
     const [inventorySearch, setInventorySearch] = useState("");
-    const [showAdjustmentDialog, setShowAdjustmentDialog] = useState(false);
-    const [adjustmentDelta, setAdjustmentDelta] = useState(0);
-    const [adjustmentNote, setAdjustmentNote] = useState("");
-    const [adjustmentAssetId, setAdjustmentAssetId] = useState("");
     const [movingAsset, setMovingAsset] = useState<Asset | null>(null);
 
     const { data: familyResponse, isLoading: familyLoading } = useAssetFamily(id);
@@ -98,10 +84,6 @@ export default function AssetFamilyDetailPage({ params }: { params: Promise<{ id
     );
     const inventory: Asset[] = stockResponse?.data || [];
     const deleteMutation = useDeleteAssetFamily();
-    const { data: stockHistoryResponse, isLoading: stockHistoryLoading } =
-        useAssetFamilyStockHistory(family?.stock_mode === "POOLED" ? id : null);
-    const stockHistory = stockHistoryResponse?.data?.movements || [];
-    const manualAdjustment = useManualStockAdjustment();
 
     const images = family?.images || [];
     const hasImages = images.length > 0;
@@ -449,23 +431,27 @@ export default function AssetFamilyDetailPage({ params }: { params: Promise<{ id
                 </div>
             </div>
 
-            {/* Stock Settings & History (for pooled families) */}
+            {/* Stock Summary (aggregate read-only for pooled families) */}
             {family?.stock_mode === "POOLED" && (
-                <div className="mx-auto max-w-[1400px] px-6 py-3 space-y-4">
-                    {/* Threshold + Manual Adjustment */}
+                <div className="mx-auto max-w-[1400px] px-6 py-3">
                     <Card>
-                        <CardHeader className="flex flex-row items-center justify-between py-3 px-6">
-                            <CardTitle className="font-mono text-sm">Stock Settings</CardTitle>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setShowAdjustmentDialog(true)}
-                            >
-                                Manual Adjustment
-                            </Button>
+                        <CardHeader className="py-3 px-6">
+                            <CardTitle className="font-mono text-sm">Stock Summary</CardTitle>
                         </CardHeader>
                         <CardContent className="px-6 pb-4">
-                            <div className="flex items-center gap-4">
+                            <div className="flex flex-wrap items-center gap-6">
+                                <div className="space-y-1">
+                                    <p className="text-xs text-muted-foreground">Assets in family</p>
+                                    <p className="font-mono text-sm font-bold">
+                                        {inventory.length}
+                                    </p>
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-xs text-muted-foreground">Available</p>
+                                    <p className="font-mono text-sm font-bold">
+                                        {availabilityStats?.data?.available_quantity ?? "—"}
+                                    </p>
+                                </div>
                                 <div className="space-y-1">
                                     <p className="text-xs text-muted-foreground">Low Stock Threshold</p>
                                     <p className="font-mono text-sm font-bold">
@@ -477,72 +463,12 @@ export default function AssetFamilyDetailPage({ params }: { params: Promise<{ id
                                 {family?.low_stock_threshold != null &&
                                     availabilityStats?.data?.available_quantity != null &&
                                     Number(availabilityStats.data.available_quantity) < family.low_stock_threshold && (
-                                    <Badge variant="destructive" className="text-xs">LOW STOCK</Badge>
-                                )}
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* Stock History */}
-                    <Card>
-                        <CardHeader className="py-3 px-6">
-                            <CardTitle className="font-mono text-sm">Stock History</CardTitle>
-                        </CardHeader>
-                        <CardContent className="px-6 pb-4">
-                            {stockHistoryLoading ? (
-                                <div className="space-y-2">
-                                    {[1, 2, 3].map((i) => (
-                                        <div key={i} className="h-8 bg-muted animate-pulse rounded" />
-                                    ))}
-                                </div>
-                            ) : stockHistory.length === 0 ? (
-                                <p className="text-sm text-muted-foreground text-center py-4">
-                                    No stock movements recorded yet
+                                        <Badge variant="destructive" className="text-xs">LOW STOCK</Badge>
+                                    )}
+                                <p className="text-xs text-muted-foreground ml-auto">
+                                    Stock adjustments live on individual assets →
                                 </p>
-                            ) : (
-                                <div className="space-y-2">
-                                    {stockHistory.map((m: any) => (
-                                        <div key={m.id} className="flex items-center justify-between py-2 border-b last:border-0 text-sm">
-                                            <div className="flex items-center gap-3">
-                                                <Badge
-                                                    variant="outline"
-                                                    className={
-                                                        m.movement_type === "OUTBOUND"
-                                                            ? "bg-red-50 text-red-700 border-red-200"
-                                                            : m.movement_type === "INBOUND"
-                                                              ? "bg-green-50 text-green-700 border-green-200"
-                                                              : m.movement_type === "WRITE_OFF"
-                                                                ? "bg-amber-50 text-amber-700 border-amber-200"
-                                                                : "bg-blue-50 text-blue-700 border-blue-200"
-                                                    }
-                                                >
-                                                    {m.movement_type}
-                                                </Badge>
-                                                <span className={`font-mono font-bold ${m.delta > 0 ? "text-green-600" : "text-red-600"}`}>
-                                                    {m.delta > 0 ? "+" : ""}{m.delta}
-                                                </span>
-                                                {m.write_off_reason && (
-                                                    <span className="text-xs text-muted-foreground">
-                                                        ({m.write_off_reason})
-                                                    </span>
-                                                )}
-                                                {m.note && (
-                                                    <span className="text-xs text-muted-foreground truncate max-w-[200px]">
-                                                        — {m.note}
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                                                {m.linked_entity_id && (
-                                                    <span className="font-mono">{m.linked_entity_type}</span>
-                                                )}
-                                                <span>{m.created_by_name}</span>
-                                                <span>{new Date(m.created_at).toLocaleDateString()}</span>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
+                            </div>
                         </CardContent>
                     </Card>
                 </div>
@@ -733,91 +659,6 @@ export default function AssetFamilyDetailPage({ params }: { params: Promise<{ id
                 />
             )}
 
-            {/* Manual Stock Adjustment Dialog */}
-            <Dialog open={showAdjustmentDialog} onOpenChange={setShowAdjustmentDialog}>
-                <DialogContent className="max-w-md">
-                    <DialogHeader>
-                        <DialogTitle>Manual Stock Adjustment</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                            <Label>Asset</Label>
-                            <select
-                                className="w-full border rounded-md p-2 text-sm"
-                                value={adjustmentAssetId}
-                                onChange={(e) => setAdjustmentAssetId(e.target.value)}
-                            >
-                                <option value="">Select an asset...</option>
-                                {inventory.map((a) => (
-                                    <option key={a.id} value={a.id}>
-                                        {a.name} (Available: {a.available_quantity})
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Quantity Change (+/-)</Label>
-                            <Input
-                                type="number"
-                                value={adjustmentDelta}
-                                onChange={(e) => setAdjustmentDelta(Number(e.target.value))}
-                                placeholder="e.g. -20 or +50"
-                            />
-                            <p className="text-xs text-muted-foreground">
-                                Positive to add stock, negative to remove.
-                            </p>
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Reason (required)</Label>
-                            <Textarea
-                                value={adjustmentNote}
-                                onChange={(e) => setAdjustmentNote(e.target.value)}
-                                placeholder="Why is this adjustment being made?"
-                                rows={3}
-                            />
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button
-                            variant="outline"
-                            onClick={() => setShowAdjustmentDialog(false)}
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            disabled={
-                                !adjustmentAssetId ||
-                                adjustmentDelta === 0 ||
-                                !adjustmentNote.trim() ||
-                                manualAdjustment.isPending
-                            }
-                            onClick={() => {
-                                manualAdjustment.mutate(
-                                    {
-                                        asset_id: adjustmentAssetId,
-                                        delta: adjustmentDelta,
-                                        reason_note: adjustmentNote,
-                                    },
-                                    {
-                                        onSuccess: (data: any) => {
-                                            toast.success(
-                                                `Stock adjusted by ${adjustmentDelta > 0 ? "+" : ""}${adjustmentDelta}`
-                                            );
-                                            setShowAdjustmentDialog(false);
-                                            setAdjustmentDelta(0);
-                                            setAdjustmentNote("");
-                                            setAdjustmentAssetId("");
-                                        },
-                                        onError: (e: unknown) => toast.error((e as Error).message),
-                                    }
-                                );
-                            }}
-                        >
-                            {manualAdjustment.isPending ? "Adjusting..." : "Confirm Adjustment"}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
         </div>
     );
 }
