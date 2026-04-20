@@ -11,7 +11,10 @@ export const stockMovementKeys = {
     lowStock: () => ["low-stock-families"] as const,
 };
 
-export function useAssetStockHistory(assetId: string | null, params?: { page?: number; limit?: number }) {
+export function useAssetStockHistory(
+    assetId: string | null,
+    params?: { page?: number; limit?: number }
+) {
     return useQuery({
         queryKey: stockMovementKeys.assetHistory(assetId, params),
         queryFn: async () => {
@@ -27,7 +30,10 @@ export function useAssetStockHistory(assetId: string | null, params?: { page?: n
     });
 }
 
-export function useAssetFamilyStockHistory(familyId: string | null, params?: { page?: number; limit?: number }) {
+export function useAssetFamilyStockHistory(
+    familyId: string | null,
+    params?: { page?: number; limit?: number }
+) {
     return useQuery({
         queryKey: stockMovementKeys.familyHistory(familyId),
         queryFn: async () => {

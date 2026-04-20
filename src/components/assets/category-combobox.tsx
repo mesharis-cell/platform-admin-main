@@ -64,10 +64,18 @@ interface CategoryComboboxProps {
     companyId: string | null;
     value: string | null;
     newCategory: { name: string; color?: string } | null;
-    onChange: (categoryId: string | null, newCategory: { name: string; color?: string } | null) => void;
+    onChange: (
+        categoryId: string | null,
+        newCategory: { name: string; color?: string } | null
+    ) => void;
 }
 
-export function CategoryCombobox({ companyId, value, newCategory, onChange }: CategoryComboboxProps) {
+export function CategoryCombobox({
+    companyId,
+    value,
+    newCategory,
+    onChange,
+}: CategoryComboboxProps) {
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState("");
     const [draftColor, setDraftColor] = useState<string>(() => hslToHex(randomColor()));
@@ -138,7 +146,11 @@ export function CategoryCombobox({ companyId, value, newCategory, onChange }: Ca
                                 style={{ backgroundColor: displayColor }}
                             />
                         )}
-                        <span className={cn(!selectedCategory && !newCategory && "text-muted-foreground")}>
+                        <span
+                            className={cn(
+                                !selectedCategory && !newCategory && "text-muted-foreground"
+                            )}
+                        >
                             {displayLabel}
                         </span>
                     </span>
@@ -194,7 +206,10 @@ export function CategoryCombobox({ companyId, value, newCategory, onChange }: Ca
                                     )}
                                     <CommandItem
                                         onSelect={() => {
-                                            onChange(null, { name: search.trim(), color: draftColor });
+                                            onChange(null, {
+                                                name: search.trim(),
+                                                color: draftColor,
+                                            });
                                             setSearch("");
                                             setOpen(false);
                                             setDraftColor(hslToHex(randomColor()));

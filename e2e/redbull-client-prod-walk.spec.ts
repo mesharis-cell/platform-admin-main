@@ -70,12 +70,23 @@ test("04 catalog — open category filter dropdown", async ({ page }) => {
     await loginRedBullClient(page);
     await page.goto("https://redbull.kadence.ae/catalog", { waitUntil: "domcontentloaded" });
     await page.waitForSelector("text=/famil(y|ies)/i", { timeout: 30_000 });
-    const catFilter = page.getByRole("combobox").filter({ hasText: /categor/i }).first()
-        .or(page.locator("button").filter({ hasText: /all categories/i }).first());
+    const catFilter = page
+        .getByRole("combobox")
+        .filter({ hasText: /categor/i })
+        .first()
+        .or(
+            page
+                .locator("button")
+                .filter({ hasText: /all categories/i })
+                .first()
+        );
     if (await catFilter.isVisible().catch(() => false)) {
         await catFilter.click();
         await page.waitForTimeout(800);
-        await page.screenshot({ path: `${OUT}/04-catalog-category-filter-open.png`, fullPage: true });
+        await page.screenshot({
+            path: `${OUT}/04-catalog-category-filter-open.png`,
+            fullPage: true,
+        });
     } else {
         await page.screenshot({ path: `${OUT}/04-catalog-no-filter-found.png`, fullPage: true });
     }
@@ -104,7 +115,9 @@ test("05 add first family to cart", async ({ page }) => {
     }
 });
 
-test("06 checkout — full page + DateTimeRangePicker + feasibility + self-pickup mode", async ({ page }) => {
+test("06 checkout — full page + DateTimeRangePicker + feasibility + self-pickup mode", async ({
+    page,
+}) => {
     await loginRedBullClient(page);
     // Add an item via the catalog click-through so cart has something
     await page.goto("https://redbull.kadence.ae/catalog", { waitUntil: "domcontentloaded" });
@@ -124,7 +137,10 @@ test("06 checkout — full page + DateTimeRangePicker + feasibility + self-picku
     await page.screenshot({ path: `${OUT}/06a-checkout-initial.png`, fullPage: true });
 
     // Try to open the DateTimeRangePicker — look for a date field
-    const dateTrigger = page.locator('button').filter({ hasText: /pick|select.*date|from|to|date/i }).first();
+    const dateTrigger = page
+        .locator("button")
+        .filter({ hasText: /pick|select.*date|from|to|date/i })
+        .first();
     if (await dateTrigger.isVisible().catch(() => false)) {
         await dateTrigger.click();
         await page.waitForTimeout(1000);
@@ -142,15 +158,36 @@ test("06 checkout — full page + DateTimeRangePicker + feasibility + self-picku
     await page.screenshot({ path: `${OUT}/06d-checkout-bottom.png`, fullPage: true });
 
     // Self-pickup mode selector
-    const selfPickupToggle = page.getByText(/self[\s-]?pick[\s-]?up|pickup mode|delivery mode/i).first();
+    const selfPickupToggle = page
+        .getByText(/self[\s-]?pick[\s-]?up|pickup mode|delivery mode/i)
+        .first();
     if (await selfPickupToggle.isVisible().catch(() => false)) {
         await page.evaluate(() => window.scrollTo(0, 0));
         await selfPickupToggle.scrollIntoViewIfNeeded();
         await page.waitForTimeout(300);
-        await page.screenshot({ path: `${OUT}/06e-self-pickup-toggle-visible.png`, fullPage: false, clip: await selfPickupToggle.evaluateHandle(el => { const r = (el as HTMLElement).getBoundingClientRect(); return { x: 0, y: Math.max(0, r.top - 100), width: 1280, height: Math.min(600, document.documentElement.clientHeight) }; }).then(h => h.jsonValue()) }).catch(() => {
-            // clip failed, take full
-            return page.screenshot({ path: `${OUT}/06e-self-pickup-toggle-visible.png`, fullPage: true });
-        });
+        await page
+            .screenshot({
+                path: `${OUT}/06e-self-pickup-toggle-visible.png`,
+                fullPage: false,
+                clip: await selfPickupToggle
+                    .evaluateHandle((el) => {
+                        const r = (el as HTMLElement).getBoundingClientRect();
+                        return {
+                            x: 0,
+                            y: Math.max(0, r.top - 100),
+                            width: 1280,
+                            height: Math.min(600, document.documentElement.clientHeight),
+                        };
+                    })
+                    .then((h) => h.jsonValue()),
+            })
+            .catch(() => {
+                // clip failed, take full
+                return page.screenshot({
+                    path: `${OUT}/06e-self-pickup-toggle-visible.png`,
+                    fullPage: true,
+                });
+            });
     }
 });
 

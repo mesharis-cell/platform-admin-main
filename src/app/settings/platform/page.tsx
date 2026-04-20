@@ -627,35 +627,38 @@ export default function PlatformSettingsPage() {
                                 return { key, ...meta };
                             })
                             .map((item) => (
-                            <div key={item.key} className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm font-medium">
-                                        {item.label}
-                                        {"comingSoon" in item && item.comingSoon && (
-                                            <Badge
-                                                variant="outline"
-                                                className="ml-2 text-[10px] px-1.5 py-0"
-                                            >
-                                                Coming Soon
-                                            </Badge>
-                                        )}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground">
-                                        {item.description}
-                                    </p>
+                                <div key={item.key} className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm font-medium">
+                                            {item.label}
+                                            {"comingSoon" in item && item.comingSoon && (
+                                                <Badge
+                                                    variant="outline"
+                                                    className="ml-2 text-[10px] px-1.5 py-0"
+                                                >
+                                                    Coming Soon
+                                                </Badge>
+                                            )}
+                                        </p>
+                                        <p className="text-xs text-muted-foreground">
+                                            {item.description}
+                                        </p>
+                                    </div>
+                                    <Switch
+                                        checked={features[item.key]}
+                                        disabled={
+                                            !canManagePlatformSettings ||
+                                            ("comingSoon" in item && item.comingSoon)
+                                        }
+                                        onCheckedChange={(checked) =>
+                                            setFeatures((prev) => ({
+                                                ...prev,
+                                                [item.key]: checked,
+                                            }))
+                                        }
+                                    />
                                 </div>
-                                <Switch
-                                    checked={features[item.key]}
-                                    disabled={
-                                        !canManagePlatformSettings ||
-                                        ("comingSoon" in item && item.comingSoon)
-                                    }
-                                    onCheckedChange={(checked) =>
-                                        setFeatures((prev) => ({ ...prev, [item.key]: checked }))
-                                    }
-                                />
-                            </div>
-                        ))}
+                            ))}
                     </CardContent>
                 </Card>
 

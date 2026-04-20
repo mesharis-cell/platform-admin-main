@@ -21,7 +21,10 @@ test("review step Schedule card — flag off, only delivery+pickup show", async 
     await page.waitForLoadState("networkidle", { timeout: 20_000 }).catch(() => {});
     await page.locator('a[href*="/catalog/assets/"]').first().click();
     await page.waitForLoadState("networkidle", { timeout: 20_000 }).catch(() => {});
-    await page.getByRole("button", { name: /add to cart/i }).first().click();
+    await page
+        .getByRole("button", { name: /add to cart/i })
+        .first()
+        .click();
     await page.waitForTimeout(1500);
 
     await page.goto("https://redbull.kadence.ae/checkout", { waitUntil: "domcontentloaded" });
@@ -44,20 +47,34 @@ test("review step Schedule card — flag off, only delivery+pickup show", async 
     await page.waitForTimeout(1500);
 
     // Step 3 — venue
-    await page.getByLabel(/venue name/i).first().fill("Burj Park").catch(() => {});
+    await page
+        .getByLabel(/venue name/i)
+        .first()
+        .fill("Burj Park")
+        .catch(() => {});
     const addressArea = page.locator("textarea").first();
     if (await addressArea.isVisible().catch(() => false)) {
         await addressArea.fill("Downtown Dubai, UAE");
     }
     // Try to fill city combobox
-    const cityTrigger = page.getByRole("combobox").filter({ hasText: /city|select/i }).first();
+    const cityTrigger = page
+        .getByRole("combobox")
+        .filter({ hasText: /city|select/i })
+        .first();
     if (await cityTrigger.isVisible().catch(() => false)) {
         await cityTrigger.click();
         await page.waitForTimeout(400);
-        await page.getByRole("option").first().click().catch(() => {});
+        await page
+            .getByRole("option")
+            .first()
+            .click()
+            .catch(() => {});
     }
     await page.waitForTimeout(500);
-    await page.getByRole("button", { name: /^continue$/i }).click().catch(() => {});
+    await page
+        .getByRole("button", { name: /^continue$/i })
+        .click()
+        .catch(() => {});
     await page.waitForTimeout(1500);
     await page.screenshot({ path: `${OUT}/06-step3-after-venue-attempt.png`, fullPage: true });
 

@@ -17,8 +17,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { inboundRequestKeys } from "@/hooks/use-inbound-requests";
 
 export const lineItemsKeys = {
-    list: (targetId: string, purposeType: "ORDER" | "INBOUND_REQUEST" | "SERVICE_REQUEST" | "SELF_PICKUP") =>
-        ["line-items", purposeType, targetId] as const,
+    list: (
+        targetId: string,
+        purposeType: "ORDER" | "INBOUND_REQUEST" | "SERVICE_REQUEST" | "SELF_PICKUP"
+    ) => ["line-items", purposeType, targetId] as const,
 };
 
 const invalidateLineItemRelatedQueries = (

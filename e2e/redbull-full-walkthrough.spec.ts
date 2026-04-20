@@ -39,7 +39,10 @@ test("01 catalog — no crash, categories visible", async ({ page }) => {
     await page.screenshot({ path: `${OUT}/01-catalog.png`, fullPage: true });
 
     expect(consoleErrors.filter((e) => e.includes("React error #31"))).toHaveLength(0);
-    const hasCategory = await page.getByText(/installation|furniture|decor|glassware/i).first().isVisible();
+    const hasCategory = await page
+        .getByText(/installation|furniture|decor|glassware/i)
+        .first()
+        .isVisible();
     expect(hasCategory).toBeTruthy();
 });
 
@@ -107,7 +110,10 @@ test("04 checkout — DateTimeRangePicker + feasibility helper", async ({ page }
     await page.screenshot({ path: `${OUT}/04c-checkout-bottom.png`, fullPage: true });
 
     // Try to open a date picker
-    const dateTrigger = page.locator('button').filter({ hasText: /pick|select.*date|start.*date|from/i }).first();
+    const dateTrigger = page
+        .locator("button")
+        .filter({ hasText: /pick|select.*date|start.*date|from/i })
+        .first();
     if (await dateTrigger.isVisible().catch(() => false)) {
         await dateTrigger.click();
         await page.waitForTimeout(800);
@@ -148,7 +154,10 @@ test("05 self-pickup mode — toggle + flow renders", async ({ page }) => {
         await page.waitForTimeout(500);
         await page.screenshot({ path: `${OUT}/05b-self-pickup-bottom.png`, fullPage: true });
     } else {
-        await page.screenshot({ path: `${OUT}/05-no-self-pickup-toggle-found.png`, fullPage: true });
+        await page.screenshot({
+            path: `${OUT}/05-no-self-pickup-toggle-found.png`,
+            fullPage: true,
+        });
     }
 });
 

@@ -23,14 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-    ChevronDown,
-    ChevronUp,
-    Plus,
-    ArrowUp,
-    ArrowDown,
-    Settings2,
-} from "lucide-react";
+import { ChevronDown, ChevronUp, Plus, ArrowUp, ArrowDown, Settings2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -132,10 +125,7 @@ export function CategoryManager() {
 
     return (
         <Card>
-            <CardHeader
-                className="cursor-pointer select-none"
-                onClick={() => setOpen((v) => !v)}
-            >
+            <CardHeader className="cursor-pointer select-none" onClick={() => setOpen((v) => !v)}>
                 <div className="flex items-center justify-between">
                     <CardTitle className="flex items-center gap-2 text-sm font-mono uppercase tracking-wide">
                         <Settings2 className="h-4 w-4" />
@@ -171,9 +161,7 @@ export function CategoryManager() {
                                         <input
                                             type="color"
                                             value={cat.color}
-                                            onChange={(e) =>
-                                                handleColorChange(cat, e.target.value)
-                                            }
+                                            onChange={(e) => handleColorChange(cat, e.target.value)}
                                             className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
                                         />
                                     </label>

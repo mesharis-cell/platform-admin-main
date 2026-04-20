@@ -22,5 +22,7 @@ test("capture all chunks loaded on /catalog", async ({ page }) => {
 
     fs.writeFileSync("/tmp/catalog-chunks.txt", Array.from(chunkUrls).sort().join("\n"));
     console.log("chunks on /catalog:", chunkUrls.size);
-    Array.from(chunkUrls).sort().forEach((u) => console.log("  ", u));
+    Array.from(chunkUrls)
+        .sort()
+        .forEach((u) => console.log("  ", u));
 });

@@ -188,7 +188,10 @@ test("E02 checkout step 2 — installation details with dates + window pickers",
             await shot(page, "E02d-delivery-picker-day-selected");
         }
         // Look for an hour column
-        const hourButton = page.locator('button').filter({ hasText: /^(1[0-2]|[1-9])$/ }).first();
+        const hourButton = page
+            .locator("button")
+            .filter({ hasText: /^(1[0-2]|[1-9])$/ })
+            .first();
         if (await hourButton.isVisible().catch(() => false)) {
             await hourButton.click();
             await page.waitForTimeout(500);
@@ -281,7 +284,9 @@ test("F01 self-pickup mode — step 1", async ({ page }) => {
     await shot(page, "F01-self-pickup-step1");
 });
 
-test("F02 self-pickup step 2 — collection details (should have pickup window picker)", async ({ page }) => {
+test("F02 self-pickup step 2 — collection details (should have pickup window picker)", async ({
+    page,
+}) => {
     await login(page);
     await page.goto("https://redbull.kadence.ae/catalog", { waitUntil: "domcontentloaded" });
     await page.waitForSelector("text=/families/i", { timeout: 30_000 });
@@ -297,7 +302,10 @@ test("F02 self-pickup step 2 — collection details (should have pickup window p
 
     await page.goto("https://redbull.kadence.ae/checkout", { waitUntil: "domcontentloaded" });
     await page.waitForLoadState("networkidle", { timeout: 20_000 }).catch(() => {});
-    await page.getByText(/I'll collect them myself/i).first().click();
+    await page
+        .getByText(/I'll collect them myself/i)
+        .first()
+        .click();
     await page.waitForTimeout(1200);
 
     const next = page.getByRole("button", { name: /^next$/i }).first();

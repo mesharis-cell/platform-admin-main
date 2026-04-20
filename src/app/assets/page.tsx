@@ -68,11 +68,15 @@ function FamilyCard({ family, compact = false }: { family: AssetFamily; compact?
                             </Badge>
                         )}
                         {family.low_stock_threshold != null &&
-                            Number(family.available_quantity || 0) < Number(family.low_stock_threshold) && (
-                            <Badge variant="destructive" className="font-mono text-[10px] bg-amber-500">
-                                LOW STOCK
-                            </Badge>
-                        )}
+                            Number(family.available_quantity || 0) <
+                                Number(family.low_stock_threshold) && (
+                                <Badge
+                                    variant="destructive"
+                                    className="font-mono text-[10px] bg-amber-500"
+                                >
+                                    LOW STOCK
+                                </Badge>
+                            )}
                     </div>
                 </div>
                 <CardContent className="space-y-3 p-4">
@@ -84,7 +88,8 @@ function FamilyCard({ family, compact = false }: { family: AssetFamily; compact?
                             {family.company?.name || "Unknown company"}
                             {family.category && (
                                 <>
-                                    {" "}&bull;{" "}
+                                    {" "}
+                                    &bull;{" "}
                                     <span className="inline-flex items-center gap-1">
                                         <span
                                             className="inline-block h-2 w-2 rounded-full"
@@ -290,9 +295,8 @@ function FamiliesTab() {
                         No asset families found
                     </h3>
                     <p className="mb-6 max-w-md text-sm font-mono text-muted-foreground">
-                        Existing stock records are grouped, but new family-first browsing only
-                        shows families. Adjust filters or create stock from the current asset
-                        workflows.
+                        Existing stock records are grouped, but new family-first browsing only shows
+                        families. Adjust filters or create stock from the current asset workflows.
                     </p>
                 </div>
             ) : viewMode === "grid" ? (

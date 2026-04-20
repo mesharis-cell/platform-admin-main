@@ -61,7 +61,11 @@ const FILTER_CHIPS: { key: MovementFilter; label: string }[] = [
 ];
 
 const REASON_OPTIONS: { value: WriteOffReason | "CORRECTION"; label: string; hint: string }[] = [
-    { value: "CORRECTION", label: "Correction", hint: "Clerical fix — counts didn't match reality" },
+    {
+        value: "CORRECTION",
+        label: "Correction",
+        hint: "Clerical fix — counts didn't match reality",
+    },
     { value: "CONSUMED", label: "Consumed", hint: "Used up, not returning to stock" },
     { value: "LOST", label: "Lost", hint: "Can't locate, treat as gone" },
     { value: "DAMAGED", label: "Damaged", hint: "Beyond repair, written off" },
@@ -122,7 +126,8 @@ export function AssetStockSection({ assetId, assetName, stockMode }: Props) {
                                     Stock Movement History
                                 </CardTitle>
                                 <p className="text-xs text-muted-foreground mt-0.5">
-                                    Pooled inventory audit ledger — every in/out, write-off, and manual adjustment.
+                                    Pooled inventory audit ledger — every in/out, write-off, and
+                                    manual adjustment.
                                 </p>
                             </div>
                         </div>
@@ -180,10 +185,7 @@ export function AssetStockSection({ assetId, assetName, stockMode }: Props) {
                     {historyLoading ? (
                         <div className="space-y-2">
                             {[1, 2, 3, 4].map((i) => (
-                                <div
-                                    key={i}
-                                    className="h-16 bg-muted animate-pulse rounded-md"
-                                />
+                                <div key={i} className="h-16 bg-muted animate-pulse rounded-md" />
                             ))}
                         </div>
                     ) : movements.length === 0 ? (
@@ -207,9 +209,7 @@ export function AssetStockSection({ assetId, assetName, stockMode }: Props) {
                                     <button
                                         key={m.id}
                                         type="button"
-                                        onClick={() =>
-                                            setExpandedRowId(isExpanded ? null : m.id)
-                                        }
+                                        onClick={() => setExpandedRowId(isExpanded ? null : m.id)}
                                         className="w-full text-left py-3 px-1 hover:bg-muted/30 transition-colors rounded-sm"
                                     >
                                         {/* Primary row — stacked on mobile, inline on md+ */}
@@ -263,9 +263,7 @@ export function AssetStockSection({ assetId, assetName, stockMode }: Props) {
                                                 <span className="truncate max-w-[100px] sm:max-w-none">
                                                     {m.created_by_name || "—"}
                                                 </span>
-                                                <span className="shrink-0">
-                                                    {date}
-                                                </span>
+                                                <span className="shrink-0">{date}</span>
                                                 <span className="shrink-0 hidden sm:inline">
                                                     {time}
                                                 </span>
@@ -327,9 +325,7 @@ export function AssetStockSection({ assetId, assetName, stockMode }: Props) {
                             <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() =>
-                                    setPage((p) => Math.min(totalPages, p + 1))
-                                }
+                                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                                 disabled={page >= totalPages}
                                 className="gap-1"
                             >
@@ -427,9 +423,7 @@ function ManualAdjustmentDialog({
         if (qty === 0) return null;
         const sign = direction === "IN" ? "+" : "-";
         const type =
-            direction === "OUT" && reason !== "CORRECTION"
-                ? `WRITE_OFF · ${reason}`
-                : "ADJUSTMENT";
+            direction === "OUT" && reason !== "CORRECTION" ? `WRITE_OFF · ${reason}` : "ADJUSTMENT";
         return `${sign}${qty} units — ${type}`;
     })();
 
@@ -566,9 +560,7 @@ function ManualAdjustmentDialog({
                                                     : "border-border bg-background hover:border-primary/40"
                                             )}
                                         >
-                                            <p className="text-sm font-semibold">
-                                                {opt.label}
-                                            </p>
+                                            <p className="text-sm font-semibold">{opt.label}</p>
                                             <p className="text-[11px] text-muted-foreground mt-0.5">
                                                 {opt.hint}
                                             </p>

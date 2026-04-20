@@ -19,7 +19,9 @@ test("capture ALL network requests on /catalog", async ({ page }) => {
     await page.waitForTimeout(8000);
 
     console.log("\n=== API REQUESTS DURING /catalog ===");
-    const apiReqs = reqs.filter((r) => r.includes("api.kadence.ae") || r.includes("operations") || r.includes("client/v1"));
+    const apiReqs = reqs.filter(
+        (r) => r.includes("api.kadence.ae") || r.includes("operations") || r.includes("client/v1")
+    );
     apiReqs.forEach((r) => console.log("  ", r));
     console.log("=== END ===\n");
 });

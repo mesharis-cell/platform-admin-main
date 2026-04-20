@@ -345,8 +345,8 @@ export default function UserEditPage() {
                         />
                         {authUser?.is_super_admin ? (
                             <p className="text-xs text-muted-foreground">
-                                Super admins can edit user emails. Email will be normalized
-                                to lowercase on save.
+                                Super admins can edit user emails. Email will be normalized to
+                                lowercase on save.
                             </p>
                         ) : null}
                     </div>

@@ -50,11 +50,7 @@ const PICKUP_STATUS_CONFIG: Record<string, { label: string; color: string }> = {
     CANCELLED: { label: "Cancelled", color: "bg-red-50 text-red-600 border-red-200" },
 };
 
-export default function SelfPickupDetailPage({
-    params,
-}: {
-    params: Promise<{ id: string }>;
-}) {
+export default function SelfPickupDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
     const { data: pickupData, isLoading } = useAdminSelfPickupDetails(id);
     const { data: historyData } = useAdminSelfPickupStatusHistory(id);
@@ -76,11 +72,7 @@ export default function SelfPickupDetailPage({
     }
 
     if (!pickup) {
-        return (
-            <div className="text-center py-12 text-muted-foreground">
-                Self-pickup not found
-            </div>
-        );
+        return <div className="text-center py-12 text-muted-foreground">Self-pickup not found</div>;
     }
 
     const statusConfig = PICKUP_STATUS_CONFIG[pickup.self_pickup_status] || {
@@ -102,12 +94,8 @@ export default function SelfPickupDetailPage({
                         </Button>
                     </Link>
                     <div>
-                        <h1 className="text-2xl font-bold">
-                            {pickup.self_pickup_id}
-                        </h1>
-                        <p className="text-sm text-muted-foreground">
-                            {company?.name || ""}
-                        </p>
+                        <h1 className="text-2xl font-bold">{pickup.self_pickup_id}</h1>
+                        <p className="text-sm text-muted-foreground">{company?.name || ""}</p>
                     </div>
                     <Badge variant="outline" className={statusConfig.color}>
                         {statusConfig.label}
@@ -119,8 +107,7 @@ export default function SelfPickupDetailPage({
                         <Button
                             onClick={() => {
                                 submitForApproval.mutate(id, {
-                                    onSuccess: () =>
-                                        toast.success("Submitted for approval"),
+                                    onSuccess: () => toast.success("Submitted for approval"),
                                     onError: (e: unknown) => toast.error((e as Error).message),
                                 });
                             }}
@@ -146,8 +133,7 @@ export default function SelfPickupDetailPage({
                         <Button
                             onClick={() => {
                                 markReady.mutate(id, {
-                                    onSuccess: () =>
-                                        toast.success("Marked as ready for pickup"),
+                                    onSuccess: () => toast.success("Marked as ready for pickup"),
                                     onError: (e: unknown) => toast.error((e as Error).message),
                                 });
                             }}
@@ -171,9 +157,7 @@ export default function SelfPickupDetailPage({
                         <CardContent className="space-y-3">
                             <div className="flex items-center gap-2">
                                 <User className="h-4 w-4 text-muted-foreground" />
-                                <span className="font-medium">
-                                    {pickup.collector_name}
-                                </span>
+                                <span className="font-medium">{pickup.collector_name}</span>
                             </div>
                             <div className="flex items-center gap-2">
                                 <Phone className="h-4 w-4 text-muted-foreground" />
@@ -189,8 +173,7 @@ export default function SelfPickupDetailPage({
                                 <div className="flex items-center gap-2">
                                     <Clock className="h-4 w-4 text-muted-foreground" />
                                     <span>
-                                        Pickup:{" "}
-                                        {new Date(pickupWindow.start).toLocaleString()} -{" "}
+                                        Pickup: {new Date(pickupWindow.start).toLocaleString()} -{" "}
                                         {new Date(pickupWindow.end).toLocaleString()}
                                     </span>
                                 </div>
@@ -200,31 +183,21 @@ export default function SelfPickupDetailPage({
                                     <Clock className="h-4 w-4 text-muted-foreground" />
                                     <span>
                                         Expected return:{" "}
-                                        {new Date(
-                                            pickup.expected_return_at
-                                        ).toLocaleString()}
+                                        {new Date(pickup.expected_return_at).toLocaleString()}
                                     </span>
                                 </div>
                             )}
                             {pickup.notes && (
-                                <p className="text-sm text-muted-foreground mt-2">
-                                    {pickup.notes}
-                                </p>
+                                <p className="text-sm text-muted-foreground mt-2">{pickup.notes}</p>
                             )}
                         </CardContent>
                     </Card>
 
                     {/* Workflows */}
-                    <WorkflowRequestsCard
-                        entityType="SELF_PICKUP"
-                        entityId={pickup.id}
-                    />
+                    <WorkflowRequestsCard entityType="SELF_PICKUP" entityId={pickup.id} />
 
                     {/* Attachments */}
-                    <EntityAttachmentsCard
-                        entityType="SELF_PICKUP"
-                        entityId={pickup.id}
-                    />
+                    <EntityAttachmentsCard entityType="SELF_PICKUP" entityId={pickup.id} />
 
                     {/* Pickup Items */}
                     <Card>
@@ -241,13 +214,10 @@ export default function SelfPickupDetailPage({
                                         className="flex items-center justify-between p-3 border rounded-lg"
                                     >
                                         <div>
-                                            <p className="font-medium">
-                                                {item.asset_name}
-                                            </p>
+                                            <p className="font-medium">{item.asset_name}</p>
                                             <p className="text-sm text-muted-foreground">
-                                                Qty: {item.quantity} | Vol:{" "}
-                                                {item.total_volume} m3 | Wt:{" "}
-                                                {item.total_weight} kg
+                                                Qty: {item.quantity} | Vol: {item.total_volume} m3 |
+                                                Wt: {item.total_weight} kg
                                             </p>
                                         </div>
                                         <Badge variant="outline">
@@ -279,16 +249,12 @@ export default function SelfPickupDetailPage({
                         <CardContent>
                             <div className="space-y-4">
                                 {history.map((entry: any) => {
-                                    const entryConfig =
-                                        PICKUP_STATUS_CONFIG[entry.status] || {
-                                            label: entry.status,
-                                            color: "bg-gray-100 text-gray-700",
-                                        };
+                                    const entryConfig = PICKUP_STATUS_CONFIG[entry.status] || {
+                                        label: entry.status,
+                                        color: "bg-gray-100 text-gray-700",
+                                    };
                                     return (
-                                        <div
-                                            key={entry.id}
-                                            className="flex gap-3 items-start"
-                                        >
+                                        <div key={entry.id} className="flex gap-3 items-start">
                                             <div className="w-2 h-2 rounded-full bg-primary mt-2 shrink-0" />
                                             <div className="flex-1">
                                                 <Badge
@@ -304,9 +270,7 @@ export default function SelfPickupDetailPage({
                                                 )}
                                                 <p className="text-xs text-muted-foreground">
                                                     {entry.updated_by_name} -{" "}
-                                                    {new Date(
-                                                        entry.timestamp
-                                                    ).toLocaleString()}
+                                                    {new Date(entry.timestamp).toLocaleString()}
                                                 </p>
                                             </div>
                                         </div>

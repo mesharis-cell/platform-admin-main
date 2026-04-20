@@ -298,8 +298,7 @@ export default function SelfPickupsListPage() {
                                             No self-pickups found
                                         </p>
                                         <p className="text-sm text-muted-foreground">
-                                            Self-pickups will appear here once submitted by
-                                            clients.
+                                            Self-pickups will appear here once submitted by clients.
                                         </p>
                                     </div>
                                 ) : (
@@ -326,13 +325,12 @@ export default function SelfPickupsListPage() {
                                         </TableHeader>
                                         <TableBody>
                                             {pickups.map((pickup: any) => {
-                                                const statusConfig =
-                                                    PICKUP_STATUS_CONFIG[
-                                                        pickup.self_pickup_status
-                                                    ] || {
-                                                        label: pickup.self_pickup_status,
-                                                        color: "bg-gray-100 text-gray-700",
-                                                    };
+                                                const statusConfig = PICKUP_STATUS_CONFIG[
+                                                    pickup.self_pickup_status
+                                                ] || {
+                                                    label: pickup.self_pickup_status,
+                                                    color: "bg-gray-100 text-gray-700",
+                                                };
                                                 const pickupWindow = pickup.pickup_window as any;
 
                                                 return (
@@ -391,16 +389,13 @@ export default function SelfPickupsListPage() {
                                 {!isLoading && pickups.length > 0 && totalPages > 1 && (
                                     <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200 bg-slate-50/30">
                                         <p className="text-sm text-muted-foreground">
-                                            Showing {pageStart} to {pageEnd} of {totalItems}{" "}
-                                            pickups
+                                            Showing {pageStart} to {pageEnd} of {totalItems} pickups
                                         </p>
                                         <div className="flex gap-2">
                                             <Button
                                                 variant="outline"
                                                 size="sm"
-                                                onClick={() =>
-                                                    setPage((p) => Math.max(1, p - 1))
-                                                }
+                                                onClick={() => setPage((p) => Math.max(1, p - 1))}
                                                 disabled={page <= 1}
                                                 className="gap-1"
                                             >
@@ -411,9 +406,7 @@ export default function SelfPickupsListPage() {
                                                 variant="outline"
                                                 size="sm"
                                                 onClick={() =>
-                                                    setPage((p) =>
-                                                        Math.min(totalPages, p + 1)
-                                                    )
+                                                    setPage((p) => Math.min(totalPages, p + 1))
                                                 }
                                                 disabled={page >= totalPages}
                                                 className="gap-1"

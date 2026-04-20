@@ -12,13 +12,7 @@ import { apiClient } from "@/lib/api/api-client";
 
 const POLL_INTERVAL_MS = 15_000;
 
-export function MaintenanceClient({
-    message,
-    until,
-}: {
-    message: string;
-    until: string | null;
-}) {
+export function MaintenanceClient({ message, until }: { message: string; until: string | null }) {
     const [checking, setChecking] = useState(false);
     const [lastCheckedAt, setLastCheckedAt] = useState<Date | null>(null);
 
@@ -67,16 +61,13 @@ export function MaintenanceClient({
                 <p className="mt-4 text-sm leading-7 text-[#5e584e]">{message}</p>
                 {showUntil ? (
                     <p className="mt-4 text-sm text-[#5e584e]">
-                        Expected availability:{" "}
-                        <strong>{untilDate!.toLocaleString()}</strong>
+                        Expected availability: <strong>{untilDate!.toLocaleString()}</strong>
                     </p>
                 ) : null}
                 <p className="mt-6 text-xs text-[#8c857a]">
-                    We&apos;ll check for you every {POLL_INTERVAL_MS / 1000}s and bring
-                    you back automatically once maintenance ends.
-                    {lastCheckedAt
-                        ? ` Last checked ${lastCheckedAt.toLocaleTimeString()}.`
-                        : ""}
+                    We&apos;ll check for you every {POLL_INTERVAL_MS / 1000}s and bring you back
+                    automatically once maintenance ends.
+                    {lastCheckedAt ? ` Last checked ${lastCheckedAt.toLocaleTimeString()}.` : ""}
                 </p>
                 <button
                     type="button"

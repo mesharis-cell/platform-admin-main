@@ -330,9 +330,11 @@ export default function EventCalendarPage() {
                                                     .map((event: any) => (
                                                         <Link
                                                             key={event.id}
-                                                            href={event._type === "SELF_PICKUP"
-                                                                ? `/self-pickups/${event.id}`
-                                                                : `/orders/${event.order_id}`}
+                                                            href={
+                                                                event._type === "SELF_PICKUP"
+                                                                    ? `/self-pickups/${event.id}`
+                                                                    : `/orders/${event.order_id}`
+                                                            }
                                                         >
                                                             <div
                                                                 className={`text-xs p-1.5 rounded border truncate cursor-pointer hover:opacity-80 transition-opacity ${getStatusColor(event.status)}`}

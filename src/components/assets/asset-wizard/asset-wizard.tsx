@@ -34,7 +34,11 @@ function canAdvance(state: WizardState, stepKey: string): boolean {
         case "type":
             return !!state.stockMode;
         case "family":
-            return !!(state.companyId && state.itemName.trim() && (state.category_id || state.new_category));
+            return !!(
+                state.companyId &&
+                state.itemName.trim() &&
+                (state.category_id || state.new_category)
+            );
         case "location": {
             const base = !!(state.warehouseId && state.zoneId && state.quantity >= 1);
             if (state.stockMode === "POOLED") return base && !!state.packaging.trim();

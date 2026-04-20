@@ -52,14 +52,20 @@ test("H02 delivery window picker opens — open after setting event dates", asyn
     const deliveryLabel = page.getByText("Delivery window").first();
     await deliveryLabel.scrollIntoViewIfNeeded();
     // Sibling/parent button. Use locator
-    const deliveryTrigger = page.locator('button').filter({ has: page.locator('text=/may 2026/i') }).first();
+    const deliveryTrigger = page
+        .locator("button")
+        .filter({ has: page.locator("text=/may 2026/i") })
+        .first();
     if (await deliveryTrigger.isVisible().catch(() => false)) {
         await deliveryTrigger.click();
         await page.waitForTimeout(1000);
         await page.screenshot({ path: `${OUT}/H02a-delivery-picker-open.png`, fullPage: true });
 
         // Try to pick an hour in the picker
-        const hourBtn = page.locator('[role="dialog"] button, [role="listbox"] button').filter({ hasText: /^(1[0-2]|[1-9])$/ }).first();
+        const hourBtn = page
+            .locator('[role="dialog"] button, [role="listbox"] button')
+            .filter({ hasText: /^(1[0-2]|[1-9])$/ })
+            .first();
         if (await hourBtn.isVisible().catch(() => false)) {
             await hourBtn.click();
             await page.waitForTimeout(400);
@@ -79,7 +85,10 @@ test("H02 delivery window picker opens — open after setting event dates", asyn
         await page.waitForTimeout(400);
         await page.screenshot({ path: `${OUT}/H02d-delivery-picker-closed.png`, fullPage: true });
     } else {
-        await page.screenshot({ path: `${OUT}/H02z-no-delivery-trigger-found.png`, fullPage: true });
+        await page.screenshot({
+            path: `${OUT}/H02z-no-delivery-trigger-found.png`,
+            fullPage: true,
+        });
     }
 });
 
@@ -95,7 +104,10 @@ test("H03 pickup window picker opens", async ({ page }) => {
     await page.waitForTimeout(600);
 
     // Click pickup window button
-    const pickupTrigger = page.locator('button').filter({ has: page.locator('text=/17 may 2026/i') }).first();
+    const pickupTrigger = page
+        .locator("button")
+        .filter({ has: page.locator("text=/17 may 2026/i") })
+        .first();
     if (await pickupTrigger.isVisible().catch(() => false)) {
         await pickupTrigger.click();
         await page.waitForTimeout(1000);
@@ -105,7 +117,9 @@ test("H03 pickup window picker opens", async ({ page }) => {
     }
 });
 
-test("H04 feasibility — goto step 3 and beyond to see if the helper fires there", async ({ page }) => {
+test("H04 feasibility — goto step 3 and beyond to see if the helper fires there", async ({
+    page,
+}) => {
     await login(page);
     await addToCart(page);
     await page.goto("https://redbull.kadence.ae/checkout", { waitUntil: "domcontentloaded" });
@@ -145,12 +159,17 @@ test("H04 feasibility — goto step 3 and beyond to see if the helper fires ther
     }
 });
 
-test("H05 self-pickup step 2 — open the Date picker to see what it looks like native", async ({ page }) => {
+test("H05 self-pickup step 2 — open the Date picker to see what it looks like native", async ({
+    page,
+}) => {
     await login(page);
     await addToCart(page);
     await page.goto("https://redbull.kadence.ae/checkout", { waitUntil: "domcontentloaded" });
     await page.waitForLoadState("networkidle", { timeout: 20_000 }).catch(() => {});
-    await page.getByText(/I'll collect them myself/i).first().click();
+    await page
+        .getByText(/I'll collect them myself/i)
+        .first()
+        .click();
     await page.waitForTimeout(1200);
     await page.getByRole("button", { name: /^next$/i }).click();
     await page.waitForTimeout(1500);
@@ -160,10 +179,15 @@ test("H05 self-pickup step 2 — open the Date picker to see what it looks like 
     const dateInput = page.locator('input[type="date"]').first();
     await dateInput.click();
     await page.waitForTimeout(500);
-    await page.screenshot({ path: `${OUT}/H05a-self-pickup-native-date-input.png`, fullPage: true });
+    await page.screenshot({
+        path: `${OUT}/H05a-self-pickup-native-date-input.png`,
+        fullPage: true,
+    });
 
     // Check native time inputs
     const timeCount = await page.locator('input[type="time"]').count();
     console.log(`  self-pickup step 2 native time inputs: ${timeCount}`);
-    console.log(`  self-pickup step 2 native date inputs: ${await page.locator('input[type="date"]').count()}`);
+    console.log(
+        `  self-pickup step 2 native date inputs: ${await page.locator('input[type="date"]').count()}`
+    );
 });

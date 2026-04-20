@@ -9,11 +9,13 @@
 ## The canonical Tier 2 pattern (cities/countries)
 
 Reference files:
+
 - `src/app/settings/locations/countries/page.tsx`
 - `src/app/settings/locations/cities/page.tsx`
 - `src/app/settings/categories/page.tsx`
 
 Structure:
+
 1. `AdminHeader` — icon, UPPERCASE title, description, stats, create action (Dialog embedded in actions prop)
 2. Search/filter strip — `<div className="border-b border-border bg-card px-8 py-4">`
 3. Content area — `<div className="px-8 py-6">`
@@ -26,15 +28,15 @@ Structure:
 
 ## Pages that need alignment
 
-| Page | Current issue |
-|---|---|
-| `src/app/users/page.tsx` | Uses DataTable component instead of raw Table |
-| `src/app/brands/page.tsx` | Uses DataTable component |
-| `src/app/self-pickups/page.tsx` | Card > CardContent wrapping table, no AdminHeader |
-| `src/app/settings/access-policies/page.tsx` | Card > CardHeader > CardContent > Table, container mx-auto |
-| `src/app/settings/attachment-types/page.tsx` | Custom header (not AdminHeader), Card wrapping |
-| `src/app/settings/pricing/service-types/page.tsx` | Card wrapping table |
-| `src/app/settings/pricing/warehouse-opt-rates/page.tsx` | Card wrapping table |
+| Page                                                    | Current issue                                              |
+| ------------------------------------------------------- | ---------------------------------------------------------- |
+| `src/app/users/page.tsx`                                | Uses DataTable component instead of raw Table              |
+| `src/app/brands/page.tsx`                               | Uses DataTable component                                   |
+| `src/app/self-pickups/page.tsx`                         | Card > CardContent wrapping table, no AdminHeader          |
+| `src/app/settings/access-policies/page.tsx`             | Card > CardHeader > CardContent > Table, container mx-auto |
+| `src/app/settings/attachment-types/page.tsx`            | Custom header (not AdminHeader), Card wrapping             |
+| `src/app/settings/pricing/service-types/page.tsx`       | Card wrapping table                                        |
+| `src/app/settings/pricing/warehouse-opt-rates/page.tsx` | Card wrapping table                                        |
 
 ## Pages already correct ✓
 

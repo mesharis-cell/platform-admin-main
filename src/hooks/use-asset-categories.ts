@@ -41,7 +41,13 @@ export function useCreateAssetCategory() {
 export function useUpdateAssetCategory() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: async ({ id, data }: { id: string; data: { name?: string; color?: string; sort_order?: number; is_active?: boolean } }) => {
+        mutationFn: async ({
+            id,
+            data,
+        }: {
+            id: string;
+            data: { name?: string; color?: string; sort_order?: number; is_active?: boolean };
+        }) => {
             const response = await apiClient.patch(`/operations/v1/asset-category/${id}`, data);
             return response.data.data as AssetCategory;
         },
