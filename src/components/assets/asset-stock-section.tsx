@@ -44,24 +44,35 @@ export function AssetStockSection({ assetId, assetName, stockMode }: Props) {
 
     return (
         <>
-            <Card>
-                <CardHeader>
-                    <div className="flex items-center justify-between gap-2">
-                        <CardTitle className="flex items-center gap-2 font-mono text-sm">
-                            <TrendingUp className="h-4 w-4 text-primary" />
-                            Stock Movement History
-                        </CardTitle>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setDialogOpen(true)}
-                        >
-                            <Boxes className="h-4 w-4 mr-1.5" />
-                            Manual Adjustment
-                        </Button>
+            <Card className="border-primary/20 shadow-sm">
+                <CardHeader className="border-b border-border/60 bg-muted/20 py-4 px-6">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <div className="flex items-center gap-3">
+                            <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20">
+                                <TrendingUp className="h-4.5 w-4.5 text-primary" />
+                            </div>
+                            <div>
+                                <CardTitle className="font-mono text-base font-bold uppercase tracking-tight">
+                                    Stock Movement History
+                                </CardTitle>
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                    Pooled inventory audit ledger — every in/out, write-off, and manual adjustment.
+                                </p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Button
+                                variant="default"
+                                size="sm"
+                                onClick={() => setDialogOpen(true)}
+                            >
+                                <Boxes className="h-4 w-4 mr-1.5" />
+                                Manual Adjustment
+                            </Button>
+                        </div>
                     </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-6">
                     {historyLoading ? (
                         <div className="space-y-2">
                             {[1, 2, 3].map((i) => (

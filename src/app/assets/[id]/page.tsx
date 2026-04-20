@@ -908,13 +908,6 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                             </CardContent>
                         </Card>
 
-                        {/* Stock Movements (pooled only) */}
-                        <AssetStockSection
-                            assetId={asset.id}
-                            assetName={asset.name}
-                            stockMode={(asset as any).family?.stock_mode}
-                        />
-
                         {/* Version History */}
                         <Card>
                             <CardHeader>
@@ -1124,6 +1117,15 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                             </CardContent>
                         </Card>
                     </div>
+                </div>
+
+                {/* Stock Movements — full-width prominent section (pooled only) */}
+                <div className="mt-8">
+                    <AssetStockSection
+                        assetId={asset.id}
+                        assetName={asset.name}
+                        stockMode={(asset as any).family?.stock_mode}
+                    />
                 </div>
             </div>
 
