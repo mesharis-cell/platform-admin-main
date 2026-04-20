@@ -162,7 +162,10 @@ export function CategoryCombobox({
                 align="start"
                 style={{
                     maxHeight: "min(var(--radix-popover-content-available-height), 360px)",
+                    isolation: "isolate",
                 }}
+                onWheel={(e) => e.stopPropagation()}
+                onTouchMove={(e) => e.stopPropagation()}
             >
                 <Command shouldFilter={false} className="max-h-[inherit]">
                     <CommandInput
@@ -177,6 +180,9 @@ export function CategoryCombobox({
                             maxHeight:
                                 "calc(min(var(--radix-popover-content-available-height), 360px) - 45px)",
                             overflowY: "auto",
+                            overscrollBehavior: "contain",
+                            touchAction: "pan-y",
+                            WebkitOverflowScrolling: "touch",
                         }}
                     >
                         <CommandEmpty className="py-3 text-center text-xs font-mono text-muted-foreground">
