@@ -157,15 +157,28 @@ export function CategoryCombobox({
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-                <Command shouldFilter={false}>
+            <PopoverContent
+                className="w-[--radix-popover-trigger-width] p-0"
+                align="start"
+                style={{
+                    maxHeight: "min(var(--radix-popover-content-available-height), 360px)",
+                }}
+            >
+                <Command shouldFilter={false} className="max-h-[inherit]">
                     <CommandInput
                         placeholder="Search or create category..."
                         value={search}
                         onValueChange={setSearch}
                         className="font-mono"
                     />
-                    <CommandList>
+                    <CommandList
+                        className="max-h-none"
+                        style={{
+                            maxHeight:
+                                "calc(min(var(--radix-popover-content-available-height), 360px) - 45px)",
+                            overflowY: "auto",
+                        }}
+                    >
                         <CommandEmpty className="py-3 text-center text-xs font-mono text-muted-foreground">
                             No categories found.
                         </CommandEmpty>
