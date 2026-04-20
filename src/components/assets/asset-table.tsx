@@ -80,7 +80,12 @@ export function AssetTable({ companyFilter }: AssetTableProps) {
     }, [debouncedSearch, filters]);
 
     const { data: companies } = useCompanies({ limit: "100" });
-    const { data: categoriesData } = useAssetCategories();
+    // Filter dropdown shows categories scoped to the currently-selected
+    // company (plus universals). When "all" is chosen, show every scope.
+    const { data: categoriesData } = useAssetCategories(
+        filters.company !== "all" ? filters.company : undefined,
+        { allScopes: filters.company === "all" }
+    );
     const categoryList = categoriesData?.data || [];
     const { data: warehouseData } = useWarehouses({ limit: "100" });
     const warehouseList = warehouseData?.data || [];

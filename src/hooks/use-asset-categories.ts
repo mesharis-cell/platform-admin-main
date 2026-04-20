@@ -14,12 +14,21 @@ export type AssetCategory = {
     created_at: string;
 };
 
-export function useAssetCategories(companyId?: string) {
+export function useAssetCategories(companyId?: string, options?: { allScopes?: boolean }) {
+    const allScopes = options?.allScopes === true;
     return useQuery({
-        queryKey: ["asset-categories", companyId || "all"],
+        queryKey: ["asset-categories", companyId || "all", allScopes ? "all-scopes" : "scoped"],
         queryFn: async (): Promise<{ data: AssetCategory[] }> => {
-            const params = companyId ? `?company_id=${companyId}` : "";
-            const response = await apiClient.get(`/operations/v1/asset-category${params}`);
+            const params = new URLSearchParams();
+            if (allScopes) {
+                params.set("all_scopes", "true");
+            } else if (companyId) {
+                params.set("company_id", companyId);
+            }
+            const qs = params.toString();
+            const response = await apiClient.get(
+                `/operations/v1/asset-category${qs ? `?${qs}` : ""}`
+            );
             return response.data;
         },
     });
