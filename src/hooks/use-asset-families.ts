@@ -79,6 +79,10 @@ export function useCreateAssetFamily() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: assetFamilyKeys.all });
+            // When a new family is created with new_category, a new row is
+            // inserted into asset_categories server-side. Invalidate the
+            // category list so the Settings page + filter dropdown pick it up.
+            queryClient.invalidateQueries({ queryKey: ["asset-categories"] });
         },
     });
 }

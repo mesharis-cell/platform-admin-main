@@ -35,7 +35,13 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 export default function CategoriesSettingsPage() {
-    const { data: categoriesData, isLoading } = useAssetCategories();
+    // Platform-admin view: show EVERY category (universal + every company's
+    // scoped ones). Without allScopes the API returns universal-only, which
+    // hides categories that operators created via the asset wizard (those
+    // are always company-scoped).
+    const { data: categoriesData, isLoading } = useAssetCategories(undefined, {
+        allScopes: true,
+    });
     const createMutation = useCreateAssetCategory();
     const updateMutation = useUpdateAssetCategory();
     const categories = categoriesData?.data || [];
