@@ -365,7 +365,9 @@ export default function UsersPage() {
                             <SelectValue placeholder="Role" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="all" className="font-mono text-xs">ALL ROLES</SelectItem>
+                            <SelectItem value="all" className="font-mono text-xs">
+                                ALL ROLES
+                            </SelectItem>
                             {ROLES.map((role) => (
                                 <SelectItem key={role} value={role} className="font-mono text-xs">
                                     {role}
@@ -378,17 +380,31 @@ export default function UsersPage() {
                             <SelectValue placeholder="Status" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="all" className="font-mono text-xs">ALL STATUSES</SelectItem>
-                            <SelectItem value="active" className="font-mono text-xs">ACTIVE</SelectItem>
-                            <SelectItem value="inactive" className="font-mono text-xs">INACTIVE</SelectItem>
+                            <SelectItem value="all" className="font-mono text-xs">
+                                ALL STATUSES
+                            </SelectItem>
+                            <SelectItem value="active" className="font-mono text-xs">
+                                ACTIVE
+                            </SelectItem>
+                            <SelectItem value="inactive" className="font-mono text-xs">
+                                INACTIVE
+                            </SelectItem>
                         </SelectContent>
                     </Select>
                     <div className="flex gap-2">
-                        <Button variant="outline" onClick={() => openCreate("ADMIN")} className="font-mono text-xs">
+                        <Button
+                            variant="outline"
+                            onClick={() => openCreate("ADMIN")}
+                            className="font-mono text-xs"
+                        >
                             <UserPlus className="mr-1 h-4 w-4" />
                             Admin
                         </Button>
-                        <Button variant="outline" onClick={() => openCreate("LOGISTICS")} className="font-mono text-xs">
+                        <Button
+                            variant="outline"
+                            onClick={() => openCreate("LOGISTICS")}
+                            className="font-mono text-xs"
+                        >
                             <UserPlus className="mr-1 h-4 w-4" />
                             Logistics
                         </Button>
@@ -418,13 +434,27 @@ export default function UsersPage() {
                         <Table>
                             <TableHeader>
                                 <TableRow className="bg-muted/50 border-border/50">
-                                    <TableHead className="font-mono text-xs font-bold">USER</TableHead>
-                                    <TableHead className="font-mono text-xs font-bold">ROLE</TableHead>
-                                    <TableHead className="font-mono text-xs font-bold">COMPANY</TableHead>
-                                    <TableHead className="font-mono text-xs font-bold">ACCESS POLICY</TableHead>
-                                    <TableHead className="font-mono text-xs font-bold">OVERRIDES</TableHead>
-                                    <TableHead className="font-mono text-xs font-bold">EFFECTIVE</TableHead>
-                                    <TableHead className="font-mono text-xs font-bold">STATUS</TableHead>
+                                    <TableHead className="font-mono text-xs font-bold">
+                                        USER
+                                    </TableHead>
+                                    <TableHead className="font-mono text-xs font-bold">
+                                        ROLE
+                                    </TableHead>
+                                    <TableHead className="font-mono text-xs font-bold">
+                                        COMPANY
+                                    </TableHead>
+                                    <TableHead className="font-mono text-xs font-bold">
+                                        ACCESS POLICY
+                                    </TableHead>
+                                    <TableHead className="font-mono text-xs font-bold">
+                                        OVERRIDES
+                                    </TableHead>
+                                    <TableHead className="font-mono text-xs font-bold">
+                                        EFFECTIVE
+                                    </TableHead>
+                                    <TableHead className="font-mono text-xs font-bold">
+                                        STATUS
+                                    </TableHead>
                                     <TableHead className="w-12"></TableHead>
                                 </TableRow>
                             </TableHeader>
@@ -438,17 +468,30 @@ export default function UsersPage() {
                                         <TableCell className="font-mono">
                                             <div>
                                                 <p className="font-medium text-sm">{user.name}</p>
-                                                <p className="text-xs text-muted-foreground">{user.email}</p>
+                                                <p className="text-xs text-muted-foreground">
+                                                    {user.email}
+                                                </p>
                                             </div>
                                         </TableCell>
-                                        <TableCell className="font-mono text-xs">{user.role}</TableCell>
-                                        <TableCell className="font-mono text-sm">{user.company?.name || "Platform-wide"}</TableCell>
-                                        <TableCell className="font-mono text-sm">{user.access_policy?.name || "No policy"}</TableCell>
                                         <TableCell className="font-mono text-xs">
-                                            +{user.permission_grants?.length || 0} / -{user.permission_revokes?.length || 0}
+                                            {user.role}
                                         </TableCell>
-                                        <TableCell className="font-mono text-xs">{user.permissions.length}</TableCell>
-                                        <TableCell className="font-mono text-xs">{user.is_active ? "Active" : "Inactive"}</TableCell>
+                                        <TableCell className="font-mono text-sm">
+                                            {user.company?.name || "Platform-wide"}
+                                        </TableCell>
+                                        <TableCell className="font-mono text-sm">
+                                            {user.access_policy?.name || "No policy"}
+                                        </TableCell>
+                                        <TableCell className="font-mono text-xs">
+                                            +{user.permission_grants?.length || 0} / -
+                                            {user.permission_revokes?.length || 0}
+                                        </TableCell>
+                                        <TableCell className="font-mono text-xs">
+                                            {user.permissions.length}
+                                        </TableCell>
+                                        <TableCell className="font-mono text-xs">
+                                            {user.is_active ? "Active" : "Inactive"}
+                                        </TableCell>
                                         <TableCell>
                                             <div className="flex items-center justify-end gap-2">
                                                 <Button
@@ -488,17 +531,17 @@ export default function UsersPage() {
             </div>
 
             <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-                    <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
-                        <DialogHeader>
-                            <DialogTitle>
-                                {duplicateSource
-                                    ? `Duplicate User — copying from ${duplicateSource.name}`
-                                    : "Create User"}
-                            </DialogTitle>
-                            <DialogDescription>
-                                {duplicateSource
-                                    ? "Role, access policy, permission overrides, company, and status were copied from the source user. Fill in a new name, email, and password."
-                                    : "Role sets the boundary. Access Policy sets the default permission bundle. Grants and revokes are explicit per-user overrides."}
+                <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle>
+                            {duplicateSource
+                                ? `Duplicate User — copying from ${duplicateSource.name}`
+                                : "Create User"}
+                        </DialogTitle>
+                        <DialogDescription>
+                            {duplicateSource
+                                ? "Role, access policy, permission overrides, company, and status were copied from the source user. Fill in a new name, email, and password."
+                                : "Role sets the boundary. Access Policy sets the default permission bundle. Grants and revokes are explicit per-user overrides."}
                         </DialogDescription>
                     </DialogHeader>
 
@@ -706,112 +749,118 @@ export default function UsersPage() {
                                                 No matching permissions.
                                             </div>
                                         ) : (
-                                            filteredPermissionGroups.map(([groupName, permissions]) => (
-                                                <div key={groupName} className="space-y-2">
-                                                    <p className="text-sm font-medium">
-                                                        {groupName}
-                                                    </p>
-                                                    <div className="space-y-2">
-                                                        {permissions.map((permission) => {
-                                                            const inPolicy =
-                                                                permissionIsImpliedByPolicy(
-                                                                    permission
-                                                                );
-                                                            const granted =
-                                                                form.permission_grants.includes(
-                                                                    permission
-                                                                );
-                                                            const revoked =
-                                                                form.permission_revokes.includes(
-                                                                    permission
-                                                                );
+                                            filteredPermissionGroups.map(
+                                                ([groupName, permissions]) => (
+                                                    <div key={groupName} className="space-y-2">
+                                                        <p className="text-sm font-medium">
+                                                            {groupName}
+                                                        </p>
+                                                        <div className="space-y-2">
+                                                            {permissions.map((permission) => {
+                                                                const inPolicy =
+                                                                    permissionIsImpliedByPolicy(
+                                                                        permission
+                                                                    );
+                                                                const granted =
+                                                                    form.permission_grants.includes(
+                                                                        permission
+                                                                    );
+                                                                const revoked =
+                                                                    form.permission_revokes.includes(
+                                                                        permission
+                                                                    );
 
-                                                            return (
-                                                                <div
-                                                                    key={permission}
-                                                                    className={cn(
-                                                                        "space-y-2 rounded-md border p-3",
-                                                                        inPolicy
-                                                                            ? "border-primary/25 bg-primary/5"
-                                                                            : "border-border/60 bg-muted/40"
-                                                                    )}
-                                                                >
-                                                                    <div className="flex flex-wrap items-center gap-2">
-                                                                        <span className="text-xs font-mono">
-                                                                            {permission}
-                                                                        </span>
-                                                                        {inPolicy ? (
-                                                                            <Badge variant="outline">
-                                                                                In policy
-                                                                            </Badge>
-                                                                        ) : null}
-                                                                        {granted ? (
-                                                                            <Badge
-                                                                                variant={
-                                                                                    inPolicy
-                                                                                        ? "outline"
-                                                                                        : "secondary"
-                                                                                }
-                                                                            >
-                                                                                {inPolicy
-                                                                                    ? "Grant no-op"
-                                                                                    : "Granted"}
-                                                                            </Badge>
-                                                                        ) : null}
-                                                                        {revoked ? (
-                                                                            <Badge
-                                                                                variant={
-                                                                                    inPolicy
-                                                                                        ? "destructive"
-                                                                                        : "outline"
-                                                                                }
-                                                                            >
-                                                                                {inPolicy
-                                                                                    ? "Revoked"
-                                                                                    : "Revoke no-op"}
-                                                                            </Badge>
-                                                                        ) : null}
+                                                                return (
+                                                                    <div
+                                                                        key={permission}
+                                                                        className={cn(
+                                                                            "space-y-2 rounded-md border p-3",
+                                                                            inPolicy
+                                                                                ? "border-primary/25 bg-primary/5"
+                                                                                : "border-border/60 bg-muted/40"
+                                                                        )}
+                                                                    >
+                                                                        <div className="flex flex-wrap items-center gap-2">
+                                                                            <span className="text-xs font-mono">
+                                                                                {permission}
+                                                                            </span>
+                                                                            {inPolicy ? (
+                                                                                <Badge variant="outline">
+                                                                                    In policy
+                                                                                </Badge>
+                                                                            ) : null}
+                                                                            {granted ? (
+                                                                                <Badge
+                                                                                    variant={
+                                                                                        inPolicy
+                                                                                            ? "outline"
+                                                                                            : "secondary"
+                                                                                    }
+                                                                                >
+                                                                                    {inPolicy
+                                                                                        ? "Grant no-op"
+                                                                                        : "Granted"}
+                                                                                </Badge>
+                                                                            ) : null}
+                                                                            {revoked ? (
+                                                                                <Badge
+                                                                                    variant={
+                                                                                        inPolicy
+                                                                                            ? "destructive"
+                                                                                            : "outline"
+                                                                                    }
+                                                                                >
+                                                                                    {inPolicy
+                                                                                        ? "Revoked"
+                                                                                        : "Revoke no-op"}
+                                                                                </Badge>
+                                                                            ) : null}
+                                                                        </div>
+                                                                        <div className="grid grid-cols-[auto_auto] justify-start gap-4">
+                                                                            <label className="flex items-center gap-2 text-xs">
+                                                                                <Checkbox
+                                                                                    checked={
+                                                                                        granted
+                                                                                    }
+                                                                                    onCheckedChange={(
+                                                                                        checked
+                                                                                    ) =>
+                                                                                        toggleOverride(
+                                                                                            "grant",
+                                                                                            permission,
+                                                                                            checked ===
+                                                                                                true
+                                                                                        )
+                                                                                    }
+                                                                                />
+                                                                                Grant
+                                                                            </label>
+                                                                            <label className="flex items-center gap-2 text-xs">
+                                                                                <Checkbox
+                                                                                    checked={
+                                                                                        revoked
+                                                                                    }
+                                                                                    onCheckedChange={(
+                                                                                        checked
+                                                                                    ) =>
+                                                                                        toggleOverride(
+                                                                                            "revoke",
+                                                                                            permission,
+                                                                                            checked ===
+                                                                                                true
+                                                                                        )
+                                                                                    }
+                                                                                />
+                                                                                Revoke
+                                                                            </label>
+                                                                        </div>
                                                                     </div>
-                                                                    <div className="grid grid-cols-[auto_auto] justify-start gap-4">
-                                                                        <label className="flex items-center gap-2 text-xs">
-                                                                            <Checkbox
-                                                                                checked={granted}
-                                                                                onCheckedChange={(
-                                                                                    checked
-                                                                                ) =>
-                                                                                    toggleOverride(
-                                                                                        "grant",
-                                                                                        permission,
-                                                                                        checked ===
-                                                                                            true
-                                                                                    )
-                                                                                }
-                                                                            />
-                                                                            Grant
-                                                                        </label>
-                                                                        <label className="flex items-center gap-2 text-xs">
-                                                                            <Checkbox
-                                                                                checked={revoked}
-                                                                                onCheckedChange={(
-                                                                                    checked
-                                                                                ) =>
-                                                                                    toggleOverride(
-                                                                                        "revoke",
-                                                                                        permission,
-                                                                                        checked ===
-                                                                                            true
-                                                                                    )
-                                                                                }
-                                                                            />
-                                                                            Revoke
-                                                                        </label>
-                                                                    </div>
-                                                                </div>
-                                                            );
-                                                        })}
+                                                                );
+                                                            })}
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            ))
+                                                )
+                                            )
                                         )}
                                     </div>
                                 </CardContent>

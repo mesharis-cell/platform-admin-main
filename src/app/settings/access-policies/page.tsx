@@ -294,9 +294,7 @@ export default function AccessPoliciesPage() {
                                         </TableCell>
                                         <TableCell>
                                             <Badge
-                                                variant={
-                                                    policy.is_active ? "default" : "outline"
-                                                }
+                                                variant={policy.is_active ? "default" : "outline"}
                                                 className="text-xs"
                                             >
                                                 {policy.is_active ? "Active" : "Inactive"}
@@ -387,16 +385,18 @@ export default function AccessPoliciesPage() {
                                 <Label className="font-mono text-xs">ROLE *</Label>
                                 <Select
                                     value={form.role}
-                                    onValueChange={(value) =>
-                                        handleRoleChange(value as UserRole)
-                                    }
+                                    onValueChange={(value) => handleRoleChange(value as UserRole)}
                                 >
                                     <SelectTrigger className="font-mono">
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {ROLES.map((role) => (
-                                            <SelectItem key={role} value={role} className="font-mono">
+                                            <SelectItem
+                                                key={role}
+                                                value={role}
+                                                className="font-mono"
+                                            >
                                                 {role}
                                             </SelectItem>
                                         ))}
@@ -441,8 +441,7 @@ export default function AccessPoliciesPage() {
                                         const selectedCount = permissions.filter((p) =>
                                             form.permissions.includes(p)
                                         ).length;
-                                        const allSelected =
-                                            selectedCount === permissions.length;
+                                        const allSelected = selectedCount === permissions.length;
                                         return (
                                             <Collapsible key={groupName}>
                                                 <div className="flex items-center justify-between">
@@ -510,12 +509,8 @@ export default function AccessPoliciesPage() {
                                                                     checked={form.permissions.includes(
                                                                         permission
                                                                     )}
-                                                                    disabled={
-                                                                        !canManagePolicies
-                                                                    }
-                                                                    onCheckedChange={(
-                                                                        checked
-                                                                    ) =>
+                                                                    disabled={!canManagePolicies}
+                                                                    onCheckedChange={(checked) =>
                                                                         togglePermission(
                                                                             permission,
                                                                             checked === true
@@ -537,7 +532,11 @@ export default function AccessPoliciesPage() {
                         </div>
                     </div>
                     <div className="flex justify-end gap-3 pt-4 border-t border-border">
-                        <Button variant="outline" onClick={() => setIsOpen(false)} className="font-mono">
+                        <Button
+                            variant="outline"
+                            onClick={() => setIsOpen(false)}
+                            className="font-mono"
+                        >
                             CANCEL
                         </Button>
                         {canManagePolicies ? (
@@ -563,9 +562,7 @@ export default function AccessPoliciesPage() {
                         : `Are you sure you want to delete "${confirmDeletePolicy?.name}"? This cannot be undone.`
                 }
                 confirmText={
-                    (confirmDeletePolicy?.assigned_user_count ?? 0) > 0
-                        ? "Delete Anyway"
-                        : "Delete"
+                    (confirmDeletePolicy?.assigned_user_count ?? 0) > 0 ? "Delete Anyway" : "Delete"
                 }
                 variant="destructive"
             />

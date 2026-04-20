@@ -14,16 +14,18 @@ export const selfPickupKeys = {
 
 // ----------------------------------- LIST (ADMIN) -------------------------------------------
 
-export function useAdminSelfPickups(params: {
-    page?: number;
-    limit?: number;
-    company?: string;
-    brand?: string;
-    self_pickup_status?: string;
-    search?: string;
-    sortBy?: string;
-    sortOrder?: string;
-} = {}) {
+export function useAdminSelfPickups(
+    params: {
+        page?: number;
+        limit?: number;
+        company?: string;
+        brand?: string;
+        self_pickup_status?: string;
+        search?: string;
+        sortBy?: string;
+        sortOrder?: string;
+    } = {}
+) {
     return useQuery({
         queryKey: selfPickupKeys.list(params),
         queryFn: async () => {
@@ -31,9 +33,7 @@ export function useAdminSelfPickups(params: {
             Object.entries(params).forEach(([key, value]) => {
                 if (value !== undefined && value !== "") query.set(key, String(value));
             });
-            const { data } = await apiClient.get(
-                `/operations/v1/self-pickup?${query.toString()}`
-            );
+            const { data } = await apiClient.get(`/operations/v1/self-pickup?${query.toString()}`);
             return data;
         },
     });
@@ -58,9 +58,7 @@ export function useAdminSelfPickupStatusHistory(id: string | null) {
     return useQuery({
         queryKey: selfPickupKeys.statusHistory(id),
         queryFn: async () => {
-            const { data } = await apiClient.get(
-                `/operations/v1/self-pickup/${id}/status-history`
-            );
+            const { data } = await apiClient.get(`/operations/v1/self-pickup/${id}/status-history`);
             return data;
         },
         enabled: !!id,
@@ -91,9 +89,7 @@ export function useAdminApproveQuote() {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: async (id: string) => {
-            const { data } = await apiClient.post(
-                `/operations/v1/self-pickup/${id}/approve`
-            );
+            const { data } = await apiClient.post(`/operations/v1/self-pickup/${id}/approve`);
             return data;
         },
         onSuccess: () => {
@@ -127,10 +123,9 @@ export function useCancelSelfPickup() {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: async ({ id, reason }: { id: string; reason: string }) => {
-            const { data } = await apiClient.post(
-                `/operations/v1/self-pickup/${id}/cancel`,
-                { reason }
-            );
+            const { data } = await apiClient.post(`/operations/v1/self-pickup/${id}/cancel`, {
+                reason,
+            });
             return data;
         },
         onSuccess: () => {
@@ -145,17 +140,10 @@ export function useCancelSelfPickup() {
 export function useUpdateSelfPickupJobNumber() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: async ({
-            id,
-            job_number,
-        }: {
-            id: string;
-            job_number: string | null;
-        }) => {
-            const { data } = await apiClient.patch(
-                `/operations/v1/self-pickup/${id}/job-number`,
-                { job_number }
-            );
+        mutationFn: async ({ id, job_number }: { id: string; job_number: string | null }) => {
+            const { data } = await apiClient.patch(`/operations/v1/self-pickup/${id}/job-number`, {
+                job_number,
+            });
             return data;
         },
         onSuccess: () => {

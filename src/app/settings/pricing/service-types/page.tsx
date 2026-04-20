@@ -368,7 +368,9 @@ export default function ServiceTypesPage() {
                                             <TableCell>
                                                 <Badge
                                                     variant={
-                                                        service.is_active ? "default" : "destructive"
+                                                        service.is_active
+                                                            ? "default"
+                                                            : "destructive"
                                                     }
                                                     className="text-xs"
                                                 >

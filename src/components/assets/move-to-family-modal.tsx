@@ -79,8 +79,7 @@ export function MoveToFamilyModal({
             onOpenChange(false);
             onSuccess?.();
         } catch (error: unknown) {
-            const message =
-                error instanceof Error ? error.message : "Failed to move asset";
+            const message = error instanceof Error ? error.message : "Failed to move asset";
             toast.error(message);
         }
     }
@@ -89,9 +88,7 @@ export function MoveToFamilyModal({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-lg max-h-[80vh] flex flex-col">
                 <DialogHeader>
-                    <DialogTitle className="font-mono">
-                        Move {asset.name}
-                    </DialogTitle>
+                    <DialogTitle className="font-mono">Move {asset.name}</DialogTitle>
                     {currentFamilyName && (
                         <p className="text-xs font-mono text-muted-foreground">
                             Current family: {currentFamilyName}
@@ -130,8 +127,7 @@ export function MoveToFamilyModal({
                         families.map((family) => {
                             const isCurrent = family.id === asset.family_id;
                             const stockModeMismatch =
-                                currentStockMode != null &&
-                                family.stock_mode !== currentStockMode;
+                                currentStockMode != null && family.stock_mode !== currentStockMode;
                             const isDisabled = isCurrent || stockModeMismatch;
                             const isSelected = selectedFamily?.id === family.id;
 
@@ -183,8 +179,7 @@ export function MoveToFamilyModal({
                                                 <span
                                                     className="mr-1 inline-block h-1.5 w-1.5 rounded-full"
                                                     style={{
-                                                        backgroundColor:
-                                                            family.category.color,
+                                                        backgroundColor: family.category.color,
                                                     }}
                                                 />
                                                 {family.category.name}

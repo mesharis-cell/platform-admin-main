@@ -4,15 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import {
-    Eye,
-    ArrowRightLeft,
-    MoreVertical,
-    Package,
-    Search,
-    QrCode,
-    MapPin,
-} from "lucide-react";
+import { Eye, ArrowRightLeft, MoreVertical, Package, Search, QrCode, MapPin } from "lucide-react";
 import { useAssets } from "@/hooks/use-assets";
 import { useCompanies } from "@/hooks/use-companies";
 import { useAssetCategories } from "@/hooks/use-asset-categories";
@@ -104,8 +96,7 @@ export function AssetTable({ companyFilter }: AssetTableProps) {
         if (filters.condition !== "all") params.condition = filters.condition;
         if (filters.status !== "all") params.status = filters.status;
         if (filters.warehouse !== "all") params.warehouse_id = filters.warehouse;
-        if (filters.tracking_method !== "all")
-            params.tracking_method = filters.tracking_method;
+        if (filters.tracking_method !== "all") params.tracking_method = filters.tracking_method;
         return params;
     }, [filters, debouncedSearch, page]);
 
@@ -132,9 +123,7 @@ export function AssetTable({ companyFilter }: AssetTableProps) {
                     <div className="flex flex-wrap gap-2">
                         <Select
                             value={filters.company}
-                            onValueChange={(value) =>
-                                setFilters((c) => ({ ...c, company: value }))
-                            }
+                            onValueChange={(value) => setFilters((c) => ({ ...c, company: value }))}
                         >
                             <SelectTrigger className="w-[160px] font-mono">
                                 <SelectValue placeholder="Company" />
@@ -193,9 +182,7 @@ export function AssetTable({ companyFilter }: AssetTableProps) {
 
                         <Select
                             value={filters.status}
-                            onValueChange={(value) =>
-                                setFilters((c) => ({ ...c, status: value }))
-                            }
+                            onValueChange={(value) => setFilters((c) => ({ ...c, status: value }))}
                         >
                             <SelectTrigger className="w-[140px] font-mono">
                                 <SelectValue placeholder="Status" />
@@ -259,9 +246,7 @@ export function AssetTable({ companyFilter }: AssetTableProps) {
                     <div className="mb-4 rounded-full bg-muted/50 p-4">
                         <Package className="h-12 w-12 text-muted-foreground" />
                     </div>
-                    <h3 className="mb-2 font-mono text-lg font-semibold">
-                        No assets found
-                    </h3>
+                    <h3 className="mb-2 font-mono text-lg font-semibold">No assets found</h3>
                     <p className="mb-6 max-w-md text-sm font-mono text-muted-foreground">
                         Adjust filters or create assets from the asset family pages.
                     </p>
@@ -327,8 +312,7 @@ export function AssetTable({ companyFilter }: AssetTableProps) {
                                                 variant="outline"
                                                 className="font-mono text-[10px]"
                                                 style={{
-                                                    borderColor:
-                                                        asset.family.category.color,
+                                                    borderColor: asset.family.category.color,
                                                     color: asset.family.category.color,
                                                 }}
                                             >
@@ -357,7 +341,8 @@ export function AssetTable({ companyFilter }: AssetTableProps) {
                                     <div className="flex items-center gap-1 font-mono text-xs text-muted-foreground truncate">
                                         <MapPin className="h-3 w-3 shrink-0" />
                                         <span className="truncate">
-                                            {asset.warehouse?.name || "\u2014"} / {asset.zone?.name || "\u2014"}
+                                            {asset.warehouse?.name || "\u2014"} /{" "}
+                                            {asset.zone?.name || "\u2014"}
                                         </span>
                                     </div>
 
@@ -404,9 +389,7 @@ export function AssetTable({ companyFilter }: AssetTableProps) {
                                     {/* QR */}
                                     <div className="flex items-center gap-1 font-mono text-[10px] text-muted-foreground">
                                         <QrCode className="h-3 w-3 shrink-0" />
-                                        <span className="truncate">
-                                            {asset.qr_code}
-                                        </span>
+                                        <span className="truncate">{asset.qr_code}</span>
                                     </div>
 
                                     {/* Actions */}
@@ -424,9 +407,7 @@ export function AssetTable({ companyFilter }: AssetTableProps) {
                                             <DropdownMenuContent align="end">
                                                 <DropdownMenuItem
                                                     onClick={() =>
-                                                        router.push(
-                                                            `/assets/${asset.id}`
-                                                        )
+                                                        router.push(`/assets/${asset.id}`)
                                                     }
                                                     className="font-mono text-xs"
                                                 >
@@ -434,9 +415,7 @@ export function AssetTable({ companyFilter }: AssetTableProps) {
                                                     View Details
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem
-                                                    onClick={() =>
-                                                        setMovingAsset(asset)
-                                                    }
+                                                    onClick={() => setMovingAsset(asset)}
                                                     className="font-mono text-xs"
                                                 >
                                                     <ArrowRightLeft className="h-3.5 w-3.5 mr-2" />

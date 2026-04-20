@@ -59,7 +59,10 @@ async function loginAdmin(page: Page) {
 async function loginWarehouse(page: Page) {
     await page.goto("http://localhost:4001/", { waitUntil: "domcontentloaded" });
     await page.waitForLoadState("networkidle", { timeout: 20_000 }).catch(() => {});
-    await page.getByLabel(/email address|email/i).first().fill("e2e.kadence.logistics@homeofpmg.com");
+    await page
+        .getByLabel(/email address|email/i)
+        .first()
+        .fill("e2e.kadence.logistics@homeofpmg.com");
     await page.getByLabel(/^password/i).fill("E2ePass!Logi1");
     await page.getByRole("button", { name: /grant access|sign in|log in/i }).click();
     await page.waitForURL(/\/(analytics|orders|dashboard|home)/, { timeout: 30_000 });
@@ -92,8 +95,15 @@ test.describe("ADMIN (role-gated)", () => {
         await page.waitForLoadState("networkidle", { timeout: 15_000 }).catch(() => {});
         await shoot(page, "admin-02-assets-default-tab");
         // Click Families tab if present
-        const familiesTab = page.getByRole("tab", { name: /families/i }).or(page.getByRole("button", { name: /families/i }));
-        if (await familiesTab.first().isVisible().catch(() => false)) {
+        const familiesTab = page
+            .getByRole("tab", { name: /families/i })
+            .or(page.getByRole("button", { name: /families/i }));
+        if (
+            await familiesTab
+                .first()
+                .isVisible()
+                .catch(() => false)
+        ) {
             await familiesTab.first().click();
             await page.waitForTimeout(1000);
             await shoot(page, "admin-03-assets-families-tab");
@@ -102,14 +112,18 @@ test.describe("ADMIN (role-gated)", () => {
 
     test("categories settings page renders + shows seeded categories", async ({ page }) => {
         await loginAdmin(page);
-        await page.goto("http://localhost:4000/settings/categories", { waitUntil: "domcontentloaded" });
+        await page.goto("http://localhost:4000/settings/categories", {
+            waitUntil: "domcontentloaded",
+        });
         await page.waitForLoadState("networkidle", { timeout: 15_000 }).catch(() => {});
         await shoot(page, "admin-04-settings-categories");
     });
 
     test("platform settings — feature flags render from registry", async ({ page }) => {
         await loginAdmin(page);
-        await page.goto("http://localhost:4000/settings/platform", { waitUntil: "domcontentloaded" });
+        await page.goto("http://localhost:4000/settings/platform", {
+            waitUntil: "domcontentloaded",
+        });
         await page.waitForLoadState("networkidle", { timeout: 15_000 }).catch(() => {});
         await shoot(page, "admin-05-settings-platform");
     });
@@ -131,14 +145,19 @@ test.describe("ADMIN (role-gated)", () => {
     test("order detail — fulfillment windows card", async ({ page }) => {
         await loginAdmin(page);
         // Demo order ORD-DEMO-003 (CONFIRMED, has requested_delivery_window seed)
-        await page.goto("http://localhost:4000/orders/00000000-0000-4000-8050-000000000003", { waitUntil: "domcontentloaded" });
+        await page.goto("http://localhost:4000/orders/00000000-0000-4000-8050-000000000003", {
+            waitUntil: "domcontentloaded",
+        });
         await page.waitForLoadState("networkidle", { timeout: 15_000 }).catch(() => {});
         await shoot(page, "admin-08-order-detail-windows");
     });
 
     test("family detail — move-to-family 3-dots menu", async ({ page }) => {
         await loginAdmin(page);
-        await page.goto("http://localhost:4000/assets/families/00000000-0000-4000-8030-000000000001", { waitUntil: "domcontentloaded" });
+        await page.goto(
+            "http://localhost:4000/assets/families/00000000-0000-4000-8030-000000000001",
+            { waitUntil: "domcontentloaded" }
+        );
         await page.waitForLoadState("networkidle", { timeout: 15_000 }).catch(() => {});
         await shoot(page, "admin-09-family-detail");
     });
@@ -169,7 +188,10 @@ test.describe("WAREHOUSE (logistics)", () => {
 
     test("family detail — category pill + move-to-family menu", async ({ page }) => {
         await loginWarehouse(page);
-        await page.goto("http://localhost:4001/assets/families/00000000-0000-4000-8030-000000000001", { waitUntil: "domcontentloaded" });
+        await page.goto(
+            "http://localhost:4001/assets/families/00000000-0000-4000-8030-000000000001",
+            { waitUntil: "domcontentloaded" }
+        );
         await page.waitForLoadState("networkidle", { timeout: 15_000 }).catch(() => {});
         await shoot(page, "warehouse-03-family-detail");
     });
@@ -205,7 +227,9 @@ test.describe("CLIENT (Alex Chen, pernod-ricard tenant swapped for demo)", () =>
 
     test("order detail (confirmed order with windows)", async ({ page }) => {
         await loginClient(page);
-        await page.goto("http://localhost:4002/orders/00000000-0000-4000-8050-000000000003", { waitUntil: "domcontentloaded" });
+        await page.goto("http://localhost:4002/orders/00000000-0000-4000-8050-000000000003", {
+            waitUntil: "domcontentloaded",
+        });
         await page.waitForLoadState("networkidle", { timeout: 15_000 }).catch(() => {});
         await shoot(page, "client-04-order-detail");
     });

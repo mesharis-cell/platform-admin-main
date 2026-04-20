@@ -29,9 +29,7 @@ export type FeatureRegistry = Record<PlatformFeatureKey, FeatureMeta>;
  * platform is not loaded. Consumers must handle the empty-registry case
  * — UIs should render nothing rather than crash.
  */
-export function getFeatureRegistry(
-    platform: PlatformDomain | null | undefined
-): FeatureRegistry {
+export function getFeatureRegistry(platform: PlatformDomain | null | undefined): FeatureRegistry {
     return (platform?.feature_registry as FeatureRegistry | undefined) ?? {};
 }
 

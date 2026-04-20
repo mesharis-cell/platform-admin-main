@@ -14,13 +14,18 @@ test("reproduce crash on local client (dev React = unminified)", async ({ page }
     await page.getByLabel(/email/i).first().fill("client@redbull.test");
     await page.getByLabel(/^password/i).fill("password123");
     await page.getByRole("button", { name: /grant access/i }).click();
-    await page.waitForURL(/\/(client-dashboard|catalog|my-orders)/, { timeout: 45_000 }).catch(() => {});
+    await page
+        .waitForURL(/\/(client-dashboard|catalog|my-orders)/, { timeout: 45_000 })
+        .catch(() => {});
 
     errors.length = 0;
     await page.goto("http://localhost:4002/catalog", { waitUntil: "domcontentloaded" });
     await page.waitForTimeout(15_000);
 
-    await page.screenshot({ path: "/tmp/kadence-smoke-screenshots/debug-local-crash.png", fullPage: true });
+    await page.screenshot({
+        path: "/tmp/kadence-smoke-screenshots/debug-local-crash.png",
+        fullPage: true,
+    });
 
     console.log("\n=== ERRORS FROM LOCAL CLIENT AGAINST PROD API ===");
     errors.forEach((e, i) => console.log(`[${i}]`, e.slice(0, 3000)));

@@ -30,16 +30,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import {
-    ArrowUp,
-    ArrowDown,
-    Plus,
-    Tag,
-    Check,
-    X,
-    Pencil,
-    Search,
-} from "lucide-react";
+import { ArrowUp, ArrowDown, Plus, Tag, Check, X, Pencil, Search } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -56,9 +47,7 @@ export default function CategoriesSettingsPage() {
     const [editingName, setEditingName] = useState("");
 
     const filtered = searchQuery
-        ? categories.filter((c) =>
-              c.name.toLowerCase().includes(searchQuery.toLowerCase())
-          )
+        ? categories.filter((c) => c.name.toLowerCase().includes(searchQuery.toLowerCase()))
         : categories;
 
     const handleCreate = async (e: React.FormEvent) => {
@@ -120,11 +109,7 @@ export default function CategoriesSettingsPage() {
         }
     };
 
-    const handleMove = async (
-        cat: AssetCategory,
-        index: number,
-        direction: "up" | "down"
-    ) => {
+    const handleMove = async (cat: AssetCategory, index: number, direction: "up" | "down") => {
         const swapIdx = direction === "up" ? index - 1 : index + 1;
         if (swapIdx < 0 || swapIdx >= filtered.length) return;
         const other = filtered[swapIdx];
@@ -180,9 +165,7 @@ export default function CategoriesSettingsPage() {
                         </DialogTrigger>
                         <DialogContent className="max-w-md">
                             <DialogHeader>
-                                <DialogTitle className="font-mono">
-                                    CREATE NEW CATEGORY
-                                </DialogTitle>
+                                <DialogTitle className="font-mono">CREATE NEW CATEGORY</DialogTitle>
                                 <DialogDescription className="font-mono text-xs">
                                     New categories are universal (visible to all companies).
                                     Company-specific categories are created inline during asset
@@ -191,10 +174,7 @@ export default function CategoriesSettingsPage() {
                             </DialogHeader>
                             <form onSubmit={handleCreate} className="space-y-4">
                                 <div className="space-y-2">
-                                    <Label
-                                        htmlFor="categoryName"
-                                        className="font-mono text-xs"
-                                    >
+                                    <Label htmlFor="categoryName" className="font-mono text-xs">
                                         CATEGORY NAME *
                                     </Label>
                                     <Input
@@ -209,9 +189,7 @@ export default function CategoriesSettingsPage() {
                                 <DialogFooter>
                                     <Button
                                         type="submit"
-                                        disabled={
-                                            !newName.trim() || createMutation.isPending
-                                        }
+                                        disabled={!newName.trim() || createMutation.isPending}
                                         className="font-mono"
                                     >
                                         {createMutation.isPending
@@ -315,8 +293,7 @@ export default function CategoriesSettingsPage() {
                                                         onKeyDown={(e) => {
                                                             if (e.key === "Enter")
                                                                 handleRename(cat);
-                                                            if (e.key === "Escape")
-                                                                cancelEditing();
+                                                            if (e.key === "Escape") cancelEditing();
                                                         }}
                                                         className="h-8 text-sm font-mono max-w-[300px]"
                                                     />
@@ -379,9 +356,7 @@ export default function CategoriesSettingsPage() {
                                         <TableCell className="text-center">
                                             <Switch
                                                 checked={cat.is_active}
-                                                onCheckedChange={() =>
-                                                    handleToggleActive(cat)
-                                                }
+                                                onCheckedChange={() => handleToggleActive(cat)}
                                             />
                                         </TableCell>
 

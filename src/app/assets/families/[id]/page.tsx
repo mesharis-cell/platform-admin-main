@@ -441,7 +441,9 @@ export default function AssetFamilyDetailPage({ params }: { params: Promise<{ id
                         <CardContent className="px-6 pb-4">
                             <div className="flex flex-wrap items-center gap-6">
                                 <div className="space-y-1">
-                                    <p className="text-xs text-muted-foreground">Assets in family</p>
+                                    <p className="text-xs text-muted-foreground">
+                                        Assets in family
+                                    </p>
                                     <p className="font-mono text-sm font-bold">
                                         {inventory.length}
                                     </p>
@@ -453,7 +455,9 @@ export default function AssetFamilyDetailPage({ params }: { params: Promise<{ id
                                     </p>
                                 </div>
                                 <div className="space-y-1">
-                                    <p className="text-xs text-muted-foreground">Low Stock Threshold</p>
+                                    <p className="text-xs text-muted-foreground">
+                                        Low Stock Threshold
+                                    </p>
                                     <p className="font-mono text-sm font-bold">
                                         {family?.low_stock_threshold != null
                                             ? `${family.low_stock_threshold} units`
@@ -462,8 +466,11 @@ export default function AssetFamilyDetailPage({ params }: { params: Promise<{ id
                                 </div>
                                 {family?.low_stock_threshold != null &&
                                     availabilityStats?.data?.available_quantity != null &&
-                                    Number(availabilityStats.data.available_quantity) < family.low_stock_threshold && (
-                                        <Badge variant="destructive" className="text-xs">LOW STOCK</Badge>
+                                    Number(availabilityStats.data.available_quantity) <
+                                        family.low_stock_threshold && (
+                                        <Badge variant="destructive" className="text-xs">
+                                            LOW STOCK
+                                        </Badge>
                                     )}
                                 <p className="text-xs text-muted-foreground ml-auto">
                                     Stock adjustments live on individual assets →
@@ -518,9 +525,15 @@ export default function AssetFamilyDetailPage({ params }: { params: Promise<{ id
                         ) : (
                             <div className="divide-y divide-border">
                                 {filtered.map((asset) => (
-                                    <div key={asset.id} className="group flex items-center gap-4 py-3 px-2 -mx-2 rounded-md transition-colors hover:bg-muted/50">
+                                    <div
+                                        key={asset.id}
+                                        className="group flex items-center gap-4 py-3 px-2 -mx-2 rounded-md transition-colors hover:bg-muted/50"
+                                    >
                                         {/* Thumbnail + Name — clickable link */}
-                                        <Link href={`/assets/${asset.id}`} className="flex items-center gap-4 flex-1 min-w-0">
+                                        <Link
+                                            href={`/assets/${asset.id}`}
+                                            className="flex items-center gap-4 flex-1 min-w-0"
+                                        >
                                             {/* Thumbnail */}
                                             <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-md bg-muted border border-border">
                                                 {asset.images?.[0]?.url ? (
@@ -604,7 +617,9 @@ export default function AssetFamilyDetailPage({ params }: { params: Promise<{ id
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
                                                 <DropdownMenuItem
-                                                    onClick={() => router.push(`/assets/${asset.id}`)}
+                                                    onClick={() =>
+                                                        router.push(`/assets/${asset.id}`)
+                                                    }
                                                     className="font-mono text-xs"
                                                 >
                                                     <Eye className="h-3.5 w-3.5 mr-2" />
@@ -658,7 +673,6 @@ export default function AssetFamilyDetailPage({ params }: { params: Promise<{ id
                     onSuccess={() => setMovingAsset(null)}
                 />
             )}
-
         </div>
     );
 }

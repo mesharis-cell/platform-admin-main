@@ -101,7 +101,11 @@ export default function ForgotPasswordPage() {
                         "Content-Type": "application/json",
                         "x-platform": platform.platform_id,
                     },
-                    body: JSON.stringify({ email: email.trim().toLowerCase(), otp: Number(otp), new_password: newPassword }),
+                    body: JSON.stringify({
+                        email: email.trim().toLowerCase(),
+                        otp: Number(otp),
+                        new_password: newPassword,
+                    }),
                 }
             );
 

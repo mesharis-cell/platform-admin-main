@@ -1223,7 +1223,9 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                         </Card>
 
                         {/* Venue Contact (first-class, separate from permits) */}
-                        {(order?.data?.venue_contact_name || order?.data?.venue_contact_email || order?.data?.venue_contact_phone) && (
+                        {(order?.data?.venue_contact_name ||
+                            order?.data?.venue_contact_email ||
+                            order?.data?.venue_contact_phone) && (
                             <Card>
                                 <CardHeader>
                                     <CardTitle className="font-mono text-sm flex items-center gap-2">
@@ -1239,16 +1241,19 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                     )}
                                     {order?.data?.venue_contact_email && (
                                         <p className="font-mono text-xs text-muted-foreground flex items-center gap-2">
-                                            <Mail className="h-3 w-3" /> {order.data.venue_contact_email}
+                                            <Mail className="h-3 w-3" />{" "}
+                                            {order.data.venue_contact_email}
                                         </p>
                                     )}
                                     {order?.data?.venue_contact_phone && (
                                         <p className="font-mono text-xs text-muted-foreground flex items-center gap-2">
-                                            <Phone className="h-3 w-3" /> {order.data.venue_contact_phone}
+                                            <Phone className="h-3 w-3" />{" "}
+                                            {order.data.venue_contact_phone}
                                         </p>
                                     )}
                                     <p className="text-xs text-muted-foreground mt-2">
-                                        The on-site contact who coordinates arrival, access, and handover.
+                                        The on-site contact who coordinates arrival, access, and
+                                        handover.
                                     </p>
                                 </CardContent>
                             </Card>
@@ -1281,15 +1286,17 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                                     </p>
                                                     <p className="font-mono text-sm">
                                                         {new Date(
-                                                            (order.data
-                                                                .requested_delivery_window as any)
-                                                                .start
+                                                            (
+                                                                order.data
+                                                                    .requested_delivery_window as any
+                                                            ).start
                                                         ).toLocaleString()}{" "}
                                                         –{" "}
                                                         {new Date(
-                                                            (order.data
-                                                                .requested_delivery_window as any)
-                                                                .end
+                                                            (
+                                                                order.data
+                                                                    .requested_delivery_window as any
+                                                            ).end
                                                         ).toLocaleString()}
                                                     </p>
                                                 </div>
@@ -1301,13 +1308,13 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                                     </p>
                                                     <p className="font-mono text-sm font-bold">
                                                         {new Date(
-                                                            (order.data.delivery_window as any)
-                                                                .start
+                                                            (
+                                                                order.data.delivery_window as any
+                                                            ).start
                                                         ).toLocaleString()}{" "}
                                                         –{" "}
                                                         {new Date(
-                                                            (order.data.delivery_window as any)
-                                                                .end
+                                                            (order.data.delivery_window as any).end
                                                         ).toLocaleString()}
                                                     </p>
                                                 </div>
@@ -1329,15 +1336,17 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                                     </p>
                                                     <p className="font-mono text-sm">
                                                         {new Date(
-                                                            (order.data
-                                                                .requested_pickup_window as any)
-                                                                .start
+                                                            (
+                                                                order.data
+                                                                    .requested_pickup_window as any
+                                                            ).start
                                                         ).toLocaleString()}{" "}
                                                         –{" "}
                                                         {new Date(
-                                                            (order.data
-                                                                .requested_pickup_window as any)
-                                                                .end
+                                                            (
+                                                                order.data
+                                                                    .requested_pickup_window as any
+                                                            ).end
                                                         ).toLocaleString()}
                                                     </p>
                                                 </div>
@@ -1349,8 +1358,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                                     </p>
                                                     <p className="font-mono text-sm font-bold">
                                                         {new Date(
-                                                            (order.data.pickup_window as any)
-                                                                .start
+                                                            (order.data.pickup_window as any).start
                                                         ).toLocaleString()}{" "}
                                                         –{" "}
                                                         {new Date(

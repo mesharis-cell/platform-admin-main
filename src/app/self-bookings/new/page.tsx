@@ -548,8 +548,9 @@ export default function NewSelfBookingPage() {
                                                         {selectedFamily.name}
                                                     </p>
                                                     <p className="text-xs font-mono text-muted-foreground">
-                                                        {selectedFamily.category?.name || "Uncategorized"} ·{" "}
-                                                        {selectedFamily.available_quantity || 0} /{" "}
+                                                        {selectedFamily.category?.name ||
+                                                            "Uncategorized"}{" "}
+                                                        · {selectedFamily.available_quantity || 0} /{" "}
                                                         {selectedFamily.total_quantity || 0} units
                                                         available
                                                     </p>
@@ -591,7 +592,9 @@ export default function NewSelfBookingPage() {
                                                                 {family.name}
                                                             </p>
                                                             <p className="text-xs text-muted-foreground font-mono">
-                                                                {family.category?.name || "Uncategorized"} ·{" "}
+                                                                {family.category?.name ||
+                                                                    "Uncategorized"}{" "}
+                                                                ·{" "}
                                                                 {family.company?.name ||
                                                                     "No company"}
                                                             </p>

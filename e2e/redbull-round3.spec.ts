@@ -32,11 +32,16 @@ async function addToCart(page: Page) {
     await page.waitForLoadState("networkidle", { timeout: 20_000 }).catch(() => {});
     await page.locator('a[href*="/catalog/assets/"]').first().click();
     await page.waitForLoadState("networkidle", { timeout: 20_000 }).catch(() => {});
-    await page.getByRole("button", { name: /add to cart/i }).first().click();
+    await page
+        .getByRole("button", { name: /add to cart/i })
+        .first()
+        .click();
     await page.waitForTimeout(1500);
 }
 
-test("01 standard checkout step 2 — event dates HIDDEN (flag OFF), delivery+pickup required", async ({ page }) => {
+test("01 standard checkout step 2 — event dates HIDDEN (flag OFF), delivery+pickup required", async ({
+    page,
+}) => {
     await login(page);
     await addToCart(page);
     await page.goto("https://redbull.kadence.ae/checkout", { waitUntil: "domcontentloaded" });
@@ -86,7 +91,10 @@ test("02 self-pickup — no double progress indicator", async ({ page }) => {
     await addToCart(page);
     await page.goto("https://redbull.kadence.ae/checkout", { waitUntil: "domcontentloaded" });
     await page.waitForLoadState("networkidle", { timeout: 20_000 }).catch(() => {});
-    await page.getByText(/I'll collect them myself/i).first().click();
+    await page
+        .getByText(/I'll collect them myself/i)
+        .first()
+        .click();
     await page.waitForTimeout(1500);
     await page.screenshot({ path: `${OUT}/02a-self-pickup-step1-no-5step.png`, fullPage: true });
 
@@ -146,7 +154,10 @@ test("04 checkout — advance through all 5 steps to review", async ({ page }) =
     await page.screenshot({ path: `${OUT}/04a-step3-venue.png`, fullPage: true });
 
     // Step 3: venue info — fill required
-    await page.getByLabel(/venue name/i).first().fill("Burj Park");
+    await page
+        .getByLabel(/venue name/i)
+        .first()
+        .fill("Burj Park");
     // Country select
     const countrySel = page.getByText(/united arab emirates/i).first();
     // try to fill city
@@ -157,7 +168,10 @@ test("04 checkout — advance through all 5 steps to review", async ({ page }) =
         await addressArea.fill("Downtown Dubai, UAE");
     }
     // Try to click city dropdown
-    const cityBtn = page.getByRole("combobox").filter({ hasText: /select city|city/i }).first();
+    const cityBtn = page
+        .getByRole("combobox")
+        .filter({ hasText: /select city|city/i })
+        .first();
     if (await cityBtn.isVisible().catch(() => false)) {
         await cityBtn.click();
         await page.waitForTimeout(400);
@@ -182,7 +196,10 @@ test("04 checkout — advance through all 5 steps to review", async ({ page }) =
 test("05 my-pickups (via nav)", async ({ page }) => {
     await login(page);
     // Click nav link rather than hardcoding URL
-    await page.getByRole("link", { name: /my pickups/i }).first().click();
+    await page
+        .getByRole("link", { name: /my pickups/i })
+        .first()
+        .click();
     await page.waitForLoadState("networkidle", { timeout: 15_000 }).catch(() => {});
     await page.screenshot({ path: `${OUT}/05-my-pickups.png`, fullPage: true });
 });

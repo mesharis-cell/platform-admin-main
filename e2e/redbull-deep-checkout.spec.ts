@@ -23,7 +23,9 @@ async function addItemToCart(page: Page) {
     await page.waitForTimeout(1500);
 }
 
-test("advance through checkout standard-mode to capture date picker + feasibility", async ({ page }) => {
+test("advance through checkout standard-mode to capture date picker + feasibility", async ({
+    page,
+}) => {
     await login(page);
     await addItemToCart(page);
     await page.goto("https://redbull.kadence.ae/checkout", { waitUntil: "domcontentloaded" });
@@ -37,7 +39,10 @@ test("advance through checkout standard-mode to capture date picker + feasibilit
 
     // Step 2: Installation Details — likely has DateTimeRangePicker for event window
     // Try to find and click a date picker trigger
-    const dateButton = page.locator('button').filter({ hasText: /pick.*date|start.*date|event.*start|select.*date|📅/i }).first();
+    const dateButton = page
+        .locator("button")
+        .filter({ hasText: /pick.*date|start.*date|event.*start|select.*date|📅/i })
+        .first();
     if (await dateButton.isVisible().catch(() => false)) {
         await dateButton.click();
         await page.waitForTimeout(1000);
