@@ -5,7 +5,7 @@
  * Distinct from empty state with security-focused messaging and red accents.
  */
 
-import { ShieldX, Lock, AlertTriangle } from "lucide-react";
+import { ShieldX, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
@@ -68,22 +68,6 @@ export function UnauthorizedState({
 
                         {/* Message */}
                         <p className="text-sm text-muted-foreground leading-relaxed">{message}</p>
-
-                        {/* Alert notice */}
-                        <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
-                            <div className="flex items-start gap-3">
-                                <AlertTriangle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
-                                <div className="text-left text-xs text-muted-foreground">
-                                    <p className="font-semibold text-foreground mb-1">
-                                        Security Notice
-                                    </p>
-                                    <p>
-                                        This action has been logged. Repeated unauthorized access
-                                        attempts may result in account suspension.
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
 
                         {/* Actions */}
                         {showBackButton && (

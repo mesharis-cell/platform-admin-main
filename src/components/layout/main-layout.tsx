@@ -305,7 +305,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
         return <>{children}</>;
     }
 
-    if (loading || platformLoading || redirectTarget) {
+    if (loading || platformLoading || redirectTarget || !user) {
         return <LoadingState />;
     }
 

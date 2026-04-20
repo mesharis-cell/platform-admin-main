@@ -54,6 +54,7 @@ import { ConditionHistoryTimeline } from "@/components/conditions/condition-hist
 import { AddNotesDialog } from "@/components/conditions/add-notes-dialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EditAssetDialog, type EditAssetTab } from "@/components/assets/edit-asset-dialog";
+import { AssetStockSection } from "@/components/assets/asset-stock-section";
 import { PrintQrAction } from "@/components/qr/PrintQrAction";
 import { generateQRCode } from "@/lib/services/qr-code";
 
@@ -906,6 +907,13 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                                 )}
                             </CardContent>
                         </Card>
+
+                        {/* Stock Movements (pooled only) */}
+                        <AssetStockSection
+                            assetId={asset.id}
+                            assetName={asset.name}
+                            stockMode={(asset as any).family?.stock_mode}
+                        />
 
                         {/* Version History */}
                         <Card>

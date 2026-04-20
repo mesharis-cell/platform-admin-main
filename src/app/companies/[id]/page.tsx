@@ -142,7 +142,7 @@ export default function CompanyEditPage() {
         }
         setFeatureOverrides(overrides);
         setInitialized(true);
-    }, [company, initialized]);
+    }, [company, initialized, FEATURE_FLAGS.length]);
 
     const handleLogoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -715,36 +715,53 @@ export default function CompanyEditPage() {
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            {FEATURE_FLAGS.map((item) => (
-                                <div
-                                    key={item.key}
-                                    className="flex items-center justify-between gap-4"
-                                >
-                                    <div className="flex-1">
-                                        <p className="text-sm font-medium">{item.label}</p>
-                                        <p className="text-xs text-muted-foreground">
-                                            {item.description}
-                                        </p>
-                                    </div>
-                                    <Select
-                                        value={getFeatureSelectValue(item.key)}
-                                        onValueChange={(value) =>
-                                            handleFeatureChange(item.key, value)
-                                        }
-                                    >
-                                        <SelectTrigger className="w-[180px] font-mono text-xs">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="default">
-                                                Platform Default
-                                            </SelectItem>
-                                            <SelectItem value="enabled">Enabled</SelectItem>
-                                            <SelectItem value="disabled">Disabled</SelectItem>
-                                        </SelectContent>
-                                    </Select>
+                            {FEATURE_FLAGS.length === 0 || !initialized ? (
+                                <div className="space-y-3">
+                                    {[0, 1, 2, 3, 4].map((i) => (
+                                        <div
+                                            key={i}
+                                            className="flex items-center justify-between gap-4"
+                                        >
+                                            <div className="flex-1 space-y-2">
+                                                <Skeleton className="h-4 w-40" />
+                                                <Skeleton className="h-3 w-64" />
+                                            </div>
+                                            <Skeleton className="h-9 w-[180px]" />
+                                        </div>
+                                    ))}
                                 </div>
-                            ))}
+                            ) : (
+                                FEATURE_FLAGS.map((item) => (
+                                    <div
+                                        key={item.key}
+                                        className="flex items-center justify-between gap-4"
+                                    >
+                                        <div className="flex-1">
+                                            <p className="text-sm font-medium">{item.label}</p>
+                                            <p className="text-xs text-muted-foreground">
+                                                {item.description}
+                                            </p>
+                                        </div>
+                                        <Select
+                                            value={getFeatureSelectValue(item.key)}
+                                            onValueChange={(value) =>
+                                                handleFeatureChange(item.key, value)
+                                            }
+                                        >
+                                            <SelectTrigger className="w-[180px] font-mono text-xs">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="default">
+                                                    Platform Default
+                                                </SelectItem>
+                                                <SelectItem value="enabled">Enabled</SelectItem>
+                                                <SelectItem value="disabled">Disabled</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                ))
+                            )}
                         </CardContent>
                     </Card>
 
