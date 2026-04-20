@@ -437,6 +437,18 @@ export const PERMISSION_GROUPS = {
         "inventory:track_status",
         "inventory:update_quantities",
     ],
+    "Stock Movements": [
+        "stock_movements:read",
+        "stock_movements:adjust",
+        "stock_movements:view_page",
+    ],
+    "Self-Pickups": [
+        "self_pickups:create",
+        "self_pickups:read",
+        "self_pickups:approve",
+        "self_pickups:cancel",
+        "self_pickups:export",
+    ],
     "Condition Management": [
         "conditions:update",
         "conditions:view_history",
@@ -484,6 +496,8 @@ export const ADMIN_PERMISSION_GROUPS: Record<string, string[]> = {
         "warehouse_ops_rates:view_page",
         "countries:view_page",
         "cities:view_page",
+        "self_pickups:view_page",
+        "stock_movements:view_page",
     ],
     Authentication: ["auth:login", "auth:reset_password", "auth:*"],
     "User Management": [
@@ -670,6 +684,19 @@ export const ADMIN_PERMISSION_GROUPS: Record<string, string[]> = {
         "self_bookings:cancel",
         "self_bookings:*",
     ],
+    "Self-Pickups": [
+        "self_pickups:create",
+        "self_pickups:read",
+        "self_pickups:approve",
+        "self_pickups:cancel",
+        "self_pickups:export",
+        "self_pickups:*",
+    ],
+    "Stock Movements": [
+        "stock_movements:read",
+        "stock_movements:adjust",
+        "stock_movements:view_page",
+    ],
 };
 
 // Role-specific permission groups for LOGISTICS users
@@ -739,4 +766,12 @@ export const LOGISTICS_PERMISSION_GROUPS: Record<string, string[]> = {
     "Workflow Inbox": ["workflow_requests:read", "workflow_requests:update", "workflow_requests:*"],
     "Attachment Types": ["attachment_types:read", "attachment_types:*"],
     "Service Types": ["service_types:manage", "service_types:*"],
+    "Self-Pickups": [
+        "self_pickups:create",
+        "self_pickups:read",
+        "self_pickups:approve",
+        "self_pickups:cancel",
+        "self_pickups:*",
+    ],
+    "Stock Movements": ["stock_movements:read", "stock_movements:adjust"],
 };
