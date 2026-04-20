@@ -429,15 +429,17 @@ function ManualAdjustmentDialog({
 
     return (
         <Dialog open={open} onOpenChange={handleOpenChange}>
-            <DialogContent className="max-w-lg">
-                <DialogHeader>
-                    <DialogTitle>Manual Stock Adjustment</DialogTitle>
+            <DialogContent className="max-w-lg w-[calc(100vw-1rem)] sm:w-full max-h-[calc(100vh-2rem)] flex flex-col p-4 sm:p-6 gap-0">
+                <DialogHeader className="shrink-0">
+                    <DialogTitle className="text-base sm:text-lg">
+                        Manual Stock Adjustment
+                    </DialogTitle>
                     <p className="text-xs text-muted-foreground font-mono mt-1 truncate">
                         {assetName}
                     </p>
                 </DialogHeader>
 
-                <div className="space-y-5 py-2">
+                <div className="space-y-5 py-4 overflow-y-auto flex-1 -mx-4 sm:-mx-6 px-4 sm:px-6">
                     {/* Direction toggle */}
                     <div className="space-y-2">
                         <Label className="text-xs font-mono uppercase tracking-wide">
@@ -607,14 +609,19 @@ function ManualAdjustmentDialog({
                     )}
                 </div>
 
-                <DialogFooter>
-                    <Button variant="outline" onClick={() => handleOpenChange(false)}>
+                <DialogFooter className="shrink-0 pt-4 border-t border-border/40 flex-col-reverse sm:flex-row gap-2">
+                    <Button
+                        variant="outline"
+                        onClick={() => handleOpenChange(false)}
+                        className="w-full sm:w-auto"
+                    >
                         Cancel
                     </Button>
                     <Button
                         disabled={!canSubmit}
                         onClick={handleConfirm}
                         className={cn(
+                            "w-full sm:w-auto",
                             direction === "IN"
                                 ? "bg-green-600 hover:bg-green-700"
                                 : "bg-red-600 hover:bg-red-700"
