@@ -22,6 +22,7 @@ import Link from "next/link";
 import Image from "next/image";
 import {
     ArrowLeft,
+    ArrowRightLeft,
     Package,
     QrCode,
     Download,
@@ -55,6 +56,7 @@ import { AddNotesDialog } from "@/components/conditions/add-notes-dialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EditAssetDialog, type EditAssetTab } from "@/components/assets/edit-asset-dialog";
 import { AssetStockSection } from "@/components/assets/asset-stock-section";
+import { MoveToFamilyModal } from "@/components/assets/move-to-family-modal";
 import { PrintQrAction } from "@/components/qr/PrintQrAction";
 import { generateQRCode } from "@/lib/services/qr-code";
 
@@ -65,6 +67,7 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [showEditDialog, setShowEditDialog] = useState(false);
     const [editDialogTab, setEditDialogTab] = useState<EditAssetTab>("basic");
+    const [showMoveDialog, setShowMoveDialog] = useState(false);
 
     // Fetch asset
     const { data, isLoading: loading, error } = useAsset(id);
@@ -249,25 +252,35 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
             {/* Header */}
             <div className="border-b border-border bg-card">
                 <div className="max-w-[1400px] mx-auto px-6 py-6">
-                    <div className="flex items-center justify-between mb-4">
-                        <Button variant="ghost" asChild className="font-mono">
-                            <Link
-                                href={
-                                    (asset as any).family_id || (asset as any).familyId
-                                        ? `/assets/families/${(asset as any).family_id || (asset as any).familyId}`
-                                        : "/assets"
+                    <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+                        <Button
+                            variant="ghost"
+                            className="font-mono"
+                            onClick={() => {
+                                // Prefer browser history (respects where the user came from:
+                                // family detail, raw-assets table, search, etc). If no
+                                // history (reload or direct link), fall back to /assets.
+                                if (typeof window !== "undefined" && window.history.length > 1) {
+                                    router.back();
+                                } else {
+                                    router.push("/assets");
                                 }
-                            >
-                                <ArrowLeft className="w-4 h-4 mr-2" />
-                                {(asset as any).family
-                                    ? ((asset as any).family as any)?.name || "Back to Family"
-                                    : (asset as any).family_id || (asset as any).familyId
-                                      ? "Back to Family"
-                                      : "All Families"}
-                            </Link>
+                            }}
+                        >
+                            <ArrowLeft className="w-4 h-4 mr-2" />
+                            Back
                         </Button>
 
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="font-mono"
+                                onClick={() => setShowMoveDialog(true)}
+                            >
+                                <ArrowRightLeft className="w-4 h-4 mr-2" />
+                                Move to Family
+                            </Button>
                             <Button
                                 variant="outline"
                                 size="sm"
@@ -505,134 +518,41 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                             </Card>
                         )}
 
-                        {/* Physical Specifications */}
-                        <Card>
-                            <CardHeader className="flex flex-row items-center justify-between py-3 px-6">
-                                <CardTitle className="font-mono text-sm flex items-center gap-2">
-                                    <Ruler className="w-4 h-4 text-primary" />
-                                    Physical Specifications
-                                </CardTitle>
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="font-mono h-7 px-2 text-xs"
-                                    onClick={() => handleEdit("specs")}
-                                >
-                                    <Edit className="w-3 h-3 mr-1" />
-                                    Edit
-                                </Button>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                    <div className="space-y-1">
-                                        <p className="text-xs text-muted-foreground font-mono">
-                                            Length
-                                        </p>
-                                        <p className="text-sm font-semibold font-mono">
-                                            {asset?.dimensions?.length != null
-                                                ? `${asset.dimensions.length} cm`
-                                                : "—"}
-                                        </p>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <p className="text-xs text-muted-foreground font-mono">
-                                            Width
-                                        </p>
-                                        <p className="text-sm font-semibold font-mono">
-                                            {asset?.dimensions?.width != null
-                                                ? `${asset.dimensions.width} cm`
-                                                : "—"}
-                                        </p>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <p className="text-xs text-muted-foreground font-mono">
-                                            Height
-                                        </p>
-                                        <p className="text-sm font-semibold font-mono">
-                                            {asset?.dimensions?.height != null
-                                                ? `${asset.dimensions.height} cm`
-                                                : "—"}
-                                        </p>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <p className="text-xs text-muted-foreground font-mono">
-                                            Weight
-                                        </p>
-                                        <p className="text-sm font-semibold font-mono">
-                                            {asset?.weight_per_unit} kg
-                                        </p>
-                                    </div>
-                                </div>
+                        {/* Stock Movements — primary, in main column */}
+                        <AssetStockSection
+                            assetId={asset.id}
+                            assetName={asset.name}
+                            stockMode={(asset as any).family?.stock_mode}
+                        />
 
-                                <Separator className="my-4" />
-
-                                <div className="flex items-center justify-between">
-                                    <div className="space-y-1">
-                                        <p className="text-xs text-muted-foreground font-mono">
-                                            Total Volume
-                                        </p>
-                                        <p className="text-lg font-bold font-mono text-primary">
-                                            {asset?.volume_per_unit} m³
-                                        </p>
-                                    </div>
-
-                                    {asset?.handling_tags?.length > 0 && (
-                                        <div className="space-y-2">
-                                            <p className="text-xs text-muted-foreground font-mono">
-                                                Handling Requirements
-                                            </p>
-                                            <div className="flex flex-wrap gap-1 justify-end">
-                                                {asset?.handling_tags?.map((tag) => (
-                                                    <Badge
-                                                        key={tag}
-                                                        variant="outline"
-                                                        className="font-mono text-[10px]"
-                                                    >
-                                                        {tag}
-                                                    </Badge>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            </CardContent>
-                        </Card>
-
-                        {/* Location */}
+                        {/* Condition History — primary, in main column */}
                         <Card>
                             <CardHeader>
-                                <CardTitle className="font-mono text-sm flex items-center gap-2">
-                                    <MapPin className="w-4 h-4 text-primary" />
-                                    Storage Location
-                                </CardTitle>
+                                <div className="flex items-center justify-between gap-2">
+                                    <CardTitle className="flex items-center gap-2 font-mono text-sm">
+                                        <AlertCircle className="h-4 w-4 text-primary" />
+                                        Condition History
+                                    </CardTitle>
+                                    <div className="flex gap-2 shrink-0">
+                                        <AddNotesDialog
+                                            assetId={asset.id}
+                                            assetName={asset.name}
+                                            onSuccess={() => {}}
+                                        />
+                                    </div>
+                                </div>
                             </CardHeader>
-                            <CardContent className="space-y-3">
-                                <div className="flex items-start gap-3">
-                                    <Warehouse className="w-4 h-4 text-muted-foreground mt-0.5" />
-                                    <div className="space-y-1">
-                                        <p className="text-xs text-muted-foreground font-mono">
-                                            Warehouse
-                                        </p>
-                                        <p className="text-sm font-semibold font-mono">
-                                            {asset?.warehouse?.name}
-                                        </p>
-                                        <p className="text-xs text-muted-foreground font-mono">
-                                            {asset?.warehouse?.city}
-                                        </p>
+                            <CardContent>
+                                {asset?.condition_history ? (
+                                    <ConditionHistoryTimeline
+                                        history={asset?.condition_history}
+                                        assetName={asset.name}
+                                    />
+                                ) : (
+                                    <div className="flex items-center justify-center py-8">
+                                        <Skeleton className="h-32 w-full" />
                                     </div>
-                                </div>
-                                <Separator />
-                                <div className="flex items-start gap-3">
-                                    <Box className="w-4 h-4 text-muted-foreground mt-0.5" />
-                                    <div className="space-y-1">
-                                        <p className="text-xs text-muted-foreground font-mono">
-                                            Zone
-                                        </p>
-                                        <p className="text-sm font-semibold font-mono">
-                                            {asset?.zone?.name}
-                                        </p>
-                                    </div>
-                                </div>
+                                )}
                             </CardContent>
                         </Card>
                     </div>
@@ -687,6 +607,111 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                                 ) : (
                                     <div className="aspect-square flex items-center justify-center bg-muted rounded-lg">
                                         <QrCode className="w-12 h-12 text-muted-foreground animate-pulse" />
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+
+                        {/* Storage Location — compact sidebar card */}
+                        <Card>
+                            <CardHeader className="py-3 px-4">
+                                <CardTitle className="font-mono text-xs flex items-center gap-2">
+                                    <MapPin className="w-3.5 h-3.5 text-primary" />
+                                    Storage Location
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-2 px-4 pb-3 pt-0">
+                                <div className="flex items-start gap-2">
+                                    <Warehouse className="w-3.5 h-3.5 text-muted-foreground mt-0.5 shrink-0" />
+                                    <div className="min-w-0">
+                                        <p className="text-[10px] text-muted-foreground font-mono uppercase tracking-wide">
+                                            Warehouse
+                                        </p>
+                                        <p className="text-sm font-semibold font-mono truncate">
+                                            {asset?.warehouse?.name}
+                                        </p>
+                                        {asset?.warehouse?.city && (
+                                            <p className="text-[11px] text-muted-foreground font-mono">
+                                                {asset.warehouse.city}
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="flex items-start gap-2 pt-2 border-t border-border/40">
+                                    <Box className="w-3.5 h-3.5 text-muted-foreground mt-0.5 shrink-0" />
+                                    <div className="min-w-0">
+                                        <p className="text-[10px] text-muted-foreground font-mono uppercase tracking-wide">
+                                            Zone
+                                        </p>
+                                        <p className="text-sm font-semibold font-mono truncate">
+                                            {asset?.zone?.name}
+                                        </p>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Physical Specifications — compact sidebar card */}
+                        <Card>
+                            <CardHeader className="flex flex-row items-center justify-between py-3 px-4">
+                                <CardTitle className="font-mono text-xs flex items-center gap-2">
+                                    <Ruler className="w-3.5 h-3.5 text-primary" />
+                                    Specifications
+                                </CardTitle>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="font-mono h-6 px-2 text-[10px]"
+                                    onClick={() => handleEdit("specs")}
+                                >
+                                    <Edit className="w-3 h-3" />
+                                </Button>
+                            </CardHeader>
+                            <CardContent className="px-4 pb-3 pt-0 space-y-2">
+                                <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+                                    <div>
+                                        <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
+                                            L × W × H
+                                        </p>
+                                        <p className="font-semibold">
+                                            {asset?.dimensions?.length ?? "—"} ×{" "}
+                                            {asset?.dimensions?.width ?? "—"} ×{" "}
+                                            {asset?.dimensions?.height ?? "—"} cm
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
+                                            Weight
+                                        </p>
+                                        <p className="font-semibold">
+                                            {asset?.weight_per_unit ?? "—"} kg
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
+                                            Volume
+                                        </p>
+                                        <p className="font-semibold text-primary">
+                                            {asset?.volume_per_unit ?? "—"} m³
+                                        </p>
+                                    </div>
+                                </div>
+                                {asset?.handling_tags?.length > 0 && (
+                                    <div className="pt-2 border-t border-border/40">
+                                        <p className="text-[10px] text-muted-foreground font-mono uppercase tracking-wide mb-1">
+                                            Handling
+                                        </p>
+                                        <div className="flex flex-wrap gap-1">
+                                            {asset.handling_tags.map((tag) => (
+                                                <Badge
+                                                    key={tag}
+                                                    variant="outline"
+                                                    className="font-mono text-[9px] py-0 h-4"
+                                                >
+                                                    {tag}
+                                                </Badge>
+                                            ))}
+                                        </div>
                                     </div>
                                 )}
                             </CardContent>
@@ -873,37 +898,6 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                                             </p>
                                         </div>
                                     </>
-                                )}
-                            </CardContent>
-                        </Card>
-
-                        {/* Condition History - Phase 12 */}
-                        <Card>
-                            <CardHeader>
-                                <div className="flex items-center justify-between gap-2">
-                                    <CardTitle className="flex items-center gap-2 font-mono text-sm">
-                                        <AlertCircle className="h-4 w-4 text-primary" />
-                                        Condition History
-                                    </CardTitle>
-                                    <div className="flex gap-2 shrink-0">
-                                        <AddNotesDialog
-                                            assetId={asset.id}
-                                            assetName={asset.name}
-                                            onSuccess={() => {}}
-                                        />
-                                    </div>
-                                </div>
-                            </CardHeader>
-                            <CardContent>
-                                {asset?.condition_history ? (
-                                    <ConditionHistoryTimeline
-                                        history={asset?.condition_history}
-                                        assetName={asset.name}
-                                    />
-                                ) : (
-                                    <div className="flex items-center justify-center py-8">
-                                        <Skeleton className="h-32 w-full" />
-                                    </div>
                                 )}
                             </CardContent>
                         </Card>
@@ -1118,15 +1112,6 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                         </Card>
                     </div>
                 </div>
-
-                {/* Stock Movements — full-width prominent section (pooled only) */}
-                <div className="mt-8">
-                    <AssetStockSection
-                        assetId={asset.id}
-                        assetName={asset.name}
-                        stockMode={(asset as any).family?.stock_mode}
-                    />
-                </div>
             </div>
 
             {/* Edit Asset Dialog */}
@@ -1137,6 +1122,17 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                     onOpenChange={setShowEditDialog}
                     defaultTab={editDialogTab}
                     onSuccess={() => setShowEditDialog(false)}
+                />
+            )}
+
+            {/* Move to Family Dialog */}
+            {asset && (
+                <MoveToFamilyModal
+                    open={showMoveDialog}
+                    onOpenChange={setShowMoveDialog}
+                    asset={asset as any}
+                    currentFamilyName={(asset as any).family?.name}
+                    onSuccess={() => setShowMoveDialog(false)}
                 />
             )}
 
