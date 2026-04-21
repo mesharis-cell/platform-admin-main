@@ -448,6 +448,7 @@ export const PERMISSION_GROUPS = {
         "self_pickups:approve",
         "self_pickups:cancel",
         "self_pickups:export",
+        "self_pickups:mark_no_cost",
     ],
     "Condition Management": [
         "conditions:update",
@@ -690,6 +691,7 @@ export const ADMIN_PERMISSION_GROUPS: Record<string, string[]> = {
         "self_pickups:approve",
         "self_pickups:cancel",
         "self_pickups:export",
+        "self_pickups:mark_no_cost",
         "self_pickups:*",
     ],
     "Stock Movements": [
@@ -771,6 +773,7 @@ export const LOGISTICS_PERMISSION_GROUPS: Record<string, string[]> = {
         "self_pickups:read",
         "self_pickups:approve",
         "self_pickups:cancel",
+        "self_pickups:mark_no_cost",
         "self_pickups:*",
     ],
     "Stock Movements": ["stock_movements:read", "stock_movements:adjust"],
