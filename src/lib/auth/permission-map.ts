@@ -110,4 +110,10 @@ export const ADMIN_ACTION_PERMISSIONS = {
     serviceRequestsCreate: "service_requests:create",
     warehouseOpsRatesRead: "warehouse_ops_rates:read",
     warehouseOpsRatesUpdate: "warehouse_ops_rates:update",
+    // Self-pickup actions — mirror orders' naming (SP4 of self-pickup parity sprint).
+    selfPickupsRead: "self_pickups:read",
+    selfPickupsCancel: "self_pickups:cancel",
+    selfPickupsSubmitForApproval: "pricing:review",
+    selfPickupsPricingAdjust: "pricing:adjust",
+    selfPickupsPricingAdminApprove: "pricing:admin_approve",
 } as const;

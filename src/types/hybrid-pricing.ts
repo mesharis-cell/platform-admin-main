@@ -124,6 +124,7 @@ export interface CreateCatalogLineItemRequest {
     order_id?: string;
     inbound_request_id?: string;
     service_request_id?: string;
+    self_pickup_id?: string;
     purpose_type: PurposeType;
     service_type_id: string;
     quantity: number;
@@ -136,6 +137,7 @@ export interface CreateCustomLineItemRequest {
     order_id?: string;
     inbound_request_id?: string;
     service_request_id?: string;
+    self_pickup_id?: string;
     purpose_type: PurposeType;
     description: string;
     category: ServiceCategory;
@@ -171,6 +173,7 @@ export interface PatchEntityLineItemClientVisibilityRequest {
     orderId?: string;
     inboundRequestId?: string;
     serviceRequestId?: string;
+    selfPickupId?: string;
     clientPriceVisible: boolean;
     lineItemIds?: string[];
 }

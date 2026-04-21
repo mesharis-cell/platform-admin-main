@@ -88,8 +88,40 @@ export function useSubmitForApproval() {
 export function useAdminApproveQuote() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: async (id: string) => {
-            const { data } = await apiClient.post(`/operations/v1/self-pickup/${id}/approve`);
+        mutationFn: async ({
+            id,
+            marginOverridePercent,
+            marginOverrideReason,
+        }: {
+            id: string;
+            marginOverridePercent?: number;
+            marginOverrideReason?: string;
+        }) => {
+            const body: Record<string, unknown> = {};
+            if (marginOverridePercent !== undefined) {
+                body.margin_override_percent = marginOverridePercent;
+                body.margin_override_reason = marginOverrideReason;
+            }
+            const { data } = await apiClient.post(`/operations/v1/self-pickup/${id}/approve`, body);
+            return data;
+        },
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ["self-pickups"] });
+            qc.invalidateQueries({ queryKey: ["self-pickup"] });
+            qc.invalidateQueries({ queryKey: ["self-pickup-status-history"] });
+        },
+        onError: throwApiError,
+    });
+}
+
+export function useReturnToLogisticsSelfPickup() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: async ({ id, reason }: { id: string; reason: string }) => {
+            const { data } = await apiClient.post(
+                `/operations/v1/self-pickup/${id}/return-to-logistics`,
+                { reason }
+            );
             return data;
         },
         onSuccess: () => {
@@ -122,9 +154,21 @@ export function useMarkReadyForPickup() {
 export function useCancelSelfPickup() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: async ({ id, reason }: { id: string; reason: string }) => {
+        mutationFn: async ({
+            id,
+            reason,
+            notes,
+            notifyClient,
+        }: {
+            id: string;
+            reason: string;
+            notes?: string;
+            notifyClient?: boolean;
+        }) => {
             const { data } = await apiClient.post(`/operations/v1/self-pickup/${id}/cancel`, {
                 reason,
+                notes,
+                notify_client: notifyClient,
             });
             return data;
         },
