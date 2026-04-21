@@ -4,7 +4,16 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Eye, ArrowRightLeft, MoreVertical, Package, Search, QrCode, MapPin } from "lucide-react";
+import {
+    Eye,
+    ArrowRightLeft,
+    MoreVertical,
+    Package,
+    Search,
+    QrCode,
+    MapPin,
+    Calendar,
+} from "lucide-react";
 import { useAssets } from "@/hooks/use-assets";
 import { useCompanies } from "@/hooks/use-companies";
 import { useAssetCategories } from "@/hooks/use-asset-categories";
@@ -47,6 +56,13 @@ const STATUS_STYLES: Record<string, string> = {
 const TYPE_STYLES: Record<string, string> = {
     INDIVIDUAL: "bg-sky-500/10 text-sky-700 border-sky-500/20",
     BATCH: "bg-orange-500/10 text-orange-700 border-orange-500/20",
+};
+
+const formatCreated = (iso?: string | Date | null) => {
+    if (!iso) return "\u2014";
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return "\u2014";
+    return d.toLocaleDateString(undefined, { day: "2-digit", month: "short" });
 };
 
 interface AssetTableProps {
@@ -260,7 +276,7 @@ export function AssetTable({ companyFilter }: AssetTableProps) {
                 <Card>
                     <CardContent className="p-0">
                         {/* Table header */}
-                        <div className="hidden xl:grid grid-cols-[minmax(0,2fr)_minmax(0,1.2fr)_minmax(0,0.8fr)_minmax(0,1fr)_minmax(0,1fr)_80px_80px_80px_100px_120px_48px] gap-2 px-4 py-2 border-b text-[10px] font-mono font-semibold text-muted-foreground uppercase tracking-wider">
+                        <div className="hidden xl:grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,0.8fr)_minmax(0,1fr)_minmax(0,1fr)_80px_80px_80px_100px_90px_120px_48px] gap-2 px-4 py-2 border-b text-[10px] font-mono font-semibold text-muted-foreground uppercase tracking-wider">
                             <div>Name</div>
                             <div>Family</div>
                             <div>Category</div>
@@ -270,6 +286,7 @@ export function AssetTable({ companyFilter }: AssetTableProps) {
                             <div>Status</div>
                             <div>Type</div>
                             <div>Qty</div>
+                            <div>Created</div>
                             <div>QR</div>
                             <div />
                         </div>
@@ -279,7 +296,7 @@ export function AssetTable({ companyFilter }: AssetTableProps) {
                             {assets.map((asset) => (
                                 <div
                                     key={asset.id}
-                                    className="group xl:grid xl:grid-cols-[minmax(0,2fr)_minmax(0,1.2fr)_minmax(0,0.8fr)_minmax(0,1fr)_minmax(0,1fr)_80px_80px_80px_100px_120px_48px] gap-2 px-4 py-2.5 items-center transition-colors hover:bg-muted/50 flex flex-wrap"
+                                    className="group xl:grid xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,0.8fr)_minmax(0,1fr)_minmax(0,1fr)_80px_80px_80px_100px_90px_120px_48px] gap-2 px-4 py-2.5 items-center transition-colors hover:bg-muted/50 flex flex-wrap"
                                 >
                                     {/* Name */}
                                     <Link
@@ -388,6 +405,14 @@ export function AssetTable({ companyFilter }: AssetTableProps) {
                                         </span>
                                         <span className="text-muted-foreground">
                                             /{asset.total_quantity}
+                                        </span>
+                                    </div>
+
+                                    {/* Created */}
+                                    <div className="flex items-center gap-1 font-mono text-[11px] text-muted-foreground">
+                                        <Calendar className="h-3 w-3 shrink-0" />
+                                        <span className="truncate">
+                                            {formatCreated(asset.created_at)}
                                         </span>
                                     </div>
 
