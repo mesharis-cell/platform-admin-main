@@ -116,4 +116,5 @@ export const ADMIN_ACTION_PERMISSIONS = {
     selfPickupsSubmitForApproval: "pricing:review",
     selfPickupsPricingAdjust: "pricing:adjust",
     selfPickupsPricingAdminApprove: "pricing:admin_approve",
+    selfPickupsMarkNoCost: "self_pickups:mark_no_cost",
 } as const;

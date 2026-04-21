@@ -21,10 +21,13 @@ import { WorkflowRequestsCard } from "@/components/shared/workflow-requests-card
 import { EntityAttachmentsCard } from "@/components/shared/entity-attachments-card";
 import { SelfPickupPendingApprovalSection } from "./hybrid-sections";
 import { CancelSelfPickupModal } from "@/components/self-pickups/CancelSelfPickupModal";
+import { MarkAsNoCostButton } from "@/components/self-pickups/MarkAsNoCostButton";
 import { OrderLineItemsList } from "@/components/orders/OrderLineItemsList";
 import { useToken } from "@/lib/auth/use-token";
 import { hasPermission } from "@/lib/auth/permissions";
 import { ADMIN_ACTION_PERMISSIONS } from "@/lib/auth/permission-map";
+
+const MARK_NO_COST_STATUSES = ["PRICING_REVIEW", "PENDING_APPROVAL"];
 
 const CANCELLABLE_STATUSES = [
     "SUBMITTED",
@@ -85,6 +88,7 @@ export default function SelfPickupDetailPage({ params }: { params: Promise<{ id:
     const canCancel = hasPermission(user, ADMIN_ACTION_PERMISSIONS.selfPickupsCancel);
     // Reuse orders' add_job_number permission (pricing/approval context).
     const canEditJobNumber = hasPermission(user, ADMIN_ACTION_PERMISSIONS.ordersAddJobNumber);
+    const canMarkNoCost = hasPermission(user, ADMIN_ACTION_PERMISSIONS.selfPickupsMarkNoCost);
 
     const handleJobNumberSave = async () => {
         if (!pickup) return;
@@ -142,6 +146,14 @@ export default function SelfPickupDetailPage({ params }: { params: Promise<{ id:
                             <Badge variant="outline" className={statusConfig.color}>
                                 {statusConfig.label}
                             </Badge>
+                            {pickup.pricing_mode === "NO_COST" && (
+                                <Badge
+                                    variant="secondary"
+                                    className="bg-neutral-500/10 text-neutral-700 border-neutral-400/60 font-mono text-xs"
+                                >
+                                    NO COST
+                                </Badge>
+                            )}
                         </div>
 
                         <div className="flex gap-2">
@@ -160,6 +172,16 @@ export default function SelfPickupDetailPage({ params }: { params: Promise<{ id:
                                     Submit for Approval
                                 </Button>
                             )}
+                            {canMarkNoCost &&
+                                pickup.pricing_mode === "STANDARD" &&
+                                MARK_NO_COST_STATUSES.includes(pickup.self_pickup_status) && (
+                                    <MarkAsNoCostButton
+                                        entityType="SELF_PICKUP"
+                                        entityId={pickup.id}
+                                        entityIdReadable={pickup.self_pickup_id}
+                                        onSuccess={() => refetch()}
+                                    />
+                                )}
                             {pickup.self_pickup_status === "CONFIRMED" && (
                                 <Button
                                     onClick={() => {
@@ -277,10 +299,26 @@ export default function SelfPickupDetailPage({ params }: { params: Promise<{ id:
                             </CardContent>
                         </Card>
 
-                        {/* Pricing Review + Approve + Line Items (PENDING_APPROVAL only).
-                        For earlier statuses (PRICING_REVIEW), show bare line items list
-                        without the pricing/approve card. */}
-                        {pickup.self_pickup_status === "PENDING_APPROVAL" ? (
+                        {/* Pricing / line-items area.
+                            NO_COST pickups: hide the entire pricing + line-items
+                            surface and render a single neutral info card. Line
+                            items are voided server-side + backend rejects any
+                            new inserts (getLineItemEditability choke point).
+                            STANDARD pickups: behave as before — pricing-approve
+                            card on PENDING_APPROVAL, bare line items otherwise. */}
+                        {pickup.pricing_mode === "NO_COST" ? (
+                            <Card className="border-neutral-400/40 bg-neutral-50/50">
+                                <CardHeader>
+                                    <CardTitle className="text-base text-neutral-700">
+                                        Approved at No Cost
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="text-sm text-muted-foreground">
+                                    This pickup is approved at no cost. Line items and pricing are
+                                    disabled.
+                                </CardContent>
+                            </Card>
+                        ) : pickup.self_pickup_status === "PENDING_APPROVAL" ? (
                             <SelfPickupPendingApprovalSection
                                 pickup={pickup}
                                 selfPickupId={pickup.id}
