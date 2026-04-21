@@ -122,287 +122,305 @@ export default function SelfPickupDetailPage({ params }: { params: Promise<{ id:
     const company = pickup.company as any;
 
     return (
-        <div className="space-y-6">
-            {/* Sticky Header */}
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                    <Link href="/self-pickups">
-                        <Button variant="ghost" size="icon">
-                            <ArrowLeft className="h-4 w-4" />
-                        </Button>
-                    </Link>
-                    <div>
-                        <h1 className="text-2xl font-bold">{pickup.self_pickup_id}</h1>
-                        <p className="text-sm text-muted-foreground">{company?.name || ""}</p>
-                    </div>
-                    <Badge variant="outline" className={statusConfig.color}>
-                        {statusConfig.label}
-                    </Badge>
-                </div>
+        <div className="min-h-screen bg-background">
+            {/* Sticky Header — mirrors admin orders detail container pattern */}
+            <div className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
+                <div className="container mx-auto px-6 py-4">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                            <Link href="/self-pickups">
+                                <Button variant="ghost" size="icon">
+                                    <ArrowLeft className="h-4 w-4" />
+                                </Button>
+                            </Link>
+                            <div>
+                                <h1 className="text-2xl font-bold">{pickup.self_pickup_id}</h1>
+                                <p className="text-sm text-muted-foreground">
+                                    {company?.name || ""}
+                                </p>
+                            </div>
+                            <Badge variant="outline" className={statusConfig.color}>
+                                {statusConfig.label}
+                            </Badge>
+                        </div>
 
-                <div className="flex gap-2">
-                    {pickup.self_pickup_status === "PRICING_REVIEW" && (
-                        <Button
-                            onClick={() => {
-                                submitForApproval.mutate(id, {
-                                    onSuccess: () => toast.success("Submitted for approval"),
-                                    onError: (e: unknown) => toast.error((e as Error).message),
-                                });
-                            }}
-                            disabled={submitForApproval.isPending}
-                        >
-                            Submit for Approval
-                        </Button>
-                    )}
-                    {pickup.self_pickup_status === "CONFIRMED" && (
-                        <Button
-                            onClick={() => {
-                                markReady.mutate(id, {
-                                    onSuccess: () => toast.success("Marked as ready for pickup"),
-                                    onError: (e: unknown) => toast.error((e as Error).message),
-                                });
-                            }}
-                            disabled={markReady.isPending}
-                        >
-                            Ready for Pickup
-                        </Button>
-                    )}
-                    {canCancel && CANCELLABLE_STATUSES.includes(pickup.self_pickup_status) && (
-                        <Button variant="destructive" onClick={() => setCancelOpen(true)}>
-                            Cancel Pickup
-                        </Button>
-                    )}
+                        <div className="flex gap-2">
+                            {pickup.self_pickup_status === "PRICING_REVIEW" && (
+                                <Button
+                                    onClick={() => {
+                                        submitForApproval.mutate(id, {
+                                            onSuccess: () =>
+                                                toast.success("Submitted for approval"),
+                                            onError: (e: unknown) =>
+                                                toast.error((e as Error).message),
+                                        });
+                                    }}
+                                    disabled={submitForApproval.isPending}
+                                >
+                                    Submit for Approval
+                                </Button>
+                            )}
+                            {pickup.self_pickup_status === "CONFIRMED" && (
+                                <Button
+                                    onClick={() => {
+                                        markReady.mutate(id, {
+                                            onSuccess: () =>
+                                                toast.success("Marked as ready for pickup"),
+                                            onError: (e: unknown) =>
+                                                toast.error((e as Error).message),
+                                        });
+                                    }}
+                                    disabled={markReady.isPending}
+                                >
+                                    Ready for Pickup
+                                </Button>
+                            )}
+                            {canCancel &&
+                                CANCELLABLE_STATUSES.includes(pickup.self_pickup_status) && (
+                                    <Button
+                                        variant="destructive"
+                                        onClick={() => setCancelOpen(true)}
+                                    >
+                                        Cancel Pickup
+                                    </Button>
+                                )}
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            {/* Main content grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Main column */}
-                <div className="lg:col-span-2 space-y-6">
-                    {/* Collector Details */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-base">Collector Details</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
-                            <div className="flex items-center gap-2">
-                                <User className="h-4 w-4 text-muted-foreground" />
-                                <span className="font-medium">{pickup.collector_name}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <Phone className="h-4 w-4 text-muted-foreground" />
-                                <span>{pickup.collector_phone}</span>
-                            </div>
-                            {pickup.collector_email && (
+            <div className="container mx-auto px-6 py-8 space-y-6">
+                {/* Main content grid */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* Main column */}
+                    <div className="lg:col-span-2 space-y-6">
+                        {/* Collector Details */}
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="text-base">Collector Details</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-3">
                                 <div className="flex items-center gap-2">
-                                    <Mail className="h-4 w-4 text-muted-foreground" />
-                                    <span>{pickup.collector_email}</span>
+                                    <User className="h-4 w-4 text-muted-foreground" />
+                                    <span className="font-medium">{pickup.collector_name}</span>
                                 </div>
-                            )}
-                            {pickupWindow && (
                                 <div className="flex items-center gap-2">
-                                    <Clock className="h-4 w-4 text-muted-foreground" />
-                                    <span>
-                                        Pickup: {new Date(pickupWindow.start).toLocaleString()} -{" "}
-                                        {new Date(pickupWindow.end).toLocaleString()}
-                                    </span>
+                                    <Phone className="h-4 w-4 text-muted-foreground" />
+                                    <span>{pickup.collector_phone}</span>
                                 </div>
-                            )}
-                            {pickup.expected_return_at && (
-                                <div className="flex items-center gap-2">
-                                    <Clock className="h-4 w-4 text-muted-foreground" />
-                                    <span>
-                                        Expected return:{" "}
-                                        {new Date(pickup.expected_return_at).toLocaleString()}
-                                    </span>
-                                </div>
-                            )}
-                            {pickup.notes && (
-                                <p className="text-sm text-muted-foreground mt-2">{pickup.notes}</p>
-                            )}
-                        </CardContent>
-                    </Card>
-
-                    {/* Workflows */}
-                    <WorkflowRequestsCard entityType="SELF_PICKUP" entityId={pickup.id} />
-
-                    {/* Attachments */}
-                    <EntityAttachmentsCard entityType="SELF_PICKUP" entityId={pickup.id} />
-
-                    {/* Pickup Items */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-base">
-                                Pickup Items ({items.length})
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-3">
-                                {items.map((item: any) => (
-                                    <div
-                                        key={item.id}
-                                        className="flex items-center justify-between p-3 border rounded-lg"
-                                    >
-                                        <div>
-                                            <p className="font-medium">{item.asset_name}</p>
-                                            <p className="text-sm text-muted-foreground">
-                                                Qty: {item.quantity} | Vol: {item.total_volume} m3 |
-                                                Wt: {item.total_weight} kg
-                                            </p>
-                                        </div>
-                                        <Badge variant="outline">
-                                            <Package className="h-3 w-3 mr-1" />
-                                            {item.quantity}
-                                        </Badge>
+                                {pickup.collector_email && (
+                                    <div className="flex items-center gap-2">
+                                        <Mail className="h-4 w-4 text-muted-foreground" />
+                                        <span>{pickup.collector_email}</span>
                                     </div>
-                                ))}
-                            </div>
-                        </CardContent>
-                    </Card>
+                                )}
+                                {pickupWindow && (
+                                    <div className="flex items-center gap-2">
+                                        <Clock className="h-4 w-4 text-muted-foreground" />
+                                        <span>
+                                            Pickup: {new Date(pickupWindow.start).toLocaleString()}{" "}
+                                            - {new Date(pickupWindow.end).toLocaleString()}
+                                        </span>
+                                    </div>
+                                )}
+                                {pickup.expected_return_at && (
+                                    <div className="flex items-center gap-2">
+                                        <Clock className="h-4 w-4 text-muted-foreground" />
+                                        <span>
+                                            Expected return:{" "}
+                                            {new Date(pickup.expected_return_at).toLocaleString()}
+                                        </span>
+                                    </div>
+                                )}
+                                {pickup.notes && (
+                                    <p className="text-sm text-muted-foreground mt-2">
+                                        {pickup.notes}
+                                    </p>
+                                )}
+                            </CardContent>
+                        </Card>
 
-                    {/* Pricing Review + Approve + Line Items (PENDING_APPROVAL only).
+                        {/* Workflows */}
+                        <WorkflowRequestsCard entityType="SELF_PICKUP" entityId={pickup.id} />
+
+                        {/* Attachments */}
+                        <EntityAttachmentsCard entityType="SELF_PICKUP" entityId={pickup.id} />
+
+                        {/* Pickup Items */}
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="text-base">
+                                    Pickup Items ({items.length})
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="space-y-3">
+                                    {items.map((item: any) => (
+                                        <div
+                                            key={item.id}
+                                            className="flex items-center justify-between p-3 border rounded-lg"
+                                        >
+                                            <div>
+                                                <p className="font-medium">{item.asset_name}</p>
+                                                <p className="text-sm text-muted-foreground">
+                                                    Qty: {item.quantity} | Vol: {item.total_volume}{" "}
+                                                    m3 | Wt: {item.total_weight} kg
+                                                </p>
+                                            </div>
+                                            <Badge variant="outline">
+                                                <Package className="h-3 w-3 mr-1" />
+                                                {item.quantity}
+                                            </Badge>
+                                        </div>
+                                    ))}
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Pricing Review + Approve + Line Items (PENDING_APPROVAL only).
                         For earlier statuses (PRICING_REVIEW), show bare line items list
                         without the pricing/approve card. */}
-                    {pickup.self_pickup_status === "PENDING_APPROVAL" ? (
-                        <SelfPickupPendingApprovalSection
-                            pickup={pickup}
-                            selfPickupId={pickup.id}
-                            onRefresh={() => refetch()}
-                        />
-                    ) : (
-                        <OrderLineItemsList
-                            targetId={pickup.id}
-                            purposeType="SELF_PICKUP"
-                            canManage={pickup.self_pickup_status === "PRICING_REVIEW"}
-                        />
-                    )}
-                </div>
+                        {pickup.self_pickup_status === "PENDING_APPROVAL" ? (
+                            <SelfPickupPendingApprovalSection
+                                pickup={pickup}
+                                selfPickupId={pickup.id}
+                                onRefresh={() => refetch()}
+                            />
+                        ) : (
+                            <OrderLineItemsList
+                                targetId={pickup.id}
+                                purposeType="SELF_PICKUP"
+                                canManage={pickup.self_pickup_status === "PRICING_REVIEW"}
+                            />
+                        )}
+                    </div>
 
-                {/* Sidebar: Job Number + PO Number + Status History */}
-                <div className="space-y-6">
-                    {/* Job Number Card (mirrors orders detail) */}
-                    <Card className="border-2 border-primary/20 bg-primary/5">
-                        <CardContent className="pt-6">
-                            <div className="flex items-center justify-between">
-                                <div className="flex-1">
-                                    <Label className="font-mono text-xs text-muted-foreground">
-                                        PLATFORM JOB NUMBER
-                                    </Label>
-                                    {isEditingJobNumber && canEditJobNumber ? (
-                                        <Input
-                                            value={jobNumber}
-                                            onChange={(e) => setJobNumber(e.target.value)}
-                                            placeholder="JOB-XXXX"
-                                            className="mt-2 font-mono"
-                                        />
-                                    ) : (
-                                        <p className="mt-2 font-mono text-lg font-bold">
-                                            {jobNumber || "—"}
-                                        </p>
-                                    )}
-                                </div>
-                                <div className="flex items-center justify-center gap-2">
-                                    {isEditingJobNumber && canEditJobNumber ? (
-                                        <>
+                    {/* Sidebar: Job Number + PO Number + Status History */}
+                    <div className="space-y-6">
+                        {/* Job Number Card (mirrors orders detail) */}
+                        <Card className="border-2 border-primary/20 bg-primary/5">
+                            <CardContent className="pt-6">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex-1">
+                                        <Label className="font-mono text-xs text-muted-foreground">
+                                            PLATFORM JOB NUMBER
+                                        </Label>
+                                        {isEditingJobNumber && canEditJobNumber ? (
+                                            <Input
+                                                value={jobNumber}
+                                                onChange={(e) => setJobNumber(e.target.value)}
+                                                placeholder="JOB-XXXX"
+                                                className="mt-2 font-mono"
+                                            />
+                                        ) : (
+                                            <p className="mt-2 font-mono text-lg font-bold">
+                                                {jobNumber || "—"}
+                                            </p>
+                                        )}
+                                    </div>
+                                    <div className="flex items-center justify-center gap-2">
+                                        {isEditingJobNumber && canEditJobNumber ? (
+                                            <>
+                                                <Button
+                                                    size="icon"
+                                                    variant="ghost"
+                                                    onClick={() => setIsEditingJobNumber(false)}
+                                                >
+                                                    <X className="h-4 w-4" />
+                                                </Button>
+                                                <Button
+                                                    size="icon"
+                                                    disabled={updateJobNumber.isPending}
+                                                    onClick={handleJobNumberSave}
+                                                >
+                                                    {updateJobNumber.isPending ? (
+                                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                                    ) : (
+                                                        <Save className="h-4 w-4" />
+                                                    )}
+                                                </Button>
+                                            </>
+                                        ) : canEditJobNumber ? (
                                             <Button
                                                 size="icon"
                                                 variant="ghost"
-                                                onClick={() => setIsEditingJobNumber(false)}
+                                                onClick={() => setIsEditingJobNumber(true)}
                                             >
-                                                <X className="h-4 w-4" />
+                                                <Edit className="h-4 w-4" />
                                             </Button>
-                                            <Button
-                                                size="icon"
-                                                disabled={updateJobNumber.isPending}
-                                                onClick={handleJobNumberSave}
-                                            >
-                                                {updateJobNumber.isPending ? (
-                                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                                ) : (
-                                                    <Save className="h-4 w-4" />
-                                                )}
-                                            </Button>
-                                        </>
-                                    ) : canEditJobNumber ? (
-                                        <Button
-                                            size="icon"
-                                            variant="ghost"
-                                            onClick={() => setIsEditingJobNumber(true)}
-                                        >
-                                            <Edit className="h-4 w-4" />
-                                        </Button>
-                                    ) : null}
+                                        ) : null}
+                                    </div>
                                 </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {pickup.po_number && (
-                        <Card className="border border-border/60 bg-card/60">
-                            <CardContent className="pt-6">
-                                <Label className="font-mono text-xs text-muted-foreground">
-                                    PO NUMBER
-                                </Label>
-                                <p className="mt-2 font-mono text-lg font-bold">
-                                    {pickup.po_number}
-                                </p>
                             </CardContent>
                         </Card>
-                    )}
 
-                    {pickup.decline_reason && (
-                        <Card className="border border-destructive/30 bg-destructive/5">
-                            <CardContent className="pt-6">
-                                <Label className="font-mono text-xs text-destructive">
-                                    DECLINE REASON
-                                </Label>
-                                <p className="mt-2 text-sm">{pickup.decline_reason}</p>
-                            </CardContent>
-                        </Card>
-                    )}
-
-                    <Card className="sticky top-6">
-                        <CardHeader>
-                            <CardTitle className="text-base">Status History</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-4">
-                                {history.map((entry: any) => {
-                                    const entryConfig = PICKUP_STATUS_CONFIG[entry.status] || {
-                                        label: entry.status,
-                                        color: "bg-gray-100 text-gray-700",
-                                    };
-                                    return (
-                                        <div key={entry.id} className="flex gap-3 items-start">
-                                            <div className="w-2 h-2 rounded-full bg-primary mt-2 shrink-0" />
-                                            <div className="flex-1">
-                                                <Badge
-                                                    variant="outline"
-                                                    className={`text-xs ${entryConfig.color}`}
-                                                >
-                                                    {entryConfig.label}
-                                                </Badge>
-                                                {entry.notes && (
-                                                    <p className="text-xs text-muted-foreground mt-1">
-                                                        {entry.notes}
-                                                    </p>
-                                                )}
-                                                <p className="text-xs text-muted-foreground">
-                                                    {entry.updated_by_name} -{" "}
-                                                    {new Date(entry.timestamp).toLocaleString()}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                                {history.length === 0 && (
-                                    <p className="text-sm text-muted-foreground text-center py-4">
-                                        No status history yet
+                        {pickup.po_number && (
+                            <Card className="border border-border/60 bg-card/60">
+                                <CardContent className="pt-6">
+                                    <Label className="font-mono text-xs text-muted-foreground">
+                                        PO NUMBER
+                                    </Label>
+                                    <p className="mt-2 font-mono text-lg font-bold">
+                                        {pickup.po_number}
                                     </p>
-                                )}
-                            </div>
-                        </CardContent>
-                    </Card>
+                                </CardContent>
+                            </Card>
+                        )}
+
+                        {pickup.decline_reason && (
+                            <Card className="border border-destructive/30 bg-destructive/5">
+                                <CardContent className="pt-6">
+                                    <Label className="font-mono text-xs text-destructive">
+                                        DECLINE REASON
+                                    </Label>
+                                    <p className="mt-2 text-sm">{pickup.decline_reason}</p>
+                                </CardContent>
+                            </Card>
+                        )}
+
+                        <Card className="sticky top-6">
+                            <CardHeader>
+                                <CardTitle className="text-base">Status History</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="space-y-4">
+                                    {history.map((entry: any) => {
+                                        const entryConfig = PICKUP_STATUS_CONFIG[entry.status] || {
+                                            label: entry.status,
+                                            color: "bg-gray-100 text-gray-700",
+                                        };
+                                        return (
+                                            <div key={entry.id} className="flex gap-3 items-start">
+                                                <div className="w-2 h-2 rounded-full bg-primary mt-2 shrink-0" />
+                                                <div className="flex-1">
+                                                    <Badge
+                                                        variant="outline"
+                                                        className={`text-xs ${entryConfig.color}`}
+                                                    >
+                                                        {entryConfig.label}
+                                                    </Badge>
+                                                    {entry.notes && (
+                                                        <p className="text-xs text-muted-foreground mt-1">
+                                                            {entry.notes}
+                                                        </p>
+                                                    )}
+                                                    <p className="text-xs text-muted-foreground">
+                                                        {entry.updated_by_name} -{" "}
+                                                        {new Date(entry.timestamp).toLocaleString()}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                    {history.length === 0 && (
+                                        <p className="text-sm text-muted-foreground text-center py-4">
+                                            No status history yet
+                                        </p>
+                                    )}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
                 </div>
             </div>
 
