@@ -7,7 +7,6 @@ import {
     useAdminSelfPickupStatusHistory,
     useSubmitForApproval,
     useMarkReadyForPickup,
-    useOpsTriggerSelfPickupReturn,
     useUpdateSelfPickupJobNumber,
 } from "@/hooks/use-self-pickups";
 import { Badge } from "@/components/ui/badge";
@@ -72,7 +71,6 @@ export default function SelfPickupDetailPage({ params }: { params: Promise<{ id:
     const { data: historyData } = useAdminSelfPickupStatusHistory(id);
     const submitForApproval = useSubmitForApproval();
     const markReady = useMarkReadyForPickup();
-    const triggerReturnOps = useOpsTriggerSelfPickupReturn();
     const updateJobNumber = useUpdateSelfPickupJobNumber();
 
     const [cancelOpen, setCancelOpen] = useState(false);
@@ -201,20 +199,6 @@ export default function SelfPickupDetailPage({ params }: { params: Promise<{ id:
                                     disabled={markReady.isPending}
                                 >
                                     Ready for Pickup
-                                </Button>
-                            )}
-                            {pickup.self_pickup_status === "PICKED_UP" && (
-                                <Button
-                                    onClick={() =>
-                                        triggerReturnOps.mutate(id, {
-                                            onSuccess: () => toast.success("Return initiated"),
-                                            onError: (e: unknown) =>
-                                                toast.error((e as Error).message),
-                                        })
-                                    }
-                                    disabled={triggerReturnOps.isPending}
-                                >
-                                    Start Return
                                 </Button>
                             )}
                             {canCancel &&
