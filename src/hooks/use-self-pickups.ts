@@ -133,6 +133,27 @@ export function useReturnToLogisticsSelfPickup() {
     });
 }
 
+// Ops-triggered return — admin or logistics can flip PICKED_UP → AWAITING_RETURN
+// when the client hasn't clicked "Start Return" on their portal. Matches the
+// /operations/v1/self-pickup/:id/trigger-return ADMIN+LOGISTICS route.
+export function useOpsTriggerSelfPickupReturn() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: async (id: string) => {
+            const { data } = await apiClient.post(
+                `/operations/v1/self-pickup/${id}/trigger-return`
+            );
+            return data;
+        },
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ["self-pickups"] });
+            qc.invalidateQueries({ queryKey: ["self-pickup"] });
+            qc.invalidateQueries({ queryKey: ["self-pickup-status-history"] });
+        },
+        onError: throwApiError,
+    });
+}
+
 export function useMarkReadyForPickup() {
     const qc = useQueryClient();
     return useMutation({
