@@ -129,34 +129,38 @@ export default function SelfPickupDetailPage({ params }: { params: Promise<{ id:
         <div className="min-h-screen bg-background">
             {/* Sticky Header — mirrors admin orders detail container pattern */}
             <div className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
-                <div className="container mx-auto px-6 py-4">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
+                <div className="container mx-auto px-4 sm:px-6 py-4">
+                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                        <div className="flex items-center gap-3 min-w-0">
                             <Link href="/self-pickups">
-                                <Button variant="ghost" size="icon">
+                                <Button variant="ghost" size="icon" className="shrink-0">
                                     <ArrowLeft className="h-4 w-4" />
                                 </Button>
                             </Link>
-                            <div>
-                                <h1 className="text-2xl font-bold">{pickup.self_pickup_id}</h1>
-                                <p className="text-sm text-muted-foreground">
+                            <div className="min-w-0">
+                                <h1 className="text-xl sm:text-2xl font-bold truncate">
+                                    {pickup.self_pickup_id}
+                                </h1>
+                                <p className="text-sm text-muted-foreground truncate">
                                     {company?.name || ""}
                                 </p>
                             </div>
-                            <Badge variant="outline" className={statusConfig.color}>
-                                {statusConfig.label}
-                            </Badge>
-                            {pickup.pricing_mode === "NO_COST" && (
-                                <Badge
-                                    variant="secondary"
-                                    className="bg-neutral-500/10 text-neutral-700 border-neutral-400/60 font-mono text-xs"
-                                >
-                                    NO COST
+                            <div className="flex flex-wrap items-center gap-2 ml-auto md:ml-2">
+                                <Badge variant="outline" className={statusConfig.color}>
+                                    {statusConfig.label}
                                 </Badge>
-                            )}
+                                {pickup.pricing_mode === "NO_COST" && (
+                                    <Badge
+                                        variant="secondary"
+                                        className="bg-neutral-500/10 text-neutral-700 border-neutral-400/60 font-mono text-xs"
+                                    >
+                                        NO COST
+                                    </Badge>
+                                )}
+                            </div>
                         </div>
 
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
                             {pickup.self_pickup_status === "PRICING_REVIEW" && (
                                 <Button
                                     onClick={() => {
