@@ -17,6 +17,7 @@ export interface PlatformConfig {
     vat_percent?: number;
     feasibility?: {
         minimum_lead_hours?: number;
+        sp_minimum_lead_hours?: number;
         exclude_weekends?: boolean;
         weekend_days?: number[];
         timezone?: string;
