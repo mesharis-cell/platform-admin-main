@@ -297,24 +297,67 @@ export default function SelfPickupDetailPage({ params }: { params: Promise<{ id:
                             </CardHeader>
                             <CardContent>
                                 <div className="space-y-3">
-                                    {items.map((item: any) => (
-                                        <div
-                                            key={item.id}
-                                            className="flex items-center justify-between p-3 border rounded-lg"
-                                        >
-                                            <div>
-                                                <p className="font-medium">{item.asset_name}</p>
-                                                <p className="text-sm text-muted-foreground">
-                                                    Qty: {item.quantity} | Vol: {item.total_volume}{" "}
-                                                    m3 | Wt: {item.total_weight} kg
-                                                </p>
+                                    {items.map((item: any) => {
+                                        const scanned = item.scanned_quantity;
+                                        const isSkipped = item.skipped === true;
+                                        const isPartial =
+                                            scanned !== null &&
+                                            scanned !== undefined &&
+                                            scanned > 0 &&
+                                            scanned < item.quantity;
+                                        const isMidflow = item.added_midflow === true;
+                                        return (
+                                            <div
+                                                key={item.id}
+                                                className="flex items-center justify-between p-3 border rounded-lg"
+                                            >
+                                                <div className="min-w-0">
+                                                    <p className="font-medium flex items-center gap-2">
+                                                        <span className="truncate">
+                                                            {item.asset_name}
+                                                        </span>
+                                                        {isMidflow && (
+                                                            <Badge
+                                                                variant="outline"
+                                                                className="text-[10px] font-mono bg-neutral-100 border-neutral-300 text-neutral-700"
+                                                            >
+                                                                ADDED AT HANDOVER
+                                                            </Badge>
+                                                        )}
+                                                        {isSkipped && (
+                                                            <Badge
+                                                                variant="outline"
+                                                                className="text-[10px] font-mono bg-red-50 border-red-300 text-red-700"
+                                                            >
+                                                                NOT COLLECTED
+                                                            </Badge>
+                                                        )}
+                                                        {isPartial && (
+                                                            <Badge
+                                                                variant="outline"
+                                                                className="text-[10px] font-mono bg-amber-50 border-amber-300 text-amber-700"
+                                                            >
+                                                                PARTIAL
+                                                            </Badge>
+                                                        )}
+                                                    </p>
+                                                    <p className="text-sm text-muted-foreground">
+                                                        {scanned !== null && scanned !== undefined
+                                                            ? `Ordered ${item.quantity} · Collected ${scanned}`
+                                                            : `Qty: ${item.quantity}`}{" "}
+                                                        | Vol: {item.total_volume} m3 | Wt:{" "}
+                                                        {item.total_weight} kg
+                                                    </p>
+                                                </div>
+                                                <Badge variant="outline">
+                                                    <Package className="h-3 w-3 mr-1" />
+                                                    {scanned !== null && scanned !== undefined
+                                                        ? `${scanned}/${item.quantity}`
+                                                        : item.quantity}
+                                                </Badge>
                                             </div>
-                                            <Badge variant="outline">
-                                                <Package className="h-3 w-3 mr-1" />
-                                                {item.quantity}
-                                            </Badge>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             </CardContent>
                         </Card>
