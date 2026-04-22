@@ -111,6 +111,15 @@ export const ADMIN_ROUTE_REGISTRY: AdminRouteDefinition[] = [
         requiredFeature: "enable_self_pickup",
     },
     {
+        name: "SP Pending Approval",
+        href: "/self-pickups/pending-approval",
+        icon: AlertCircle,
+        section: "Operations",
+        requiredPagePermission: ADMIN_PAGE_PERMISSIONS.selfPickups,
+        requiredAnyPermission: ADMIN_NAV_PERMISSIONS.selfPickups,
+        requiredFeature: "enable_self_pickup",
+    },
+    {
         name: "Events Calendar",
         href: "/event-calendar",
         icon: Calendar,

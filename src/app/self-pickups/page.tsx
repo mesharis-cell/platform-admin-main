@@ -55,12 +55,10 @@ const PICKUP_STATUS_CONFIG: Record<string, { label: string; color: string }> = {
         color: "bg-emerald-100 text-emerald-700 border-emerald-300",
     },
     PICKED_UP: { label: "Picked Up", color: "bg-teal-100 text-teal-700 border-teal-300" },
-    IN_USE: { label: "In Use", color: "bg-purple-100 text-purple-700 border-purple-300" },
     AWAITING_RETURN: {
         label: "Awaiting Return",
         color: "bg-amber-100 text-amber-700 border-amber-300",
     },
-    RETURNED: { label: "Returned", color: "bg-cyan-100 text-cyan-700 border-cyan-300" },
     CLOSED: { label: "Closed", color: "bg-gray-100 text-gray-700 border-gray-300" },
     CANCELLED: { label: "Cancelled", color: "bg-red-50 text-red-600 border-red-200" },
 };
