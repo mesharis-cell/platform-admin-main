@@ -32,12 +32,15 @@ import {
     useManualStockAdjustment,
     type ManualStockAdjustmentPayload,
 } from "@/hooks/use-stock-movements";
+import { apiClient } from "@/lib/api/api-client";
+import { throwApiError } from "@/lib/utils/throw-api-error";
 import { cn } from "@/lib/utils";
 
 type Props = {
     assetId: string;
     assetName: string;
     stockMode?: string | null;
+    familyId?: string | null;
 };
 
 type MovementFilter = "ALL" | "INBOUND" | "OUTBOUND" | "WRITE_OFF" | "ADJUSTMENT";
@@ -88,12 +91,50 @@ function formatDateTime(iso: string) {
     return { date, time };
 }
 
-export function AssetStockSection({ assetId, assetName, stockMode }: Props) {
+export function AssetStockSection({ assetId, assetName, stockMode, familyId }: Props) {
     const isPooled = stockMode === "POOLED";
     const [dialogOpen, setDialogOpen] = useState(false);
     const [filter, setFilter] = useState<MovementFilter>("ALL");
     const [page, setPage] = useState(1);
     const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
+    const [exporting, setExporting] = useState(false);
+
+    const handleExport = async () => {
+        if (!familyId) {
+            toast.error("Family not available — cannot export");
+            return;
+        }
+        setExporting(true);
+        try {
+            const params = new URLSearchParams();
+            if (filter !== "ALL") params.append("movement_type", filter);
+            const url = `/operations/v1/export/stock-movements/family/${familyId}${
+                params.toString() ? `?${params.toString()}` : ""
+            }`;
+            const response = await apiClient.get(url, { responseType: "blob" });
+            const blob =
+                response.data instanceof Blob
+                    ? response.data
+                    : new Blob([response.data], { type: "text/csv;charset=utf-8;" });
+            const downloadUrl = URL.createObjectURL(blob);
+            // eslint-disable-next-line creatr/no-browser-globals-in-ssr
+            const link = window.document.createElement("a");
+            link.href = downloadUrl;
+            const safeName = assetName.replace(/[^a-z0-9-_]+/gi, "_").slice(0, 60) || "stock";
+            link.download = `stock-movements-${safeName}-${new Date().toISOString().slice(0, 10)}.csv`;
+            link.click();
+            URL.revokeObjectURL(downloadUrl);
+            toast.success("Stock movements exported");
+        } catch (error) {
+            try {
+                throwApiError(error);
+            } catch (apiError: any) {
+                toast.error(apiError?.message || "Failed to export stock movements");
+            }
+        } finally {
+            setExporting(false);
+        }
+    };
 
     const { data: historyResp, isLoading: historyLoading } = useAssetStockHistory(
         isPooled ? assetId : null,
@@ -135,12 +176,19 @@ export function AssetStockSection({ assetId, assetName, stockMode }: Props) {
                             <Button
                                 variant="outline"
                                 size="sm"
-                                disabled
-                                title="Export coming soon"
+                                onClick={handleExport}
+                                disabled={!familyId || exporting}
+                                title={
+                                    familyId
+                                        ? "Export the full family ledger as CSV"
+                                        : "Family metadata missing — cannot export"
+                                }
                                 className="gap-1.5"
                             >
                                 <Download className="h-4 w-4" />
-                                <span className="hidden sm:inline">Export</span>
+                                <span className="hidden sm:inline">
+                                    {exporting ? "Exporting..." : "Export"}
+                                </span>
                             </Button>
                             <Button
                                 variant="default"

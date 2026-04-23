@@ -523,6 +523,7 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                             assetId={asset.id}
                             assetName={asset.name}
                             stockMode={(asset as any).family?.stock_mode}
+                            familyId={(asset as any).family_id ?? (asset as any).family?.id}
                         />
 
                         {/* Condition History — primary, in main column */}

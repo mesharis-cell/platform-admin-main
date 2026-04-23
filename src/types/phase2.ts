@@ -26,6 +26,7 @@ export interface Company {
         };
         feasibility?: {
             minimum_lead_hours?: number | null;
+            sp_minimum_lead_hours?: number | null;
         };
     };
     is_active: boolean;
@@ -71,6 +72,7 @@ export interface CreateCompanyRequest {
         };
         feasibility?: {
             minimum_lead_hours?: number | null;
+            sp_minimum_lead_hours?: number | null;
         };
     };
 }

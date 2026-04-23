@@ -112,6 +112,7 @@ export default function PlatformSettingsPage() {
 
     // Feasibility & Lead Time
     const [minimumLeadHours, setMinimumLeadHours] = useState(0);
+    const [spMinimumLeadHours, setSpMinimumLeadHours] = useState(2);
     const [excludeWeekends, setExcludeWeekends] = useState(false);
     const [weekendDays, setWeekendDays] = useState<number[]>([0, 6]);
     const [feasibilityTimezone, setFeasibilityTimezone] = useState("Asia/Dubai");
@@ -154,6 +155,7 @@ export default function PlatformSettingsPage() {
         // Feasibility
         const f = platform.config.feasibility;
         setMinimumLeadHours(f?.minimum_lead_hours ?? 0);
+        setSpMinimumLeadHours(f?.sp_minimum_lead_hours ?? 2);
         setExcludeWeekends(f?.exclude_weekends ?? false);
         setWeekendDays(f?.weekend_days ?? [0, 6]);
         setFeasibilityTimezone(f?.timezone ?? "Asia/Dubai");
@@ -206,6 +208,7 @@ export default function PlatformSettingsPage() {
         updateConfig.mutate({
             feasibility: {
                 minimum_lead_hours: minimumLeadHours,
+                sp_minimum_lead_hours: spMinimumLeadHours,
                 exclude_weekends: excludeWeekends,
                 weekend_days: weekendDays,
                 timezone: feasibilityTimezone,
@@ -439,7 +442,7 @@ export default function PlatformSettingsPage() {
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="space-y-1.5">
-                            <Label>Minimum Lead Time (hours)</Label>
+                            <Label>Minimum Lead Time — Orders (hours)</Label>
                             <Input
                                 type="number"
                                 min={0}
@@ -455,7 +458,31 @@ export default function PlatformSettingsPage() {
                                 className="w-40"
                             />
                             <p className="text-xs text-muted-foreground">
-                                Minimum hours between now and the earliest allowed event start date
+                                Minimum hours between now and the earliest allowed delivery — orders
+                                require logistics prep, so this is typically longer.
+                            </p>
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <Label>Minimum Lead Time — Self-Pickups (hours)</Label>
+                            <Input
+                                type="number"
+                                min={0}
+                                value={spMinimumLeadHours}
+                                disabled={!canManagePlatformSettings}
+                                onChange={(e) =>
+                                    setSpMinimumLeadHours(
+                                        Number.isNaN(Number(e.target.value))
+                                            ? 0
+                                            : Number(e.target.value)
+                                    )
+                                }
+                                className="w-40"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                                Minimum hours between now and the earliest allowed pickup start —
+                                self-pickups only need warehouse pick-pack time, so this is
+                                typically shorter (default 2h).
                             </p>
                         </div>
 

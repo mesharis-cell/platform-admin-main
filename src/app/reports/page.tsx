@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/select";
 
 type ExportSection = "Financial" | "Orders & Operations" | "Inventory";
-type ExportFilterField = "dateRange" | "company" | "status" | "condition";
+type ExportFilterField = "dateRange" | "company" | "status" | "condition" | "entityType";
 type ExportCardId =
     | "orders"
     | "orderHistory"
@@ -32,7 +32,8 @@ type ExportCardId =
     | "inboundLog"
     | "revenueReport"
     | "costReport"
-    | "assetUtilization";
+    | "assetUtilization"
+    | "clientIssuanceLog";
 
 type ExportCardConfig = {
     id: ExportCardId;
@@ -50,6 +51,7 @@ type ExportCardFilters = {
     companyId: string;
     status: string;
     condition: string;
+    entityType: string;
 };
 
 const ORDER_STATUS_OPTIONS = [
@@ -138,6 +140,16 @@ const EXPORT_CARDS: ExportCardConfig[] = [
         requiredAnyPermission: ["orders:export"],
     },
     {
+        id: "clientIssuanceLog",
+        title: "Client Issuance Log",
+        description:
+            "Every item delivered via a post-scan order or self-pickup — item code, qty (actual scanned for SPs), venue, city, musketeer, purpose.",
+        endpoint: "client-issuance-log",
+        section: "Orders & Operations",
+        filterFields: ["dateRange", "company", "entityType"],
+        requiredAnyPermission: ["orders:export"],
+    },
+    {
         id: "stockReport",
         title: "Stock Report",
         description:
@@ -159,16 +171,26 @@ const EXPORT_CARDS: ExportCardConfig[] = [
     },
 ];
 
+const DEFAULT_FILTERS: ExportCardFilters = {
+    dateFrom: "",
+    dateTo: "",
+    companyId: "",
+    status: "",
+    condition: "",
+    entityType: "",
+};
+
 const INITIAL_CARD_FILTERS: Record<ExportCardId, ExportCardFilters> = {
-    orders: { dateFrom: "", dateTo: "", companyId: "", status: "", condition: "" },
-    orderHistory: { dateFrom: "", dateTo: "", companyId: "", status: "", condition: "" },
-    accountsReconciliation: { dateFrom: "", dateTo: "", companyId: "", status: "", condition: "" },
-    stockReport: { dateFrom: "", dateTo: "", companyId: "", status: "", condition: "" },
-    assetsOut: { dateFrom: "", dateTo: "", companyId: "", status: "", condition: "" },
-    inboundLog: { dateFrom: "", dateTo: "", companyId: "", status: "", condition: "" },
-    revenueReport: { dateFrom: "", dateTo: "", companyId: "", status: "", condition: "" },
-    costReport: { dateFrom: "", dateTo: "", companyId: "", status: "", condition: "" },
-    assetUtilization: { dateFrom: "", dateTo: "", companyId: "", status: "", condition: "" },
+    orders: { ...DEFAULT_FILTERS },
+    orderHistory: { ...DEFAULT_FILTERS },
+    accountsReconciliation: { ...DEFAULT_FILTERS },
+    stockReport: { ...DEFAULT_FILTERS },
+    assetsOut: { ...DEFAULT_FILTERS },
+    inboundLog: { ...DEFAULT_FILTERS },
+    revenueReport: { ...DEFAULT_FILTERS },
+    costReport: { ...DEFAULT_FILTERS },
+    assetUtilization: { ...DEFAULT_FILTERS },
+    clientIssuanceLog: { ...DEFAULT_FILTERS },
 };
 
 const sectionOrder: ExportSection[] = ["Financial", "Orders & Operations", "Inventory"];
@@ -222,6 +244,8 @@ export default function ReportsPage() {
             query.append("order_status", filters.status);
         if (card.filterFields.includes("condition") && filters.condition)
             query.append("condition", filters.condition);
+        if (card.filterFields.includes("entityType") && filters.entityType)
+            query.append("entity_type", filters.entityType);
         return query.toString();
     };
 
@@ -436,6 +460,39 @@ export default function ReportsPage() {
                                                                         </SelectItem>
                                                                     )
                                                                 )}
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
+                                                )}
+
+                                                {card.filterFields.includes("entityType") && (
+                                                    <div className="space-y-1.5">
+                                                        <Label className="text-xs">
+                                                            Entity Type
+                                                        </Label>
+                                                        <Select
+                                                            value={filters.entityType || "all"}
+                                                            onValueChange={(value) =>
+                                                                updateCardFilter(
+                                                                    card.id,
+                                                                    "entityType",
+                                                                    value === "all" ? "" : value
+                                                                )
+                                                            }
+                                                        >
+                                                            <SelectTrigger>
+                                                                <SelectValue placeholder="Orders + Self-Pickups" />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="all">
+                                                                    Orders + Self-Pickups
+                                                                </SelectItem>
+                                                                <SelectItem value="ORDER">
+                                                                    Orders only
+                                                                </SelectItem>
+                                                                <SelectItem value="SELF_PICKUP">
+                                                                    Self-Pickups only
+                                                                </SelectItem>
                                                             </SelectContent>
                                                         </Select>
                                                     </div>

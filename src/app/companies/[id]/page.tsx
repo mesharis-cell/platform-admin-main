@@ -83,6 +83,7 @@ export default function CompanyEditPage() {
             },
             feasibility: {
                 minimum_lead_hours: null as number | null,
+                sp_minimum_lead_hours: null as number | null,
             },
         },
         platform_margin_percent: 0.3,
@@ -120,6 +121,11 @@ export default function CompanyEditPage() {
                         company.settings?.feasibility?.minimum_lead_hours !== undefined &&
                         company.settings?.feasibility?.minimum_lead_hours !== null
                             ? Number(company.settings.feasibility.minimum_lead_hours)
+                            : null,
+                    sp_minimum_lead_hours:
+                        company.settings?.feasibility?.sp_minimum_lead_hours !== undefined &&
+                        company.settings?.feasibility?.sp_minimum_lead_hours !== null
+                            ? Number(company.settings.feasibility.sp_minimum_lead_hours)
                             : null,
                 },
             },
@@ -223,6 +229,13 @@ export default function CompanyEditPage() {
                             ? {
                                   minimum_lead_hours:
                                       formData.settings.feasibility.minimum_lead_hours,
+                              }
+                            : {}),
+                        ...(formData.settings.feasibility.sp_minimum_lead_hours !== null &&
+                        formData.settings.feasibility.sp_minimum_lead_hours !== undefined
+                            ? {
+                                  sp_minimum_lead_hours:
+                                      formData.settings.feasibility.sp_minimum_lead_hours,
                               }
                             : {}),
                     },
@@ -435,7 +448,7 @@ export default function CompanyEditPage() {
                             )}
                             <div className="space-y-2">
                                 <Label htmlFor="minimum_lead_hours" className="font-mono text-xs">
-                                    LEAD TIME OVERRIDE (HOURS)
+                                    ORDER LEAD TIME OVERRIDE (HOURS)
                                 </Label>
                                 <Input
                                     id="minimum_lead_hours"
@@ -453,6 +466,7 @@ export default function CompanyEditPage() {
                                             settings: {
                                                 ...formData.settings,
                                                 feasibility: {
+                                                    ...formData.settings.feasibility,
                                                     minimum_lead_hours:
                                                         e.target.value === ""
                                                             ? null
@@ -465,10 +479,52 @@ export default function CompanyEditPage() {
                                     placeholder="Leave empty to inherit platform lead time"
                                 />
                                 <p className="text-xs text-muted-foreground font-mono">
-                                    Empty means inherit the platform minimum lead time.
+                                    Empty means inherit the platform minimum lead time for orders.
                                     {platformSettings?.config?.feasibility?.minimum_lead_hours !==
                                         undefined &&
                                         ` Current platform default: ${platformSettings.config.feasibility.minimum_lead_hours} hours.`}
+                                </p>
+                            </div>
+                            <div className="space-y-2">
+                                <Label
+                                    htmlFor="sp_minimum_lead_hours"
+                                    className="font-mono text-xs"
+                                >
+                                    SELF-PICKUP LEAD TIME OVERRIDE (HOURS)
+                                </Label>
+                                <Input
+                                    id="sp_minimum_lead_hours"
+                                    type="number"
+                                    step="1"
+                                    min="0"
+                                    value={
+                                        formData.settings.feasibility.sp_minimum_lead_hours === null
+                                            ? ""
+                                            : formData.settings.feasibility.sp_minimum_lead_hours
+                                    }
+                                    onChange={(e) =>
+                                        setFormData({
+                                            ...formData,
+                                            settings: {
+                                                ...formData.settings,
+                                                feasibility: {
+                                                    ...formData.settings.feasibility,
+                                                    sp_minimum_lead_hours:
+                                                        e.target.value === ""
+                                                            ? null
+                                                            : parseInt(e.target.value, 10),
+                                                },
+                                            },
+                                        })
+                                    }
+                                    className="font-mono"
+                                    placeholder="Leave empty to inherit platform SP lead time"
+                                />
+                                <p className="text-xs text-muted-foreground font-mono">
+                                    Empty means inherit the platform SP lead time.
+                                    {platformSettings?.config?.feasibility
+                                        ?.sp_minimum_lead_hours !== undefined &&
+                                        ` Current platform default: ${platformSettings.config.feasibility.sp_minimum_lead_hours} hours.`}
                                 </p>
                             </div>
                             <div className="space-y-2">
