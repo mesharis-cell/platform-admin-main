@@ -20,9 +20,16 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 
 type ExportSection = "Financial" | "Orders & Operations" | "Inventory";
-type ExportFilterField = "dateRange" | "company" | "status" | "condition" | "entityType";
+type ExportFilterField =
+    | "dateRange"
+    | "company"
+    | "status"
+    | "condition"
+    | "entityType"
+    | "includePhotos";
 type ExportCardId =
     | "orders"
     | "orderHistory"
@@ -33,7 +40,8 @@ type ExportCardId =
     | "revenueReport"
     | "costReport"
     | "assetUtilization"
-    | "clientIssuanceLog";
+    | "clientIssuanceLog"
+    | "assetCatalog";
 
 type ExportCardConfig = {
     id: ExportCardId;
@@ -52,6 +60,7 @@ type ExportCardFilters = {
     status: string;
     condition: string;
     entityType: string;
+    includePhotos: boolean;
 };
 
 const ORDER_STATUS_OPTIONS = [
@@ -169,6 +178,16 @@ const EXPORT_CARDS: ExportCardConfig[] = [
         filterFields: ["company"],
         requiredAnyPermission: ["assets:read"],
     },
+    {
+        id: "assetCatalog",
+        title: "Asset Catalog",
+        description:
+            "Flat, one-row-per-asset snapshot of everything a company owns — family, item code, dimensions, weight, volume, handling tags, condition, status, location. Toggle photos to embed the primary image of each asset (XLSX). Leave off for a fast CSV with image URLs.",
+        endpoint: "asset-catalog",
+        section: "Inventory",
+        filterFields: ["company", "condition", "status", "includePhotos"],
+        requiredAnyPermission: ["assets:read"],
+    },
 ];
 
 const DEFAULT_FILTERS: ExportCardFilters = {
@@ -178,6 +197,7 @@ const DEFAULT_FILTERS: ExportCardFilters = {
     status: "",
     condition: "",
     entityType: "",
+    includePhotos: false,
 };
 
 const INITIAL_CARD_FILTERS: Record<ExportCardId, ExportCardFilters> = {
@@ -191,6 +211,7 @@ const INITIAL_CARD_FILTERS: Record<ExportCardId, ExportCardFilters> = {
     costReport: { ...DEFAULT_FILTERS },
     assetUtilization: { ...DEFAULT_FILTERS },
     clientIssuanceLog: { ...DEFAULT_FILTERS },
+    assetCatalog: { ...DEFAULT_FILTERS },
 };
 
 const sectionOrder: ExportSection[] = ["Financial", "Orders & Operations", "Inventory"];
@@ -224,7 +245,7 @@ export default function ReportsPage() {
     const updateCardFilter = (
         cardId: ExportCardId,
         field: keyof ExportCardFilters,
-        value: string
+        value: string | boolean
     ) => {
         setCardFilters((previous) => ({
             ...previous,
@@ -246,6 +267,8 @@ export default function ReportsPage() {
             query.append("condition", filters.condition);
         if (card.filterFields.includes("entityType") && filters.entityType)
             query.append("entity_type", filters.entityType);
+        if (card.filterFields.includes("includePhotos") && filters.includePhotos)
+            query.append("include_photos", "true");
         return query.toString();
     };
 
@@ -255,10 +278,14 @@ export default function ReportsPage() {
         setDownloadingCard(card.id);
         try {
             const response = await apiClient.get(url, { responseType: "blob" });
+            // Infer extension from server-sent Content-Type (XLSX for asset
+            // catalog with photos; CSV otherwise).
+            const contentType = String(response.headers?.["content-type"] ?? "text/csv");
+            const extension = contentType.includes("spreadsheetml") ? "xlsx" : "csv";
             const blob =
                 response.data instanceof Blob
                     ? response.data
-                    : new Blob([response.data], { type: "text/csv;charset=utf-8;" });
+                    : new Blob([response.data], { type: contentType });
             const downloadUrl = URL.createObjectURL(blob);
             if (typeof window === "undefined") {
                 URL.revokeObjectURL(downloadUrl);
@@ -267,7 +294,7 @@ export default function ReportsPage() {
             // eslint-disable-next-line creatr/no-browser-globals-in-ssr
             const link = window.document.createElement("a");
             link.href = downloadUrl;
-            link.download = `${card.endpoint}-${new Date().toISOString().slice(0, 10)}.csv`;
+            link.download = `${card.endpoint}-${new Date().toISOString().slice(0, 10)}.${extension}`;
             link.click();
             URL.revokeObjectURL(downloadUrl);
             toast.success(`${card.title} exported successfully`);
@@ -498,6 +525,31 @@ export default function ReportsPage() {
                                                     </div>
                                                 )}
 
+                                                {card.filterFields.includes("includePhotos") && (
+                                                    <div className="flex items-center justify-between rounded-md border border-border/60 p-3">
+                                                        <div className="space-y-0.5">
+                                                            <Label className="text-xs font-medium">
+                                                                Include photos
+                                                            </Label>
+                                                            <p className="text-[11px] text-muted-foreground">
+                                                                On → XLSX with primary image
+                                                                embedded per asset. Off → plain CSV
+                                                                (faster).
+                                                            </p>
+                                                        </div>
+                                                        <Switch
+                                                            checked={filters.includePhotos}
+                                                            onCheckedChange={(checked) =>
+                                                                updateCardFilter(
+                                                                    card.id,
+                                                                    "includePhotos",
+                                                                    checked
+                                                                )
+                                                            }
+                                                        />
+                                                    </div>
+                                                )}
+
                                                 <Button
                                                     className="w-full gap-2"
                                                     onClick={() => downloadExport(card)}
@@ -506,7 +558,11 @@ export default function ReportsPage() {
                                                     <Download className="h-4 w-4" />
                                                     {downloadingCard === card.id
                                                         ? "Exporting..."
-                                                        : "Download CSV"}
+                                                        : card.filterFields.includes(
+                                                                "includePhotos"
+                                                            ) && filters.includePhotos
+                                                          ? "Download XLSX"
+                                                          : "Download CSV"}
                                                 </Button>
                                             </CardContent>
                                         </Card>
