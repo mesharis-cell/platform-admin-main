@@ -1596,7 +1596,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
 
                     {/* Right: Status History Timeline */}
                     <div className="lg:col-span-1">
-                        <Card className="sticky top-24">
+                        <Card>
                             <CardHeader>
                                 <CardTitle className="font-mono text-sm flex items-center gap-2">
                                     <Clock className="h-4 w-4 text-primary" />
