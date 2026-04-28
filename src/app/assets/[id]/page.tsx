@@ -38,12 +38,7 @@ import {
     User,
     Scan,
     AlertCircle,
-    ChevronLeft,
-    ChevronRight,
     Clock,
-    Camera,
-    X,
-    Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -57,13 +52,13 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EditAssetDialog, type EditAssetTab } from "@/components/assets/edit-asset-dialog";
 import { AssetStockSection } from "@/components/assets/asset-stock-section";
 import { MoveToFamilyModal } from "@/components/assets/move-to-family-modal";
+import { SortableImageEditor } from "@/components/assets/sortable-image-editor";
 import { PrintQrAction } from "@/components/qr/PrintQrAction";
 import { generateQRCode } from "@/lib/services/qr-code";
 
 export default function AssetDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
     const router = useRouter();
-    const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [showEditDialog, setShowEditDialog] = useState(false);
     const [editDialogTab, setEditDialogTab] = useState<EditAssetTab>("basic");
@@ -142,12 +137,8 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
         setShowEditDialog(true);
     }
 
-    async function handleInlinePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    async function handleInlinePhotoUpload(files: File[]) {
         if (!asset) return;
-        const files = Array.from(e.target.files || []);
-        if (files.length === 0) return;
-        e.target.value = "";
-
         try {
             const companyId = typeof asset.company === "string" ? asset.company : asset.company?.id;
             const result = await uploadImageMutation.mutateAsync({
@@ -174,11 +165,21 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                 id: asset.id,
                 data: { images: newImages } as any,
             });
-            if (currentImageIndex >= newImages.length)
-                setCurrentImageIndex(Math.max(0, newImages.length - 1));
             toast.success("Photo removed");
         } catch {
             toast.error("Failed to remove photo");
+        }
+    }
+
+    async function handleInlinePhotoReorder(next: { url: string; note?: string }[]) {
+        if (!asset) return;
+        try {
+            await updateAssetMutation.mutateAsync({
+                id: asset.id,
+                data: { images: next } as any,
+            });
+        } catch {
+            toast.error("Failed to reorder photos");
         }
     }
 
@@ -376,133 +377,16 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                     {/* Main content */}
                     <div className="lg:col-span-2 space-y-6">
                         {/* Image gallery */}
-                        <Card>
-                            <CardHeader className="flex flex-row items-center justify-between py-3 px-6">
-                                <CardTitle className="font-mono text-sm">
-                                    Photos ({asset?.images?.length || 0})
-                                </CardTitle>
-                                <label htmlFor="inline-photo-upload" className="cursor-pointer">
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="font-mono pointer-events-none"
-                                        disabled={
-                                            uploadImageMutation.isPending ||
-                                            updateAssetMutation.isPending
-                                        }
-                                        asChild
-                                    >
-                                        <span>
-                                            {uploadImageMutation.isPending ||
-                                            updateAssetMutation.isPending ? (
-                                                <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                                            ) : (
-                                                <Camera className="w-3.5 h-3.5 mr-1.5" />
-                                            )}
-                                            Add Photo
-                                        </span>
-                                    </Button>
-                                    <input
-                                        id="inline-photo-upload"
-                                        type="file"
-                                        accept="image/*"
-                                        multiple
-                                        className="hidden"
-                                        onChange={handleInlinePhotoUpload}
-                                    />
-                                </label>
-                            </CardHeader>
-                            <CardContent className="p-6 pt-0">
-                                {asset?.images?.length > 0 ? (
-                                    <>
-                                        <div className="relative aspect-16/10 bg-muted rounded-lg overflow-hidden mb-4">
-                                            <Image
-                                                src={asset.images[currentImageIndex].url}
-                                                alt={asset.name}
-                                                fill
-                                                className="object-contain"
-                                            />
-                                            <button
-                                                onClick={() =>
-                                                    handleInlinePhotoDelete(currentImageIndex)
-                                                }
-                                                className="absolute top-2 right-2 p-1.5 bg-destructive/90 text-destructive-foreground rounded-md hover:bg-destructive transition-colors"
-                                                title="Remove this photo"
-                                            >
-                                                <X className="w-3.5 h-3.5" />
-                                            </button>
-
-                                            {asset.images.length > 1 && (
-                                                <>
-                                                    <button
-                                                        onClick={() =>
-                                                            setCurrentImageIndex(
-                                                                (prev) =>
-                                                                    (prev -
-                                                                        1 +
-                                                                        asset.images.length) %
-                                                                    asset.images.length
-                                                            )
-                                                        }
-                                                        className="absolute left-2 top-1/2 -translate-y-1/2 p-2 bg-background/90 backdrop-blur-sm rounded-full border border-border hover:bg-background transition-colors"
-                                                    >
-                                                        <ChevronLeft className="w-4 h-4" />
-                                                    </button>
-                                                    <button
-                                                        onClick={() =>
-                                                            setCurrentImageIndex(
-                                                                (prev) =>
-                                                                    (prev + 1) % asset.images.length
-                                                            )
-                                                        }
-                                                        className="absolute right-10 top-1/2 -translate-y-1/2 p-2 bg-background/90 backdrop-blur-sm rounded-full border border-border hover:bg-background transition-colors"
-                                                    >
-                                                        <ChevronRight className="w-4 h-4" />
-                                                    </button>
-                                                </>
-                                            )}
-                                        </div>
-
-                                        {asset.images[currentImageIndex]?.note && (
-                                            <p className="text-xs text-muted-foreground italic px-1 py-1">
-                                                {asset.images[currentImageIndex].note}
-                                            </p>
-                                        )}
-
-                                        {asset.images.length > 1 && (
-                                            <div className="flex gap-2 overflow-x-auto">
-                                                {asset.images.map((img, index) => (
-                                                    <button
-                                                        key={index}
-                                                        onClick={() => setCurrentImageIndex(index)}
-                                                        className={`relative w-20 h-20 shrink-0 rounded-md overflow-hidden border-2 ${
-                                                            index === currentImageIndex
-                                                                ? "border-primary"
-                                                                : "border-border hover:border-primary/50"
-                                                        } transition-colors`}
-                                                    >
-                                                        <Image
-                                                            src={img.url}
-                                                            alt={`Thumbnail ${index + 1}`}
-                                                            fill
-                                                            className="object-contain"
-                                                        />
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </>
-                                ) : (
-                                    <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-                                        <Camera className="w-10 h-10 mb-3 opacity-30" />
-                                        <p className="text-sm font-mono">No photos yet</p>
-                                        <p className="text-xs font-mono mt-1">
-                                            Use "Add Photo" above to upload
-                                        </p>
-                                    </div>
-                                )}
-                            </CardContent>
-                        </Card>
+                        <SortableImageEditor
+                            images={asset?.images ?? []}
+                            onReorder={handleInlinePhotoReorder}
+                            onRemove={handleInlinePhotoDelete}
+                            onAdd={handleInlinePhotoUpload}
+                            isMutating={
+                                uploadImageMutation.isPending || updateAssetMutation.isPending
+                            }
+                            emptyLabel='Use "Add Photo" above to upload'
+                        />
 
                         {/* Description */}
                         {asset?.description && (
