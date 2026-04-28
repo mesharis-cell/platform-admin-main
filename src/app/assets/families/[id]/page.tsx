@@ -26,9 +26,14 @@ import {
     ArrowRightLeft,
 } from "lucide-react";
 import { useAssetFamilyAvailabilityStats } from "@/hooks/use-asset-family-availability-stats";
-import { useAssetFamily, useDeleteAssetFamily } from "@/hooks/use-asset-families";
+import {
+    useAssetFamily,
+    useDeleteAssetFamily,
+    useUpdateAssetFamily,
+} from "@/hooks/use-asset-families";
 import { EditAssetFamilyDialog } from "@/components/assets/edit-asset-family-dialog";
-import { useAssets } from "@/hooks/use-assets";
+import { useAssets, useUploadImage } from "@/hooks/use-assets";
+import { SortableImageEditor } from "@/components/assets/sortable-image-editor";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -84,6 +89,8 @@ export default function AssetFamilyDetailPage({ params }: { params: Promise<{ id
     );
     const inventory: Asset[] = stockResponse?.data || [];
     const deleteMutation = useDeleteAssetFamily();
+    const updateMutation = useUpdateAssetFamily();
+    const uploadImageMutation = useUploadImage();
 
     const images = family?.images || [];
     const hasImages = images.length > 0;
@@ -117,6 +124,55 @@ export default function AssetFamilyDetailPage({ params }: { params: Promise<{ id
             router.push("/assets");
         } catch {
             toast.error("Failed to delete family");
+        }
+    }
+
+    async function handleFamilyPhotoUpload(files: File[]) {
+        if (!family) return;
+        try {
+            const companyId =
+                typeof family.company === "string" ? family.company : family.company?.id;
+            const result = await uploadImageMutation.mutateAsync({
+                files,
+                companyId: companyId || undefined,
+                profile: "photo",
+            });
+            const newUrls: string[] = result.data?.imageUrls || [];
+            await updateMutation.mutateAsync({
+                id: family.id,
+                data: {
+                    images: [...(family.images ?? []), ...newUrls.map((url) => ({ url }))],
+                } as Partial<typeof family>,
+            });
+            toast.success(`${newUrls.length} photo${newUrls.length > 1 ? "s" : ""} added`);
+        } catch {
+            toast.error("Failed to upload photo");
+        }
+    }
+
+    async function handleFamilyPhotoDelete(index: number) {
+        if (!family) return;
+        try {
+            const next = (family.images ?? []).filter((_, i) => i !== index);
+            await updateMutation.mutateAsync({
+                id: family.id,
+                data: { images: next } as Partial<typeof family>,
+            });
+            toast.success("Photo removed");
+        } catch {
+            toast.error("Failed to remove photo");
+        }
+    }
+
+    async function handleFamilyPhotoReorder(next: { url: string; note?: string }[]) {
+        if (!family) return;
+        try {
+            await updateMutation.mutateAsync({
+                id: family.id,
+                data: { images: next } as Partial<typeof family>,
+            });
+        } catch {
+            toast.error("Failed to reorder photos");
         }
     }
 
@@ -429,6 +485,20 @@ export default function AssetFamilyDetailPage({ params }: { params: Promise<{ id
                         </div>
                     </div>
                 </div>
+            </div>
+
+            {/* Photos editor — add / remove / reorder. The compact hero in the
+            page header above stays as a quick-look summary. */}
+            <div className="mx-auto max-w-[1400px] px-6 py-3">
+                <SortableImageEditor
+                    images={family.images ?? []}
+                    onReorder={handleFamilyPhotoReorder}
+                    onRemove={handleFamilyPhotoDelete}
+                    onAdd={handleFamilyPhotoUpload}
+                    isMutating={updateMutation.isPending || uploadImageMutation.isPending}
+                    title="Family Photos"
+                    emptyLabel='Use "Add Photo" above to upload'
+                />
             </div>
 
             {/* Stock Summary (aggregate read-only for pooled families) */}
