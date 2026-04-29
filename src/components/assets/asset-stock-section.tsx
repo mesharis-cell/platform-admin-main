@@ -32,6 +32,7 @@ import {
     useManualStockAdjustment,
     type ManualStockAdjustmentPayload,
 } from "@/hooks/use-stock-movements";
+import { LinkedEntityCombobox } from "@/components/assets/linked-entity-combobox";
 import { apiClient } from "@/lib/api/api-client";
 import { throwApiError } from "@/lib/utils/throw-api-error";
 import { cn } from "@/lib/utils";
@@ -43,36 +44,66 @@ type Props = {
     familyId?: string | null;
 };
 
-type MovementFilter = "ALL" | "INBOUND" | "OUTBOUND" | "WRITE_OFF" | "ADJUSTMENT";
+type MovementFilter =
+    | "ALL"
+    | "INBOUND"
+    | "OUTBOUND"
+    | "WRITE_OFF"
+    | "OUTBOUND_AD_HOC"
+    | "ADJUSTMENT";
 type Direction = "IN" | "OUT";
+type PrimaryOutReason = "CORRECTION" | "USED_FOR";
+type OutboundAdHocReason = "REPLACEMENT" | "INSTALL_CONSUMPTION" | "REPURPOSED" | "OTHER";
 type WriteOffReason = "CONSUMED" | "LOST" | "DAMAGED" | "OTHER";
 
 const MOVEMENT_STYLES: Record<string, string> = {
     OUTBOUND: "bg-red-50 text-red-700 border-red-200",
     INBOUND: "bg-green-50 text-green-700 border-green-200",
     WRITE_OFF: "bg-amber-50 text-amber-700 border-amber-200",
+    OUTBOUND_AD_HOC: "bg-teal-50 text-teal-700 border-teal-200",
     ADJUSTMENT: "bg-blue-50 text-blue-700 border-blue-200",
     INITIAL: "bg-slate-50 text-slate-700 border-slate-200",
+};
+
+const MOVEMENT_LABELS: Record<string, string> = {
+    OUTBOUND: "Outbound",
+    INBOUND: "Inbound",
+    WRITE_OFF: "Write-off",
+    OUTBOUND_AD_HOC: "Used for",
+    ADJUSTMENT: "Correction",
+    INITIAL: "Initial",
 };
 
 const FILTER_CHIPS: { key: MovementFilter; label: string }[] = [
     { key: "ALL", label: "All" },
     { key: "INBOUND", label: "In" },
     { key: "OUTBOUND", label: "Out" },
-    { key: "WRITE_OFF", label: "Write-offs" },
-    { key: "ADJUSTMENT", label: "Adjustments" },
+    { key: "OUTBOUND_AD_HOC", label: "Used for" },
+    { key: "WRITE_OFF", label: "Settlements" },
+    { key: "ADJUSTMENT", label: "Corrections" },
 ];
 
-const REASON_OPTIONS: { value: WriteOffReason | "CORRECTION"; label: string; hint: string }[] = [
+const AD_HOC_SUB_REASONS: { value: OutboundAdHocReason; label: string; hint: string }[] = [
     {
-        value: "CORRECTION",
-        label: "Correction",
-        hint: "Clerical fix — counts didn't match reality",
+        value: "REPLACEMENT",
+        label: "Replacement",
+        hint: "Swapping a unit for one that's already booked",
     },
-    { value: "CONSUMED", label: "Consumed", hint: "Used up, not returning to stock" },
-    { value: "LOST", label: "Lost", hint: "Can't locate, treat as gone" },
-    { value: "DAMAGED", label: "Damaged", hint: "Beyond repair, written off" },
-    { value: "OTHER", label: "Other", hint: "Some other non-clerical reason" },
+    {
+        value: "INSTALL_CONSUMPTION",
+        label: "Install",
+        hint: "Used during a venue install for an order or pickup",
+    },
+    {
+        value: "REPURPOSED",
+        label: "Repurposed",
+        hint: "Used internally — demo, sample, marketing setup",
+    },
+    {
+        value: "OTHER",
+        label: "Other",
+        hint: "No order context — fill in the details below",
+    },
 ];
 
 const PAGE_LIMIT = 20;
@@ -251,7 +282,10 @@ export function AssetStockSection({ assetId, assetName, stockMode, familyId }: P
                                 const { date, time } = formatDateTime(m.created_at);
                                 const isExpanded = expandedRowId === m.id;
                                 const hasExtraDetail =
-                                    m.note || m.linked_entity_id || m.write_off_reason;
+                                    m.note ||
+                                    m.linked_entity_id ||
+                                    m.write_off_reason ||
+                                    m.outbound_ad_hoc_reason;
 
                                 return (
                                     <button
@@ -271,7 +305,8 @@ export function AssetStockSection({ assetId, assetName, stockMode, familyId }: P
                                                             MOVEMENT_STYLES.ADJUSTMENT
                                                     )}
                                                 >
-                                                    {m.movement_type}
+                                                    {MOVEMENT_LABELS[m.movement_type] ??
+                                                        m.movement_type}
                                                 </Badge>
                                                 <span
                                                     className={cn(
@@ -290,6 +325,14 @@ export function AssetStockSection({ assetId, assetName, stockMode, familyId }: P
                                                         className="text-[10px] font-mono text-muted-foreground"
                                                     >
                                                         {m.write_off_reason}
+                                                    </Badge>
+                                                )}
+                                                {m.outbound_ad_hoc_reason && (
+                                                    <Badge
+                                                        variant="outline"
+                                                        className="text-[10px] font-mono text-muted-foreground"
+                                                    >
+                                                        {m.outbound_ad_hoc_reason.replace("_", " ")}
                                                     </Badge>
                                                 )}
                                             </div>
@@ -408,7 +451,20 @@ export function AssetStockSection({ assetId, assetName, stockMode, familyId }: P
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Manual Adjustment dialog — direction toggle + quick-add chips + reason
+// Manual Adjustment dialog
+//
+// Stock IN  → ADJUSTMENT (positive delta).
+// Stock OUT → operator picks a primary reason:
+//   "Correction" → ADJUSTMENT (negative delta), no link required.
+//   "Used for an order or pickup" → OUTBOUND_AD_HOC. Sub-reason picked from
+//     {Replacement, Install consumption, Repurposed, Other}. For non-OTHER
+//     sub-reasons, a linked order/SP is REQUIRED. For OTHER, the linked
+//     entity is OPTIONAL — if not picked, three structured fields appear
+//     (Requested by, Venue, Details) and are required, then serialised into
+//     the saved note.
+//
+// WRITE_OFF is intentionally not selectable. Settlement WRITE_OFFs come from
+// the inbound-scan flow which has the booking context to auto-link them.
 // ─────────────────────────────────────────────────────────────────────────
 
 function ManualAdjustmentDialog({
@@ -428,17 +484,33 @@ function ManualAdjustmentDialog({
 }) {
     const [direction, setDirection] = useState<Direction>("IN");
     const [qtyRaw, setQtyRaw] = useState<string>("");
-    const [reason, setReason] = useState<WriteOffReason | "CORRECTION">("CORRECTION");
+    const [primaryReason, setPrimaryReason] = useState<PrimaryOutReason>("CORRECTION");
+    const [adHocReason, setAdHocReason] = useState<OutboundAdHocReason | null>(null);
+    const [linkedEntity, setLinkedEntity] = useState<{
+        type: "ORDER" | "SELF_PICKUP";
+        id: string;
+        readableId: string;
+        companyName?: string | null;
+    } | null>(null);
+    const [requesterName, setRequesterName] = useState("");
+    const [venue, setVenue] = useState("");
+    const [details, setDetails] = useState("");
     const [note, setNote] = useState<string>("");
 
-    // Reset when dialog closes
+    const resetAll = () => {
+        setDirection("IN");
+        setQtyRaw("");
+        setPrimaryReason("CORRECTION");
+        setAdHocReason(null);
+        setLinkedEntity(null);
+        setRequesterName("");
+        setVenue("");
+        setDetails("");
+        setNote("");
+    };
+
     const handleOpenChange = (v: boolean) => {
-        if (!v) {
-            setDirection("IN");
-            setQtyRaw("");
-            setReason("CORRECTION");
-            setNote("");
-        }
+        if (!v) resetAll();
         onOpenChange(v);
     };
 
@@ -450,28 +522,101 @@ function ManualAdjustmentDialog({
         setQtyRaw(String(Math.max(0, current + n)));
     };
 
-    const canSubmit = qty > 0 && note.trim().length > 0 && !isPending;
+    // Whether the structured 3-field fallback is currently showing (and required)
+    const showStructuredFields =
+        direction === "OUT" &&
+        primaryReason === "USED_FOR" &&
+        adHocReason === "OTHER" &&
+        !linkedEntity;
+
+    // Whether the freeform note field is currently in scope
+    const showFreeformNote =
+        direction === "IN" ||
+        (direction === "OUT" && primaryReason === "CORRECTION") ||
+        (direction === "OUT" &&
+            primaryReason === "USED_FOR" &&
+            (linkedEntity || (adHocReason && adHocReason !== "OTHER")));
+
+    // Whether linked-entity picker is required by validation rules
+    const linkedEntityRequired =
+        direction === "OUT" &&
+        primaryReason === "USED_FOR" &&
+        adHocReason !== null &&
+        adHocReason !== "OTHER";
+
+    const canSubmit = (() => {
+        if (qty === 0 || isPending) return false;
+
+        if (direction === "IN") {
+            return note.trim().length > 0;
+        }
+
+        // OUT direction
+        if (primaryReason === "CORRECTION") {
+            return note.trim().length > 0;
+        }
+
+        // USED_FOR
+        if (!adHocReason) return false;
+        if (linkedEntityRequired && !linkedEntity) return false;
+
+        if (adHocReason === "OTHER" && !linkedEntity) {
+            // Need all three structured fields
+            return (
+                requesterName.trim().length > 0 &&
+                venue.trim().length > 0 &&
+                details.trim().length > 0
+            );
+        }
+
+        return note.trim().length > 0;
+    })();
 
     const handleConfirm = () => {
         if (!canSubmit) return;
-        // When direction is OUT and reason is a write-off reason (not CORRECTION),
-        // record as WRITE_OFF. Otherwise ADJUSTMENT.
-        const isWriteOff = direction === "OUT" && reason !== "CORRECTION";
-        const payload: ManualStockAdjustmentPayload = {
+
+        // CORRECTION + IN both map to ADJUSTMENT
+        if (direction === "IN" || primaryReason === "CORRECTION") {
+            onSubmit({
+                asset_id: assetId,
+                delta: signedDelta,
+                reason_note: note.trim(),
+                movement_type: "ADJUSTMENT",
+            });
+            return;
+        }
+
+        // USED_FOR → OUTBOUND_AD_HOC
+        const reasonNote =
+            adHocReason === "OTHER" && !linkedEntity
+                ? `Requested by: ${requesterName.trim()}\nVenue: ${venue.trim()}\nDetails: ${details.trim()}`
+                : note.trim();
+
+        onSubmit({
             asset_id: assetId,
             delta: signedDelta,
-            reason_note: note.trim(),
-            movement_type: isWriteOff ? "WRITE_OFF" : "ADJUSTMENT",
-            ...(isWriteOff ? { write_off_reason: reason as WriteOffReason } : {}),
-        };
-        onSubmit(payload);
+            reason_note: reasonNote,
+            movement_type: "OUTBOUND_AD_HOC",
+            outbound_ad_hoc_reason: adHocReason ?? "OTHER",
+            ...(linkedEntity
+                ? {
+                      linked_entity_type: linkedEntity.type,
+                      linked_entity_id: linkedEntity.id,
+                  }
+                : {}),
+        });
     };
 
     const summaryLine = (() => {
         if (qty === 0) return null;
         const sign = direction === "IN" ? "+" : "-";
-        const type =
-            direction === "OUT" && reason !== "CORRECTION" ? `WRITE_OFF · ${reason}` : "ADJUSTMENT";
+        let type: string;
+        if (direction === "IN") type = "Correction";
+        else if (primaryReason === "CORRECTION") type = "Correction";
+        else if (linkedEntity)
+            type = `Used for · ${adHocReason ?? ""} · ${linkedEntity.readableId}`;
+        else if (adHocReason) type = `Used for · ${adHocReason}`;
+        else type = "Used for · ?";
         return `${sign}${qty} units — ${type}`;
     })();
 
@@ -511,7 +656,8 @@ function ManualAdjustmentDialog({
                                 type="button"
                                 onClick={() => {
                                     setDirection("OUT");
-                                    // Default to CORRECTION so the user is pushed to pick.
+                                    setPrimaryReason("CORRECTION");
+                                    setAdHocReason(null);
                                 }}
                                 className={cn(
                                     "flex items-center justify-center gap-2 rounded-md border-2 px-4 py-3 transition-all text-sm font-semibold",
@@ -543,7 +689,6 @@ function ManualAdjustmentDialog({
                             value={qtyRaw}
                             onChange={(e) => {
                                 const raw = e.target.value;
-                                // Allow empty string (so user can backspace to blank)
                                 if (raw === "") {
                                     setQtyRaw("");
                                     return;
@@ -589,20 +734,73 @@ function ManualAdjustmentDialog({
                         </div>
                     </div>
 
-                    {/* Reason — only for OUT direction */}
+                    {/* Primary reason — only for OUT direction */}
                     {direction === "OUT" && (
                         <div className="space-y-2">
                             <Label className="text-xs font-mono uppercase tracking-wide">
-                                Reason
+                                Why?
+                            </Label>
+                            <div className="grid grid-cols-1 gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setPrimaryReason("CORRECTION");
+                                        setAdHocReason(null);
+                                        setLinkedEntity(null);
+                                    }}
+                                    className={cn(
+                                        "text-left rounded-md border px-3 py-2.5 transition-all",
+                                        primaryReason === "CORRECTION"
+                                            ? "border-primary bg-primary/5 ring-1 ring-primary/30"
+                                            : "border-border bg-background hover:border-primary/40"
+                                    )}
+                                >
+                                    <p className="text-sm font-semibold">
+                                        Correction (count was wrong)
+                                    </p>
+                                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                                        Inventory recount, no order context
+                                    </p>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setPrimaryReason("USED_FOR");
+                                        if (!adHocReason) setAdHocReason("REPLACEMENT");
+                                    }}
+                                    className={cn(
+                                        "text-left rounded-md border px-3 py-2.5 transition-all",
+                                        primaryReason === "USED_FOR"
+                                            ? "border-primary bg-primary/5 ring-1 ring-primary/30"
+                                            : "border-border bg-background hover:border-primary/40"
+                                    )}
+                                >
+                                    <p className="text-sm font-semibold">
+                                        Used for an order or pickup
+                                    </p>
+                                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                                        Unit consumed for a specific job — replacement, install,
+                                        etc.
+                                    </p>
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Sub-reason for "Used for" */}
+                    {direction === "OUT" && primaryReason === "USED_FOR" && (
+                        <div className="space-y-2">
+                            <Label className="text-xs font-mono uppercase tracking-wide">
+                                Sub-reason
                             </Label>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                {REASON_OPTIONS.map((opt) => {
-                                    const isActive = reason === opt.value;
+                                {AD_HOC_SUB_REASONS.map((opt) => {
+                                    const isActive = adHocReason === opt.value;
                                     return (
                                         <button
                                             key={opt.value}
                                             type="button"
-                                            onClick={() => setReason(opt.value)}
+                                            onClick={() => setAdHocReason(opt.value)}
                                             className={cn(
                                                 "text-left rounded-md border px-3 py-2 transition-all",
                                                 isActive
@@ -621,26 +819,118 @@ function ManualAdjustmentDialog({
                         </div>
                     )}
 
-                    {/* Note */}
-                    <div className="space-y-2">
-                        <Label
-                            htmlFor="adjust-note"
-                            className="text-xs font-mono uppercase tracking-wide"
-                        >
-                            Note <span className="text-destructive">*</span>
-                        </Label>
-                        <Textarea
-                            id="adjust-note"
-                            value={note}
-                            onChange={(e) => setNote(e.target.value)}
-                            placeholder={
-                                direction === "IN"
-                                    ? "Why is stock being added? (e.g. recount found 5 extra units)"
-                                    : "Context for the write-off or correction"
-                            }
-                            rows={3}
-                        />
-                    </div>
+                    {/* Linked entity picker — shown for "Used for" path. Always
+                        available. Required for non-OTHER sub-reasons; optional
+                        but allowed for OTHER. */}
+                    {direction === "OUT" &&
+                        primaryReason === "USED_FOR" &&
+                        adHocReason !== null && (
+                            <div className="space-y-2">
+                                <Label className="text-xs font-mono uppercase tracking-wide">
+                                    Linked order or pickup
+                                    {linkedEntityRequired && (
+                                        <span className="text-destructive ml-1">*</span>
+                                    )}
+                                </Label>
+                                <LinkedEntityCombobox
+                                    value={
+                                        linkedEntity
+                                            ? { type: linkedEntity.type, id: linkedEntity.id }
+                                            : null
+                                    }
+                                    selectedLabel={
+                                        linkedEntity
+                                            ? `${linkedEntity.readableId}${linkedEntity.companyName ? ` · ${linkedEntity.companyName}` : ""}`
+                                            : null
+                                    }
+                                    onChange={(entity) =>
+                                        setLinkedEntity(
+                                            entity
+                                                ? {
+                                                      type: entity.type,
+                                                      id: entity.id,
+                                                      readableId: entity.readableId,
+                                                      companyName: entity.companyName,
+                                                  }
+                                                : null
+                                        )
+                                    }
+                                    placeholder={
+                                        adHocReason === "OTHER"
+                                            ? "Optional — link an order/pickup"
+                                            : "Required — search and select"
+                                    }
+                                />
+                            </div>
+                        )}
+
+                    {/* Structured fallback for OTHER + no linked entity */}
+                    {showStructuredFields && (
+                        <div className="space-y-3 rounded-md border border-amber-500/30 bg-amber-50/40 p-3">
+                            <p className="text-[11px] font-mono uppercase tracking-wide text-amber-700">
+                                No order/pickup — record the context
+                            </p>
+                            <div className="space-y-1">
+                                <Label htmlFor="ad-hoc-requester" className="text-xs font-mono">
+                                    Requested by <span className="text-destructive">*</span>
+                                </Label>
+                                <Input
+                                    id="ad-hoc-requester"
+                                    value={requesterName}
+                                    onChange={(e) => setRequesterName(e.target.value)}
+                                    placeholder="Name (e.g. Alice from Marketing)"
+                                />
+                            </div>
+                            <div className="space-y-1">
+                                <Label htmlFor="ad-hoc-venue" className="text-xs font-mono">
+                                    Venue <span className="text-destructive">*</span>
+                                </Label>
+                                <Input
+                                    id="ad-hoc-venue"
+                                    value={venue}
+                                    onChange={(e) => setVenue(e.target.value)}
+                                    placeholder="Where is the unit going?"
+                                />
+                            </div>
+                            <div className="space-y-1">
+                                <Label htmlFor="ad-hoc-details" className="text-xs font-mono">
+                                    Details <span className="text-destructive">*</span>
+                                </Label>
+                                <Textarea
+                                    id="ad-hoc-details"
+                                    value={details}
+                                    onChange={(e) => setDetails(e.target.value)}
+                                    placeholder="Why is this unit being removed?"
+                                    rows={2}
+                                />
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Freeform note (default path) */}
+                    {showFreeformNote && (
+                        <div className="space-y-2">
+                            <Label
+                                htmlFor="adjust-note"
+                                className="text-xs font-mono uppercase tracking-wide"
+                            >
+                                Note <span className="text-destructive">*</span>
+                            </Label>
+                            <Textarea
+                                id="adjust-note"
+                                value={note}
+                                onChange={(e) => setNote(e.target.value)}
+                                placeholder={
+                                    direction === "IN"
+                                        ? "Why is stock being added? (e.g. recount found 5 extra units)"
+                                        : primaryReason === "CORRECTION"
+                                          ? "Context for the correction (e.g. recount found 1 less)"
+                                          : "Anything else worth noting"
+                                }
+                                rows={3}
+                            />
+                        </div>
+                    )}
 
                     {/* Summary */}
                     {summaryLine && (

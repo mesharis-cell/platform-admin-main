@@ -67,8 +67,10 @@ export type ManualStockAdjustmentPayload = {
     asset_id: string;
     delta: number;
     reason_note: string;
-    movement_type?: "ADJUSTMENT" | "WRITE_OFF";
-    write_off_reason?: "CONSUMED" | "LOST" | "DAMAGED" | "OTHER";
+    movement_type?: "ADJUSTMENT" | "OUTBOUND_AD_HOC";
+    outbound_ad_hoc_reason?: "REPLACEMENT" | "INSTALL_CONSUMPTION" | "REPURPOSED" | "OTHER";
+    linked_entity_type?: "ORDER" | "SELF_PICKUP";
+    linked_entity_id?: string;
 };
 
 export function useManualStockAdjustment() {
@@ -84,6 +86,11 @@ export function useManualStockAdjustment() {
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ["stock-history"] });
             qc.invalidateQueries({ queryKey: ["low-stock-families"] });
+            // The new movement type changes both total + available — refresh
+            // the asset and family availability stats so the on-screen
+            // counters update without waiting for the 30s poll.
+            qc.invalidateQueries({ queryKey: ["asset-availability-stats"] });
+            qc.invalidateQueries({ queryKey: ["asset-family-availability-stats"] });
         },
         onError: throwApiError,
     });
