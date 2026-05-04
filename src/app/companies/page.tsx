@@ -70,7 +70,12 @@ export default function CompaniesPage() {
     );
     const canManageCompanies = canUpdateCompany || canArchiveCompany;
 
-    // Create form state
+    // Create form state. NOTE: lead-time overrides (minimum_lead_hours,
+    // sp_minimum_lead_hours) are not exposed on the create form — they
+    // live on the edit page and default to platform values otherwise. Don't
+    // seed them here as `null`; the API schema is `.number().optional()`
+    // and rejects `null`, surfacing as "Lead time override should be a
+    // number" on submit.
     const [formData, setFormData] = useState({
         name: "",
         domain: "",
@@ -80,9 +85,6 @@ export default function CompaniesPage() {
                 logo_url: undefined as string | undefined,
                 primary_color: "",
                 secondary_color: "",
-            },
-            feasibility: {
-                minimum_lead_hours: null as number | null,
             },
         },
         platform_margin_percent: 0.3,
@@ -179,13 +181,18 @@ export default function CompaniesPage() {
                 logoUrl = uploadResult.data?.imageUrls?.[0];
             }
 
+            // Schema: warehouse_ops_rate is `.number().min(0).optional()` —
+            // accepts undefined but NOT null. The input wires `null` when
+            // cleared, so coerce to undefined before sending. (vat_percent_
+            // override is `.nullable().optional()` server-side, so null is
+            // legal there.)
+            const sanitizedWarehouseOpsRate = canUpdateWarehouseOpsRate
+                ? (formData.warehouse_ops_rate ?? undefined)
+                : undefined;
+
             const payload = {
                 ...formData,
-                ...(canUpdateWarehouseOpsRate
-                    ? {}
-                    : {
-                          warehouse_ops_rate: undefined,
-                      }),
+                warehouse_ops_rate: sanitizedWarehouseOpsRate,
                 settings: {
                     ...formData.settings,
                     branding: {
@@ -256,9 +263,6 @@ export default function CompaniesPage() {
                     logo_url: undefined,
                     primary_color: "",
                     secondary_color: "",
-                },
-                feasibility: {
-                    minimum_lead_hours: null,
                 },
             },
             platform_margin_percent: 0.3,
