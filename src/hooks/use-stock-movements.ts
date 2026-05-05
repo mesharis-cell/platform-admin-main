@@ -88,7 +88,12 @@ export function useManualStockAdjustment() {
             qc.invalidateQueries({ queryKey: ["low-stock-families"] });
             // The new movement type changes both total + available — refresh
             // the asset and family availability stats so the on-screen
-            // counters update without waiting for the 30s poll.
+            // counters update without waiting for the 30s poll. Also
+            // invalidate the root ["assets"] key so the "Total Quantity"
+            // line on asset detail (which reads asset.total_quantity from
+            // the asset-row query, NOT from stats) refreshes too —
+            // otherwise the user sees Available drop but Total stay stale.
+            qc.invalidateQueries({ queryKey: ["assets"] });
             qc.invalidateQueries({ queryKey: ["asset-availability-stats"] });
             qc.invalidateQueries({ queryKey: ["asset-family-availability-stats"] });
         },

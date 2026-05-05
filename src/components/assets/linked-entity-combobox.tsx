@@ -104,7 +104,8 @@ function useOrderSearch(searchTerm: string, enabled: boolean) {
             });
             if (searchTerm.trim()) params.set("search_term", searchTerm.trim());
             const { data } = await apiClient.get(`/client/v1/order?${params.toString()}`);
-            const rows = (data?.data?.orders || data?.data?.data || data?.data || []) as any[];
+            // /client/v1/order returns { data: { data: [...], meta: { page, limit, total } } }
+            const rows = (data?.data?.data || []) as any[];
             return rows
                 .filter((o) => ACTIVE_ORDER_STATUSES.includes(o.order_status))
                 .slice(0, 8)
@@ -132,7 +133,8 @@ function useSelfPickupSearch(searchTerm: string, enabled: boolean) {
             const params = new URLSearchParams({ limit: "10" });
             if (searchTerm.trim()) params.set("search", searchTerm.trim());
             const { data } = await apiClient.get(`/operations/v1/self-pickup?${params.toString()}`);
-            const rows = (data?.data?.pickups || data?.data?.data || data?.data || []) as any[];
+            // /operations/v1/self-pickup returns { data: { self_pickups: [...], total, page, ... } }
+            const rows = (data?.data?.self_pickups || []) as any[];
             return rows
                 .filter((sp) => ACTIVE_SP_STATUSES.includes(sp.self_pickup_status))
                 .slice(0, 8)
