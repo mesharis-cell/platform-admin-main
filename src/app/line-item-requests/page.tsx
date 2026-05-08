@@ -40,17 +40,6 @@ type DraftMap = Record<
 
 type RequestDraft = DraftMap[string];
 
-const EMPTY_REQUEST_DRAFT: RequestDraft = {
-    description: "",
-    category: "OTHER",
-    quantity: "1",
-    unit: "service",
-    unitRate: "0",
-    notes: "",
-    adminNote: "",
-    billingMode: "BILLABLE",
-};
-
 const toDraft = (request: any) => ({
     description: request.description || "",
     category: (request.category || "OTHER") as ServiceCategory,
@@ -78,15 +67,20 @@ export default function LineItemRequestsPage() {
 
     const getDraft = (request: any) => drafts[request.id] || toDraft(request);
 
+    // CRITICAL: when a row's draft hasn't been touched, prev[request.id] is
+    // undefined. Fall back to toDraft(request) — the request's own values —
+    // so untouched fields keep the request's submitted values. The earlier
+    // shape spread an empty-defaults constant on first edit, which silently
+    // wiped every other field the moment the admin typed into ANY one field.
     const setDraftValue = <K extends keyof RequestDraft>(
-        requestId: string,
+        request: any,
         key: K,
         value: RequestDraft[K]
     ) => {
         setDrafts((prev) => ({
             ...prev,
-            [requestId]: {
-                ...(prev[requestId] || EMPTY_REQUEST_DRAFT),
+            [request.id]: {
+                ...(prev[request.id] || toDraft(request)),
                 [key]: value,
             },
         }));
@@ -206,43 +200,60 @@ export default function LineItemRequestsPage() {
                             const isRequested = request.status === "REQUESTED";
                             return (
                                 <Card key={request.id}>
-                                    <CardHeader className="pb-2">
+                                    <CardHeader className="pb-3">
                                         <div className="flex flex-wrap items-center justify-between gap-2">
-                                            <CardTitle className="text-base font-mono">
-                                                {request.lineItemRequestId}
-                                            </CardTitle>
-                                            <div className="flex items-center gap-2">
-                                                <Badge variant="outline">
+                                            <div className="flex items-center gap-3 flex-wrap">
+                                                <CardTitle className="text-base font-mono">
+                                                    {request.lineItemRequestId}
+                                                </CardTitle>
+                                                <Badge
+                                                    variant="outline"
+                                                    className="font-mono text-[10px] uppercase tracking-wide"
+                                                >
                                                     {request.purposeType}
                                                 </Badge>
-                                                <Badge>{request.status}</Badge>
+                                                <Badge className="font-mono text-[10px] uppercase tracking-wide">
+                                                    {request.status}
+                                                </Badge>
                                             </div>
+                                            {request.createdAt && (
+                                                <span className="font-mono text-[11px] text-muted-foreground">
+                                                    {new Date(request.createdAt).toLocaleString()}
+                                                </span>
+                                            )}
                                         </div>
                                     </CardHeader>
                                     <CardContent className="space-y-4">
+                                        {/* Description spans full width — it's the most important
+                                        field and was getting cramped in the 3-col grid. */}
+                                        <div className="space-y-1">
+                                            <Label className="text-[10px] font-mono uppercase tracking-wide text-muted-foreground">
+                                                Description
+                                            </Label>
+                                            <Input
+                                                value={draft.description}
+                                                disabled={!isRequested}
+                                                className="font-mono"
+                                                onChange={(event) =>
+                                                    setDraftValue(
+                                                        request,
+                                                        "description",
+                                                        event.target.value
+                                                    )
+                                                }
+                                            />
+                                        </div>
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                                             <div className="space-y-1">
-                                                <Label className="text-xs">Description</Label>
-                                                <Input
-                                                    value={draft.description}
-                                                    disabled={!isRequested}
-                                                    onChange={(event) =>
-                                                        setDraftValue(
-                                                            request.id,
-                                                            "description",
-                                                            event.target.value
-                                                        )
-                                                    }
-                                                />
-                                            </div>
-                                            <div className="space-y-1">
-                                                <Label className="text-xs">Category</Label>
+                                                <Label className="text-[10px] font-mono uppercase tracking-wide text-muted-foreground">
+                                                    Category
+                                                </Label>
                                                 <Select
                                                     value={draft.category}
                                                     disabled={!isRequested}
                                                     onValueChange={(value) =>
                                                         setDraftValue(
-                                                            request.id,
+                                                            request,
                                                             "category",
                                                             value as ServiceCategory
                                                         )
@@ -272,13 +283,15 @@ export default function LineItemRequestsPage() {
                                                 </Select>
                                             </div>
                                             <div className="space-y-1">
-                                                <Label className="text-xs">Billing Mode</Label>
+                                                <Label className="text-[10px] font-mono uppercase tracking-wide text-muted-foreground">
+                                                    Billing Mode
+                                                </Label>
                                                 <Select
                                                     value={draft.billingMode}
                                                     disabled={!isRequested}
                                                     onValueChange={(value) =>
                                                         setDraftValue(
-                                                            request.id,
+                                                            request,
                                                             "billingMode",
                                                             value as LineItemBillingMode
                                                         )
@@ -301,16 +314,19 @@ export default function LineItemRequestsPage() {
                                                 </Select>
                                             </div>
                                             <div className="space-y-1">
-                                                <Label className="text-xs">Quantity</Label>
+                                                <Label className="text-[10px] font-mono uppercase tracking-wide text-muted-foreground">
+                                                    Quantity
+                                                </Label>
                                                 <Input
                                                     type="number"
                                                     min={1}
                                                     step={1}
                                                     value={draft.quantity}
                                                     disabled={!isRequested}
+                                                    className="font-mono"
                                                     onChange={(event) =>
                                                         setDraftValue(
-                                                            request.id,
+                                                            request,
                                                             "quantity",
                                                             event.target.value
                                                         )
@@ -318,13 +334,16 @@ export default function LineItemRequestsPage() {
                                                 />
                                             </div>
                                             <div className="space-y-1">
-                                                <Label className="text-xs">Unit</Label>
+                                                <Label className="text-[10px] font-mono uppercase tracking-wide text-muted-foreground">
+                                                    Unit
+                                                </Label>
                                                 <Input
                                                     value={draft.unit}
                                                     disabled={!isRequested}
+                                                    className="font-mono"
                                                     onChange={(event) =>
                                                         setDraftValue(
-                                                            request.id,
+                                                            request,
                                                             "unit",
                                                             event.target.value
                                                         )
@@ -332,16 +351,19 @@ export default function LineItemRequestsPage() {
                                                 />
                                             </div>
                                             <div className="space-y-1">
-                                                <Label className="text-xs">Unit Rate</Label>
+                                                <Label className="text-[10px] font-mono uppercase tracking-wide text-muted-foreground">
+                                                    Unit Rate
+                                                </Label>
                                                 <Input
                                                     type="number"
                                                     min={0}
                                                     step="0.01"
                                                     value={draft.unitRate}
                                                     disabled={!isRequested}
+                                                    className="font-mono"
                                                     onChange={(event) =>
                                                         setDraftValue(
-                                                            request.id,
+                                                            request,
                                                             "unitRate",
                                                             event.target.value
                                                         )
@@ -351,14 +373,17 @@ export default function LineItemRequestsPage() {
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                             <div className="space-y-1">
-                                                <Label className="text-xs">Request Notes</Label>
+                                                <Label className="text-[10px] font-mono uppercase tracking-wide text-muted-foreground">
+                                                    Request Notes
+                                                </Label>
                                                 <Textarea
                                                     rows={2}
                                                     value={draft.notes}
                                                     disabled={!isRequested}
+                                                    className="font-mono text-sm"
                                                     onChange={(event) =>
                                                         setDraftValue(
-                                                            request.id,
+                                                            request,
                                                             "notes",
                                                             event.target.value
                                                         )
@@ -366,14 +391,17 @@ export default function LineItemRequestsPage() {
                                                 />
                                             </div>
                                             <div className="space-y-1">
-                                                <Label className="text-xs">Admin Note</Label>
+                                                <Label className="text-[10px] font-mono uppercase tracking-wide text-muted-foreground">
+                                                    Admin Note
+                                                </Label>
                                                 <Textarea
                                                     rows={2}
                                                     value={draft.adminNote}
                                                     disabled={!isRequested}
+                                                    className="font-mono text-sm"
                                                     onChange={(event) =>
                                                         setDraftValue(
-                                                            request.id,
+                                                            request,
                                                             "adminNote",
                                                             event.target.value
                                                         )
