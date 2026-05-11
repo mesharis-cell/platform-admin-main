@@ -123,34 +123,32 @@ export function PricingBreakdownTabs({
                         </TabsTrigger>
                     </TabsList>
 
-                    <div
-                        className={cn(
-                            "mt-3 flex items-center gap-2 text-[11px] px-3 py-2 rounded-md",
-                            role === "admin" && "bg-primary/8 text-primary",
-                            role === "logistics" && "bg-indigo-100 text-indigo-700",
-                            role === "client" && "bg-secondary/10 text-secondary"
-                        )}
-                    >
-                        <Info className="h-3 w-3 shrink-0" />
-                        {role === "admin" && (
-                            <span>
-                                Full breakdown — buy, margin, sell, VAT. Voided + non-billable
-                                hidden. Per-line policy stripes visible.
-                            </span>
-                        )}
-                        {role === "logistics" && (
-                            <span>
-                                Buy-side only. Margin, sell, VAT hidden. Lines flagged{" "}
-                                <em>hidden from logistics</em> are stripped entirely.
-                            </span>
-                        )}
-                        {role === "client" && (
-                            <span>
-                                Sell-side only + VAT. Buy and margin hidden. Lines with{" "}
-                                <em>client price hidden</em> show label but no amount.
-                            </span>
-                        )}
-                    </div>
+                    {/* Banner only on Logistics + Client tabs — admin is the
+                        default view and doesn't need a "you are previewing"
+                        reminder for themselves. */}
+                    {role !== "admin" && (
+                        <div
+                            className={cn(
+                                "mt-3 flex items-center gap-2 text-[11px] px-3 py-2 rounded-md",
+                                role === "logistics" && "bg-indigo-100 text-indigo-700",
+                                role === "client" && "bg-secondary/10 text-secondary"
+                            )}
+                        >
+                            <Info className="h-3 w-3 shrink-0" />
+                            {role === "logistics" && (
+                                <span>
+                                    Buy-side only. Margin, sell, VAT hidden. Lines flagged{" "}
+                                    <em>hidden from logistics</em> are stripped entirely.
+                                </span>
+                            )}
+                            {role === "client" && (
+                                <span>
+                                    Sell-side only + VAT. Buy and margin hidden. Lines with{" "}
+                                    <em>client price hidden</em> show label but no amount.
+                                </span>
+                            )}
+                        </div>
+                    )}
 
                     <div className="mt-3">
                         <TabsContent value="admin" className="mt-0">
