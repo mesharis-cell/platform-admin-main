@@ -10,6 +10,7 @@ import { AddCustomLineItemModal } from "@/components/orders/AddCustomLineItemMod
 import { CancelOrderModal } from "@/components/orders/CancelOrderModal";
 import { OrderLineItemsList } from "@/components/orders/OrderLineItemsList";
 import { ReturnToLogisticsModal } from "@/components/orders/ReturnToLogisticsModal";
+import { PricingBreakdownTabs } from "@/components/pricing/PricingBreakdownTabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -18,9 +19,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useAdminApproveQuote } from "@/hooks/use-orders";
 import { canManageLineItems } from "@/lib/order-helpers";
-import { getOrderPrice } from "@/lib/utils/helper";
 
-const roundCurrency = (v: number) => Math.round((v + Number.EPSILON) * 100) / 100;
 import { useToken } from "@/lib/auth/use-token";
 import { hasPermission } from "@/lib/auth/permissions";
 import { ADMIN_ACTION_PERMISSIONS } from "@/lib/auth/permission-map";
@@ -32,12 +31,18 @@ interface HybridPricingSectionProps {
     order: any;
     orderId: string;
     onRefresh?: () => void;
+    isRefetching?: boolean;
 }
 
 /**
  * PENDING_APPROVAL Section (Admin Review)
  */
-export function PendingApprovalSection({ order, orderId, onRefresh }: HybridPricingSectionProps) {
+export function PendingApprovalSection({
+    order,
+    orderId,
+    onRefresh,
+    isRefetching,
+}: HybridPricingSectionProps) {
     const { user } = useToken();
     const adminApproveQuote = useAdminApproveQuote();
 
@@ -53,50 +58,15 @@ export function PendingApprovalSection({ order, orderId, onRefresh }: HybridPric
     const canManagePricing = hasPermission(user, ADMIN_ACTION_PERMISSIONS.ordersPricingAdjust);
     const canApproveQuote = hasPermission(user, ADMIN_ACTION_PERMISSIONS.ordersPricingAdminApprove);
     const canManageServiceItems = canManageLineItems(order.order_status) && canManagePricing;
-
-    const effectiveMarginPercent = marginOverride
-        ? Number(marginPercent || 0)
-        : currentMarginPercent;
     const pricing = order?.order_pricing;
-    const breakdownLines = Array.isArray(pricing?.breakdown_lines)
-        ? pricing.breakdown_lines.filter(
-              (line: any) => !line.is_voided && (line.billing_mode || "BILLABLE") === "BILLABLE"
-          )
-        : [];
-    const linesBuyTotal = breakdownLines.reduce(
-        (sum: number, line: any) => sum + Number(line.buy_total ?? line.total ?? 0),
-        0
-    );
-    const linesSellTotal = breakdownLines.reduce(
-        (sum: number, line: any) => sum + Number(line.sell_total ?? line.total ?? 0),
-        0
-    );
-    const baseSubtotal = Number(
-        pricing?.totals?.buy_total ??
-            Number(pricing?.base_ops_total ?? 0) +
-                Number(pricing?.line_items?.catalog_total ?? 0) +
-                Number(pricing?.line_items?.custom_total ?? 0)
-    );
-    const total = marginOverride
-        ? roundCurrency(baseSubtotal * (1 + effectiveMarginPercent / 100))
-        : Number(
-              pricing?.totals?.sell_total ??
-                  pricing?.sell?.final_total ??
-                  pricing?.final_total ??
-                  getOrderPrice(pricing).total
-          );
-    const marginAmount = marginOverride
-        ? roundCurrency(total - baseSubtotal)
-        : Number(
-              pricing?.totals?.margin_amount ??
-                  (pricing?.margin?.amount != null
-                      ? Number(pricing.margin.amount)
-                      : roundCurrency(total - baseSubtotal))
-          );
-    const vatPercent = Number(pricing?.vat?.percent ?? pricing?.totals?.vat_percent ?? 0);
-    const vatAmount = Number(pricing?.vat?.amount ?? pricing?.totals?.vat_amount ?? 0);
-    const totalWithVat =
-        vatAmount > 0 ? Number(pricing?.totals?.sell_total_with_vat ?? total + vatAmount) : total;
+    // API now ships the three role projections nested under `projections`
+    // for ADMIN responses (see PricingService.projectAllRolesForAdmin).
+    // Fall back to the flat admin-shaped pricing for older payloads.
+    const projections = pricing?.projections || {
+        admin: pricing || null,
+        logistics: null,
+        client: null,
+    };
 
     const handleApprove = async () => {
         if (!canApproveQuote) return;
@@ -160,154 +130,85 @@ export function PendingApprovalSection({ order, orderId, onRefresh }: HybridPric
                 </CardContent>
             </Card>
 
-            {/* Pricing Breakdown with Margin Override */}
-            <Card>
-                <CardHeader>
-                    <CardTitle>Final Pricing Review</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    {/* Display current pricing if available */}
-                    {order.order_pricing && (
-                        <div className="space-y-2 text-sm">
-                            {breakdownLines.length > 0 && (
-                                <div className="rounded border border-border/60 overflow-hidden mt-2">
-                                    <div className="grid grid-cols-12 bg-muted/30 px-3 py-2 text-xs font-medium">
-                                        <span className="col-span-6">Line</span>
-                                        <span className="col-span-3 text-right">Buy</span>
-                                        <span className="col-span-3 text-right">Sell</span>
+            {/* Tabbed pricing breakdown — three role views from the same snapshot */}
+            <PricingBreakdownTabs
+                projections={projections}
+                calculatedAt={pricing?.calculated_at}
+                onRefresh={onRefresh}
+                isRefetching={isRefetching}
+            />
+
+            {/* PENDING_APPROVAL action card (margin override + approve/return).
+                Only renders when the order is awaiting admin action. Sits below
+                the breakdown so admin can review across role tabs first, then act. */}
+            {order.order_status === "PENDING_APPROVAL" && canApproveQuote && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Approve Quote</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="space-y-3">
+                            <div className="flex items-center space-x-2">
+                                <Checkbox
+                                    id="marginOverride"
+                                    checked={marginOverride}
+                                    onCheckedChange={(checked) =>
+                                        setMarginOverride(checked as boolean)
+                                    }
+                                />
+                                <Label htmlFor="marginOverride" className="cursor-pointer">
+                                    Override platform margin
+                                </Label>
+                            </div>
+
+                            {marginOverride && (
+                                <div className="space-y-3 pl-6 border-l-2 border-primary">
+                                    <div>
+                                        <Label>Margin Percent (%)</Label>
+                                        <Input
+                                            type="number"
+                                            step="0.01"
+                                            min="0"
+                                            max="100"
+                                            value={marginPercent}
+                                            onChange={(e) =>
+                                                setMarginPercent(Number(e.target.value || 0))
+                                            }
+                                        />
                                     </div>
-                                    {breakdownLines.map((line: any) => (
-                                        <div
-                                            key={line.line_id}
-                                            className="grid grid-cols-12 px-3 py-2 text-xs border-t border-border/40"
-                                        >
-                                            <span className="col-span-6 truncate">
-                                                {line.label} ({line.quantity} {line.unit})
-                                            </span>
-                                            <span className="col-span-3 text-right font-mono">
-                                                {Number(line.buy_total ?? line.total ?? 0).toFixed(
-                                                    2
-                                                )}{" "}
-                                                AED
-                                            </span>
-                                            <span className="col-span-3 text-right font-mono">
-                                                {Number(line.sell_total ?? line.total ?? 0).toFixed(
-                                                    2
-                                                )}{" "}
-                                                AED
-                                            </span>
-                                        </div>
-                                    ))}
-                                    <div className="grid grid-cols-12 px-3 py-2 text-xs border-t border-border font-semibold bg-muted/20">
-                                        <span className="col-span-6">Total of lines</span>
-                                        <span className="col-span-3 text-right font-mono">
-                                            {Number(linesBuyTotal).toFixed(2)} AED
-                                        </span>
-                                        <span className="col-span-3 text-right font-mono">
-                                            {Number(linesSellTotal).toFixed(2)} AED
-                                        </span>
+                                    <div>
+                                        <Label>Reason for Override</Label>
+                                        <Textarea
+                                            value={marginReason}
+                                            onChange={(e) => setMarginReason(e.target.value)}
+                                            placeholder="e.g., High-value order, premium service justifies higher margin"
+                                            rows={2}
+                                        />
                                     </div>
                                 </div>
                             )}
-                            <div className="flex justify-between">
-                                <span className="text-muted-foreground">
-                                    Margin ({effectiveMarginPercent}%)
-                                </span>
-                                <span className="font-mono">
-                                    {Number(marginAmount).toFixed(2)} AED
-                                </span>
-                            </div>
-                            <div className="border-t border-border my-2"></div>
-                            {vatPercent > 0 && (
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-muted-foreground">
-                                        {vatAmount > 0
-                                            ? `VAT (${vatPercent}%)`
-                                            : `VAT included (${vatPercent}%)`}
-                                    </span>
-                                    {vatAmount > 0 && (
-                                        <span className="font-mono">
-                                            {vatAmount.toFixed(2)} AED
-                                        </span>
-                                    )}
-                                </div>
-                            )}
-                            <div className="flex justify-between font-semibold">
-                                <span>Total</span>
-                                <span className="font-mono">
-                                    {Number(totalWithVat).toFixed(2)} AED
-                                </span>
-                            </div>
                         </div>
-                    )}
 
-                    {order.order_status === "PENDING_APPROVAL" && canApproveQuote && (
-                        <div>
-                            {/* Margin Override */}
-                            <div className="space-y-3 border-t border-border pt-4">
-                                <div className="flex items-center space-x-2">
-                                    <Checkbox
-                                        id="marginOverride"
-                                        checked={marginOverride}
-                                        onCheckedChange={(checked) =>
-                                            setMarginOverride(checked as boolean)
-                                        }
-                                    />
-                                    <Label htmlFor="marginOverride" className="cursor-pointer">
-                                        Override platform margin
-                                    </Label>
-                                </div>
-
-                                {marginOverride && (
-                                    <div className="space-y-3 pl-6 border-l-2 border-primary">
-                                        <div>
-                                            <Label>Margin Percent (%)</Label>
-                                            <Input
-                                                type="number"
-                                                step="0.01"
-                                                min="0"
-                                                max="100"
-                                                value={marginPercent}
-                                                onChange={(e) =>
-                                                    setMarginPercent(Number(e.target.value || 0))
-                                                }
-                                            />
-                                        </div>
-                                        <div>
-                                            <Label>Reason for Override</Label>
-                                            <Textarea
-                                                value={marginReason}
-                                                onChange={(e) => setMarginReason(e.target.value)}
-                                                placeholder="e.g., High-value order, premium service justifies higher margin"
-                                                rows={2}
-                                            />
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Actions */}
-                            <div className="flex gap-3 pt-4">
-                                <Button
-                                    onClick={handleApprove}
-                                    disabled={adminApproveQuote.isPending}
-                                    className="flex-1"
-                                >
-                                    {adminApproveQuote.isPending
-                                        ? "Approving..."
-                                        : "Approve & Send Quote to Client"}
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    onClick={() => setReturnToLogisticsOpen(true)}
-                                >
-                                    Return to Logistics
-                                </Button>
-                            </div>
+                        <div className="flex gap-3 pt-2">
+                            <Button
+                                onClick={handleApprove}
+                                disabled={adminApproveQuote.isPending}
+                                className="flex-1"
+                            >
+                                {adminApproveQuote.isPending
+                                    ? "Approving..."
+                                    : "Approve & Send Quote to Client"}
+                            </Button>
+                            <Button
+                                variant="outline"
+                                onClick={() => setReturnToLogisticsOpen(true)}
+                            >
+                                Return to Logistics
+                            </Button>
                         </div>
-                    )}
-                </CardContent>
-            </Card>
+                    </CardContent>
+                </Card>
+            )}
 
             {/* Modals */}
             <AddCatalogLineItemModal

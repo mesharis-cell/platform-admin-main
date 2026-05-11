@@ -49,6 +49,10 @@ export function useAdminSelfPickupDetails(id: string | null) {
             return data;
         },
         enabled: !!id,
+        // Auto-refresh pricing snapshot — see useAdminOrderDetails for rationale.
+        staleTime: 30_000,
+        refetchInterval: 60_000,
+        refetchOnWindowFocus: true,
     });
 }
 

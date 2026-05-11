@@ -49,6 +49,10 @@ export interface ServiceType {
     description: string | null;
     display_order: number;
     is_active: boolean;
+    // Default margin policy for lines created from this service type.
+    // When false, new CATALOG lines default to NULL apply_margin which
+    // resolves to false at projection time.
+    apply_margin: boolean;
     created_at: string;
     updated_at: string;
 }
@@ -61,6 +65,7 @@ export interface CreateServiceTypeRequest {
     description?: string;
     display_order?: number;
     is_active?: boolean;
+    apply_margin?: boolean;
 }
 
 export interface UpdateServiceTypeRequest {
@@ -70,6 +75,7 @@ export interface UpdateServiceTypeRequest {
     description?: string;
     displayOrder?: number;
     isActive?: boolean;
+    applyMargin?: boolean;
 }
 
 // ============================================================
@@ -109,6 +115,10 @@ export interface OrderLineItem {
     billingMode?: LineItemBillingMode;
     metadata?: TransportLineItemMetadata | Record<string, unknown> | null;
     clientPriceVisible?: boolean;
+    // Per-line policy. NULL = inherit from service_type default.
+    applyMargin?: boolean | null;
+    // When false, server strips this line from LOGISTICS projections + list.
+    logisticsVisible?: boolean;
     canEditPricingFields?: boolean;
     canEditMetadataFields?: boolean;
     lockReason?: string | null;
@@ -131,6 +141,8 @@ export interface CreateCatalogLineItemRequest {
     notes?: string;
     billing_mode?: LineItemBillingMode;
     metadata?: Record<string, unknown>;
+    apply_margin?: boolean | null;
+    logistics_visible?: boolean;
 }
 
 export interface CreateCustomLineItemRequest {
@@ -147,6 +159,8 @@ export interface CreateCustomLineItemRequest {
     notes?: string;
     billing_mode?: LineItemBillingMode;
     metadata?: Record<string, unknown>;
+    apply_margin?: boolean | null;
+    logistics_visible?: boolean;
 }
 
 export interface UpdateLineItemRequest {
@@ -157,6 +171,8 @@ export interface UpdateLineItemRequest {
     billingMode?: LineItemBillingMode;
     metadata?: Record<string, unknown>;
     clientPriceVisible?: boolean;
+    applyMargin?: boolean | null;
+    logisticsVisible?: boolean;
 }
 
 export interface PatchLineItemMetadataRequest {
@@ -164,17 +180,21 @@ export interface PatchLineItemMetadataRequest {
     metadata?: Record<string, unknown>;
 }
 
-export interface PatchLineItemClientVisibilityRequest {
-    clientPriceVisible: boolean;
+// Combined visibility patch. The audience chip on the line items list
+// fires this with one or both flags. Server requires at least one.
+export interface PatchLineItemVisibilityRequest {
+    clientPriceVisible?: boolean;
+    logisticsVisible?: boolean;
 }
 
-export interface PatchEntityLineItemClientVisibilityRequest {
+export interface PatchEntityLineItemVisibilityRequest {
     purposeType: PurposeType;
     orderId?: string;
     inboundRequestId?: string;
     serviceRequestId?: string;
     selfPickupId?: string;
-    clientPriceVisible: boolean;
+    clientPriceVisible?: boolean;
+    logisticsVisible?: boolean;
     lineItemIds?: string[];
 }
 
@@ -290,25 +310,32 @@ export interface UpdateOrderTransportTripPayload {
 // Order Pricing Structure (NEW)
 // ============================================================
 
+// Per-line snapshot row carried in OrderPricing.breakdown_lines.
+// The same shape is used for all three role projections; some fields are
+// nulled per role (e.g. total = null for client-hidden lines).
+export interface BreakdownLine {
+    line_id: string;
+    line_kind?: "BASE_OPS" | "RATE_CARD" | "CUSTOM";
+    category?: string;
+    label: string;
+    quantity: number;
+    unit: string;
+    buy_unit_price?: number;
+    buy_total?: number;
+    sell_unit_price?: number;
+    sell_total?: number;
+    unit_price?: number | null;
+    total?: number | null;
+    billing_mode?: string;
+    client_price_visible?: boolean;
+    apply_margin?: boolean;
+    logistics_visible?: boolean;
+    is_voided?: boolean;
+    notes?: string | null;
+}
+
 export interface OrderPricing {
-    breakdown_lines?: Array<{
-        line_id: string;
-        line_kind?: "BASE_OPS" | "RATE_CARD" | "CUSTOM";
-        category?: string;
-        label: string;
-        quantity: number;
-        unit: string;
-        buy_unit_price?: number;
-        buy_total?: number;
-        sell_unit_price?: number;
-        sell_total?: number;
-        unit_price?: number;
-        total?: number;
-        billing_mode?: string;
-        client_price_visible?: boolean;
-        is_voided?: boolean;
-        notes?: string | null;
-    }>;
+    breakdown_lines?: BreakdownLine[];
     totals?: {
         buy_base_ops_total?: number;
         buy_rate_card_total?: number;
@@ -359,6 +386,15 @@ export interface OrderPricing {
     subtotal?: number | string;
     final_total: number | string;
     calculated_at?: string;
+    // ADMIN-only payload. The API embeds all three role projections so the
+    // breakdown card can render Logistics + Client tabs without extra calls,
+    // and the preview is 1:1 with what each role actually receives.
+    // Absent on non-admin responses.
+    projections?: {
+        admin: OrderPricing | null;
+        logistics: OrderPricing | null;
+        client: OrderPricing | null;
+    };
 }
 
 // ============================================================

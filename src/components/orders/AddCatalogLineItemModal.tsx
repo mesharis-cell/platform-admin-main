@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { Minus, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { useListServiceTypes } from "@/hooks/use-service-types";
@@ -76,6 +77,15 @@ export function AddCatalogLineItemModal({
     const [billingMode, setBillingMode] = useState<LineItemBillingMode>("BILLABLE");
     const [notes, setNotes] = useState("");
     const [selectedById, setSelectedById] = useState<Record<string, SelectedEntry>>({});
+    // Margin policy override for this bulk insert. When `override` is off,
+    // we leave apply_margin out of the payload so each line inherits its
+    // service_type default (the typical case). When on, we send the chosen
+    // value verbatim for every selected line. Same applies to logistics
+    // visibility — default ON inherits, OFF strips from logistics.
+    const [overrideApplyMargin, setOverrideApplyMargin] = useState(false);
+    const [applyMargin, setApplyMargin] = useState(true);
+    const [overrideLogisticsVisible, setOverrideLogisticsVisible] = useState(false);
+    const [logisticsVisible, setLogisticsVisible] = useState(true);
 
     const debounceRef = useRef<ReturnType<typeof setTimeout>>();
     useEffect(() => {
@@ -93,6 +103,10 @@ export function AddCatalogLineItemModal({
             setBillingMode("BILLABLE");
             setNotes("");
             setSelectedById({});
+            setOverrideApplyMargin(false);
+            setApplyMargin(true);
+            setOverrideLogisticsVisible(false);
+            setLogisticsVisible(true);
         }
     }, [open]);
 
@@ -195,6 +209,8 @@ export function AddCatalogLineItemModal({
                     quantity: quantityValue,
                     billing_mode: billingMode,
                     notes: notes.trim() || undefined,
+                    ...(overrideApplyMargin ? { apply_margin: applyMargin } : {}),
+                    ...(overrideLogisticsVisible ? { logistics_visible: logisticsVisible } : {}),
                 });
             }
 
@@ -556,6 +572,69 @@ export function AddCatalogLineItemModal({
                             rows={3}
                             placeholder="Internal note for selected line items"
                         />
+                    </div>
+
+                    {/* Optional policy overrides for this bulk insert. Leaving
+                        both off (default) lets each line inherit its service
+                        type's apply_margin default and start visible to all. */}
+                    <div className="space-y-3 rounded-md border border-border p-4">
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                            Policy overrides (optional)
+                        </p>
+                        <p className="text-[11px] text-muted-foreground">
+                            Leave off to inherit each service type's defaults. Toggle on only if you
+                            need every selected line to share a specific policy that differs from
+                            its type default.
+                        </p>
+
+                        <div className="flex items-start justify-between gap-3 pt-2">
+                            <div className="space-y-0.5">
+                                <Label className="text-sm">Override margin policy</Label>
+                                <p className="text-[11px] text-muted-foreground leading-snug">
+                                    {overrideApplyMargin
+                                        ? applyMargin
+                                            ? "Force apply margin for all selected lines."
+                                            : "Force pass-through (no margin) for all selected."
+                                        : "Each line uses its service type's default."}
+                                </p>
+                            </div>
+                            <Switch
+                                checked={overrideApplyMargin}
+                                onCheckedChange={setOverrideApplyMargin}
+                            />
+                        </div>
+                        {overrideApplyMargin && (
+                            <div className="flex items-center justify-between gap-3 pl-3 border-l-2 border-primary">
+                                <Label className="text-sm">Apply margin</Label>
+                                <Switch checked={applyMargin} onCheckedChange={setApplyMargin} />
+                            </div>
+                        )}
+
+                        <div className="flex items-start justify-between gap-3 pt-2">
+                            <div className="space-y-0.5">
+                                <Label className="text-sm">Override visibility</Label>
+                                <p className="text-[11px] text-muted-foreground leading-snug">
+                                    {overrideLogisticsVisible
+                                        ? logisticsVisible
+                                            ? "Force visible to logistics for all selected."
+                                            : "Hide all selected lines from logistics."
+                                        : "Each line is visible to logistics by default."}
+                                </p>
+                            </div>
+                            <Switch
+                                checked={overrideLogisticsVisible}
+                                onCheckedChange={setOverrideLogisticsVisible}
+                            />
+                        </div>
+                        {overrideLogisticsVisible && (
+                            <div className="flex items-center justify-between gap-3 pl-3 border-l-2 border-primary">
+                                <Label className="text-sm">Visible to Logistics</Label>
+                                <Switch
+                                    checked={logisticsVisible}
+                                    onCheckedChange={setLogisticsVisible}
+                                />
+                            </div>
+                        )}
                     </div>
                 </div>
 
