@@ -41,6 +41,11 @@ type EditDraft = {
     billingMode: LineItemBillingMode;
     notes: string;
     metadataJson: string;
+    // applyMargin in the draft is always explicit true/false. The raw
+    // line column is nullable (NULL = inherit from service_type), but
+    // once admin opens edit + saves, we send an explicit value either
+    // way — breaking inheritance is intentional at that point.
+    applyMargin: boolean;
 };
 
 const EMPTY_DRAFT: EditDraft = {
@@ -49,6 +54,7 @@ const EMPTY_DRAFT: EditDraft = {
     billingMode: "BILLABLE",
     notes: "",
     metadataJson: "",
+    applyMargin: true,
 };
 
 const getSystemLineCopy = (item: OrderLineItem) => {
@@ -70,6 +76,10 @@ const mapDraftFromItem = (item: OrderLineItem): EditDraft => {
         billingMode: (item.billingMode || "BILLABLE") as LineItemBillingMode,
         notes: item.notes || "",
         metadataJson,
+        // Treat null (inheriting) as "on" in the form — the typical default.
+        // Lines that inherit a false service_type default will show as "on"
+        // here visually; admin toggles off to set an explicit override.
+        applyMargin: item.applyMargin === false ? false : true,
     };
 };
 
@@ -185,6 +195,7 @@ export function OrderLineItemsList({
                         billingMode: draft.billingMode,
                         notes: draft.notes || undefined,
                         metadata,
+                        applyMargin: draft.applyMargin,
                     },
                 });
                 toast.success("Line item updated");
@@ -394,6 +405,29 @@ export function OrderLineItemsList({
                                     </SelectContent>
                                 </Select>
                             </div>
+                        </div>
+
+                        {/* Per-line margin policy override. Defaults to current
+                            effective state (true if line.apply_margin is null
+                            or true; false only when explicitly false). Toggling
+                            saves an explicit override — once edited, the line
+                            no longer inherits from its service_type default. */}
+                        <div className="flex items-start justify-between gap-3 rounded-md border border-border/60 p-3">
+                            <div className="space-y-0.5">
+                                <Label className="text-xs">Apply margin</Label>
+                                <p className="text-[11px] text-muted-foreground leading-snug">
+                                    {draft.applyMargin
+                                        ? "Margin is applied to this line (sell = buy × (1 + margin%))."
+                                        : "Margin is OFF — sell equals buy (pass-through, no markup)."}
+                                </p>
+                            </div>
+                            <Switch
+                                checked={draft.applyMargin}
+                                onCheckedChange={(v) =>
+                                    setDraft((prev) => ({ ...prev, applyMargin: v }))
+                                }
+                                disabled={pricingLocked}
+                            />
                         </div>
 
                         <div className="space-y-1">
