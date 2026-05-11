@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { useCreateCustomLineItem } from "@/hooks/use-order-line-items";
 import type {
@@ -60,6 +61,10 @@ export function AddCustomLineItemModal({
     const [tailgateRequired, setTailgateRequired] = useState(false);
     const [manpower, setManpower] = useState("");
     const [transportNotes, setTransportNotes] = useState("");
+    // Per-line policy. Defaults to standard (with-margin, visible to all).
+    // Admin flips one or both for fuel-surcharge style pass-through lines.
+    const [applyMargin, setApplyMargin] = useState(true);
+    const [logisticsVisible, setLogisticsVisible] = useState(true);
     const quantityNum = Number(quantity || 0);
     const unitRateNum = Number(unitRate || 0);
     const isTransportCategory = category === "TRANSPORT";
@@ -118,6 +123,8 @@ export function AddCustomLineItemModal({
                 unit_rate: unitRateNum,
                 notes: notes || undefined,
                 metadata,
+                apply_margin: applyMargin,
+                logistics_visible: logisticsVisible,
             });
             toast.success("Custom line item added");
             onOpenChange(false);
@@ -136,6 +143,8 @@ export function AddCustomLineItemModal({
             setTailgateRequired(false);
             setManpower("");
             setTransportNotes("");
+            setApplyMargin(true);
+            setLogisticsVisible(true);
         } catch (error: any) {
             toast.error(error.message || "Failed to add line item");
         }
@@ -359,10 +368,44 @@ export function AddCustomLineItemModal({
                         />
                     </div>
 
+                    {/* Per-line policy controls. apply_margin off = pass-through
+                        (sell = buy). logistics_visible off = warehouse won't
+                        see this line. Combined, they enable fuel-surcharge
+                        style admin-to-client pass-through fees. */}
+                    <div className="space-y-3 rounded-md border border-border p-4">
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                            Line Policy
+                        </p>
+                        <div className="flex items-start justify-between gap-3">
+                            <div className="space-y-0.5">
+                                <Label className="text-sm">Apply margin</Label>
+                                <p className="text-[11px] text-muted-foreground leading-snug">
+                                    When off, the typed amount IS what the client pays (buy = sell,
+                                    no markup).
+                                </p>
+                            </div>
+                            <Switch checked={applyMargin} onCheckedChange={setApplyMargin} />
+                        </div>
+                        <div className="flex items-start justify-between gap-3">
+                            <div className="space-y-0.5">
+                                <Label className="text-sm">Visible to Logistics</Label>
+                                <p className="text-[11px] text-muted-foreground leading-snug">
+                                    When off, this line is stripped from the warehouse view
+                                    entirely.
+                                </p>
+                            </div>
+                            <Switch
+                                checked={logisticsVisible}
+                                onCheckedChange={setLogisticsVisible}
+                            />
+                        </div>
+                    </div>
+
                     <div className="bg-primary/10 border border-primary/20 rounded-md p-3">
                         <p className="text-xs text-primary">
                             ℹ️ Custom and reskin amounts are treated as base cost inputs, then
-                            margin is applied once by the pricing engine.
+                            margin is applied once by the pricing engine (unless Apply margin is off
+                            above).
                         </p>
                     </div>
                 </div>

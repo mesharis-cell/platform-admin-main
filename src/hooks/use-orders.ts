@@ -211,6 +211,15 @@ export function useAdminOrderDetails(orderId: string | null) {
             }
         },
         enabled: !!orderId,
+        // Auto-refresh keeps the breakdown snapshot reasonably fresh — the
+        // pricing tabs render the API's projection verbatim, so stale data
+        // here means stale across all three role views simultaneously. Tight
+        // staleTime + 60s refetch + focus refetch keeps things current
+        // without thrashing the API. Manual refresh button in the tabs
+        // header is wired for explicit refreshes.
+        staleTime: 30_000,
+        refetchInterval: 60_000,
+        refetchOnWindowFocus: true,
     });
 }
 

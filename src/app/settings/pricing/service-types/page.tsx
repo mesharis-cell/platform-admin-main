@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import {
     Select,
     SelectContent,
@@ -101,10 +102,20 @@ export default function ServiceTypesPage() {
         unit: "",
         defaultRate: "",
         description: "",
+        // Per-type margin policy default. Lines created from this service
+        // type inherit this as their apply_margin (overridable per line).
+        applyMargin: true,
     });
 
     const resetForm = () => {
-        setFormData({ name: "", category: "ASSEMBLY", unit: "", defaultRate: "", description: "" });
+        setFormData({
+            name: "",
+            category: "ASSEMBLY",
+            unit: "",
+            defaultRate: "",
+            description: "",
+            applyMargin: true,
+        });
     };
 
     const totalItems = data?.meta?.total || 0;
@@ -130,6 +141,7 @@ export default function ServiceTypesPage() {
                 unit: formData.unit,
                 default_rate: rateNum,
                 description: formData.description || undefined,
+                apply_margin: formData.applyMargin,
             });
             toast.success("Service type created successfully");
             setCreateDialogOpen(false);
@@ -156,6 +168,7 @@ export default function ServiceTypesPage() {
                     unit: formData.unit,
                     defaultRate: rateNum,
                     description: formData.description || undefined,
+                    applyMargin: formData.applyMargin,
                 },
             });
             toast.success("Service type updated successfully");
@@ -201,6 +214,7 @@ export default function ServiceTypesPage() {
             unit: service.unit,
             defaultRate: service.default_rate?.toString() || "",
             description: service.description || "",
+            applyMargin: service.apply_margin !== false,
         });
         setEditDialogOpen(true);
     };
@@ -325,6 +339,9 @@ export default function ServiceTypesPage() {
                                             DEFAULT RATE
                                         </TableHead>
                                         <TableHead className="font-mono text-xs font-bold">
+                                            MARGIN
+                                        </TableHead>
+                                        <TableHead className="font-mono text-xs font-bold">
                                             STATUS
                                         </TableHead>
                                         <TableHead className="w-12"></TableHead>
@@ -364,6 +381,23 @@ export default function ServiceTypesPage() {
                                                 {service.default_rate != null
                                                     ? `${service.default_rate.toFixed(2)} AED`
                                                     : "—"}
+                                            </TableCell>
+                                            <TableCell>
+                                                {service.apply_margin === false ? (
+                                                    <Badge
+                                                        variant="outline"
+                                                        className="text-[10px] font-semibold uppercase tracking-wide border-amber-500 text-amber-700 bg-amber-50/60"
+                                                    >
+                                                        No Margin
+                                                    </Badge>
+                                                ) : (
+                                                    <Badge
+                                                        variant="outline"
+                                                        className="text-[10px] font-semibold uppercase tracking-wide"
+                                                    >
+                                                        Margin
+                                                    </Badge>
+                                                )}
                                             </TableCell>
                                             <TableCell>
                                                 <Badge
@@ -550,6 +584,24 @@ export default function ServiceTypesPage() {
                                 placeholder="Optional description"
                                 rows={3}
                                 className="font-mono"
+                            />
+                        </div>
+                        {/* Per-type margin policy default. Lines created from this type
+                            inherit this as their apply_margin (overridable per line at
+                            add time or via inline edit). */}
+                        <div className="flex items-start justify-between gap-3 rounded-md border border-border p-3">
+                            <div className="space-y-0.5">
+                                <Label className="font-mono text-xs">APPLY MARGIN BY DEFAULT</Label>
+                                <p className="text-[11px] text-muted-foreground leading-snug font-mono">
+                                    When off, lines added from this service type default to buy =
+                                    sell (no markup). Admin can still override per line.
+                                </p>
+                            </div>
+                            <Switch
+                                checked={formData.applyMargin}
+                                onCheckedChange={(v) =>
+                                    setFormData({ ...formData, applyMargin: v })
+                                }
                             />
                         </div>
                     </div>

@@ -14,17 +14,18 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { Edit, Eye, EyeOff, Minus, Plus, Save, Trash2, X } from "lucide-react";
+import { Edit, Minus, Plus, Save, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import {
     useListLineItems,
-    usePatchEntityLineItemsClientVisibility,
-    usePatchLineItemClientVisibility,
+    usePatchEntityLineItemsVisibility,
+    usePatchLineItemVisibility,
     usePatchLineItemMetadata,
     useUpdateLineItem,
     useVoidLineItem,
 } from "@/hooks/use-order-line-items";
 import { VoidLineItemDialog } from "./VoidLineItemDialog";
+import { LineVisibilityChip } from "./LineVisibilityChip";
 import type { LineItemBillingMode, OrderLineItem } from "@/types/hybrid-pricing";
 
 interface OrderLineItemsListProps {
@@ -40,6 +41,11 @@ type EditDraft = {
     billingMode: LineItemBillingMode;
     notes: string;
     metadataJson: string;
+    // applyMargin in the draft is always explicit true/false. The raw
+    // line column is nullable (NULL = inherit from service_type), but
+    // once admin opens edit + saves, we send an explicit value either
+    // way — breaking inheritance is intentional at that point.
+    applyMargin: boolean;
 };
 
 const EMPTY_DRAFT: EditDraft = {
@@ -48,6 +54,7 @@ const EMPTY_DRAFT: EditDraft = {
     billingMode: "BILLABLE",
     notes: "",
     metadataJson: "",
+    applyMargin: true,
 };
 
 const getSystemLineCopy = (item: OrderLineItem) => {
@@ -69,6 +76,10 @@ const mapDraftFromItem = (item: OrderLineItem): EditDraft => {
         billingMode: (item.billingMode || "BILLABLE") as LineItemBillingMode,
         notes: item.notes || "",
         metadataJson,
+        // Treat null (inheriting) as "on" in the form — the typical default.
+        // Lines that inherit a false service_type default will show as "on"
+        // here visually; admin toggles off to set an explicit override.
+        applyMargin: item.applyMargin === false ? false : true,
     };
 };
 
@@ -82,8 +93,8 @@ export function OrderLineItemsList({
     const voidLineItem = useVoidLineItem(targetId, purposeType);
     const updateLineItem = useUpdateLineItem(targetId, purposeType);
     const patchLineItemMetadata = usePatchLineItemMetadata(targetId, purposeType);
-    const patchLineVisibility = usePatchLineItemClientVisibility(targetId, purposeType);
-    const patchBulkVisibility = usePatchEntityLineItemsClientVisibility(targetId, purposeType);
+    const patchLineVisibility = usePatchLineItemVisibility(targetId, purposeType);
+    const patchBulkVisibility = usePatchEntityLineItemsVisibility(targetId, purposeType);
 
     const [voidDialogOpen, setVoidDialogOpen] = useState(false);
     const [selectedItem, setSelectedItem] = useState<OrderLineItem | null>(null);
@@ -184,6 +195,7 @@ export function OrderLineItemsList({
                         billingMode: draft.billingMode,
                         notes: draft.notes || undefined,
                         metadata,
+                        applyMargin: draft.applyMargin,
                     },
                 });
                 toast.success("Line item updated");
@@ -195,19 +207,19 @@ export function OrderLineItemsList({
         }
     };
 
-    const handleToggleLineVisibility = async (itemId: string, next: boolean) => {
+    const handleLineVisibility = async (
+        itemId: string,
+        next: { clientPriceVisible?: boolean; logisticsVisible?: boolean }
+    ) => {
         try {
-            await patchLineVisibility.mutateAsync({
-                itemId,
-                data: { clientPriceVisible: next },
-            });
-            toast.success(next ? "Line price shown to client" : "Line price hidden from client");
+            await patchLineVisibility.mutateAsync({ itemId, data: next });
+            toast.success("Visibility updated");
         } catch (error: any) {
-            toast.error(error.message || "Failed to update client visibility");
+            toast.error(error.message || "Failed to update visibility");
         }
     };
 
-    const handleBulkVisibility = async (next: boolean) => {
+    const handleBulkClientVisibility = async (next: boolean) => {
         try {
             await patchBulkVisibility.mutateAsync({
                 clientPriceVisible: next,
@@ -270,22 +282,13 @@ export function OrderLineItemsList({
                               : "Pricing Editable"}
                     </Badge>
                     {canManageVisibility ? (
-                        <div className="ml-auto flex items-center gap-2 rounded-md border border-border px-2 py-1">
-                            <Label className="text-[11px] text-muted-foreground">
-                                Client price
-                            </Label>
-                            <Switch
-                                checked={Boolean(item.clientPriceVisible)}
-                                onCheckedChange={(next) =>
-                                    handleToggleLineVisibility(item.id, next)
-                                }
+                        <div className="ml-auto">
+                            <LineVisibilityChip
+                                clientPriceVisible={Boolean(item.clientPriceVisible)}
+                                logisticsVisible={item.logisticsVisible !== false}
+                                onChange={(next) => handleLineVisibility(item.id, next)}
                                 disabled={visibilityBusy}
                             />
-                            {item.clientPriceVisible ? (
-                                <Eye className="h-3.5 w-3.5 text-muted-foreground" />
-                            ) : (
-                                <EyeOff className="h-3.5 w-3.5 text-muted-foreground" />
-                            )}
                         </div>
                     ) : null}
                 </div>
@@ -404,6 +407,29 @@ export function OrderLineItemsList({
                             </div>
                         </div>
 
+                        {/* Per-line margin policy override. Defaults to current
+                            effective state (true if line.apply_margin is null
+                            or true; false only when explicitly false). Toggling
+                            saves an explicit override — once edited, the line
+                            no longer inherits from its service_type default. */}
+                        <div className="flex items-start justify-between gap-3 rounded-md border border-border/60 p-3">
+                            <div className="space-y-0.5">
+                                <Label className="text-xs">Apply margin</Label>
+                                <p className="text-[11px] text-muted-foreground leading-snug">
+                                    {draft.applyMargin
+                                        ? "Margin is applied to this line (sell = buy × (1 + margin%))."
+                                        : "Margin is OFF — sell equals buy (pass-through, no markup)."}
+                                </p>
+                            </div>
+                            <Switch
+                                checked={draft.applyMargin}
+                                onCheckedChange={(v) =>
+                                    setDraft((prev) => ({ ...prev, applyMargin: v }))
+                                }
+                                disabled={pricingLocked}
+                            />
+                        </div>
+
                         <div className="space-y-1">
                             <Label className="text-xs">Notes</Label>
                             <Textarea
@@ -488,7 +514,7 @@ export function OrderLineItemsList({
                     <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => handleBulkVisibility(!allClientVisible)}
+                        onClick={() => handleBulkClientVisibility(!allClientVisible)}
                         disabled={patchBulkVisibility.isPending}
                     >
                         {allClientVisible ? "Hide all from client" : "Show all to client"}

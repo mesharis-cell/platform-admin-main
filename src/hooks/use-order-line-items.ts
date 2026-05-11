@@ -9,8 +9,8 @@ import type {
     CreateCustomLineItemRequest,
     UpdateLineItemRequest,
     PatchLineItemMetadataRequest,
-    PatchLineItemClientVisibilityRequest,
-    PatchEntityLineItemClientVisibilityRequest,
+    PatchLineItemVisibilityRequest,
+    PatchEntityLineItemVisibilityRequest,
     VoidLineItemRequest,
 } from "@/types/hybrid-pricing";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -205,8 +205,9 @@ export function usePatchLineItemMetadata(
     });
 }
 
-// Toggle one line item visibility for client price display
-export function usePatchLineItemClientVisibility(
+// Toggle one line item's audience visibility. Accepts both flags
+// (client_price_visible + logistics_visible). Server requires at least one.
+export function usePatchLineItemVisibility(
     targetId: string,
     purposeType: "ORDER" | "INBOUND_REQUEST" | "SERVICE_REQUEST" | "SELF_PICKUP" = "ORDER"
 ) {
@@ -218,12 +219,12 @@ export function usePatchLineItemClientVisibility(
             data,
         }: {
             itemId: string;
-            data: PatchLineItemClientVisibilityRequest;
+            data: PatchLineItemVisibilityRequest;
         }) => {
             try {
                 const apiData = mapCamelToSnake(data);
                 const response = await apiClient.patch(
-                    `/operations/v1/line-item/${itemId}/client-visibility`,
+                    `/operations/v1/line-item/${itemId}/visibility`,
                     apiData
                 );
                 return response.data.data;
@@ -237,17 +238,15 @@ export function usePatchLineItemClientVisibility(
     });
 }
 
-// Bulk set client visibility at entity scope
-export function usePatchEntityLineItemsClientVisibility(
+// Bulk set audience visibility at entity scope. Accepts both flags.
+export function usePatchEntityLineItemsVisibility(
     targetId: string,
     purposeType: "ORDER" | "INBOUND_REQUEST" | "SERVICE_REQUEST" | "SELF_PICKUP" = "ORDER"
 ) {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async (
-            data: Omit<PatchEntityLineItemClientVisibilityRequest, "purposeType">
-        ) => {
+        mutationFn: async (data: Omit<PatchEntityLineItemVisibilityRequest, "purposeType">) => {
             try {
                 const payload = {
                     ...data,
@@ -262,7 +261,7 @@ export function usePatchEntityLineItemsClientVisibility(
                 };
                 const apiData = mapCamelToSnake(payload);
                 const response = await apiClient.patch(
-                    `/operations/v1/line-item/client-visibility`,
+                    `/operations/v1/line-item/visibility`,
                     apiData
                 );
                 return response.data.data;

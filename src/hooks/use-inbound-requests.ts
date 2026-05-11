@@ -193,6 +193,10 @@ export function useInboundRequest(id: string) {
         queryKey: inboundRequestKeys.detail(id),
         queryFn: () => fetchInboundRequest(id),
         enabled: !!id,
+        // Auto-refresh pricing snapshot — see useAdminOrderDetails for rationale.
+        staleTime: 30_000,
+        refetchInterval: 60_000,
+        refetchOnWindowFocus: true,
     });
 }
 

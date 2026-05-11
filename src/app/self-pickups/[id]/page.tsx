@@ -67,7 +67,7 @@ const PICKUP_STATUS_CONFIG: Record<string, { label: string; color: string }> = {
 export default function SelfPickupDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
     const { user } = useToken();
-    const { data: pickupData, isLoading, refetch } = useAdminSelfPickupDetails(id);
+    const { data: pickupData, isLoading, isFetching, refetch } = useAdminSelfPickupDetails(id);
     const { data: historyData } = useAdminSelfPickupStatusHistory(id);
     const submitForApproval = useSubmitForApproval();
     const markReady = useMarkReadyForPickup();
@@ -370,6 +370,7 @@ export default function SelfPickupDetailPage({ params }: { params: Promise<{ id:
                                 pickup={pickup}
                                 selfPickupId={pickup.id}
                                 onRefresh={() => refetch()}
+                                isRefetching={isFetching}
                             />
                         ) : (
                             <OrderLineItemsList

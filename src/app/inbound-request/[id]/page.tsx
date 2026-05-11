@@ -32,7 +32,7 @@ export default function InboundRequestDetailsPage({ params }: { params: Promise<
     const { id } = use(params);
     const router = useRouter();
     const queryClient = useQueryClient();
-    const { data, isLoading } = useInboundRequest(id);
+    const { data, isLoading, isFetching } = useInboundRequest(id);
 
     const request = data?.data;
     const pricing = request?.request_pricing;
@@ -200,6 +200,7 @@ export default function InboundRequestDetailsPage({ params }: { params: Promise<
                                 request={request}
                                 requestId={request.id}
                                 onRefresh={handleRefresh}
+                                isRefetching={isFetching}
                             />
                         ) : (
                             <>

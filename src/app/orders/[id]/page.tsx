@@ -216,7 +216,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
     const { id } = use(params);
     const { user } = useToken();
     const [progressLoading, setProgressLoading] = useState(false);
-    const { data: order, isLoading, refetch } = useAdminOrderDetails(id);
+    const { data: order, isLoading, isFetching, refetch } = useAdminOrderDetails(id);
 
     const { data: statusHistory, isLoading: statusHistoryLoading } = useAdminOrderStatusHistory(
         order?.data?.id ? order?.data?.id : ""
@@ -1590,6 +1590,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                 order={order.data}
                                 orderId={order.data.id}
                                 onRefresh={refetch}
+                                isRefetching={isFetching}
                             />
                         )}
                     </div>

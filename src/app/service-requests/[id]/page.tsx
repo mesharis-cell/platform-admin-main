@@ -4,6 +4,7 @@ import { StatusHistoryTimeline } from "@/components/orders/StatusHistoryTimeline
 import { AddCatalogLineItemModal } from "@/components/orders/AddCatalogLineItemModal";
 import { AddCustomLineItemModal } from "@/components/orders/AddCustomLineItemModal";
 import { OrderLineItemsList } from "@/components/orders/OrderLineItemsList";
+import { PricingBreakdownTabs } from "@/components/pricing/PricingBreakdownTabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -559,6 +560,33 @@ export default function ServiceRequestDetailsPage() {
                                 />
                             </CardContent>
                         </Card>
+
+                        {/* Pricing breakdown — only for CLIENT_BILLABLE SRs once
+                            a quote flow has started. INTERNAL_ONLY SRs never
+                            surface pricing; INTERNAL commercial status hasn't
+                            entered the quote lifecycle yet. */}
+                        {request.billing_mode === "CLIENT_BILLABLE" &&
+                            (
+                                [
+                                    "PENDING_QUOTE",
+                                    "QUOTED",
+                                    "QUOTE_APPROVED",
+                                    "INVOICED",
+                                    "PAID",
+                                ] as ServiceRequestCommercialStatus[]
+                            ).includes(request.commercial_status) &&
+                            (request as any).request_pricing && (
+                                <PricingBreakdownTabs
+                                    projections={
+                                        (request as any).request_pricing.projections || {
+                                            admin: (request as any).request_pricing,
+                                            logistics: null,
+                                            client: null,
+                                        }
+                                    }
+                                    calculatedAt={(request as any).request_pricing.calculated_at}
+                                />
+                            )}
                     </div>
 
                     <div className="lg:col-span-1">

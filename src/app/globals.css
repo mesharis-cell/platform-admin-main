@@ -182,3 +182,25 @@ body {
     animation: none;
     mix-blend-mode: normal;
 }
+
+/* === Pricing breakdown policy stripes ==================================
+ * Admin breakdown rows carry a left-edge stripe + faint background tint
+ * to flag policy at a glance:
+ *   .line-row-no-margin       — amber, apply_margin=false (pass-through)
+ *   .line-row-hidden-logistics — indigo + amber, logistics_visible=false
+ *
+ * Applied only in AdminBreakdownView; the Logistics + Client tab views
+ * never show stripes (the underlying lines are either filtered out or
+ * the policy is admin-only context).
+ * ====================================================================== */
+.line-row-no-margin {
+    box-shadow: inset 3px 0 0 0 #d97706; /* amber-600 */
+    background-color: rgba(217, 119, 6, 0.05);
+}
+
+.line-row-hidden-logistics {
+    box-shadow:
+        inset 3px 0 0 0 #d97706,
+        inset 6px 0 0 0 #6366f1; /* indigo-500 */
+    background-color: rgba(99, 102, 241, 0.05);
+}
