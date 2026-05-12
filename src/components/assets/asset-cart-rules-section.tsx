@@ -262,16 +262,29 @@ export function AssetCartRulesSection({ assetId, assetName, companyId }: Props) 
                         </div>
 
                         <div className="space-y-2">
-                            <Label className="text-xs font-mono">Client message *</Label>
+                            <div className="flex items-center justify-between">
+                                <Label className="text-xs font-mono">Client message *</Label>
+                                <span className="text-[10px] font-mono text-muted-foreground">
+                                    {form.message.length}/240
+                                </span>
+                            </div>
                             <Textarea
                                 value={form.message}
                                 onChange={(e) =>
-                                    setForm({ ...form, message: e.target.value })
+                                    setForm({
+                                        ...form,
+                                        message: e.target.value.slice(0, 240),
+                                    })
                                 }
+                                maxLength={240}
                                 placeholder="e.g. Only 1 can selected — did you mean to order a case (24)?"
                                 rows={2}
                                 className="font-mono text-sm"
                             />
+                            <p className="text-[10px] font-mono text-muted-foreground">
+                                Shown to clients in the cart review banner and confirm dialog —
+                                keep it short.
+                            </p>
                         </div>
 
                         <div className="flex justify-end gap-2 pt-2">

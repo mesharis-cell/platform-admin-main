@@ -1387,7 +1387,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                         per item 7 spec). */}
                                     {order.data.permit_requirements.permit_owner ===
                                         "PLATFORM" && (
-                                        <div className="rounded-md border border-blue-500/40 bg-blue-50 dark:bg-blue-950/30 px-3 py-2.5 text-xs text-blue-900 dark:text-blue-200 font-mono">
+                                        <div className="rounded-md border border-blue-500/40 bg-blue-50 px-3 py-2.5 text-xs text-blue-900 font-mono">
                                             <strong>PERMIT HANDLING FEE:</strong> Ops own this
                                             permit. Add a CATALOG or CUSTOM line item to the order
                                             for the handling charge if applicable.
