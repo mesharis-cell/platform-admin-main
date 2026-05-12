@@ -34,7 +34,9 @@ import {
 } from "@/hooks/use-attachments";
 import { uploadDocuments } from "@/lib/utils/upload-documents";
 import { usePlatform } from "@/contexts/platform-context";
-import { Download, FileText, Plus, Trash2 } from "lucide-react";
+import { Download, Eye, FileText, Plus, Trash2 } from "lucide-react";
+import { FileTypeIcon } from "@/components/shared/file-type-icon";
+import { AttachmentPreviewModal } from "@/components/shared/attachment-preview-modal";
 
 const formatFileSize = (bytes: number | null): string => {
     if (!bytes) return "";
@@ -56,6 +58,11 @@ export function EntityAttachmentsCard({
     const [selectedTypeId, setSelectedTypeId] = useState("");
     const [note, setNote] = useState("");
     const [visibleToClient, setVisibleToClient] = useState(false);
+    const [previewAttachment, setPreviewAttachment] = useState<{
+        file_url: string;
+        file_name?: string | null;
+        mime_type?: string | null;
+    } | null>(null);
     const [files, setFiles] = useState<File[]>([]);
     const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
     const { platform } = usePlatform();
@@ -255,38 +262,71 @@ export function EntityAttachmentsCard({
                         className="rounded-lg border border-border/60 bg-muted/10 p-3"
                     >
                         <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                                <p className="text-xs font-mono uppercase tracking-wide text-muted-foreground">
-                                    {attachment.attachment_type.label}
-                                </p>
-                                <p className="font-medium break-all">{attachment.file_name}</p>
-                                <div className="flex flex-wrap gap-2 mt-2 text-xs font-mono text-muted-foreground">
-                                    <span>{new Date(attachment.created_at).toLocaleString()}</span>
-                                    {attachment.file_size_bytes ? (
-                                        <span>{formatFileSize(attachment.file_size_bytes)}</span>
-                                    ) : null}
-                                    {attachment.uploaded_by_user?.name ? (
-                                        <span>by {attachment.uploaded_by_user.name}</span>
-                                    ) : null}
-                                    {attachment.visible_to_client && (
-                                        <span className="rounded-full border px-2 py-0.5">
-                                            Client visible
+                            <div className="min-w-0 flex items-start gap-3">
+                                <FileTypeIcon
+                                    mimeType={attachment.mime_type}
+                                    fileName={attachment.file_name}
+                                    className="h-6 w-6 text-muted-foreground shrink-0 mt-0.5"
+                                />
+                                <div className="min-w-0">
+                                    <p className="text-xs font-mono uppercase tracking-wide text-muted-foreground">
+                                        {attachment.attachment_type.label}
+                                    </p>
+                                    <p className="font-medium break-all">{attachment.file_name}</p>
+                                    <div className="flex flex-wrap gap-2 mt-2 text-xs font-mono text-muted-foreground">
+                                        <span>
+                                            {new Date(attachment.created_at).toLocaleString()}
                                         </span>
+                                        {attachment.file_size_bytes ? (
+                                            <span>
+                                                {formatFileSize(attachment.file_size_bytes)}
+                                            </span>
+                                        ) : null}
+                                        {attachment.uploaded_by_user?.name ? (
+                                            <span>by {attachment.uploaded_by_user.name}</span>
+                                        ) : null}
+                                        {attachment.visible_to_client ? (
+                                            <span className="rounded-full border px-2 py-0.5 border-emerald-500/40 text-emerald-700 bg-emerald-50/60">
+                                                Client visible
+                                            </span>
+                                        ) : (
+                                            <span
+                                                className="rounded-full border px-2 py-0.5 border-amber-500/40 text-amber-700 bg-amber-50/60"
+                                                title="Internal-only — clients cannot see this file"
+                                            >
+                                                Ops only
+                                            </span>
+                                        )}
+                                    </div>
+                                    {attachment.note && (
+                                        <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+                                            {attachment.note}
+                                        </p>
                                     )}
                                 </div>
-                                {attachment.note && (
-                                    <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-                                        {attachment.note}
-                                    </p>
-                                )}
                             </div>
                             <div className="flex items-center gap-2 shrink-0">
+                                <Button
+                                    size="icon"
+                                    variant="outline"
+                                    onClick={() =>
+                                        setPreviewAttachment({
+                                            file_url: attachment.file_url,
+                                            file_name: attachment.file_name,
+                                            mime_type: attachment.mime_type,
+                                        })
+                                    }
+                                    title="Preview"
+                                >
+                                    <Eye className="h-4 w-4" />
+                                </Button>
                                 <Button asChild size="icon" variant="outline">
                                     <a
                                         href={attachment.file_url}
                                         target="_blank"
                                         rel="noreferrer"
                                         download={attachment.file_name}
+                                        title="Download"
                                     >
                                         <Download className="h-4 w-4" />
                                     </a>
@@ -295,6 +335,7 @@ export function EntityAttachmentsCard({
                                     size="icon"
                                     variant="outline"
                                     onClick={() => setConfirmDeleteId(attachment.id)}
+                                    title="Delete"
                                 >
                                     <Trash2 className="h-4 w-4" />
                                 </Button>
@@ -303,6 +344,16 @@ export function EntityAttachmentsCard({
                     </div>
                 ))}
             </CardContent>
+
+            <AttachmentPreviewModal
+                open={!!previewAttachment}
+                onOpenChange={(open) => {
+                    if (!open) setPreviewAttachment(null);
+                }}
+                fileUrl={previewAttachment?.file_url ?? null}
+                fileName={previewAttachment?.file_name}
+                mimeType={previewAttachment?.mime_type}
+            />
 
             <ConfirmDialog
                 open={!!confirmDeleteId}
