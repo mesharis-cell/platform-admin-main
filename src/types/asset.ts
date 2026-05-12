@@ -252,6 +252,7 @@ export interface AssetsDetails {
     category: string;
 
     images: AssetImage[];
+    on_display_image: string | null;
 
     tracking_method: TrackingMethod;
 
