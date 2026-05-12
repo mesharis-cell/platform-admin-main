@@ -51,6 +51,7 @@ import { AddNotesDialog } from "@/components/conditions/add-notes-dialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EditAssetDialog, type EditAssetTab } from "@/components/assets/edit-asset-dialog";
 import { AssetStockSection } from "@/components/assets/asset-stock-section";
+import { AssetCartRulesSection } from "@/components/assets/asset-cart-rules-section";
 import { MoveToFamilyModal } from "@/components/assets/move-to-family-modal";
 import { SortableImageEditor } from "@/components/assets/sortable-image-editor";
 import { OnDisplayImageEditor } from "@/components/assets/on-display-image-editor";
@@ -444,6 +445,18 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                             assetName={asset.name}
                             stockMode={(asset as any).family?.stock_mode}
                             familyId={(asset as any).family_id ?? (asset as any).family?.id}
+                        />
+
+                        {/* Item 6: cart rules targeting this asset. Inline
+                            create + delete; no separate settings page in v1. */}
+                        <AssetCartRulesSection
+                            assetId={asset.id}
+                            assetName={asset.name}
+                            companyId={
+                                typeof asset.company === "string"
+                                    ? asset.company
+                                    : asset.company?.id || null
+                            }
                         />
 
                         {/* Condition History — primary, in main column */}
