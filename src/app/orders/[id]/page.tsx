@@ -1385,8 +1385,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                     {/* Nudge banner when ops own the permit — staff manually
                                         adds the permit-handling line item (no auto-create
                                         per item 7 spec). */}
-                                    {order.data.permit_requirements.permit_owner ===
-                                        "PLATFORM" && (
+                                    {order.data.permit_requirements.permit_owner === "PLATFORM" && (
                                         <div className="rounded-md border border-blue-500/40 bg-blue-50 px-3 py-2.5 text-xs text-blue-900 font-mono">
                                             <strong>PERMIT HANDLING FEE:</strong> Ops own this
                                             permit. Add a CATALOG or CUSTOM line item to the order

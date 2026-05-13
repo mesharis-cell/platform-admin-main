@@ -75,8 +75,7 @@ export function AssetCartRulesSection({ assetId, assetName, companyId }: Props) 
         }
         try {
             await createMutation.mutateAsync({
-                company_id:
-                    form.scope === "COMPANY" && companyId ? companyId : null,
+                company_id: form.scope === "COMPANY" && companyId ? companyId : null,
                 name: form.name.trim(),
                 rule_type: "QUANTITY",
                 severity: "WARN",
@@ -153,9 +152,7 @@ export function AssetCartRulesSection({ assetId, assetName, companyId }: Props) 
                                     </Badge>
                                 )}
                             </div>
-                            <p className="text-xs text-muted-foreground italic">
-                                "{rule.message}"
-                            </p>
+                            <p className="text-xs text-muted-foreground italic">"{rule.message}"</p>
                             {rule.predicate.kind === "QUANTITY_LT" && (
                                 <p className="text-[10px] font-mono uppercase tracking-wide text-muted-foreground mt-1">
                                     fires when qty &lt; {(rule.predicate as any).threshold}
@@ -282,8 +279,8 @@ export function AssetCartRulesSection({ assetId, assetName, companyId }: Props) 
                                 className="font-mono text-sm"
                             />
                             <p className="text-[10px] font-mono text-muted-foreground">
-                                Shown to clients in the cart review banner and confirm dialog —
-                                keep it short.
+                                Shown to clients in the cart review banner and confirm dialog — keep
+                                it short.
                             </p>
                         </div>
 

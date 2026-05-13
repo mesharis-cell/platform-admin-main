@@ -63,10 +63,7 @@ export function useCreateCommerceRule() {
     return useMutation({
         mutationFn: async (payload: CreatePayload) => {
             try {
-                const response = await apiClient.post(
-                    "/operations/v1/commerce-rules",
-                    payload
-                );
+                const response = await apiClient.post("/operations/v1/commerce-rules", payload);
                 return response.data;
             } catch (error) {
                 throwApiError(error);
@@ -83,9 +80,7 @@ export function useDeleteCommerceRule() {
     return useMutation({
         mutationFn: async (id: string) => {
             try {
-                const response = await apiClient.delete(
-                    `/operations/v1/commerce-rules/${id}`
-                );
+                const response = await apiClient.delete(`/operations/v1/commerce-rules/${id}`);
                 return response.data;
             } catch (error) {
                 throwApiError(error);

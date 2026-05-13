@@ -15,22 +15,14 @@ type Props = {
 // Item 3 Tier 3 — preview-in-place for images and PDFs. Other types fall
 // through to a "download to view" CTA. Shared identical component in
 // admin / warehouse / client so the UX is consistent across apps.
-export function AttachmentPreviewModal({
-    open,
-    onOpenChange,
-    fileUrl,
-    fileName,
-    mimeType,
-}: Props) {
+export function AttachmentPreviewModal({ open, onOpenChange, fileUrl, fileName, mimeType }: Props) {
     const isImage = (mimeType || "").startsWith("image/");
     const isPdf = (mimeType || "") === "application/pdf";
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-5xl w-[92vw] h-[88vh] p-0 overflow-hidden flex flex-col">
-                <DialogTitle className="sr-only">
-                    {fileName || "Attachment preview"}
-                </DialogTitle>
+                <DialogTitle className="sr-only">{fileName || "Attachment preview"}</DialogTitle>
                 <div className="flex items-center justify-between px-4 py-2 border-b border-border">
                     <div className="text-sm font-mono truncate">{fileName || "Preview"}</div>
                     <div className="flex items-center gap-2">
@@ -56,7 +48,6 @@ export function AttachmentPreviewModal({
                             No file to preview.
                         </div>
                     ) : isImage ? (
-                        // eslint-disable-next-line @next/next/no-img-element
                         <img
                             src={fileUrl}
                             alt={fileName || "Attachment"}
