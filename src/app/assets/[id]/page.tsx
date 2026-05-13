@@ -51,8 +51,10 @@ import { AddNotesDialog } from "@/components/conditions/add-notes-dialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EditAssetDialog, type EditAssetTab } from "@/components/assets/edit-asset-dialog";
 import { AssetStockSection } from "@/components/assets/asset-stock-section";
+import { AssetCartRulesSection } from "@/components/assets/asset-cart-rules-section";
 import { MoveToFamilyModal } from "@/components/assets/move-to-family-modal";
 import { SortableImageEditor } from "@/components/assets/sortable-image-editor";
+import { OnDisplayImageEditor } from "@/components/assets/on-display-image-editor";
 import { PrintQrAction } from "@/components/qr/PrintQrAction";
 import { generateQRCode } from "@/lib/services/qr-code";
 
@@ -180,6 +182,43 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
             });
         } catch {
             toast.error("Failed to reorder photos");
+        }
+    }
+
+    async function handleOnDisplayImageUpload(file: File) {
+        if (!asset) return;
+        try {
+            const companyId = typeof asset.company === "string" ? asset.company : asset.company?.id;
+            const result = await uploadImageMutation.mutateAsync({
+                files: [file],
+                companyId: companyId || undefined,
+                profile: "photo",
+            });
+            const url: string | undefined = result.data?.imageUrls?.[0];
+            if (!url) {
+                toast.error("Upload failed");
+                return;
+            }
+            await updateAssetMutation.mutateAsync({
+                id: asset.id,
+                data: { on_display_image: url } as any,
+            });
+            toast.success("On-display image updated");
+        } catch {
+            toast.error("Failed to update on-display image");
+        }
+    }
+
+    async function handleOnDisplayImageClear() {
+        if (!asset) return;
+        try {
+            await updateAssetMutation.mutateAsync({
+                id: asset.id,
+                data: { on_display_image: null } as any,
+            });
+            toast.success("On-display image cleared");
+        } catch {
+            toast.error("Failed to clear on-display image");
         }
     }
 
@@ -376,16 +415,14 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     {/* Main content */}
                     <div className="lg:col-span-2 space-y-6">
-                        {/* Image gallery */}
-                        <SortableImageEditor
-                            images={asset?.images ?? []}
-                            onReorder={handleInlinePhotoReorder}
-                            onRemove={handleInlinePhotoDelete}
-                            onAdd={handleInlinePhotoUpload}
+                        {/* On-display image (curated hero) */}
+                        <OnDisplayImageEditor
+                            value={asset?.on_display_image ?? null}
+                            onUpload={handleOnDisplayImageUpload}
+                            onClear={handleOnDisplayImageClear}
                             isMutating={
                                 uploadImageMutation.isPending || updateAssetMutation.isPending
                             }
-                            emptyLabel='Use "Add Photo" above to upload'
                         />
 
                         {/* Description */}
@@ -408,6 +445,18 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                             assetName={asset.name}
                             stockMode={(asset as any).family?.stock_mode}
                             familyId={(asset as any).family_id ?? (asset as any).family?.id}
+                        />
+
+                        {/* Item 6: cart rules targeting this asset. Inline
+                            create + delete; no separate settings page in v1. */}
+                        <AssetCartRulesSection
+                            assetId={asset.id}
+                            assetName={asset.name}
+                            companyId={
+                                typeof asset.company === "string"
+                                    ? asset.company
+                                    : asset.company?.id || null
+                            }
                         />
 
                         {/* Condition History — primary, in main column */}
@@ -496,6 +545,19 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                                 )}
                             </CardContent>
                         </Card>
+
+                        {/* Latest Scan Images — auto-updated by scan/return flows */}
+                        <SortableImageEditor
+                            images={asset?.images ?? []}
+                            onReorder={handleInlinePhotoReorder}
+                            onRemove={handleInlinePhotoDelete}
+                            onAdd={handleInlinePhotoUpload}
+                            isMutating={
+                                uploadImageMutation.isPending || updateAssetMutation.isPending
+                            }
+                            title="Latest Scan Images"
+                            emptyLabel="Updated automatically by scans and returns"
+                        />
 
                         {/* Storage Location — compact sidebar card */}
                         <Card>

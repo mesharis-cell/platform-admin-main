@@ -34,6 +34,7 @@ import {
 import { EditAssetFamilyDialog } from "@/components/assets/edit-asset-family-dialog";
 import { useAssets, useUploadImage } from "@/hooks/use-assets";
 import { SortableImageEditor } from "@/components/assets/sortable-image-editor";
+import { OnDisplayImageEditor } from "@/components/assets/on-display-image-editor";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -173,6 +174,44 @@ export default function AssetFamilyDetailPage({ params }: { params: Promise<{ id
             });
         } catch {
             toast.error("Failed to reorder photos");
+        }
+    }
+
+    async function handleFamilyOnDisplayUpload(file: File) {
+        if (!family) return;
+        try {
+            const companyId =
+                typeof family.company === "string" ? family.company : family.company?.id;
+            const result = await uploadImageMutation.mutateAsync({
+                files: [file],
+                companyId: companyId || undefined,
+                profile: "photo",
+            });
+            const url: string | undefined = result.data?.imageUrls?.[0];
+            if (!url) {
+                toast.error("Upload failed");
+                return;
+            }
+            await updateMutation.mutateAsync({
+                id: family.id,
+                data: { on_display_image: url } as Partial<typeof family>,
+            });
+            toast.success("On-display image updated");
+        } catch {
+            toast.error("Failed to update on-display image");
+        }
+    }
+
+    async function handleFamilyOnDisplayClear() {
+        if (!family) return;
+        try {
+            await updateMutation.mutateAsync({
+                id: family.id,
+                data: { on_display_image: null } as Partial<typeof family>,
+            });
+            toast.success("On-display image cleared");
+        } catch {
+            toast.error("Failed to clear on-display image");
         }
     }
 
@@ -487,8 +526,18 @@ export default function AssetFamilyDetailPage({ params }: { params: Promise<{ id
                 </div>
             </div>
 
-            {/* Photos editor — add / remove / reorder. The compact hero in the
-            page header above stays as a quick-look summary. */}
+            {/* On-display image (curated hero — stays stable across scans/returns) */}
+            <div className="mx-auto max-w-[1400px] px-6 py-3">
+                <OnDisplayImageEditor
+                    value={family.on_display_image ?? null}
+                    onUpload={handleFamilyOnDisplayUpload}
+                    onClear={handleFamilyOnDisplayClear}
+                    isMutating={updateMutation.isPending || uploadImageMutation.isPending}
+                />
+            </div>
+
+            {/* Latest scan images — auto-updated by scans / returns. The compact
+            hero in the page header above stays as a quick-look summary. */}
             <div className="mx-auto max-w-[1400px] px-6 py-3">
                 <SortableImageEditor
                     images={family.images ?? []}
@@ -496,8 +545,8 @@ export default function AssetFamilyDetailPage({ params }: { params: Promise<{ id
                     onRemove={handleFamilyPhotoDelete}
                     onAdd={handleFamilyPhotoUpload}
                     isMutating={updateMutation.isPending || uploadImageMutation.isPending}
-                    title="Family Photos"
-                    emptyLabel='Use "Add Photo" above to upload'
+                    title="Latest Family Images"
+                    emptyLabel="Updated automatically by scans and returns"
                 />
             </div>
 

@@ -1382,6 +1382,16 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent className="space-y-3">
+                                    {/* Nudge banner when ops own the permit — staff manually
+                                        adds the permit-handling line item (no auto-create
+                                        per item 7 spec). */}
+                                    {order.data.permit_requirements.permit_owner === "PLATFORM" && (
+                                        <div className="rounded-md border border-blue-500/40 bg-blue-50 px-3 py-2.5 text-xs text-blue-900 font-mono">
+                                            <strong>PERMIT HANDLING FEE:</strong> Ops own this
+                                            permit. Add a CATALOG or CUSTOM line item to the order
+                                            for the handling charge if applicable.
+                                        </div>
+                                    )}
                                     <div>
                                         <Label className="font-mono text-xs text-muted-foreground">
                                             OWNER
@@ -1390,10 +1400,10 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                             {order.data.permit_requirements.permit_owner ===
                                                 "CLIENT" && "Client will arrange permits"}
                                             {order.data.permit_requirements.permit_owner ===
-                                                "PLATFORM" && "Platform should arrange permits"}
+                                                "PLATFORM" && "Ops will arrange permits"}
                                             {order.data.permit_requirements.permit_owner ===
                                                 "UNKNOWN" &&
-                                                "Permit ownership still to be confirmed"}
+                                                "Not specified (legacy data — ask client to confirm)"}
                                         </p>
                                     </div>
                                     {(order.data.permit_requirements.venue_contact_name ||

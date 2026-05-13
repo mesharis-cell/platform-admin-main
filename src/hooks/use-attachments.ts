@@ -66,11 +66,12 @@ type AttachmentTypeQueryParams = {
     enabled?: boolean;
 };
 
-const entityBasePath: Record<Exclude<AttachmentEntityType, "WORKFLOW_REQUEST">, string> = {
+const entityBasePath: Record<AttachmentEntityType, string> = {
     ORDER: "order",
     INBOUND_REQUEST: "inbound-request",
     SERVICE_REQUEST: "service-request",
     SELF_PICKUP: "self-pickup",
+    WORKFLOW_REQUEST: "workflow-request",
 };
 
 export function useAttachmentTypes(params?: AttachmentTypeQueryParams) {
@@ -152,7 +153,7 @@ export function useUpdateAttachmentType() {
 }
 
 export function useEntityAttachments(
-    entityType: Exclude<AttachmentEntityType, "WORKFLOW_REQUEST">,
+    entityType: AttachmentEntityType,
     entityId: string | null,
     enabled = true
 ) {
@@ -174,7 +175,7 @@ export function useEntityAttachments(
 }
 
 export function useCreateEntityAttachments(
-    entityType: Exclude<AttachmentEntityType, "WORKFLOW_REQUEST">,
+    entityType: AttachmentEntityType,
     entityId: string | null
 ) {
     const queryClient = useQueryClient();
