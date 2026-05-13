@@ -304,7 +304,7 @@ export default function OutboundScanningPage() {
             return;
         }
 
-        if (asset.tracking_method === "BATCH") {
+        if (asset.stock_mode === "POOLED") {
             // Show quantity prompt dialog
             setPendingBatchScan({
                 qrCode: qrCode,
@@ -431,7 +431,7 @@ export default function OutboundScanningPage() {
             return;
         }
 
-        if (asset.tracking_method === "BATCH") {
+        if (asset.stock_mode === "POOLED") {
             // If quantity field has value, use it
             if (manualQuantityInput) {
                 const qty = parseInt(manualQuantityInput);
@@ -853,7 +853,7 @@ export default function OutboundScanningPage() {
                                             {asset.asset_name}
                                         </div>
                                         <div className="text-xs text-muted-foreground">
-                                            QR: {asset.qr_code} • {asset.tracking_method}
+                                            QR: {asset.qr_code} • {asset.stock_mode}
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-2">

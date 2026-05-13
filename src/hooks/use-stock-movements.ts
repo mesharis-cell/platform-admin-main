@@ -7,7 +7,7 @@ import { throwApiError } from "@/lib/utils/throw-api-error";
 export const stockMovementKeys = {
     assetHistory: (assetId: string | null, params?: { page?: number; limit?: number }) =>
         ["stock-history", "asset", assetId, params?.page ?? 1, params?.limit ?? 20] as const,
-    familyHistory: (familyId: string | null) => ["stock-history", "family", familyId] as const,
+    familyHistory: (groupId: string | null) => ["stock-history", "family", familyId] as const,
     lowStock: () => ["low-stock-families"] as const,
 };
 
@@ -31,7 +31,7 @@ export function useAssetStockHistory(
 }
 
 export function useAssetFamilyStockHistory(
-    familyId: string | null,
+    groupId: string | null,
     params?: { page?: number; limit?: number }
 ) {
     return useQuery({

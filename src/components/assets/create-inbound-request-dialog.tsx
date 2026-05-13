@@ -50,7 +50,7 @@ import { toast } from "sonner";
 import type {
     InboundRequestItem,
     CreateInboundRequestPayload,
-    TrackingMethod,
+    StockMode,
 } from "@/types/inbound-request";
 import { useCompanies } from "@/hooks/use-companies";
 
@@ -61,7 +61,7 @@ const STEPS = [
     { id: "review", label: "Review", icon: ClipboardList },
 ];
 
-const TRACKING_METHODS: { value: TrackingMethod; label: string }[] = [
+const TRACKING_METHODS: { value: StockMode; label: string }[] = [
     { value: "INDIVIDUAL", label: "Individual" },
     { value: "BATCH", label: "Batch" },
 ];
@@ -82,7 +82,7 @@ const createEmptyItem = (): Partial<InboundRequestItem> => ({
     description: "",
     images: [],
     category: "",
-    tracking_method: "INDIVIDUAL",
+    stock_mode: "INDIVIDUAL",
     quantity: 1,
     packaging: "",
     weight_per_unit: 0,
@@ -347,7 +347,7 @@ export function CreateInboundRequestDialog({
                         description: item.description || undefined,
                         images: uploadedImages,
                         category: item.category || "",
-                        tracking_method: item.tracking_method || "INDIVIDUAL",
+                        stock_mode: item.stock_mode || "INDIVIDUAL",
                         quantity: Number(item.quantity) || 1,
                         packaging: item.packaging || undefined,
                         weight_per_unit: Number(item.weight_per_unit) || 0,
@@ -397,7 +397,7 @@ export function CreateInboundRequestDialog({
                         item.category &&
                         item.category.trim() !== "" &&
                         item.quantity > 0 &&
-                        item.tracking_method
+                        item.stock_mode
                 );
             case 2: // Specifications
                 return formData.items.every(
@@ -667,10 +667,10 @@ export function CreateInboundRequestDialog({
                                                 Tracking Method *
                                             </Label>
                                             <Select
-                                                value={currentItem.tracking_method}
+                                                value={currentItem.stock_mode}
                                                 onValueChange={(value) =>
                                                     updateItem(currentItemIndex, {
-                                                        tracking_method: value as TrackingMethod,
+                                                        stock_mode: value as StockMode,
                                                     })
                                                 }
                                             >
@@ -705,7 +705,7 @@ export function CreateInboundRequestDialog({
                                         </div>
                                     </div>
 
-                                    {currentItem.tracking_method === "BATCH" && (
+                                    {currentItem.stock_mode === "POOLED" && (
                                         <div className="space-y-2">
                                             <Label className="font-mono text-xs">
                                                 Packaging Description
@@ -994,7 +994,7 @@ export function CreateInboundRequestDialog({
                                                 {item.name}
                                             </span>
                                             <Badge variant="outline" className="font-mono text-xs">
-                                                {item.tracking_method}
+                                                {item.stock_mode}
                                             </Badge>
                                         </div>
                                         <div className="grid grid-cols-3 gap-2 mt-2 text-xs font-mono text-muted-foreground">

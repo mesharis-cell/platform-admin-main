@@ -172,7 +172,7 @@ export function AssetWizard({
                 category_id: state.category_id || state.selectedFamily?.category?.id || undefined,
                 description:
                     state.itemDescription.trim() || state.selectedFamily?.description || undefined,
-                tracking_method: state.stockMode === "POOLED" ? "BATCH" : "INDIVIDUAL",
+                stock_mode: state.stockMode === "POOLED" ? "BATCH" : "INDIVIDUAL",
                 total_quantity: state.quantity,
                 available_quantity:
                     state.stockMode === "SERIALIZED" ? state.quantity : state.availableQuantity,

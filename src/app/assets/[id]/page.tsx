@@ -377,7 +377,7 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                                             className="h-auto p-0 font-mono text-sm"
                                         >
                                             <Link
-                                                href={`/assets/families/${(asset as any).family_id || (asset as any).familyId}`}
+                                                href={`/assets/families/${(asset as any).group_id || (asset as any).groupId}`}
                                             >
                                                 {((asset as any).family as any)?.name ||
                                                     "View Family"}
@@ -385,7 +385,7 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                                         </Button>
                                     </>
                                 )}
-                                {!(asset as any).family && (asset as any).family_id && (
+                                {!(asset as any).family && (asset as any).group_id && (
                                     <>
                                         <span className="text-sm text-muted-foreground font-mono">
                                             •
@@ -397,7 +397,7 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                                             className="h-auto p-0 font-mono text-sm"
                                         >
                                             <Link
-                                                href={`/assets/families/${(asset as any).family_id}`}
+                                                href={`/assets/families/${(asset as any).group_id}`}
                                             >
                                                 View Family
                                             </Link>
@@ -444,7 +444,7 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                             assetId={asset.id}
                             assetName={asset.name}
                             stockMode={(asset as any).family?.stock_mode}
-                            familyId={(asset as any).family_id ?? (asset as any).family?.id}
+                            familyId={(asset as any).group_id ?? (asset as any).family?.id}
                         />
 
                         {/* Item 6: cart rules targeting this asset. Inline
@@ -527,7 +527,7 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                                                 qrCode={asset?.qr_code}
                                                 assetName={asset?.name}
                                                 meta={
-                                                    [asset?.category, asset?.tracking_method]
+                                                    [asset?.category, asset?.stock_mode]
                                                         .filter(Boolean)
                                                         .join(" · ") || undefined
                                                 }

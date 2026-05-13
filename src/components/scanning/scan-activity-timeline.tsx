@@ -215,7 +215,7 @@ export function ScanActivityTimeline({ orderId }: ScanActivityTimelineProps) {
                             "Order Event";
                         const qrCode = event?.asset?.qr_code || event?.assetDetails?.qrCode || "";
                         const trackingMethod =
-                            event?.asset?.tracking_method ||
+                            event?.asset?.stock_mode ||
                             event?.assetDetails?.trackingMethod ||
                             "";
                         const quantity = event.quantity ?? event.total_quantity;

@@ -41,7 +41,7 @@ type Props = {
     assetId: string;
     assetName: string;
     stockMode?: string | null;
-    familyId?: string | null;
+    groupId?: string | null;
 };
 
 type MovementFilter =

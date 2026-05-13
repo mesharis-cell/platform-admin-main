@@ -62,9 +62,9 @@ export function RequestItemCard({ item, index }: RequestItemCardProps) {
                                     </span>
                                     <span className="text-[10px] text-muted-foreground">•</span>
                                     <span
-                                        className={`text-[10px] font-mono ${item.tracking_method === "INDIVIDUAL" ? "text-blue-500" : "text-purple-500"}`}
+                                        className={`text-[10px] font-mono ${item.stock_mode === "SERIALIZED" ? "text-blue-500" : "text-purple-500"}`}
                                     >
-                                        {item.tracking_method}
+                                        {item.stock_mode}
                                     </span>
                                 </div>
                             </div>

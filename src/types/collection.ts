@@ -39,7 +39,7 @@ export interface CollectionItem {
 export interface CollectionItemWithAsset extends CollectionItem {
     assetDetails: {
         id: string;
-        family_id?: string | null;
+        group_id?: string | null;
         family?: {
             id: string | null;
             name: string | null;

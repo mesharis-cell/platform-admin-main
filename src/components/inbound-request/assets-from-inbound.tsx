@@ -82,7 +82,7 @@ export function AssetsFromInbound({ items }: AssetsFromInboundProps) {
                                                     variant="outline"
                                                     className="text-xs font-mono text-muted-foreground"
                                                 >
-                                                    {item.asset.tracking_method}
+                                                    {item.asset.stock_mode}
                                                 </Badge>
                                                 {item.asset.family?.id &&
                                                     item.asset.family?.name && (

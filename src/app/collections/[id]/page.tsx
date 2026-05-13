@@ -283,7 +283,7 @@ export default function CollectionDetailPage() {
     const selectableAssets = useMemo(() => {
         return assets.filter((asset) => {
             const teamId = "team_id" in asset ? (asset.team_id ?? null) : null;
-            const familyId = asset.family_id ?? asset.familyId ?? null;
+            const familyId = asset.group_id ?? asset.groupId ?? null;
             return (
                 asset.brand_id === collection?.brand_id &&
                 teamId === (collection?.team_id ?? null) &&
@@ -644,8 +644,8 @@ export default function CollectionDetailPage() {
                                                     asset_id:
                                                         value === ALL_FAMILIES_VALUE ||
                                                         (selectedAsset &&
-                                                            (selectedAsset.family_id ??
-                                                                selectedAsset.familyId ??
+                                                            (selectedAsset.group_id ??
+                                                                selectedAsset.groupId ??
                                                                 null) === value)
                                                             ? current.asset_id
                                                             : "",
@@ -689,13 +689,13 @@ export default function CollectionDetailPage() {
                                                     {asset.name}
                                                     {" • "}
                                                     Available: {asset.available_quantity}
-                                                    {asset.family_id || asset.familyId
+                                                    {asset.group_id || asset.groupId
                                                         ? ` • ${
                                                               familyOptions.find(
                                                                   (family) =>
                                                                       family.id ===
-                                                                      (asset.family_id ??
-                                                                          asset.familyId)
+                                                                      (asset.group_id ??
+                                                                          asset.groupId)
                                                               )?.name ?? "Family"
                                                           }`
                                                         : ""}

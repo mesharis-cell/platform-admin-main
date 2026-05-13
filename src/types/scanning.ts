@@ -62,7 +62,7 @@ export interface ScanEventWithDetails {
             id: string;
             name: string;
             qr_code: string;
-            tracking_method: "INDIVIDUAL" | "BATCH";
+            stock_mode: "SERIALIZED" | "POOLED";
         };
     }>;
     discrepancy_reason: DiscrepancyReason | null;
@@ -73,7 +73,7 @@ export interface ScanEventWithDetails {
         id: string;
         name: string;
         qr_code: string;
-        tracking_method: "INDIVIDUAL" | "BATCH";
+        stock_mode: "SERIALIZED" | "POOLED";
     };
     scanned_by_user: {
         userId: string;
@@ -113,7 +113,7 @@ export interface AssetToScan {
     assetId: string;
     assetName: string;
     qrCode: string;
-    trackingMethod: "INDIVIDUAL" | "BATCH";
+    trackingMethod: "SERIALIZED" | "POOLED";
     requiredQuantity: number; // For outbound: quantity in order, For inbound: quantity that went out
     scannedQuantity: number;
     remainingQuantity: number; // requiredQuantity - scannedQuantity
@@ -148,7 +148,7 @@ export interface OutboundScanResponse {
     asset: {
         assetId: string;
         assetName: string;
-        trackingMethod: "INDIVIDUAL" | "BATCH";
+        trackingMethod: "SERIALIZED" | "POOLED";
         scannedQuantity: number;
         requiredQuantity: number;
         remainingQuantity: number;
@@ -215,7 +215,7 @@ export interface InboundScanResponse {
     asset: {
         assetId: string;
         assetName: string;
-        trackingMethod: "INDIVIDUAL" | "BATCH";
+        trackingMethod: "SERIALIZED" | "POOLED";
         scannedQuantity: number;
         expectedQuantity: number;
         remainingQuantity: number;
@@ -326,7 +326,7 @@ export interface AssetAvailability {
         zoneId: string;
         zoneName: string;
     };
-    trackingMethod: "INDIVIDUAL" | "BATCH";
+    trackingMethod: "SERIALIZED" | "POOLED";
     totalQuantity: number;
     availableQuantity: number;
     bookedQuantity: number;
@@ -364,7 +364,7 @@ export interface APIOutboundAsset {
     asset_id: string;
     asset_name: string;
     qr_code: string;
-    tracking_method: "INDIVIDUAL" | "BATCH";
+    stock_mode: "SERIALIZED" | "POOLED";
     required_quantity: number;
     scanned_quantity: number;
     is_complete: boolean;
@@ -389,7 +389,7 @@ export interface APIInboundAsset {
     asset_id: string;
     asset_name: string;
     qr_code: string;
-    tracking_method: "INDIVIDUAL" | "BATCH";
+    stock_mode: "SERIALIZED" | "POOLED";
     required_quantity: number; // This is often "total expected to return"
     scanned_quantity: number;
     is_complete: boolean;

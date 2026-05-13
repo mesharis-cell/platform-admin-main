@@ -82,7 +82,7 @@ export function AssetTable({ companyFilter }: AssetTableProps) {
         condition: "all",
         status: "all",
         warehouse: "all",
-        tracking_method: "all",
+        stock_mode: "all",
     });
 
     const debounceRef = useRef<ReturnType<typeof setTimeout>>();
@@ -117,7 +117,7 @@ export function AssetTable({ companyFilter }: AssetTableProps) {
         if (filters.condition !== "all") params.condition = filters.condition;
         if (filters.status !== "all") params.status = filters.status;
         if (filters.warehouse !== "all") params.warehouse_id = filters.warehouse;
-        if (filters.tracking_method !== "all") params.tracking_method = filters.tracking_method;
+        if (filters.stock_mode !== "all") params.stock_mode = filters.stock_mode;
         return params;
     }, [filters, debouncedSearch, page]);
 
@@ -237,9 +237,9 @@ export function AssetTable({ companyFilter }: AssetTableProps) {
                         </Select>
 
                         <Select
-                            value={filters.tracking_method}
+                            value={filters.stock_mode}
                             onValueChange={(value) =>
-                                setFilters((c) => ({ ...c, tracking_method: value }))
+                                setFilters((c) => ({ ...c, stock_mode: value }))
                             }
                         >
                             <SelectTrigger className="w-[150px] font-mono">
@@ -392,9 +392,9 @@ export function AssetTable({ companyFilter }: AssetTableProps) {
                                     <div>
                                         <Badge
                                             variant="outline"
-                                            className={`font-mono text-[10px] py-0 ${TYPE_STYLES[asset.tracking_method || ""] || ""}`}
+                                            className={`font-mono text-[10px] py-0 ${TYPE_STYLES[asset.stock_mode || ""] || ""}`}
                                         >
-                                            {asset.tracking_method}
+                                            {asset.stock_mode}
                                         </Badge>
                                     </div>
 

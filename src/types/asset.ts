@@ -1,12 +1,13 @@
-// Phase 3: Asset Management & QR Code Generation TypeScript Types
+// Asset Management types (post-squash)
+// Family entity replaced by an opaque group_id correlation key on every asset.
+// Display label denormalized as group_name. stock_mode (SERIALIZED|POOLED) replaces tracking_method.
 
 export interface AssetImage {
     url: string;
     note?: string;
 }
 
-// Tracking Method
-export type TrackingMethod = "INDIVIDUAL" | "BATCH";
+// Tracking Method legacy alias kept for incremental cleanup; new code should use StockMode.
 export type StockMode = "SERIALIZED" | "POOLED";
 
 // Condition
@@ -22,11 +23,13 @@ export type HandlingTag = "Fragile" | "HighValue" | "HeavyLift" | "AssemblyRequi
 export type AssetCategory = "Furniture" | "Glassware" | "Installation" | "Decor";
 
 // Asset entity
-// Feedback #4 & #5: Removed quantity fields, availability calculated from asset_bookings
 export interface Asset {
     id: string;
-    family_id?: string | null;
-    familyId?: string | null;
+    // group identity (post-squash)
+    group_id?: string | null;
+    groupId?: string | null;
+    group_name?: string | null;
+    groupName?: string | null;
     company: {
         id: string;
         name: string;
@@ -35,13 +38,6 @@ export interface Asset {
         id: string;
         name: string;
     };
-    family?: {
-        id: string;
-        name: string;
-        stock_mode: string;
-        category_id: string | null;
-        category?: { id: string; name: string; slug: string; color: string } | null;
-    } | null;
     warehouse: {
         id: string;
         name: string;
@@ -69,7 +65,8 @@ export interface Asset {
     description?: string;
     category: AssetCategory;
     images: AssetImage[];
-    tracking_method: TrackingMethod;
+    stock_mode: StockMode;
+    low_stock_threshold?: number | null;
     total_quantity: number;
     available_quantity: number;
     qr_code: string;
@@ -83,7 +80,7 @@ export interface Asset {
     volume_per_unit: number; // m³
     condition: Condition;
     status: AssetStatus;
-    refurb_days_estimate?: number | null; // Feedback #2: Estimated days to refurbish
+    refurb_days_estimate?: number | null;
     handling_tags: string[];
     last_scanned_at?: string;
     last_scanned_by?: string;
@@ -94,7 +91,7 @@ export interface Asset {
 
 // Asset with related entity details (for detail view)
 export interface AssetWithDetails extends Asset {
-    latestConditionNotes?: string; // Feedback #2: Latest condition notes from history
+    latestConditionNotes?: string;
     companyDetails: {
         id: string;
         name: string;
@@ -132,67 +129,82 @@ export interface AssetConditionHistoryEntry {
 
 // Create Asset Request
 export interface CreateAssetRequest {
-    company_id: string; // uuid
-    brand_id?: string; // uuid
-    family_id?: string | null;
-    warehouse_id: string; // uuid
-    zone_id: string; // uuid
+    company_id: string;
+    brand_id?: string;
+    group_id?: string | null;
+    is_part_of_group?: boolean;
+    group_name?: string | null;
+    warehouse_id: string;
+    zone_id: string;
     name: string;
     description?: string;
     category: AssetCategory;
-    images: AssetImage[]; // array of uploaded image objects
-    tracking_method: TrackingMethod;
+    images: AssetImage[];
+    stock_mode: StockMode;
+    low_stock_threshold?: number | null;
     total_quantity: number;
     available_quantity: number;
-    packaging?: string; // required if BATCH
-    weight_per_unit: number; // kg
+    packaging?: string; // required if POOLED
+    weight_per_unit: number;
     dimensions?: {
-        length?: number; // cm
-        width?: number; // cm
-        height?: number; // cm
+        length?: number;
+        width?: number;
+        height?: number;
     };
-    volume_per_unit: number; // m³
-    condition?: Condition; // optional, defaults to GREEN if not provided
-    condition_notes?: string; // Feedback #2: Required for ORANGE/RED items
+    volume_per_unit: number;
+    condition?: Condition;
+    condition_notes?: string;
     team_id?: string | null;
     handling_tags?: string[];
     refurb_days_estimate?: number;
-    status?: AssetStatus; // optional, defaults to AVAILABLE
+    status?: AssetStatus;
 }
 
 // Update Asset Request
 export interface UpdateAssetRequest {
-    brand_id?: string; // uuid
-    family_id?: string | null;
-    warehouse_id?: string; // uuid
-    zone_id?: string; // uuid
+    brand_id?: string;
+    group_id?: string | null;
+    group_name?: string | null;
+    warehouse_id?: string;
+    zone_id?: string;
     name?: string;
     description?: string;
     category?: AssetCategory;
-    images?: AssetImage[]; // replace existing images
-    totalQuantity?: number; // adjust total quantity
+    images?: AssetImage[];
+    totalQuantity?: number;
     packaging?: string;
-    weight?: number; // kg
-    dimensionLength?: number; // cm
-    dimensionWidth?: number; // cm
-    dimensionHeight?: number; // cm
-    volume?: number; // m³
-    condition?: Condition; // Feedback #2: Allow condition changes via edit
-    refurbDaysEstimate?: number | null; // Feedback #2: Update refurb estimate
-    conditionNotes?: string; // Feedback #2: Notes when changing condition
+    stock_mode?: StockMode;
+    low_stock_threshold?: number | null;
+    weight?: number;
+    dimensionLength?: number;
+    dimensionWidth?: number;
+    dimensionHeight?: number;
+    volume?: number;
+    condition?: Condition;
+    refurbDaysEstimate?: number | null;
+    conditionNotes?: string;
     handlingTags?: string[];
+}
+
+// Bulk-group request
+export interface BulkGroupAssetsRequest {
+    asset_ids: string[]; // min 2
+    target_group_id?: string;
+    group_name: string;
 }
 
 // Asset List Query Parameters
 export interface AssetListParams {
-    company?: string; // uuid
-    brand?: string; // uuid
-    warehouse?: string; // uuid
-    zone?: string; // uuid
+    company?: string;
+    brand?: string;
+    warehouse?: string;
+    zone?: string;
     category?: AssetCategory;
     condition?: Condition;
     status?: AssetStatus;
-    search?: string; // search by name
+    stock_mode?: StockMode;
+    group_id?: string;
+    search?: string;
     limit?: number;
     offset?: number;
 }
@@ -208,19 +220,19 @@ export interface AssetListResponse {
 
 // Generate QR Code Request
 export interface GenerateQRCodeRequest {
-    qrCode: string; // the QR code string to encode
+    qrCode: string;
 }
 
 // Generate QR Code Response
 export interface GenerateQRCodeResponse {
     success: true;
-    qrCodeImage: string; // base64-encoded PNG or SVG
+    qrCodeImage: string;
 }
 
 // Upload Image Response
 export interface UploadImageResponse {
     success: true;
-    imageUrl: string; // URL of uploaded image in file storage
+    imageUrl: string;
 }
 
 // API Success Response
@@ -244,8 +256,10 @@ export interface AssetsDetails {
     warehouse_id: string;
     zone_id: string;
     brand_id: string | null;
-    family_id?: string | null;
-    familyId?: string | null;
+    group_id?: string | null;
+    groupId?: string | null;
+    group_name?: string | null;
+    groupName?: string | null;
 
     name: string;
     description: string | null;
@@ -254,7 +268,8 @@ export interface AssetsDetails {
     images: AssetImage[];
     on_display_image: string | null;
 
-    tracking_method: TrackingMethod;
+    stock_mode: StockMode;
+    low_stock_threshold: number | null;
 
     total_quantity: number;
     available_quantity: number;
