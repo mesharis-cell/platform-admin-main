@@ -30,6 +30,12 @@ export interface Asset {
     groupId?: string | null;
     group_name?: string | null;
     groupName?: string | null;
+    /** @deprecated post-squash shim — always null. Use group_id/group_name. */
+    family?: null;
+    /** @deprecated post-squash shim — kept on Asset type so old UI compiles. Always null. */
+    family_id?: string | null;
+    /** @deprecated post-squash shim — always null. */
+    familyId?: string | null;
     company: {
         id: string;
         name: string;

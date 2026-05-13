@@ -7,8 +7,7 @@ import { throwApiError } from "@/lib/utils/throw-api-error";
 export const stockMovementKeys = {
     assetHistory: (assetId: string | null, params?: { page?: number; limit?: number }) =>
         ["stock-history", "asset", assetId, params?.page ?? 1, params?.limit ?? 20] as const,
-    familyHistory: (groupId: string | null) => ["stock-history", "family", familyId] as const,
-    lowStock: () => ["low-stock-families"] as const,
+    lowStock: () => ["low-stock-assets"] as const,
 };
 
 export function useAssetStockHistory(
@@ -30,24 +29,8 @@ export function useAssetStockHistory(
     });
 }
 
-export function useAssetFamilyStockHistory(
-    groupId: string | null,
-    params?: { page?: number; limit?: number }
-) {
-    return useQuery({
-        queryKey: stockMovementKeys.familyHistory(familyId),
-        queryFn: async () => {
-            const query = new URLSearchParams();
-            if (params?.page) query.set("page", String(params.page));
-            if (params?.limit) query.set("limit", String(params.limit));
-            const { data } = await apiClient.get(
-                `/operations/v1/stock-movements/asset-family/${familyId}/stock-history?${query.toString()}`
-            );
-            return data;
-        },
-        enabled: !!familyId,
-    });
-}
+// useAssetFamilyStockHistory removed in the squash (locked decision #10).
+// Per-asset history via useAssetStockHistory is the only path post-cutover.
 
 export function useLowStockFamilies(companyId?: string) {
     return useQuery({
