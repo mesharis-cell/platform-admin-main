@@ -316,15 +316,6 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                                 variant="outline"
                                 size="sm"
                                 className="font-mono"
-                                onClick={() => setShowMoveDialog(true)}
-                            >
-                                <ArrowRightLeft className="w-4 h-4 mr-2" />
-                                Move to Family
-                            </Button>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                className="font-mono"
                                 onClick={() => handleEdit("basic")}
                             >
                                 <Edit className="w-4 h-4 mr-2" />
@@ -365,43 +356,15 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                                 <span className="text-sm text-muted-foreground font-mono">
                                     {asset.category}
                                 </span>
-                                {(asset as any).family && (
+                                {((asset as any).group_name || (asset as any).groupName) && (
                                     <>
                                         <span className="text-sm text-muted-foreground font-mono">
                                             •
                                         </span>
-                                        <Button
-                                            variant="link"
-                                            size="sm"
-                                            asChild
-                                            className="h-auto p-0 font-mono text-sm"
-                                        >
-                                            <Link
-                                                href={`/assets/families/${(asset as any).group_id || (asset as any).groupId}`}
-                                            >
-                                                {((asset as any).family as any)?.name ||
-                                                    "View Family"}
-                                            </Link>
-                                        </Button>
-                                    </>
-                                )}
-                                {!(asset as any).family && (asset as any).group_id && (
-                                    <>
                                         <span className="text-sm text-muted-foreground font-mono">
-                                            •
+                                            Group:{" "}
+                                            {(asset as any).group_name || (asset as any).groupName}
                                         </span>
-                                        <Button
-                                            variant="link"
-                                            size="sm"
-                                            asChild
-                                            className="h-auto p-0 font-mono text-sm"
-                                        >
-                                            <Link
-                                                href={`/assets/families/${(asset as any).group_id}`}
-                                            >
-                                                View Family
-                                            </Link>
-                                        </Button>
                                     </>
                                 )}
                             </div>
@@ -443,8 +406,7 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                         <AssetStockSection
                             assetId={asset.id}
                             assetName={asset.name}
-                            stockMode={(asset as any).family?.stock_mode}
-                            familyId={(asset as any).group_id ?? (asset as any).family?.id}
+                            stockMode={(asset as any).stock_mode}
                         />
 
                         {/* Item 6: cart rules targeting this asset. Inline
@@ -1069,17 +1031,6 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                     onOpenChange={setShowEditDialog}
                     defaultTab={editDialogTab}
                     onSuccess={() => setShowEditDialog(false)}
-                />
-            )}
-
-            {/* Move to Family Dialog */}
-            {asset && (
-                <MoveToFamilyModal
-                    open={showMoveDialog}
-                    onOpenChange={setShowMoveDialog}
-                    asset={asset as any}
-                    currentFamilyName={(asset as any).family?.name}
-                    onSuccess={() => setShowMoveDialog(false)}
                 />
             )}
 

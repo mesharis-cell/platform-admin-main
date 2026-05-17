@@ -65,7 +65,7 @@ export function EditAssetDialog({
     const [formData, setFormData] = useState({
         company: extractId(asset.company),
         brand_id: extractId(asset.brand) || undefined,
-        family_id: asset.group_id || asset.groupId || null,
+        group_id: asset.group_id || asset.groupId || null,
         warehouse_id: extractId(asset.warehouse),
         zone_id: extractId(asset.zone),
         name: asset.name,
@@ -97,7 +97,7 @@ export function EditAssetDialog({
             setFormData({
                 company: extractId(asset.company),
                 brand_id: extractId(asset.brand) || undefined,
-                family_id: asset.group_id || asset.groupId || null,
+                group_id: asset.group_id || asset.groupId || null,
                 warehouse_id: extractId(asset.warehouse),
                 zone_id: extractId(asset.zone),
                 name: asset.name,
@@ -135,14 +135,7 @@ export function EditAssetDialog({
     const { data: brandsData } = useBrands(
         formData.company ? { company: formData.company } : undefined
     );
-    const { data: assetFamiliesData } = useAssetFamilies(
-        formData.company
-            ? {
-                  company_id: formData.company,
-                  ...(formData.brand_id ? { brand_id: formData.brand_id } : {}),
-              }
-            : undefined
-    );
+    const assetFamiliesData = { data: [] };
 
     const warehouses = warehousesData?.data || [];
     const zones = zonesData?.data || [];
@@ -272,7 +265,7 @@ export function EditAssetDialog({
                 id: asset.id,
                 data: {
                     brand_id: formData.brand_id || null,
-                    family_id: formData.group_id || null,
+                    group_id: formData.group_id || null,
                     warehouse_id: formData.warehouse_id,
                     zone_id: formData.zone_id,
                     name: formData.name,
@@ -609,7 +602,7 @@ export function EditAssetDialog({
                                         setFormData({
                                             ...formData,
                                             brand_id: value,
-                                            family_id: null,
+                                            group_id: null,
                                         })
                                     }
                                     disabled={!formData.company}
@@ -636,13 +629,13 @@ export function EditAssetDialog({
                             </div>
 
                             <div className="space-y-2">
-                                <Label className="font-mono text-xs">Asset Family</Label>
+                                <Label className="font-mono text-xs">Asset Group</Label>
                                 <Select
                                     value={formData.group_id || "__none__"}
                                     onValueChange={(value) =>
                                         setFormData({
                                             ...formData,
-                                            family_id: value === "__none__" ? null : value,
+                                            group_id: value === "__none__" ? null : value,
                                         })
                                     }
                                     disabled={!formData.company}
@@ -653,13 +646,13 @@ export function EditAssetDialog({
                                                 !formData.company
                                                     ? "No company assigned"
                                                     : assetFamilies.length === 0
-                                                      ? "No families available"
-                                                      : "Select family"
+                                                      ? "No groups available"
+                                                      : "Select group"
                                             }
                                         />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="__none__">No family</SelectItem>
+                                        <SelectItem value="__none__">No group</SelectItem>
                                         {assetFamilies.map((family) => (
                                             <SelectItem key={family.id} value={family.id}>
                                                 {family.name}

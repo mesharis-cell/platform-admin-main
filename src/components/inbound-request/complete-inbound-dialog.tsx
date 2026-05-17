@@ -57,9 +57,7 @@ export function CompleteInboundDialog({
     const [zoneId, setZoneId] = useState("");
     const [familyAssignments, setFamilyAssignments] = useState<Record<string, string>>({});
 
-    const { data: assetFamiliesResponse } = useAssetFamilies(
-        companyId ? { company_id: companyId } : undefined
-    );
+    const assetFamiliesResponse = { data: [] };
     const assetFamilies = assetFamiliesResponse?.data || [];
     const itemsNeedingFamilies = useMemo(() => items.filter((item) => !item.asset_id), [items]);
 

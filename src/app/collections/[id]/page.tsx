@@ -114,14 +114,7 @@ export default function CollectionDetailPage() {
         company_id: typeof companyId === "string" ? companyId : undefined,
         limit: "200",
     });
-    const { data: assetFamiliesData } = useAssetFamilies(
-        collection?.company_id
-            ? {
-                  company_id: collection.company_id,
-                  brand_id: collection.brand_id || undefined,
-              }
-            : undefined
-    );
+    const assetFamiliesData = { data: [] };
 
     // Edit form state
     const [editFormData, setEditFormData] = useState({
@@ -810,20 +803,15 @@ export default function CollectionDetailPage() {
                                                         <h3 className="text-lg font-semibold">
                                                             {item?.asset.name}
                                                         </h3>
-                                                        {item?.asset?.family?.id &&
-                                                            item?.asset?.family?.name && (
-                                                                <Link
-                                                                    href={`/assets/families/${item.asset.family.id}`}
-                                                                >
-                                                                    <Badge
-                                                                        variant="outline"
-                                                                        className="gap-1 hover:border-primary/50"
-                                                                    >
-                                                                        <ChevronRight className="w-3 h-3" />
-                                                                        {item.asset.family.name}
-                                                                    </Badge>
-                                                                </Link>
-                                                            )}
+                                                        {item?.asset?.family?.name && (
+                                                            <Badge
+                                                                variant="outline"
+                                                                className="gap-1"
+                                                            >
+                                                                <ChevronRight className="w-3 h-3" />
+                                                                {item.asset.family.name}
+                                                            </Badge>
+                                                        )}
                                                     </div>
                                                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                                         <span>{item?.asset.category}</span>

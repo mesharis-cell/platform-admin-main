@@ -82,7 +82,8 @@ export default function NewSelfBookingPage() {
     const [notes, setNotes] = useState("");
 
     const createMutation = useCreateSelfBooking();
-    const { data: familyResponse, isLoading: familyLoading } = useAssetFamilies();
+    const familyResponse = { data: [] };
+    const familyLoading = false;
     const { data: familyStockResponse, isLoading: familyStockLoading } = useAssets(
         selectedFamilyId
             ? {
@@ -576,7 +577,7 @@ export default function NewSelfBookingPage() {
                                                 Loading families…
                                             </div>
                                         ) : visibleFamilies.length > 0 ? (
-                                            visibleFamilies.map((family: AssetFamily) => (
+                                            visibleFamilies.map((family: any) => (
                                                 <button
                                                     key={family.id}
                                                     type="button"
@@ -639,8 +640,7 @@ export default function NewSelfBookingPage() {
                                                                     id: asset.id,
                                                                     name: asset.name,
                                                                     qr_code: asset.qr_code,
-                                                                    stock_mode:
-                                                                        asset.stock_mode,
+                                                                    stock_mode: asset.stock_mode,
                                                                     category: asset.category,
                                                                 })
                                                             }

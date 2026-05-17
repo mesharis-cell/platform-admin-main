@@ -84,19 +84,14 @@ export function AssetsFromInbound({ items }: AssetsFromInboundProps) {
                                                 >
                                                     {item.asset.stock_mode}
                                                 </Badge>
-                                                {item.asset.family?.id &&
-                                                    item.asset.family?.name && (
-                                                        <Link
-                                                            href={`/assets/families/${item.asset.family.id}`}
-                                                        >
-                                                            <Badge
-                                                                variant="outline"
-                                                                className="text-xs font-mono text-primary hover:border-primary/50"
-                                                            >
-                                                                {item.asset.family.name}
-                                                            </Badge>
-                                                        </Link>
-                                                    )}
+                                                {item.asset.family?.name && (
+                                                    <Badge
+                                                        variant="outline"
+                                                        className="text-xs font-mono text-muted-foreground"
+                                                    >
+                                                        {item.asset.family.name}
+                                                    </Badge>
+                                                )}
                                             </div>
                                         </div>
 

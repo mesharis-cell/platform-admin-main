@@ -30,6 +30,8 @@ export interface Asset {
     groupId?: string | null;
     group_name?: string | null;
     groupName?: string | null;
+    group_images?: AssetImage[];
+    group_on_display_image?: string | null;
     /** @deprecated post-squash shim — always null. Use group_id/group_name. */
     family?: null;
     /** @deprecated post-squash shim — kept on Asset type so old UI compiles. Always null. */
@@ -140,6 +142,8 @@ export interface CreateAssetRequest {
     group_id?: string | null;
     is_part_of_group?: boolean;
     group_name?: string | null;
+    group_images?: AssetImage[];
+    group_on_display_image?: string | null;
     warehouse_id: string;
     zone_id: string;
     name: string;
@@ -273,6 +277,8 @@ export interface AssetsDetails {
 
     images: AssetImage[];
     on_display_image: string | null;
+    group_images?: AssetImage[];
+    group_on_display_image?: string | null;
 
     stock_mode: StockMode;
     low_stock_threshold: number | null;

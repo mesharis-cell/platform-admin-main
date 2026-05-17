@@ -1,4 +1,3 @@
-// @ts-nocheck — squash-families partial refactor; UX rebuild deferred. Compile-only stub for staging dress rehearsal.
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -171,7 +170,6 @@ export function useCreateAsset() {
         mutationFn: createAsset,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: assetKeys.lists() });
-            queryClient.invalidateQueries({ queryKey: assetFamilyKeys.all });
             queryClient.invalidateQueries({ queryKey: ["asset-categories"] });
         },
     });
@@ -198,7 +196,6 @@ export function useUpdateAsset() {
         onSuccess: (_, variables) => {
             queryClient.invalidateQueries({ queryKey: assetKeys.lists() });
             queryClient.invalidateQueries({ queryKey: assetKeys.detail(variables.id) });
-            queryClient.invalidateQueries({ queryKey: assetFamilyKeys.all });
         },
     });
 }
@@ -212,7 +209,6 @@ export function useAddAssetUnits() {
         onSuccess: (_, variables) => {
             queryClient.invalidateQueries({ queryKey: assetKeys.lists() });
             queryClient.invalidateQueries({ queryKey: assetKeys.detail(variables.id) });
-            queryClient.invalidateQueries({ queryKey: assetFamilyKeys.all });
         },
     });
 }
@@ -224,7 +220,6 @@ export function useDeleteAsset() {
         mutationFn: deleteAsset,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: assetKeys.lists() });
-            queryClient.invalidateQueries({ queryKey: assetFamilyKeys.all });
         },
     });
 }

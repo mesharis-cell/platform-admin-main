@@ -4,9 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api/api-client";
 import { throwApiError } from "@/lib/utils/throw-api-error";
 
-export type CommerceRuleTarget =
-    | { kind: "ASSET"; asset_id: string }
-    | { kind: "FAMILY"; family_id: string };
+export type CommerceRuleTarget = { kind: "ASSET"; asset_id: string };
 
 export type CommerceRulePredicate =
     | { kind: "QUANTITY_LT"; threshold: number }

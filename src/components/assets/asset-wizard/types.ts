@@ -118,7 +118,7 @@ export const STEP_LABELS: Record<string, string> = {
 };
 
 export const INITIAL_STATE: WizardState = {
-    branch: null,
+    branch: "new",
     currentStep: 0,
     selectedFamily: null,
     stockMode: null,
