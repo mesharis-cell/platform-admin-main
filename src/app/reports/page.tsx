@@ -5,6 +5,8 @@ import { Download, FileBarChart, FileSpreadsheet } from "lucide-react";
 import { AdminHeader } from "@/components/admin-header";
 import { toast } from "sonner";
 import { useCompanies } from "@/hooks/use-companies";
+import { useBrands } from "@/hooks/use-brands";
+import { useAssetCategories } from "@/hooks/use-asset-categories";
 import { useToken } from "@/lib/auth/use-token";
 import { apiClient } from "@/lib/api/api-client";
 import { throwApiError } from "@/lib/utils/throw-api-error";
@@ -26,15 +28,20 @@ type ExportSection = "Financial" | "Orders & Operations" | "Inventory";
 type ExportFilterField =
     | "dateRange"
     | "company"
+    | "brand"
+    | "category"
+    | "group"
     | "status"
     | "condition"
     | "entityType"
+    | "movementType"
     | "includePhotos";
 type ExportCardId =
     | "orders"
     | "orderHistory"
     | "accountsReconciliation"
     | "stockReport"
+    | "stockMovements"
     | "assetsOut"
     | "inboundLog"
     | "revenueReport"
@@ -57,9 +64,13 @@ type ExportCardFilters = {
     dateFrom: string;
     dateTo: string;
     companyId: string;
+    brandId: string;
+    categoryId: string;
+    groupName: string;
     status: string;
     condition: string;
     entityType: string;
+    movementType: string;
     includePhotos: boolean;
 };
 
@@ -83,6 +94,14 @@ const ORDER_STATUS_OPTIONS = [
 ];
 
 const CONDITION_OPTIONS = ["GREEN", "ORANGE", "RED"];
+const MOVEMENT_TYPE_OPTIONS = [
+    "OUTBOUND",
+    "INBOUND",
+    "WRITE_OFF",
+    "ADJUSTMENT",
+    "INITIAL",
+    "OUTBOUND_AD_HOC",
+];
 
 const EXPORT_CARDS: ExportCardConfig[] = [
     {
@@ -162,17 +181,27 @@ const EXPORT_CARDS: ExportCardConfig[] = [
         id: "stockReport",
         title: "Stock Report",
         description:
-            "Current stock inventory breakdown with family identity, company, and condition.",
+            "Current stock inventory breakdown with group identity, company, brand, category, and condition.",
         endpoint: "stock-report",
         section: "Inventory",
-        filterFields: ["company", "condition"],
+        filterFields: ["company", "brand", "category", "group", "condition"],
         requiredAnyPermission: ["assets:read"],
+    },
+    {
+        id: "stockMovements",
+        title: "Stock Movements",
+        description:
+            "Pooled stock movement ledger with asset, group, company, brand, category, movement type, and linked entity context.",
+        endpoint: "stock-movements",
+        section: "Inventory",
+        filterFields: ["dateRange", "company", "brand", "category", "group", "movementType"],
+        requiredAnyPermission: ["stock_movements:read", "assets:read"],
     },
     {
         id: "assetUtilization",
         title: "Asset Utilization",
         description:
-            "Stock-record usage frequency with family identity and days-since-used distribution.",
+            "Stock-record usage frequency with group identity and days-since-used distribution.",
         endpoint: "asset-utilization",
         section: "Inventory",
         filterFields: ["company"],
@@ -182,7 +211,7 @@ const EXPORT_CARDS: ExportCardConfig[] = [
         id: "assetCatalog",
         title: "Asset Catalog",
         description:
-            "Flat, one-row-per-asset snapshot of everything a company owns — family, item code, dimensions, weight, volume, handling tags, condition, status, location. Toggle photos to embed the primary image of each asset (XLSX). Leave off for a fast CSV with image URLs.",
+            "Flat, one-row-per-asset snapshot of everything a company owns — group, item code, dimensions, weight, volume, handling tags, condition, status, location. Toggle photos to embed the primary image of each asset (XLSX). Leave off for a fast CSV with image URLs.",
         endpoint: "asset-catalog",
         section: "Inventory",
         filterFields: ["company", "condition", "status", "includePhotos"],
@@ -194,9 +223,13 @@ const DEFAULT_FILTERS: ExportCardFilters = {
     dateFrom: "",
     dateTo: "",
     companyId: "",
+    brandId: "",
+    categoryId: "",
+    groupName: "",
     status: "",
     condition: "",
     entityType: "",
+    movementType: "",
     includePhotos: false,
 };
 
@@ -205,6 +238,7 @@ const INITIAL_CARD_FILTERS: Record<ExportCardId, ExportCardFilters> = {
     orderHistory: { ...DEFAULT_FILTERS },
     accountsReconciliation: { ...DEFAULT_FILTERS },
     stockReport: { ...DEFAULT_FILTERS },
+    stockMovements: { ...DEFAULT_FILTERS },
     assetsOut: { ...DEFAULT_FILTERS },
     inboundLog: { ...DEFAULT_FILTERS },
     revenueReport: { ...DEFAULT_FILTERS },
@@ -219,6 +253,8 @@ const sectionOrder: ExportSection[] = ["Financial", "Orders & Operations", "Inve
 export default function ReportsPage() {
     const { user } = useToken();
     const { data: companies } = useCompanies({ limit: "200", page: "1" });
+    const { data: brands } = useBrands({ limit: "500", page: "1" });
+    const { data: categories } = useAssetCategories(undefined, { allScopes: true });
     const [cardFilters, setCardFilters] =
         useState<Record<ExportCardId, ExportCardFilters>>(INITIAL_CARD_FILTERS);
     const [downloadingCard, setDownloadingCard] = useState<ExportCardId | null>(null);
@@ -261,12 +297,20 @@ export default function ReportsPage() {
         }
         if (card.filterFields.includes("company") && filters.companyId)
             query.append("company_id", filters.companyId);
+        if (card.filterFields.includes("brand") && filters.brandId)
+            query.append("brand_id", filters.brandId);
+        if (card.filterFields.includes("category") && filters.categoryId)
+            query.append("category_id", filters.categoryId);
+        if (card.filterFields.includes("group") && filters.groupName.trim())
+            query.append("group_name", filters.groupName.trim());
         if (card.filterFields.includes("status") && filters.status)
             query.append("order_status", filters.status);
         if (card.filterFields.includes("condition") && filters.condition)
             query.append("condition", filters.condition);
         if (card.filterFields.includes("entityType") && filters.entityType)
             query.append("entity_type", filters.entityType);
+        if (card.filterFields.includes("movementType") && filters.movementType)
+            query.append("movement_type", filters.movementType);
         if (card.filterFields.includes("includePhotos") && filters.includePhotos)
             query.append("include_photos", "true");
         return query.toString();
@@ -417,6 +461,93 @@ export default function ReportsPage() {
                                                     </div>
                                                 )}
 
+                                                {card.filterFields.includes("brand") && (
+                                                    <div className="space-y-1.5">
+                                                        <Label className="text-xs">Brand</Label>
+                                                        <Select
+                                                            value={filters.brandId || "all"}
+                                                            onValueChange={(value) =>
+                                                                updateCardFilter(
+                                                                    card.id,
+                                                                    "brandId",
+                                                                    value === "all" ? "" : value
+                                                                )
+                                                            }
+                                                        >
+                                                            <SelectTrigger>
+                                                                <SelectValue placeholder="All brands" />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="all">
+                                                                    All brands
+                                                                </SelectItem>
+                                                                {brands?.data?.map((brand) => (
+                                                                    <SelectItem
+                                                                        key={brand.id}
+                                                                        value={brand.id}
+                                                                    >
+                                                                        {brand.name}
+                                                                    </SelectItem>
+                                                                ))}
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
+                                                )}
+
+                                                {card.filterFields.includes("category") && (
+                                                    <div className="space-y-1.5">
+                                                        <Label className="text-xs">Category</Label>
+                                                        <Select
+                                                            value={filters.categoryId || "all"}
+                                                            onValueChange={(value) =>
+                                                                updateCardFilter(
+                                                                    card.id,
+                                                                    "categoryId",
+                                                                    value === "all" ? "" : value
+                                                                )
+                                                            }
+                                                        >
+                                                            <SelectTrigger>
+                                                                <SelectValue placeholder="All categories" />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="all">
+                                                                    All categories
+                                                                </SelectItem>
+                                                                {categories?.data?.map(
+                                                                    (category) => (
+                                                                        <SelectItem
+                                                                            key={category.id}
+                                                                            value={category.id}
+                                                                        >
+                                                                            {category.name}
+                                                                        </SelectItem>
+                                                                    )
+                                                                )}
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
+                                                )}
+
+                                                {card.filterFields.includes("group") && (
+                                                    <div className="space-y-1.5">
+                                                        <Label className="text-xs">
+                                                            Group Name
+                                                        </Label>
+                                                        <Input
+                                                            value={filters.groupName}
+                                                            placeholder="Exact or partial group name"
+                                                            onChange={(event) =>
+                                                                updateCardFilter(
+                                                                    card.id,
+                                                                    "groupName",
+                                                                    event.target.value
+                                                                )
+                                                            }
+                                                        />
+                                                    </div>
+                                                )}
+
                                                 {card.filterFields.includes("status") && (
                                                     <div className="space-y-1.5">
                                                         <Label className="text-xs">
@@ -520,6 +651,46 @@ export default function ReportsPage() {
                                                                 <SelectItem value="SELF_PICKUP">
                                                                     Self-Pickups only
                                                                 </SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
+                                                )}
+
+                                                {card.filterFields.includes("movementType") && (
+                                                    <div className="space-y-1.5">
+                                                        <Label className="text-xs">
+                                                            Movement Type
+                                                        </Label>
+                                                        <Select
+                                                            value={filters.movementType || "all"}
+                                                            onValueChange={(value) =>
+                                                                updateCardFilter(
+                                                                    card.id,
+                                                                    "movementType",
+                                                                    value === "all" ? "" : value
+                                                                )
+                                                            }
+                                                        >
+                                                            <SelectTrigger>
+                                                                <SelectValue placeholder="All movement types" />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="all">
+                                                                    All movement types
+                                                                </SelectItem>
+                                                                {MOVEMENT_TYPE_OPTIONS.map(
+                                                                    (type) => (
+                                                                        <SelectItem
+                                                                            key={type}
+                                                                            value={type}
+                                                                        >
+                                                                            {type.replace(
+                                                                                /_/g,
+                                                                                " "
+                                                                            )}
+                                                                        </SelectItem>
+                                                                    )
+                                                                )}
                                                             </SelectContent>
                                                         </Select>
                                                     </div>

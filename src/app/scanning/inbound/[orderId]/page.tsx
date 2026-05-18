@@ -57,7 +57,7 @@ type InspectionState = {
     qrCode: string;
     assetId: string;
     assetName: string;
-    trackingMethod: "INDIVIDUAL" | "BATCH";
+    trackingMethod: "SERIALIZED" | "POOLED";
     requiredQuantity: number;
     scannedQuantity: number;
     condition: "GREEN" | "ORANGE" | "RED" | null;
@@ -277,7 +277,7 @@ export default function InboundScanningPage() {
             qrCode,
             assetId: asset.asset_id,
             assetName: asset.asset_name,
-            trackingMethod: asset.tracking_method,
+            trackingMethod: asset.stock_mode,
             requiredQuantity: asset.required_quantity,
             scannedQuantity: asset.scanned_quantity,
             condition: null,
@@ -286,7 +286,7 @@ export default function InboundScanningPage() {
             damageReportEntries: [],
             refurbDaysEstimate: null, // Feedback #2
             discrepancyReason: null,
-            quantity: asset.tracking_method === "BATCH" ? null : 1,
+            quantity: asset.stock_mode === "POOLED" ? null : 1,
         });
         setInspectionDialogOpen(true);
     };
@@ -476,7 +476,7 @@ export default function InboundScanningPage() {
         }
 
         // Validate quantity for BATCH assets
-        if (currentInspection.trackingMethod === "BATCH" && !currentInspection.quantity) {
+        if (currentInspection.trackingMethod === "POOLED" && !currentInspection.quantity) {
             toast.error("Please enter quantity");
             return;
         }
@@ -751,7 +751,7 @@ export default function InboundScanningPage() {
                                             {asset.asset_name}
                                         </div>
                                         <div className="text-xs text-muted-foreground">
-                                            QR: {asset.qr_code} • {asset.tracking_method}
+                                            QR: {asset.qr_code} • {asset.stock_mode}
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-2">
@@ -810,7 +810,7 @@ export default function InboundScanningPage() {
 
                             <div className="space-y-4">
                                 {/* Quantity input for BATCH assets */}
-                                {currentInspection.trackingMethod === "BATCH" && (
+                                {currentInspection.trackingMethod === "POOLED" && (
                                     <div className="space-y-2">
                                         <label className="text-xs font-mono font-bold">
                                             QUANTITY RETURNING *
@@ -1235,7 +1235,7 @@ export default function InboundScanningPage() {
                                     disabled={
                                         !currentInspection.condition ||
                                         currentInspection.latestReturnImages.length < 2 ||
-                                        (currentInspection.trackingMethod === "BATCH" &&
+                                        (currentInspection.trackingMethod === "POOLED" &&
                                             !currentInspection.quantity) ||
                                         ((currentInspection.condition === "ORANGE" ||
                                             currentInspection.condition === "RED") &&

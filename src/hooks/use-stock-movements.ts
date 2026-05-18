@@ -7,8 +7,7 @@ import { throwApiError } from "@/lib/utils/throw-api-error";
 export const stockMovementKeys = {
     assetHistory: (assetId: string | null, params?: { page?: number; limit?: number }) =>
         ["stock-history", "asset", assetId, params?.page ?? 1, params?.limit ?? 20] as const,
-    familyHistory: (familyId: string | null) => ["stock-history", "family", familyId] as const,
-    lowStock: () => ["low-stock-families"] as const,
+    lowStock: () => ["low-stock-assets"] as const,
 };
 
 export function useAssetStockHistory(
@@ -30,24 +29,8 @@ export function useAssetStockHistory(
     });
 }
 
-export function useAssetFamilyStockHistory(
-    familyId: string | null,
-    params?: { page?: number; limit?: number }
-) {
-    return useQuery({
-        queryKey: stockMovementKeys.familyHistory(familyId),
-        queryFn: async () => {
-            const query = new URLSearchParams();
-            if (params?.page) query.set("page", String(params.page));
-            if (params?.limit) query.set("limit", String(params.limit));
-            const { data } = await apiClient.get(
-                `/operations/v1/stock-movements/asset-family/${familyId}/stock-history?${query.toString()}`
-            );
-            return data;
-        },
-        enabled: !!familyId,
-    });
-}
+// useAssetFamilyStockHistory removed in the squash (locked decision #10).
+// Per-asset history via useAssetStockHistory is the only path post-cutover.
 
 export function useLowStockFamilies(companyId?: string) {
     return useQuery({
@@ -85,17 +68,12 @@ export function useManualStockAdjustment() {
         },
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ["stock-history"] });
-            qc.invalidateQueries({ queryKey: ["low-stock-families"] });
-            // The new movement type changes both total + available — refresh
-            // the asset and family availability stats so the on-screen
-            // counters update without waiting for the 30s poll. Also
-            // invalidate the root ["assets"] key so the "Total Quantity"
-            // line on asset detail (which reads asset.total_quantity from
-            // the asset-row query, NOT from stats) refreshes too —
-            // otherwise the user sees Available drop but Total stay stale.
+            qc.invalidateQueries({ queryKey: stockMovementKeys.lowStock() });
+            // The new movement type changes both total + available. Refresh
+            // asset counters and the root ["assets"] key because detail pages
+            // read total_quantity from the asset-row query.
             qc.invalidateQueries({ queryKey: ["assets"] });
             qc.invalidateQueries({ queryKey: ["asset-availability-stats"] });
-            qc.invalidateQueries({ queryKey: ["asset-family-availability-stats"] });
         },
         onError: throwApiError,
     });

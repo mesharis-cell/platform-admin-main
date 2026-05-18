@@ -10,7 +10,7 @@ export interface SelfBookingItem {
         name: string;
         qr_code: string;
         category: string;
-        tracking_method: string;
+        stock_mode: string;
     };
     quantity: number;
     returned_quantity: number;

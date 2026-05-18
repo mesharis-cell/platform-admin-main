@@ -1,9 +1,12 @@
 "use client";
 
+import { useState } from "react";
+import { Check, ChevronsUpDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
     Select,
     SelectContent,
@@ -11,10 +14,21 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import {
+    Command,
+    CommandEmpty,
+    CommandGroup,
+    CommandInput,
+    CommandItem,
+    CommandList,
+} from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useCompanies } from "@/hooks/use-companies";
 import { useBrands } from "@/hooks/use-brands";
 import { CategoryCombobox } from "@/components/assets/category-combobox";
+import { cn } from "@/lib/utils";
 import type { WizardState } from "./types";
+
 const HANDLING_TAGS = ["Fragile", "HighValue", "HeavyLift", "AssemblyRequired"];
 
 interface Props {
@@ -23,12 +37,14 @@ interface Props {
 }
 
 export function WizardFamilyForm({ state, update }: Props) {
+    const [brandOpen, setBrandOpen] = useState(false);
     const { data: companiesData } = useCompanies();
     const { data: brandsData } = useBrands(
-        state.companyId ? { company_id: state.companyId } : undefined
+        state.companyId ? { company_id: state.companyId, limit: "200" } : undefined
     );
     const companies = companiesData?.data || [];
     const brands = brandsData?.data || [];
+    const selectedBrand = brands.find((brand) => brand.id === state.brandId) || null;
 
     return (
         <div className="py-2 space-y-4">
@@ -37,64 +53,104 @@ export function WizardFamilyForm({ state, update }: Props) {
                     <Label>Company *</Label>
                     <Select
                         value={state.companyId}
-                        onValueChange={(v) => update({ companyId: v, brandId: "" })}
+                        onValueChange={(value) => update({ companyId: value, brandId: "" })}
                     >
                         <SelectTrigger>
                             <SelectValue placeholder="Select company" />
                         </SelectTrigger>
                         <SelectContent>
-                            {companies.map((c) => (
-                                <SelectItem key={c.id} value={c.id}>
-                                    {c.name}
+                            {companies.map((company) => (
+                                <SelectItem key={company.id} value={company.id}>
+                                    {company.name}
                                 </SelectItem>
                             ))}
                         </SelectContent>
                     </Select>
                 </div>
+
                 <div className="space-y-2">
                     <Label>Brand</Label>
-                    <Select
-                        value={state.brandId || "__none__"}
-                        onValueChange={(v) => update({ brandId: v === "__none__" ? "" : v })}
-                        disabled={!state.companyId}
-                    >
-                        <SelectTrigger>
-                            <SelectValue placeholder="Select brand" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="__none__">No brand</SelectItem>
-                            {brands.map((b) => (
-                                <SelectItem key={b.id} value={b.id}>
-                                    {b.name}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                    <Popover open={brandOpen} onOpenChange={setBrandOpen}>
+                        <PopoverTrigger asChild>
+                            <Button
+                                variant="outline"
+                                role="combobox"
+                                aria-expanded={brandOpen}
+                                disabled={!state.companyId}
+                                className="w-full justify-between font-normal"
+                            >
+                                <span
+                                    className={cn(
+                                        "truncate",
+                                        !selectedBrand && "text-muted-foreground"
+                                    )}
+                                >
+                                    {selectedBrand ? selectedBrand.name : "Select brand"}
+                                </span>
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                            <Command>
+                                <CommandInput placeholder="Search brand..." />
+                                <CommandList>
+                                    <CommandEmpty>No brand matches.</CommandEmpty>
+                                    <CommandGroup>
+                                        <CommandItem
+                                            value="__none__"
+                                            onSelect={() => {
+                                                update({ brandId: "" });
+                                                setBrandOpen(false);
+                                            }}
+                                        >
+                                            <Check
+                                                className={cn(
+                                                    "mr-2 h-4 w-4",
+                                                    !state.brandId ? "opacity-100" : "opacity-0"
+                                                )}
+                                            />
+                                            <span className="text-muted-foreground">No brand</span>
+                                        </CommandItem>
+                                        {brands.map((brand) => (
+                                            <CommandItem
+                                                key={brand.id}
+                                                value={brand.name}
+                                                onSelect={() => {
+                                                    update({ brandId: brand.id });
+                                                    setBrandOpen(false);
+                                                }}
+                                            >
+                                                <Check
+                                                    className={cn(
+                                                        "mr-2 h-4 w-4",
+                                                        state.brandId === brand.id
+                                                            ? "opacity-100"
+                                                            : "opacity-0"
+                                                    )}
+                                                />
+                                                {brand.name}
+                                            </CommandItem>
+                                        ))}
+                                    </CommandGroup>
+                                </CommandList>
+                            </Command>
+                        </PopoverContent>
+                    </Popover>
                 </div>
             </div>
 
             <div className="space-y-2">
-                <Label>Item Name *</Label>
+                <Label>Asset Name *</Label>
                 <Input
                     value={state.itemName}
-                    onChange={(e) => update({ itemName: e.target.value })}
-                    placeholder="e.g. Pedestrian Fan, Metal Stand, Gasoline Canister"
+                    onChange={(event) => update({ itemName: event.target.value })}
+                    placeholder="e.g. Red Bull Fridge, Fan, Gasoline Canister"
                 />
                 {state.stockMode === "SERIALIZED" && (
                     <p className="text-xs text-muted-foreground">
-                        The system will automatically name each unit: {state.itemName || "Item"} #1,
-                        #2, etc.
+                        Multiple units will be named with numeric suffixes automatically.
                     </p>
                 )}
-            </div>
-
-            <div className="space-y-2">
-                <Label>Company Item Code</Label>
-                <Input
-                    value={state.companyItemCode}
-                    onChange={(e) => update({ companyItemCode: e.target.value })}
-                    placeholder="External or client-specific item code"
-                />
             </div>
 
             <div className="space-y-2">
@@ -103,8 +159,8 @@ export function WizardFamilyForm({ state, update }: Props) {
                     companyId={state.companyId || null}
                     value={state.category_id}
                     newCategory={state.new_category}
-                    onChange={(categoryId, newCat) =>
-                        update({ category_id: categoryId, new_category: newCat })
+                    onChange={(categoryId, newCategory) =>
+                        update({ category_id: categoryId, new_category: newCategory })
                     }
                 />
             </div>
@@ -113,13 +169,12 @@ export function WizardFamilyForm({ state, update }: Props) {
                 <Label>Description</Label>
                 <Textarea
                     value={state.itemDescription}
-                    onChange={(e) => update({ itemDescription: e.target.value })}
+                    onChange={(event) => update({ itemDescription: event.target.value })}
                     rows={2}
-                    placeholder="Brief description of this item"
+                    placeholder="Brief description of this asset"
                 />
             </div>
 
-            {/* Handling tags */}
             <div className="space-y-2">
                 <Label>Handling Tags</Label>
                 <div className="flex flex-wrap gap-2">
@@ -133,7 +188,7 @@ export function WizardFamilyForm({ state, update }: Props) {
                                 onClick={() =>
                                     update({
                                         handlingTags: active
-                                            ? state.handlingTags.filter((t) => t !== tag)
+                                            ? state.handlingTags.filter((item) => item !== tag)
                                             : [...state.handlingTags, tag],
                                     })
                                 }
