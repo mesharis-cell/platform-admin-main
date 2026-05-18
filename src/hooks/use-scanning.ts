@@ -186,11 +186,18 @@ const scanInboundItem = async (data: {
     }
 };
 
-const completeInboundScan = async (data: { orderId: string }) => {
+const completeInboundScan = async (data: {
+    orderId: string;
+    settlements?: Array<{
+        line_id: string;
+        write_off_reason: "CONSUMED" | "LOST" | "DAMAGED" | "OTHER";
+        note?: string;
+    }>;
+}) => {
     try {
         const response = await apiClient.post(
             `/operations/v1/scanning/inbound/${data.orderId}/complete`,
-            {}
+            { settlements: data.settlements || [] }
         );
         return response.data;
     } catch (error) {
@@ -255,7 +262,7 @@ const getOrderScanEvents = async (orderId: string): Promise<GetScanEventsRespons
 
 const getAssetScanHistory = async (assetId: string): Promise<GetAssetScanHistoryResponse> => {
     try {
-        const response = await apiClient.get(`/operations/v1/assets/${assetId}/scan-history`);
+        const response = await apiClient.get(`/operations/v1/asset/${assetId}/scan-history`);
         return response.data;
     } catch (error) {
         return throwApiError(error);
