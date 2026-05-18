@@ -13,6 +13,8 @@ import type {
     ItemsNeedingAttentionResponse,
     AddMaintenanceNotesRequest,
     AddMaintenanceNotesResponse,
+    UpdateAssetConditionRequest,
+    UpdateAssetConditionResponse,
     FilterByConditionParams,
     FilterByConditionResponse,
     UploadDamagePhotosResponse,
@@ -120,6 +122,30 @@ export function useAddMaintenanceNotes() {
             // Invalidate condition history for the asset
             queryClient.invalidateQueries({ queryKey: assetKeys.lists() });
             queryClient.invalidateQueries({ queryKey: assetKeys.detail(variables.asset_id) });
+        },
+    });
+}
+
+export function useUpdateAssetCondition() {
+    const queryClient = useQueryClient();
+
+    return useMutation<UpdateAssetConditionResponse, Error, UpdateAssetConditionRequest>({
+        mutationFn: async ({ asset_id, ...payload }: UpdateAssetConditionRequest) => {
+            try {
+                const response = await apiClient.patch(
+                    `/operations/v1/asset/${asset_id}/condition`,
+                    payload
+                );
+
+                return response.data;
+            } catch (error) {
+                throwApiError(error);
+            }
+        },
+        onSuccess: (_data, variables) => {
+            queryClient.invalidateQueries({ queryKey: assetKeys.lists() });
+            queryClient.invalidateQueries({ queryKey: assetKeys.detail(variables.asset_id) });
+            queryClient.invalidateQueries({ queryKey: ["asset-availability-stats"] });
         },
     });
 }

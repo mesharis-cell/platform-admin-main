@@ -146,6 +146,41 @@ export interface AddMaintenanceNotesResponse {
     };
 }
 
+export interface UpdateAssetConditionRequest {
+    asset_id: string;
+    condition: Condition;
+    notes: string;
+    photo_entries: Array<{
+        url: string;
+        description?: string;
+    }>;
+    refurb_days_estimate?: number;
+}
+
+export interface UpdateAssetConditionResponse {
+    success: boolean;
+    data: {
+        asset: {
+            id: string;
+            name: string;
+            condition: Condition;
+            condition_notes: string | null;
+            refurb_days_estimate: number | null;
+            status: string;
+            updated_at: string;
+        };
+        condition_history: {
+            id: string;
+            condition: Condition;
+            notes: string | null;
+            photos: string[];
+            damage_report_entries?: Array<{ url: string; description?: string }>;
+            updated_by: string;
+            timestamp: string;
+        };
+    };
+}
+
 // ===== Filter by Condition =====
 
 export interface FilterByConditionParams {

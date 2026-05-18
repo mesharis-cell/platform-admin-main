@@ -38,7 +38,6 @@ import {
     Calendar,
     User,
     Scan,
-    AlertCircle,
     Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -47,8 +46,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { ConditionHistoryTimeline } from "@/components/conditions/condition-history-timeline";
-import { AddNotesDialog } from "@/components/conditions/add-notes-dialog";
+import { AssetConditionCard } from "@/components/conditions/asset-condition-card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EditAssetDialog, type EditAssetTab } from "@/components/assets/edit-asset-dialog";
 import { AssetStockSection } from "@/components/assets/asset-stock-section";
@@ -421,36 +419,7 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                             }
                         />
 
-                        {/* Condition History — primary, in main column */}
-                        <Card>
-                            <CardHeader>
-                                <div className="flex items-center justify-between gap-2">
-                                    <CardTitle className="flex items-center gap-2 font-mono text-sm">
-                                        <AlertCircle className="h-4 w-4 text-primary" />
-                                        Condition History
-                                    </CardTitle>
-                                    <div className="flex gap-2 shrink-0">
-                                        <AddNotesDialog
-                                            assetId={asset.id}
-                                            assetName={asset.name}
-                                            onSuccess={() => {}}
-                                        />
-                                    </div>
-                                </div>
-                            </CardHeader>
-                            <CardContent>
-                                {asset?.condition_history ? (
-                                    <ConditionHistoryTimeline
-                                        history={asset?.condition_history}
-                                        assetName={asset.name}
-                                    />
-                                ) : (
-                                    <div className="flex items-center justify-center py-8">
-                                        <Skeleton className="h-32 w-full" />
-                                    </div>
-                                )}
-                            </CardContent>
-                        </Card>
+                        <AssetConditionCard asset={asset} />
                     </div>
 
                     {/* Sidebar */}

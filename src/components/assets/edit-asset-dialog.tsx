@@ -7,7 +7,7 @@ import { useWarehouses } from "@/hooks/use-warehouses";
 import { useZones } from "@/hooks/use-zones";
 import { useBrands } from "@/hooks/use-brands";
 import { useAddAssetUnits, useUpdateAsset, useUploadImage } from "@/hooks/use-assets";
-import { X, Loader2, Save, AlertCircle, Check } from "lucide-react";
+import { X, Loader2, Save, Check } from "lucide-react";
 import { PhotoCaptureStrip, PhotoEntry } from "@/components/shared/photo-capture-strip";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,8 +30,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import type { AssetsDetails, AssetStatus } from "@/types/asset";
-import { removeUnderScore } from "@/lib/utils/helper";
+import type { AssetsDetails } from "@/types/asset";
 
 const HANDLING_TAGS = ["Fragile", "HighValue", "HeavyLift", "AssemblyRequired"];
 const DEFAULT_CATEGORIES = ["Furniture", "Glassware", "Installation", "Decor"];
@@ -224,24 +223,6 @@ export function EditAssetDialog({
                 return;
             }
         }
-        if (
-            formData.condition !== asset.condition &&
-            (formData.condition === "ORANGE" || formData.condition === "RED")
-        ) {
-            if (!formData.refurb_days_estimate || formData.refurb_days_estimate < 1) {
-                toast.error("Refurb days estimate is required when changing to damaged condition");
-                setActiveTab("specs");
-                return;
-            }
-            if (!formData.condition_notes || formData.condition_notes.trim().length < 10) {
-                toast.error(
-                    "Condition notes are required when changing to damaged condition (min 10 chars)"
-                );
-                setActiveTab("specs");
-                return;
-            }
-        }
-
         try {
             const existingPhotos = stripPhotos.filter((p) => !p.file);
             const newPhotos = stripPhotos.filter((p) => !!p.file);
@@ -283,10 +264,6 @@ export function EditAssetDialog({
                         : {}),
                     handling_tags: formData.handling_tags,
                     packaging: formData.packaging || null,
-                    condition: formData.condition,
-                    refurb_days_estimate:
-                        formData.condition === "GREEN" ? null : formData.refurb_days_estimate,
-                    condition_notes: formData.condition_notes || undefined,
                     status: formData.status,
                 } as any,
             });
@@ -768,103 +745,20 @@ export function EditAssetDialog({
                                 </div>
                             </div>
 
-                            <div className="space-y-2">
-                                <Label className="font-mono text-xs">Condition Status *</Label>
-                                <div className="flex gap-3">
-                                    {["GREEN", "ORANGE", "RED"].map((cond) => (
-                                        <button
-                                            key={cond}
-                                            type="button"
-                                            onClick={() =>
-                                                setFormData({ ...formData, condition: cond as any })
-                                            }
-                                            className={`flex-1 p-3 rounded-lg border-2 transition-all ${
-                                                formData.condition === cond
-                                                    ? cond === "GREEN"
-                                                        ? "border-emerald-500 bg-emerald-500/10"
-                                                        : cond === "ORANGE"
-                                                          ? "border-amber-500 bg-amber-500/10"
-                                                          : "border-red-500 bg-red-500/10"
-                                                    : "border-border hover:border-muted-foreground"
-                                            }`}
-                                        >
-                                            <div className="flex items-center justify-center gap-2">
-                                                <div
-                                                    className={`w-3 h-3 rounded-full ${
-                                                        cond === "GREEN"
-                                                            ? "bg-emerald-500"
-                                                            : cond === "ORANGE"
-                                                              ? "bg-amber-500"
-                                                              : "bg-red-500"
-                                                    }`}
-                                                />
-                                                <span className="font-mono text-xs font-medium">
-                                                    {cond === "GREEN"
-                                                        ? "Good"
-                                                        : cond === "ORANGE"
-                                                          ? "Minor Issues"
-                                                          : "Damaged"}
-                                                </span>
-                                            </div>
-                                        </button>
-                                    ))}
+                            <div className="space-y-2 rounded-lg border border-border bg-muted/30 p-4">
+                                <Label className="font-mono text-xs">Condition</Label>
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <Badge variant="outline" className="font-mono">
+                                        {asset.condition}
+                                    </Badge>
+                                    {asset.refurb_days_estimate ? (
+                                        <Badge variant="secondary" className="font-mono">
+                                            {asset.refurb_days_estimate} refurb day
+                                            {asset.refurb_days_estimate === 1 ? "" : "s"}
+                                        </Badge>
+                                    ) : null}
                                 </div>
                             </div>
-
-                            {(formData.condition === "ORANGE" || formData.condition === "RED") && (
-                                <div className="space-y-4 p-4 bg-muted/30 rounded-lg border border-border">
-                                    <div className="flex items-center gap-2 text-sm font-semibold">
-                                        <AlertCircle className="w-4 h-4 text-amber-500" />
-                                        <span>
-                                            Damage Information{" "}
-                                            {formData.condition !== asset.condition
-                                                ? "Required"
-                                                : "(Optional — update if needed)"}
-                                        </span>
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <Label className="font-mono text-xs">
-                                            Estimated Refurb Days
-                                            {formData.condition !== asset.condition ? " *" : ""}
-                                        </Label>
-                                        <Input
-                                            type="number"
-                                            min="1"
-                                            max="90"
-                                            placeholder="e.g., 5"
-                                            value={formData.refurb_days_estimate || ""}
-                                            onChange={(e) =>
-                                                setFormData({
-                                                    ...formData,
-                                                    refurb_days_estimate:
-                                                        parseInt(e.target.value) || undefined,
-                                                })
-                                            }
-                                            className="font-mono"
-                                        />
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <Label className="font-mono text-xs">
-                                            Condition Notes
-                                            {formData.condition !== asset.condition ? " *" : ""}
-                                        </Label>
-                                        <Textarea
-                                            placeholder="Describe the damage or issues..."
-                                            value={formData.condition_notes || ""}
-                                            onChange={(e) =>
-                                                setFormData({
-                                                    ...formData,
-                                                    condition_notes: e.target.value,
-                                                })
-                                            }
-                                            className="font-mono text-sm"
-                                            rows={3}
-                                        />
-                                    </div>
-                                </div>
-                            )}
 
                             <div className="space-y-2">
                                 <Label className="font-mono text-xs">
