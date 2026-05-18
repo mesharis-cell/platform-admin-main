@@ -10,6 +10,14 @@ export interface PlatformDomain {
     features?: Record<string, boolean>;
     platform_features?: Record<string, boolean>;
     company_features?: Record<string, boolean>;
+    maintenance?: {
+        enabled: boolean;
+        raw_enabled: boolean;
+        message: string | null;
+        until: string | null;
+        updated_at: string | null;
+        updated_by: string | null;
+    };
     /**
      * Admin-side derived flags: a feature is true here if the platform default
      * is true OR any company on the platform has overridden it to true.

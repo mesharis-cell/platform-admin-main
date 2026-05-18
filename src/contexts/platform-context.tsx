@@ -13,23 +13,52 @@ interface PlatformContextType {
 
 export const PLATFORM_CONTEXT = createContext<PlatformContextType | undefined>(undefined);
 
+const buildMaintenancePath = (maintenance: NonNullable<PlatformDomain["maintenance"]>) => {
+    const params = new URLSearchParams();
+    if (maintenance.message) params.set("message", maintenance.message);
+    if (maintenance.until) params.set("until", maintenance.until);
+    return `/maintenance${params.toString() ? `?${params.toString()}` : ""}`;
+};
+
+const redirectToMaintenanceIfNeeded = (platform: PlatformDomain | null) => {
+    const maintenance = platform?.maintenance;
+    if (!maintenance?.enabled) return false;
+    const location =
+        typeof globalThis !== "undefined"
+            ? (globalThis as typeof globalThis & { location?: Location }).location
+            : undefined;
+    if (!location || location.pathname === "/maintenance") {
+        return false;
+    }
+    location.href = buildMaintenancePath(maintenance);
+    return true;
+};
+
 export const PlatformProvider = ({ children }: { children: React.ReactNode }) => {
     const [platform, setPlatform] = useState<PlatformDomain | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const fetchPlatform = async () => {
+            let redirected = false;
             try {
                 setLoading(true);
                 const devHost = process.env.NEXT_PUBLIC_DEV_HOST_OVERRIDE;
                 const response = await apiClient.get(`/auth/context`, {
                     headers: devHost ? { "x-dev-host": devHost } : undefined,
                 });
-                setPlatform(response.data.data);
+                const platformData = (response.data.data ?? null) as PlatformDomain | null;
+                setPlatform(platformData);
+                if (platformData?.platform_id) {
+                    setPlatformId(platformData.platform_id);
+                }
+                redirected = redirectToMaintenanceIfNeeded(platformData);
             } catch (error) {
                 console.error("Error fetching platform:", error);
             } finally {
-                setLoading(false);
+                if (!redirected) {
+                    setLoading(false);
+                }
             }
         };
         fetchPlatform();
