@@ -1,17 +1,14 @@
 "use client";
 
-import { useReducer, useEffect } from "react";
+import { useEffect, useReducer } from "react";
 import { ArrowLeft, Check, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { toast } from "sonner";
-import { useCreateAssetFamily, useAssetFamily } from "@/hooks/use-asset-families";
+import { useAssetCategories } from "@/hooks/use-asset-categories";
 import { useCreateAsset, useUploadImage } from "@/hooks/use-assets";
-
 import { wizardReducer, INITIAL_STATE, getSteps, STEP_LABELS } from "./types";
-import type { WizardState, FamilySummary } from "./types";
-import { WizardChoiceScreen } from "./wizard-choice-screen";
-import { WizardFamilySearch } from "./wizard-family-search";
+import type { WizardState } from "./types";
 import { WizardTypeSelect } from "./wizard-type-select";
 import { WizardFamilyForm } from "./wizard-family-form";
 import { WizardLocationForm } from "./wizard-location-form";
@@ -29,8 +26,6 @@ interface AssetWizardProps {
 
 function canAdvance(state: WizardState, stepKey: string): boolean {
     switch (stepKey) {
-        case "search":
-            return !!state.selectedFamily;
         case "type":
             return !!state.stockMode;
         case "family":
@@ -41,8 +36,7 @@ function canAdvance(state: WizardState, stepKey: string): boolean {
             );
         case "location": {
             const base = !!(state.warehouseId && state.zoneId && state.quantity >= 1);
-            if (state.stockMode === "POOLED") return base && !!state.packaging.trim();
-            return base;
+            return state.stockMode === "POOLED" ? base && !!state.packaging.trim() : base;
         }
         case "photos":
             return true;
@@ -52,8 +46,9 @@ function canAdvance(state: WizardState, stepKey: string): boolean {
             if (
                 (state.condition === "ORANGE" || state.condition === "RED") &&
                 (!state.refurbDaysEstimate || state.conditionNotes.trim().length < 10)
-            )
+            ) {
                 return false;
+            }
             return true;
         case "review":
             return true;
@@ -62,41 +57,13 @@ function canAdvance(state: WizardState, stepKey: string): boolean {
     }
 }
 
-export function AssetWizard({
-    open,
-    onOpenChange,
-    onSuccess,
-    preselectedFamilyId,
-}: AssetWizardProps) {
+export function AssetWizard({ open, onOpenChange, onSuccess }: AssetWizardProps) {
     const [state, dispatch] = useReducer(wizardReducer, INITIAL_STATE);
-    const createFamilyMutation = useCreateAssetFamily();
     const createAssetMutation = useCreateAsset();
     const uploadMutation = useUploadImage();
-
-    const { data: preselectedData } = useAssetFamily(preselectedFamilyId || "");
-    useEffect(() => {
-        if (!preselectedFamilyId || !preselectedData?.data || state.selectedFamily) return;
-        const f = preselectedData.data;
-        const summary: FamilySummary = {
-            id: f.id,
-            name: f.name,
-            category: f.category ?? null,
-            stockMode: f.stock_mode,
-            images: f.images || [],
-            brand: f.brand,
-            company: f.company,
-            availableQuantity: Number(f.available_quantity || 0),
-            totalQuantity: Number(f.total_quantity || 0),
-            dimensions: f.dimensions,
-            weightPerUnit: f.weight_per_unit ? Number(f.weight_per_unit) : undefined,
-            volumePerUnit: f.volume_per_unit ? Number(f.volume_per_unit) : undefined,
-            packaging: f.packaging,
-            handlingTags: f.handling_tags,
-            description: f.description,
-        };
-        dispatch({ type: "SET_BRANCH", branch: "existing" });
-        dispatch({ type: "SELECT_FAMILY", family: summary });
-    }, [preselectedFamilyId, preselectedData?.data, state.selectedFamily]);
+    const { data: categoriesData } = useAssetCategories(state.companyId || undefined, {
+        allScopes: !state.companyId,
+    });
 
     useEffect(() => {
         if (!open) dispatch({ type: "RESET" });
@@ -105,74 +72,56 @@ export function AssetWizard({
     const steps = getSteps(state.branch);
     const currentStepKey = steps[state.currentStep] || "";
     const isLastStep = state.currentStep === steps.length - 1;
-    const isChoiceScreen = state.branch === null;
 
     function update(fields: Partial<WizardState>) {
         dispatch({ type: "UPDATE", fields });
     }
 
+    function resolveCategoryName() {
+        if (state.new_category?.name) return state.new_category.name;
+        const category = (categoriesData?.data || []).find((item) => item.id === state.category_id);
+        return category?.name || "Uncategorized";
+    }
+
     async function handleSubmit() {
         dispatch({ type: "UPDATE", fields: { isSubmitting: true } });
         try {
-            const itemName = state.selectedFamily?.name || state.itemName.trim();
-            const companyId = state.companyId || state.selectedFamily?.company?.id || "";
-
-            // Upload photos
-            let imageUrls: string[] = [];
-            const filesToUpload = state.photos.filter((p) => p.file).map((p) => p.file!);
+            const itemName = state.itemName.trim();
+            const companyId = state.companyId;
+            const filesToUpload = state.photos
+                .filter((photo) => photo.file)
+                .map((photo) => photo.file!);
             const alreadyUploaded = state.photos
-                .filter((p) => p.uploadedUrl)
-                .map((p) => p.uploadedUrl!);
+                .filter((photo) => photo.uploadedUrl)
+                .map((photo) => photo.uploadedUrl!);
+            let imageUrls = [...alreadyUploaded];
+
             if (filesToUpload.length > 0) {
                 const uploadResult = await uploadMutation.mutateAsync({
                     files: filesToUpload,
                     companyId,
                     profile: "photo",
                 });
-                imageUrls = [...alreadyUploaded, ...(uploadResult?.data?.imageUrls || [])];
-            } else {
-                imageUrls = alreadyUploaded;
+                imageUrls = [...imageUrls, ...(uploadResult?.data?.imageUrls || [])];
             }
+
             const imagePayload = imageUrls.map((url) => ({ url }));
-            let familyId = state.selectedFamily?.id;
+            const shouldCreateGroup = state.stockMode === "SERIALIZED" && state.quantity > 1;
 
-            // Branch B: create family first with images
-            if (state.branch === "new" && !familyId) {
-                const familyPayload: Record<string, unknown> = {
-                    company_id: companyId,
-                    brand_id: state.brandId || undefined,
-                    team_id: state.teamId || undefined,
-                    name: state.itemName.trim(),
-                    company_item_code: state.companyItemCode.trim() || undefined,
-                    description: state.itemDescription.trim() || undefined,
-                    stock_mode: state.stockMode === "POOLED" ? "POOLED" : "SERIALIZED",
-                    packaging: state.packaging.trim() || undefined,
-                    weight_per_unit: state.weightPerUnit || undefined,
-                    volume_per_unit: state.volumePerUnit || undefined,
-                    handling_tags: state.handlingTags,
-                    images: imagePayload,
-                };
-                if (state.new_category) {
-                    familyPayload.new_category = state.new_category;
-                } else {
-                    familyPayload.category_id = state.category_id;
-                }
-                const familyResult = await createFamilyMutation.mutateAsync(familyPayload as any);
-                familyId = familyResult?.data?.id;
-            }
-
-            // Create stock record
             await createAssetMutation.mutateAsync({
-                family_id: familyId,
                 company_id: companyId,
                 warehouse_id: state.warehouseId,
                 zone_id: state.zoneId,
-                brand_id: state.brandId || state.selectedFamily?.brand?.id || undefined,
+                brand_id: state.brandId || undefined,
+                group_id: null,
+                is_part_of_group: shouldCreateGroup,
+                group_name: shouldCreateGroup ? itemName : null,
+                group_images: shouldCreateGroup ? imagePayload : [],
+                group_on_display_image: shouldCreateGroup ? imagePayload[0]?.url || null : null,
                 name: itemName,
-                category_id: state.category_id || state.selectedFamily?.category?.id || undefined,
-                description:
-                    state.itemDescription.trim() || state.selectedFamily?.description || undefined,
-                tracking_method: state.stockMode === "POOLED" ? "BATCH" : "INDIVIDUAL",
+                category: resolveCategoryName() as any,
+                description: state.itemDescription.trim() || undefined,
+                stock_mode: state.stockMode === "POOLED" ? "POOLED" : "SERIALIZED",
                 total_quantity: state.quantity,
                 available_quantity:
                     state.stockMode === "SERIALIZED" ? state.quantity : state.availableQuantity,
@@ -189,19 +138,10 @@ export function AssetWizard({
                 refurb_days_estimate: state.refurbDaysEstimate || undefined,
                 handling_tags: state.handlingTags,
                 packaging: state.packaging.trim() || undefined,
-                status: state.status || "AVAILABLE",
-            } as any);
-
-            const unitCount =
-                state.stockMode === "SERIALIZED" && state.quantity > 1
-                    ? `${state.quantity} units`
-                    : "asset";
-            toast.success(`${itemName} created`, {
-                description:
-                    state.branch === "new"
-                        ? `New item registered with ${unitCount}`
-                        : `${unitCount} added to ${state.selectedFamily?.name}`,
+                status: (state.status || "AVAILABLE") as any,
             });
+
+            toast.success(`${itemName} created`);
             onOpenChange(false);
             onSuccess?.();
         } catch (error) {
@@ -212,22 +152,12 @@ export function AssetWizard({
     }
 
     function renderStep() {
-        if (isChoiceScreen)
-            return (
-                <WizardChoiceScreen onSelect={(b) => dispatch({ type: "SET_BRANCH", branch: b })} />
-            );
         switch (currentStepKey) {
-            case "search":
-                return (
-                    <WizardFamilySearch
-                        onSelect={(f) => dispatch({ type: "SELECT_FAMILY", family: f })}
-                    />
-                );
             case "type":
                 return (
                     <WizardTypeSelect
-                        onSelect={(m) => {
-                            dispatch({ type: "UPDATE", fields: { stockMode: m } });
+                        onSelect={(stockMode) => {
+                            dispatch({ type: "UPDATE", fields: { stockMode } });
                             dispatch({ type: "NEXT_STEP" });
                         }}
                     />
@@ -255,65 +185,69 @@ export function AssetWizard({
                 <div className="px-6 pt-6 pb-4 border-b border-border">
                     <DialogHeader>
                         <DialogTitle className="font-mono text-lg">
-                            {isChoiceScreen
-                                ? "Create Asset"
-                                : STEP_LABELS[currentStepKey] || "Create Asset"}
+                            {STEP_LABELS[currentStepKey] || "Create Asset"}
                         </DialogTitle>
                     </DialogHeader>
-                    {!isChoiceScreen && steps.length > 0 && (
-                        <div className="flex items-center gap-1 mt-3">
-                            {steps.map((s, i) => (
-                                <div
-                                    key={s}
-                                    className={`h-1.5 flex-1 rounded-full transition-colors ${i < state.currentStep ? "bg-primary" : i === state.currentStep ? "bg-primary/60" : "bg-border"}`}
-                                />
-                            ))}
-                        </div>
+                    <div className="flex items-center gap-1 mt-3">
+                        {steps.map((step, index) => (
+                            <div
+                                key={step}
+                                className={`h-1.5 flex-1 rounded-full transition-colors ${
+                                    index < state.currentStep
+                                        ? "bg-primary"
+                                        : index === state.currentStep
+                                          ? "bg-primary/60"
+                                          : "bg-border"
+                                }`}
+                            />
+                        ))}
+                    </div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto px-6">{renderStep()}</div>
+
+                <div className="px-6 py-4 border-t border-border flex items-center justify-between">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() =>
+                            state.currentStep === 0
+                                ? onOpenChange(false)
+                                : dispatch({ type: "PREV_STEP" })
+                        }
+                        disabled={state.isSubmitting}
+                    >
+                        <ArrowLeft className="h-4 w-4 mr-1" />
+                        {state.currentStep === 0 ? "Close" : "Previous"}
+                    </Button>
+                    {isLastStep ? (
+                        <Button
+                            onClick={handleSubmit}
+                            disabled={state.isSubmitting}
+                            data-testid="wizard-submit"
+                        >
+                            {state.isSubmitting ? (
+                                <>
+                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    Creating...
+                                </>
+                            ) : (
+                                <>
+                                    <Check className="h-4 w-4 mr-2" />
+                                    Create Asset
+                                </>
+                            )}
+                        </Button>
+                    ) : (
+                        <Button
+                            onClick={() => dispatch({ type: "NEXT_STEP" })}
+                            disabled={!canAdvance(state, currentStepKey)}
+                            data-testid="wizard-next"
+                        >
+                            Continue
+                        </Button>
                     )}
                 </div>
-                <div className="flex-1 overflow-y-auto px-6">{renderStep()}</div>
-                {!isChoiceScreen && (
-                    <div className="px-6 py-4 border-t border-border flex items-center justify-between">
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => dispatch({ type: "PREV_STEP" })}
-                            disabled={state.isSubmitting}
-                        >
-                            <ArrowLeft className="h-4 w-4 mr-1" />
-                            {state.currentStep === 0 ? "Back" : "Previous"}
-                        </Button>
-                        {isLastStep ? (
-                            <Button
-                                onClick={handleSubmit}
-                                disabled={state.isSubmitting}
-                                data-testid="wizard-submit"
-                            >
-                                {state.isSubmitting ? (
-                                    <>
-                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                        Creating...
-                                    </>
-                                ) : (
-                                    <>
-                                        <Check className="h-4 w-4 mr-2" />
-                                        {state.branch === "new"
-                                            ? "Create Item & Stock"
-                                            : "Add Stock"}
-                                    </>
-                                )}
-                            </Button>
-                        ) : (
-                            <Button
-                                onClick={() => dispatch({ type: "NEXT_STEP" })}
-                                disabled={!canAdvance(state, currentStepKey)}
-                                data-testid="wizard-next"
-                            >
-                                Continue
-                            </Button>
-                        )}
-                    </div>
-                )}
             </DialogContent>
         </Dialog>
     );

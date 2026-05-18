@@ -165,7 +165,7 @@ export interface OrderItemWithAsset extends OrderItem {
         images: AssetImage[];
         category: string;
         qrCode: string;
-        trackingMethod: "INDIVIDUAL" | "BATCH";
+        trackingMethod: "SERIALIZED" | "POOLED";
         status: "AVAILABLE" | "BOOKED" | "OUT" | "IN_MAINTENANCE";
     };
 }
