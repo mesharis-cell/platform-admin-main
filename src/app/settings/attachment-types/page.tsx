@@ -38,6 +38,7 @@ const ENTITY_OPTIONS: AttachmentEntityType[] = [
     "ORDER",
     "INBOUND_REQUEST",
     "SERVICE_REQUEST",
+    "SELF_PICKUP",
     "WORKFLOW_REQUEST",
 ];
 const ROLE_OPTIONS = ["ADMIN", "LOGISTICS", "CLIENT"] as const;

@@ -27,20 +27,54 @@ export type CommerceRule = {
     updated_at: string;
 };
 
+export type CommerceRuleAcknowledgement = {
+    id: string;
+    entity_type: "ORDER" | "SELF_PICKUP";
+    entity_id: string;
+    rule_id: string | null;
+    rule_name: string;
+    rule_type: "QUANTITY" | "COMPANION";
+    severity: "WARN";
+    message: string;
+    related_asset_id: string | null;
+    acknowledged: boolean;
+    acknowledged_at: string | null;
+    created_at: string;
+    acknowledged_by_user?: {
+        id: string;
+        name: string | null;
+        email: string | null;
+    } | null;
+};
+
+type CommerceRuleFilters = {
+    assetId?: string | null;
+    enabled?: boolean;
+};
+
 export function useCommerceRulesForAsset(assetId: string | null, enabled = true) {
+    return useCommerceRules({ assetId, enabled });
+}
+
+export function useCommerceRules(filters?: CommerceRuleFilters) {
+    const assetId = filters?.assetId;
+    const enabled = filters?.enabled ?? true;
     return useQuery({
-        queryKey: ["commerce-rules", "asset", assetId],
+        queryKey: ["commerce-rules", "list", assetId || "all"],
         queryFn: async (): Promise<{ data: CommerceRule[] }> => {
             try {
+                const params = new URLSearchParams();
+                if (assetId) params.set("asset_id", assetId);
+                const query = params.toString();
                 const response = await apiClient.get(
-                    `/operations/v1/commerce-rules?asset_id=${assetId}`
+                    `/operations/v1/commerce-rules${query ? `?${query}` : ""}`
                 );
                 return response.data;
             } catch (error) {
                 throwApiError(error);
             }
         },
-        enabled: !!assetId && enabled,
+        enabled,
         staleTime: 15000,
     });
 }
@@ -87,5 +121,55 @@ export function useDeleteCommerceRule() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["commerce-rules"] });
         },
+    });
+}
+
+type UpdatePayload = Partial<CreatePayload> & {
+    is_active?: boolean;
+};
+
+export function useUpdateCommerceRule() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async ({ id, payload }: { id: string; payload: UpdatePayload }) => {
+            try {
+                const response = await apiClient.patch(
+                    `/operations/v1/commerce-rules/${id}`,
+                    payload
+                );
+                return response.data;
+            } catch (error) {
+                throwApiError(error);
+            }
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["commerce-rules"] });
+        },
+    });
+}
+
+export function useCommerceRuleAcknowledgements(
+    entityType: "ORDER" | "SELF_PICKUP",
+    entityId: string | null,
+    enabled = true
+) {
+    return useQuery({
+        queryKey: ["commerce-rule-acknowledgements", entityType, entityId],
+        queryFn: async (): Promise<{ data: CommerceRuleAcknowledgement[] }> => {
+            if (!entityId) return { data: [] };
+            try {
+                const params = new URLSearchParams({
+                    entity_type: entityType,
+                    entity_id: entityId,
+                });
+                const response = await apiClient.get(
+                    `/operations/v1/commerce-rules/acknowledgements?${params}`
+                );
+                return response.data;
+            } catch (error) {
+                throwApiError(error);
+            }
+        },
+        enabled: !!entityId && enabled,
     });
 }

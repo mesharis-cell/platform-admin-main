@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Package, Plus, Upload } from "lucide-react";
+import { Package, Plus, Sparkles, Upload } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { AdminHeader } from "@/components/admin-header";
 import { AssetTable } from "@/components/assets/asset-table";
@@ -19,6 +19,7 @@ export default function AssetsPage() {
     const [showWizard, setShowWizard] = useState(false);
 
     const canCreateAsset = hasPermission(user, ADMIN_ACTION_PERMISSIONS.assetsCreate);
+    const canUpdateAsset = hasPermission(user, ADMIN_ACTION_PERMISSIONS.assetsUpdate);
     const canBulkUploadAsset = hasPermission(user, ADMIN_ACTION_PERMISSIONS.assetsBulkUpload);
     const bulkUploadEnabled = platform?.features?.enable_asset_bulk_upload === true;
 
@@ -29,8 +30,21 @@ export default function AssetsPage() {
                 title="INVENTORY"
                 description="Raw Stock Records · Optional Group Folding · Operational Asset View"
                 actions={
-                    canCreateAsset || (canBulkUploadAsset && bulkUploadEnabled) ? (
+                    canCreateAsset ||
+                    canUpdateAsset ||
+                    (canBulkUploadAsset && bulkUploadEnabled) ? (
                         <div className="flex gap-2">
+                            {canUpdateAsset && (
+                                <Button
+                                    variant="outline"
+                                    size="lg"
+                                    className="font-mono"
+                                    onClick={() => router.push("/assets/cart-rules")}
+                                >
+                                    <Sparkles className="mr-2 h-4 w-4" />
+                                    Cart Rules
+                                </Button>
+                            )}
                             {canBulkUploadAsset && bulkUploadEnabled && (
                                 <Button
                                     variant="outline"

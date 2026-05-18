@@ -78,6 +78,7 @@ import { hasPermission } from "@/lib/auth/permissions";
 import { ADMIN_ACTION_PERMISSIONS } from "@/lib/auth/permission-map";
 import { EntityAttachmentsCard } from "@/components/shared/entity-attachments-card";
 import { WorkflowRequestsCard } from "@/components/shared/workflow-requests-card";
+import { CommerceRuleAcknowledgementsCard } from "@/components/shared/commerce-rule-acknowledgements-card";
 
 // Status configuration with next states for state machine (Feedback #1: Updated for new flow)
 const STATUS_CONFIG: Record<
@@ -1475,6 +1476,11 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                             entityType="ORDER"
                             entityId={order?.data?.id || null}
                             title="Internal Workflows"
+                        />
+
+                        <CommerceRuleAcknowledgementsCard
+                            entityType="ORDER"
+                            entityId={order?.data?.id || null}
                         />
 
                         <EntityAttachmentsCard

@@ -417,6 +417,7 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                                     ? asset.company
                                     : asset.company?.id || null
                             }
+                            brandId={(asset as any).brand_id || asset.brand?.id || null}
                         />
 
                         <AssetConditionCard asset={asset} />

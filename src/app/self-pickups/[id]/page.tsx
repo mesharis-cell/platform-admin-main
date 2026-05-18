@@ -19,6 +19,7 @@ import { ArrowLeft, User, Phone, Mail, Clock, Package, Edit, Save, Loader2, X } 
 import { toast } from "sonner";
 import { WorkflowRequestsCard } from "@/components/shared/workflow-requests-card";
 import { EntityAttachmentsCard } from "@/components/shared/entity-attachments-card";
+import { CommerceRuleAcknowledgementsCard } from "@/components/shared/commerce-rule-acknowledgements-card";
 import { SelfPickupPendingApprovalSection } from "./hybrid-sections";
 import { CancelSelfPickupModal } from "@/components/self-pickups/CancelSelfPickupModal";
 import { MarkAsNoCostButton } from "@/components/self-pickups/MarkAsNoCostButton";
@@ -268,6 +269,11 @@ export default function SelfPickupDetailPage({ params }: { params: Promise<{ id:
 
                         {/* Workflows */}
                         <WorkflowRequestsCard entityType="SELF_PICKUP" entityId={pickup.id} />
+
+                        <CommerceRuleAcknowledgementsCard
+                            entityType="SELF_PICKUP"
+                            entityId={pickup.id}
+                        />
 
                         {/* Attachments */}
                         <EntityAttachmentsCard entityType="SELF_PICKUP" entityId={pickup.id} />

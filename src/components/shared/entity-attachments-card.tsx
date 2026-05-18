@@ -50,7 +50,7 @@ export function EntityAttachmentsCard({
     entityId,
     title = "Supporting Documents",
 }: {
-    entityType: Exclude<AttachmentEntityType, "WORKFLOW_REQUEST">;
+    entityType: AttachmentEntityType;
     entityId: string | null;
     title?: string;
 }) {

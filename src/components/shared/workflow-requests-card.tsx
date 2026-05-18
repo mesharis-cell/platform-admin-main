@@ -33,11 +33,13 @@ import {
     useUpdateWorkflowRequest,
     type WorkflowDefinitionRecord,
     type WorkflowEntityType,
+    type WorkflowIntakeField,
     type WorkflowLifecycleState,
     type WorkflowRequestRecord,
 } from "@/hooks/use-workflow-requests";
 import { usePlatform } from "@/contexts/platform-context";
 import { uploadDocuments } from "@/lib/utils/upload-documents";
+import { EntityAttachmentsCard } from "@/components/shared/entity-attachments-card";
 
 const LIFECYCLE_BADGE_VARIANT: Record<WorkflowLifecycleState, "default" | "secondary" | "outline"> =
     {
@@ -47,14 +49,168 @@ const LIFECYCLE_BADGE_VARIANT: Record<WorkflowLifecycleState, "default" | "secon
         CANCELLED: "outline",
     };
 
+const formatWorkflowStatus = (status: string | null) => (status ? status.replace(/_/g, " ") : "-");
+const INTAKE_VALUES_KEY = "intake_values";
+
+const getIntakeFields = (
+    definition: WorkflowDefinitionRecord,
+    workflow?: WorkflowRequestRecord
+): WorkflowIntakeField[] => {
+    const fields = workflow?.intake_schema?.fields || definition.intake_schema?.fields || [];
+    return Array.isArray(fields) ? fields : [];
+};
+
+const getRequiredAttachmentTypeIds = (
+    definition: WorkflowDefinitionRecord,
+    workflow?: WorkflowRequestRecord
+) => {
+    const ids =
+        workflow?.intake_schema?.required_attachment_type_ids ||
+        definition.intake_schema?.required_attachment_type_ids ||
+        [];
+    return Array.isArray(ids) ? ids.filter(Boolean) : [];
+};
+
+const getWorkflowIntakeValues = (workflow: WorkflowRequestRecord) => {
+    const values = workflow.metadata?.[INTAKE_VALUES_KEY];
+    return values && typeof values === "object" && !Array.isArray(values)
+        ? (values as Record<string, string | number | null>)
+        : {};
+};
+
+function WorkflowOperationalDetails({
+    definition,
+    workflow,
+    draftIntakeValues,
+    onIntakeValueChange,
+}: {
+    definition: WorkflowDefinitionRecord;
+    workflow: WorkflowRequestRecord;
+    draftIntakeValues: Record<string, Record<string, string>>;
+    onIntakeValueChange: (workflowId: string, key: string, value: string) => void;
+}) {
+    const fields = getIntakeFields(definition, workflow);
+    const requiredAttachmentTypeIds = getRequiredAttachmentTypeIds(definition, workflow);
+    const currentValues = getWorkflowIntakeValues(workflow);
+
+    return (
+        <div className="space-y-3 rounded-md border border-border/60 bg-background/60 p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-xs font-mono font-semibold uppercase tracking-wide text-muted-foreground">
+                    Workflow Details
+                </p>
+                {requiredAttachmentTypeIds.length > 0 ? (
+                    <Badge variant="outline" className="font-mono text-[10px]">
+                        {requiredAttachmentTypeIds.length} required file type
+                        {requiredAttachmentTypeIds.length === 1 ? "" : "s"}
+                    </Badge>
+                ) : null}
+            </div>
+
+            {fields.length > 0 ? (
+                <div className="grid gap-3 md:grid-cols-2">
+                    {fields.map((field) => {
+                        const value =
+                            draftIntakeValues[workflow.id]?.[field.key] ??
+                            String(currentValues[field.key] ?? "");
+                        const inputId = `${workflow.id}-${field.key}`;
+                        return (
+                            <div
+                                key={field.key}
+                                className={field.type === "textarea" ? "md:col-span-2" : ""}
+                            >
+                                <Label htmlFor={inputId} className="text-xs font-mono">
+                                    {field.label}
+                                    {field.required ? (
+                                        <span className="ml-1 text-destructive">*</span>
+                                    ) : null}
+                                </Label>
+                                {field.type === "textarea" ? (
+                                    <Textarea
+                                        id={inputId}
+                                        value={value}
+                                        rows={3}
+                                        className="mt-1"
+                                        onChange={(event) =>
+                                            onIntakeValueChange(
+                                                workflow.id,
+                                                field.key,
+                                                event.target.value
+                                            )
+                                        }
+                                    />
+                                ) : (
+                                    <Input
+                                        id={inputId}
+                                        type={field.type}
+                                        value={value}
+                                        className="mt-1"
+                                        onChange={(event) =>
+                                            onIntakeValueChange(
+                                                workflow.id,
+                                                field.key,
+                                                event.target.value
+                                            )
+                                        }
+                                    />
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
+            ) : (
+                <p className="text-xs text-muted-foreground">
+                    No structured fields are configured for this workflow.
+                </p>
+            )}
+
+            <EntityAttachmentsCard
+                entityType="WORKFLOW_REQUEST"
+                entityId={workflow.id}
+                title="Workflow Files"
+            />
+        </div>
+    );
+}
+
+const renderStatusHistory = (workflow: WorkflowRequestRecord) => {
+    const history = workflow.status_history || [];
+    if (history.length === 0) return null;
+
+    return (
+        <div className="space-y-2 rounded-md border border-border/50 bg-background/60 p-3">
+            {history.map((entry) => (
+                <div key={entry.id} className="space-y-1 text-xs">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="font-mono font-semibold">
+                            {formatWorkflowStatus(entry.from_status)}
+                            {" -> "}
+                            {formatWorkflowStatus(entry.to_status)}
+                        </span>
+                        <span className="font-mono text-muted-foreground">
+                            {new Date(entry.changed_at).toLocaleString()}
+                        </span>
+                    </div>
+                    <p className="text-muted-foreground">
+                        {entry.changed_by_user?.name || entry.changed_by_user?.email || "System"}
+                    </p>
+                    {entry.note ? <p className="leading-relaxed">{entry.note}</p> : null}
+                </div>
+            ))}
+        </div>
+    );
+};
+
 type WorkflowSectionProps = {
     definition: WorkflowDefinitionRecord;
     requests: WorkflowRequestRecord[];
     draftStatuses: Record<string, string>;
     draftNotes: Record<string, string>;
+    draftIntakeValues: Record<string, Record<string, string>>;
     onStatusChange: (id: string, value: string) => void;
     onNoteChange: (id: string, value: string) => void;
-    onSave: (id: string, currentStatus: string) => void;
+    onIntakeValueChange: (workflowId: string, key: string, value: string) => void;
+    onSave: (workflow: WorkflowRequestRecord) => void;
 };
 
 const renderSimpleRequestSection = ({
@@ -62,8 +218,10 @@ const renderSimpleRequestSection = ({
     requests,
     draftStatuses,
     draftNotes,
+    draftIntakeValues,
     onStatusChange,
     onNoteChange,
+    onIntakeValueChange,
     onSave,
 }: WorkflowSectionProps) => (
     <div key={definition.id} className="space-y-3 rounded-lg border border-border/60 p-4">
@@ -107,6 +265,14 @@ const renderSimpleRequestSection = ({
                         </div>
                     </div>
 
+                    {renderStatusHistory(workflow)}
+                    <WorkflowOperationalDetails
+                        definition={definition}
+                        workflow={workflow}
+                        draftIntakeValues={draftIntakeValues}
+                        onIntakeValueChange={onIntakeValueChange}
+                    />
+
                     <div className="grid gap-3 md:grid-cols-[180px_1fr_auto]">
                         <Select
                             value={draftStatuses[workflow.id] || workflow.status}
@@ -129,12 +295,9 @@ const renderSimpleRequestSection = ({
                             value={draftNotes[workflow.id] || ""}
                             onChange={(event) => onNoteChange(workflow.id, event.target.value)}
                             rows={2}
-                            placeholder="Optional admin note stored in workflow metadata"
+                            placeholder="Optional transition note"
                         />
-                        <Button
-                            variant="outline"
-                            onClick={() => onSave(workflow.id, workflow.status)}
-                        >
+                        <Button variant="outline" onClick={() => onSave(workflow)}>
                             Save
                         </Button>
                     </div>
@@ -149,8 +312,10 @@ const renderDocumentCollectionSection = ({
     requests,
     draftStatuses,
     draftNotes,
+    draftIntakeValues,
     onStatusChange,
     onNoteChange,
+    onIntakeValueChange,
     onSave,
 }: WorkflowSectionProps) => (
     <div key={definition.id} className="space-y-3 rounded-lg border border-border/60 p-4">
@@ -196,6 +361,14 @@ const renderDocumentCollectionSection = ({
                         </div>
                     </div>
 
+                    {renderStatusHistory(workflow)}
+                    <WorkflowOperationalDetails
+                        definition={definition}
+                        workflow={workflow}
+                        draftIntakeValues={draftIntakeValues}
+                        onIntakeValueChange={onIntakeValueChange}
+                    />
+
                     <div className="grid gap-3 md:grid-cols-[180px_1fr_auto]">
                         <Select
                             value={draftStatuses[workflow.id] || workflow.status}
@@ -218,12 +391,9 @@ const renderDocumentCollectionSection = ({
                             value={draftNotes[workflow.id] || ""}
                             onChange={(event) => onNoteChange(workflow.id, event.target.value)}
                             rows={2}
-                            placeholder="Optional note about document status"
+                            placeholder="Optional transition note"
                         />
-                        <Button
-                            variant="outline"
-                            onClick={() => onSave(workflow.id, workflow.status)}
-                        >
+                        <Button variant="outline" onClick={() => onSave(workflow)}>
                             Save
                         </Button>
                     </div>
@@ -244,8 +414,10 @@ const renderApprovalSection = ({
     requests,
     draftStatuses,
     draftNotes,
+    draftIntakeValues,
     onStatusChange,
     onNoteChange,
+    onIntakeValueChange,
     onSave,
 }: WorkflowSectionProps) => (
     <div key={definition.id} className="space-y-3 rounded-lg border border-border/60 p-4">
@@ -303,6 +475,14 @@ const renderApprovalSection = ({
                             </div>
                         </div>
 
+                        {renderStatusHistory(workflow)}
+                        <WorkflowOperationalDetails
+                            definition={definition}
+                            workflow={workflow}
+                            draftIntakeValues={draftIntakeValues}
+                            onIntakeValueChange={onIntakeValueChange}
+                        />
+
                         <div className="grid gap-3 md:grid-cols-[180px_1fr_auto]">
                             <Select
                                 value={currentDraft}
@@ -325,11 +505,11 @@ const renderApprovalSection = ({
                                 value={draftNotes[workflow.id] || ""}
                                 onChange={(event) => onNoteChange(workflow.id, event.target.value)}
                                 rows={2}
-                                placeholder="Approval notes or reason for rejection"
+                                placeholder="Optional transition note"
                             />
                             <Button
                                 variant={isTerminal ? "default" : "outline"}
-                                onClick={() => onSave(workflow.id, workflow.status)}
+                                onClick={() => onSave(workflow)}
                             >
                                 {isTerminal ? "Submit Decision" : "Save"}
                             </Button>
@@ -364,6 +544,9 @@ export function WorkflowRequestsCard({
     const [files, setFiles] = useState<File[]>([]);
     const [draftNotes, setDraftNotes] = useState<Record<string, string>>({});
     const [draftStatuses, setDraftStatuses] = useState<Record<string, string>>({});
+    const [draftIntakeValues, setDraftIntakeValues] = useState<
+        Record<string, Record<string, string>>
+    >({});
 
     const { platform } = usePlatform();
     const workflowFeatureEnabled = platform?.features?.enable_workflows !== false;
@@ -446,18 +629,53 @@ export function WorkflowRequestsCard({
         }
     };
 
-    const handleSave = async (id: string, currentStatus: string) => {
+    const handleIntakeValueChange = (workflowId: string, key: string, value: string) => {
+        setDraftIntakeValues((prev) => ({
+            ...prev,
+            [workflowId]: {
+                ...(prev[workflowId] || {}),
+                [key]: value,
+            },
+        }));
+    };
+
+    const handleSave = async (workflow: WorkflowRequestRecord) => {
+        const intakeDraft = draftIntakeValues[workflow.id] || {};
+        const currentIntakeValues = getWorkflowIntakeValues(workflow);
+        const nextIntakeValues = { ...currentIntakeValues, ...intakeDraft };
+        const metadata =
+            Object.keys(intakeDraft).length > 0
+                ? {
+                      ...workflow.metadata,
+                      [INTAKE_VALUES_KEY]: nextIntakeValues,
+                  }
+                : workflow.metadata;
+
         try {
             await updateWorkflow.mutateAsync({
-                id,
+                id: workflow.id,
                 payload: {
-                    status: draftStatuses[id] || currentStatus,
-                    metadata: draftNotes[id]?.trim()
-                        ? { admin_note: draftNotes[id].trim() }
-                        : undefined,
+                    status: draftStatuses[workflow.id] || workflow.status,
+                    metadata,
+                    transition_note: draftNotes[workflow.id]?.trim() || undefined,
                 },
             });
             toast.success("Workflow updated");
+            setDraftNotes((prev) => {
+                const next = { ...prev };
+                delete next[workflow.id];
+                return next;
+            });
+            setDraftStatuses((prev) => {
+                const next = { ...prev };
+                delete next[workflow.id];
+                return next;
+            });
+            setDraftIntakeValues((prev) => {
+                const next = { ...prev };
+                delete next[workflow.id];
+                return next;
+            });
         } catch (error: any) {
             toast.error(error.message || "Failed to update workflow");
         }
@@ -625,10 +843,12 @@ export function WorkflowRequestsCard({
                         requests,
                         draftStatuses,
                         draftNotes,
+                        draftIntakeValues,
                         onStatusChange: (id, value) =>
                             setDraftStatuses((prev) => ({ ...prev, [id]: value })),
                         onNoteChange: (id, value) =>
                             setDraftNotes((prev) => ({ ...prev, [id]: value })),
+                        onIntakeValueChange: handleIntakeValueChange,
                         onSave: handleSave,
                     });
                 })}

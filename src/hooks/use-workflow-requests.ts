@@ -7,6 +7,38 @@ import { throwApiError } from "@/lib/utils/throw-api-error";
 export type WorkflowEntityType = "ORDER" | "INBOUND_REQUEST" | "SERVICE_REQUEST" | "SELF_PICKUP";
 export type WorkflowLifecycleState = "OPEN" | "ACTIVE" | "DONE" | "CANCELLED";
 export type WorkflowRole = "ADMIN" | "LOGISTICS" | "CLIENT";
+export type WorkflowIntakeFieldType = "text" | "textarea" | "date" | "number";
+
+export interface WorkflowIntakeField {
+    key: string;
+    label: string;
+    type: WorkflowIntakeFieldType;
+    required?: boolean;
+}
+
+export interface WorkflowIntakeSchema {
+    fields?: WorkflowIntakeField[];
+    required_attachment_type_ids?: string[];
+}
+
+export type WorkflowAutoOpenTrigger =
+    | "ORDER_SUBMITTED"
+    | "ORDER_CONFIRMED"
+    | "SELF_PICKUP_SUBMITTED"
+    | "SELF_PICKUP_CONFIRMED";
+
+export interface WorkflowAutoOpenCondition {
+    field: "permit_owner" | "requires_permit" | "is_permanent_placement";
+    operator: "EQUALS";
+    value: string | boolean;
+}
+
+export interface WorkflowAutoOpenConfig {
+    trigger: WorkflowAutoOpenTrigger;
+    conditions?: WorkflowAutoOpenCondition[];
+    title_template?: string;
+    description_template?: string;
+}
 
 export interface WorkflowFamilyMeta {
     key: string;
@@ -43,7 +75,8 @@ export interface WorkflowDefinitionRecord {
     priority_enabled: boolean;
     sla_hours: number | null;
     blocks_fulfillment_default: boolean;
-    intake_schema: Record<string, unknown>;
+    intake_schema: WorkflowIntakeSchema;
+    auto_open_conditions?: WorkflowAutoOpenConfig[] | null;
     is_active: boolean;
     sort_order: number;
     family?: WorkflowFamilyMeta | null;
@@ -71,14 +104,29 @@ export interface WorkflowRequestRecord {
     title: string;
     description: string | null;
     requested_by: string;
-    requested_by_role: "ADMIN" | "LOGISTICS";
+    requested_by_role: "ADMIN" | "LOGISTICS" | "CLIENT";
     requested_at: string;
     acknowledged_at: string | null;
     completed_at: string | null;
     cancelled_at: string | null;
     metadata: Record<string, unknown>;
+    intake_schema: WorkflowIntakeSchema;
     created_at: string;
     updated_at: string;
+    status_history?: Array<{
+        id: string;
+        workflow_request_id: string;
+        from_status: string | null;
+        to_status: string;
+        changed_by: string | null;
+        changed_at: string;
+        note: string | null;
+        changed_by_user?: {
+            id: string;
+            name: string | null;
+            email: string | null;
+        } | null;
+    }>;
 }
 
 export interface WorkflowAttachmentInput {
@@ -251,6 +299,7 @@ export function useUpdateWorkflowRequest() {
                 title?: string;
                 description?: string;
                 metadata?: Record<string, unknown>;
+                transition_note?: string;
             };
         }) => {
             try {

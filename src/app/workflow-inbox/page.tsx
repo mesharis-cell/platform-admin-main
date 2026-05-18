@@ -31,6 +31,7 @@ const ENTITY_URL_MAP: Record<string, string> = {
     ORDER: "/orders",
     INBOUND_REQUEST: "/inbound-request",
     SERVICE_REQUEST: "/service-requests",
+    SELF_PICKUP: "/self-pickups",
 };
 
 export default function WorkflowInboxPage() {

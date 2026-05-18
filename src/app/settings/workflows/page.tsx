@@ -29,14 +29,29 @@ import {
     useWorkflowDefinitions,
     type WorkflowDefinitionRecord,
     type WorkflowEntityType,
+    type WorkflowAutoOpenTrigger,
+    type WorkflowIntakeFieldType,
     type WorkflowRole,
 } from "@/hooks/use-workflow-requests";
 import { useCompanies } from "@/hooks/use-companies";
+import { useAttachmentTypes } from "@/hooks/use-attachments";
 import { useToken } from "@/lib/auth/use-token";
 import { hasPermission } from "@/lib/auth/permissions";
 
-const ENTITY_TYPES: WorkflowEntityType[] = ["ORDER", "INBOUND_REQUEST", "SERVICE_REQUEST"];
+const ENTITY_TYPES: WorkflowEntityType[] = [
+    "ORDER",
+    "INBOUND_REQUEST",
+    "SERVICE_REQUEST",
+    "SELF_PICKUP",
+];
 const ROLE_OPTIONS: WorkflowRole[] = ["ADMIN", "LOGISTICS", "CLIENT"];
+const INTAKE_FIELD_TYPES: WorkflowIntakeFieldType[] = ["text", "textarea", "date", "number"];
+const AUTO_OPEN_TRIGGERS: WorkflowAutoOpenTrigger[] = [
+    "ORDER_SUBMITTED",
+    "ORDER_CONFIRMED",
+    "SELF_PICKUP_SUBMITTED",
+    "SELF_PICKUP_CONFIRMED",
+];
 
 type WorkflowFormState = {
     code: string;
@@ -52,6 +67,16 @@ type WorkflowFormState = {
     sla_hours: string;
     blocks_fulfillment_default: boolean;
     sort_order: string;
+    intake_fields: Array<{
+        key: string;
+        label: string;
+        type: WorkflowIntakeFieldType;
+        required: boolean;
+    }>;
+    required_attachment_type_ids: string[];
+    auto_open_trigger: WorkflowAutoOpenTrigger | "";
+    auto_open_requires_permit: boolean;
+    auto_open_permit_owner: "" | "CLIENT" | "PLATFORM";
 };
 
 type CompanyOverrideDraft = {
@@ -74,16 +99,29 @@ const emptyForm: WorkflowFormState = {
     sla_hours: "",
     blocks_fulfillment_default: false,
     sort_order: "0",
+    intake_fields: [],
+    required_attachment_type_ids: [],
+    auto_open_trigger: "",
+    auto_open_requires_permit: false,
+    auto_open_permit_owner: "",
 };
 
 const toggleArrayValue = <T extends string>(values: T[], value: T, checked: boolean) =>
     checked ? Array.from(new Set([...values, value])) : values.filter((item) => item !== value);
+
+const normalizeFieldKey = (value: string) =>
+    value
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9_]+/g, "_")
+        .replace(/^_+|_+$/g, "");
 
 export default function WorkflowSettingsPage() {
     const { user } = useToken();
     const { data, isLoading } = useWorkflowDefinitions();
     const { data: metaData } = useWorkflowDefinitionMeta();
     const { data: companiesData } = useCompanies({ limit: "200", page: "1" });
+    const { data: attachmentTypesData } = useAttachmentTypes({ entityType: "WORKFLOW_REQUEST" });
     const createDefinition = useCreateWorkflowDefinition();
     const updateDefinition = useUpdateWorkflowDefinition();
     const deleteDefinition = useDeleteWorkflowDefinition();
@@ -103,6 +141,9 @@ export default function WorkflowSettingsPage() {
     const companies = companiesData?.data || [];
     const workflowFamilies = metaData?.data.workflow_families || [];
     const statusModels = metaData?.data.status_models || [];
+    const workflowAttachmentTypes = (attachmentTypesData?.data || []).filter(
+        (type) => type.is_active
+    );
     const canManageWorkflowDefinitions = hasPermission(user, "workflow_definitions:update");
 
     useEffect(() => {
@@ -143,6 +184,13 @@ export default function WorkflowSettingsPage() {
 
     const startEdit = (definition: WorkflowDefinitionRecord) => {
         if (!canManageWorkflowDefinitions) return;
+        const autoOpen = definition.auto_open_conditions?.[0];
+        const autoOpenRequiresPermit = autoOpen?.conditions?.some(
+            (condition) => condition.field === "requires_permit" && condition.value === true
+        );
+        const autoOpenPermitOwner = autoOpen?.conditions?.find(
+            (condition) => condition.field === "permit_owner"
+        )?.value;
         setEditingId(definition.id);
         setForm({
             code: definition.code,
@@ -158,6 +206,20 @@ export default function WorkflowSettingsPage() {
             sla_hours: definition.sla_hours ? String(definition.sla_hours) : "",
             blocks_fulfillment_default: definition.blocks_fulfillment_default,
             sort_order: String(definition.sort_order ?? 0),
+            intake_fields: (definition.intake_schema?.fields || []).map((field) => ({
+                key: field.key,
+                label: field.label,
+                type: field.type,
+                required: field.required === true,
+            })),
+            required_attachment_type_ids:
+                definition.intake_schema?.required_attachment_type_ids || [],
+            auto_open_trigger: autoOpen?.trigger || "",
+            auto_open_requires_permit: autoOpenRequiresPermit === true,
+            auto_open_permit_owner:
+                autoOpenPermitOwner === "CLIENT" || autoOpenPermitOwner === "PLATFORM"
+                    ? autoOpenPermitOwner
+                    : "",
         });
     };
 
@@ -170,6 +232,34 @@ export default function WorkflowSettingsPage() {
         if (form.allowed_entity_types.length === 0) {
             toast.error("Select at least one entity type");
             return;
+        }
+        const intakeFields = form.intake_fields
+            .map((field) => ({
+                ...field,
+                key: normalizeFieldKey(field.key),
+                label: field.label.trim(),
+            }))
+            .filter((field) => field.key && field.label);
+        const hasDuplicateFieldKeys =
+            new Set(intakeFields.map((field) => field.key)).size !== intakeFields.length;
+        if (hasDuplicateFieldKeys) {
+            toast.error("Workflow field keys must be unique");
+            return;
+        }
+        const autoOpenConditions = [];
+        if (form.auto_open_requires_permit) {
+            autoOpenConditions.push({
+                field: "requires_permit" as const,
+                operator: "EQUALS" as const,
+                value: true,
+            });
+        }
+        if (form.auto_open_permit_owner) {
+            autoOpenConditions.push({
+                field: "permit_owner" as const,
+                operator: "EQUALS" as const,
+                value: form.auto_open_permit_owner,
+            });
         }
 
         const payload = {
@@ -186,7 +276,18 @@ export default function WorkflowSettingsPage() {
             sla_hours: form.sla_hours ? Number(form.sla_hours) : null,
             blocks_fulfillment_default: form.blocks_fulfillment_default,
             sort_order: Number(form.sort_order || 0),
-            intake_schema: {},
+            intake_schema: {
+                fields: intakeFields,
+                required_attachment_type_ids: form.required_attachment_type_ids,
+            },
+            auto_open_conditions: form.auto_open_trigger
+                ? [
+                      {
+                          trigger: form.auto_open_trigger,
+                          conditions: autoOpenConditions,
+                      },
+                  ]
+                : null,
             is_active: true,
         };
 
@@ -613,6 +714,270 @@ export default function WorkflowSettingsPage() {
                                             }))
                                         }
                                     />
+                                </label>
+                            </div>
+
+                            <div className="space-y-3 rounded-md border border-border/60 p-4">
+                                <div className="flex items-center justify-between gap-3">
+                                    <Label>Intake Fields</Label>
+                                    {canManageWorkflowDefinitions ? (
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() =>
+                                                setForm((prev) => ({
+                                                    ...prev,
+                                                    intake_fields: [
+                                                        ...prev.intake_fields,
+                                                        {
+                                                            key: "",
+                                                            label: "",
+                                                            type: "text",
+                                                            required: false,
+                                                        },
+                                                    ],
+                                                }))
+                                            }
+                                        >
+                                            <Plus className="mr-1 h-3.5 w-3.5" />
+                                            Add Field
+                                        </Button>
+                                    ) : null}
+                                </div>
+                                {form.intake_fields.length === 0 ? (
+                                    <p className="text-sm text-muted-foreground">
+                                        No structured fields configured.
+                                    </p>
+                                ) : (
+                                    <div className="space-y-3">
+                                        {form.intake_fields.map((field, index) => (
+                                            <div
+                                                key={index}
+                                                className="grid gap-3 rounded-md border border-border/50 p-3 md:grid-cols-[1fr_1fr_150px_auto_auto]"
+                                            >
+                                                <Input
+                                                    value={field.key}
+                                                    disabled={!canManageWorkflowDefinitions}
+                                                    onChange={(event) =>
+                                                        setForm((prev) => ({
+                                                            ...prev,
+                                                            intake_fields: prev.intake_fields.map(
+                                                                (item, itemIndex) =>
+                                                                    itemIndex === index
+                                                                        ? {
+                                                                              ...item,
+                                                                              key: event.target
+                                                                                  .value,
+                                                                          }
+                                                                        : item
+                                                            ),
+                                                        }))
+                                                    }
+                                                    placeholder="permit_number"
+                                                />
+                                                <Input
+                                                    value={field.label}
+                                                    disabled={!canManageWorkflowDefinitions}
+                                                    onChange={(event) =>
+                                                        setForm((prev) => ({
+                                                            ...prev,
+                                                            intake_fields: prev.intake_fields.map(
+                                                                (item, itemIndex) =>
+                                                                    itemIndex === index
+                                                                        ? {
+                                                                              ...item,
+                                                                              label: event.target
+                                                                                  .value,
+                                                                          }
+                                                                        : item
+                                                            ),
+                                                        }))
+                                                    }
+                                                    placeholder="Permit number"
+                                                />
+                                                <Select
+                                                    value={field.type}
+                                                    disabled={!canManageWorkflowDefinitions}
+                                                    onValueChange={(value) =>
+                                                        setForm((prev) => ({
+                                                            ...prev,
+                                                            intake_fields: prev.intake_fields.map(
+                                                                (item, itemIndex) =>
+                                                                    itemIndex === index
+                                                                        ? {
+                                                                              ...item,
+                                                                              type: value as WorkflowIntakeFieldType,
+                                                                          }
+                                                                        : item
+                                                            ),
+                                                        }))
+                                                    }
+                                                >
+                                                    <SelectTrigger>
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {INTAKE_FIELD_TYPES.map((type) => (
+                                                            <SelectItem key={type} value={type}>
+                                                                {type}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                                <label className="flex items-center gap-2 text-sm">
+                                                    <Checkbox
+                                                        checked={field.required}
+                                                        disabled={!canManageWorkflowDefinitions}
+                                                        onCheckedChange={(checked) =>
+                                                            setForm((prev) => ({
+                                                                ...prev,
+                                                                intake_fields:
+                                                                    prev.intake_fields.map(
+                                                                        (item, itemIndex) =>
+                                                                            itemIndex === index
+                                                                                ? {
+                                                                                      ...item,
+                                                                                      required:
+                                                                                          checked ===
+                                                                                          true,
+                                                                                  }
+                                                                                : item
+                                                                    ),
+                                                            }))
+                                                        }
+                                                    />
+                                                    Required
+                                                </label>
+                                                {canManageWorkflowDefinitions ? (
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        onClick={() =>
+                                                            setForm((prev) => ({
+                                                                ...prev,
+                                                                intake_fields:
+                                                                    prev.intake_fields.filter(
+                                                                        (_, itemIndex) =>
+                                                                            itemIndex !== index
+                                                                    ),
+                                                            }))
+                                                        }
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                ) : null}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="space-y-3 rounded-md border border-border/60 p-4">
+                                <Label>Required Workflow Files</Label>
+                                {workflowAttachmentTypes.length === 0 ? (
+                                    <p className="text-sm text-muted-foreground">
+                                        No workflow attachment types are active.
+                                    </p>
+                                ) : (
+                                    <div className="grid gap-2 md:grid-cols-2">
+                                        {workflowAttachmentTypes.map((type) => (
+                                            <label
+                                                key={type.id}
+                                                className="flex items-start gap-3 rounded-md border border-border/50 p-3 text-sm"
+                                            >
+                                                <Checkbox
+                                                    checked={form.required_attachment_type_ids.includes(
+                                                        type.id
+                                                    )}
+                                                    disabled={!canManageWorkflowDefinitions}
+                                                    onCheckedChange={(checked) =>
+                                                        setForm((prev) => ({
+                                                            ...prev,
+                                                            required_attachment_type_ids:
+                                                                toggleArrayValue(
+                                                                    prev.required_attachment_type_ids,
+                                                                    type.id,
+                                                                    checked === true
+                                                                ),
+                                                        }))
+                                                    }
+                                                />
+                                                <span>{type.label}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="space-y-3 rounded-md border border-border/60 p-4">
+                                <Label>Auto Open</Label>
+                                <div className="grid gap-3 md:grid-cols-2">
+                                    <Select
+                                        value={form.auto_open_trigger || "NONE"}
+                                        disabled={!canManageWorkflowDefinitions}
+                                        onValueChange={(value) =>
+                                            setForm((prev) => ({
+                                                ...prev,
+                                                auto_open_trigger:
+                                                    value === "NONE"
+                                                        ? ""
+                                                        : (value as WorkflowAutoOpenTrigger),
+                                            }))
+                                        }
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="NONE">Manual only</SelectItem>
+                                            {AUTO_OPEN_TRIGGERS.map((trigger) => (
+                                                <SelectItem key={trigger} value={trigger}>
+                                                    {trigger.replace(/_/g, " ")}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <Select
+                                        value={form.auto_open_permit_owner || "ANY"}
+                                        disabled={!canManageWorkflowDefinitions}
+                                        onValueChange={(value) =>
+                                            setForm((prev) => ({
+                                                ...prev,
+                                                auto_open_permit_owner:
+                                                    value === "ANY"
+                                                        ? ""
+                                                        : (value as "CLIENT" | "PLATFORM"),
+                                            }))
+                                        }
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="ANY">Any permit owner</SelectItem>
+                                            <SelectItem value="CLIENT">
+                                                Client permit owner
+                                            </SelectItem>
+                                            <SelectItem value="PLATFORM">
+                                                Platform permit owner
+                                            </SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <label className="flex items-center gap-3 text-sm">
+                                    <Checkbox
+                                        checked={form.auto_open_requires_permit}
+                                        disabled={!canManageWorkflowDefinitions}
+                                        onCheckedChange={(checked) =>
+                                            setForm((prev) => ({
+                                                ...prev,
+                                                auto_open_requires_permit: checked === true,
+                                            }))
+                                        }
+                                    />
+                                    Requires permit
                                 </label>
                             </div>
 
