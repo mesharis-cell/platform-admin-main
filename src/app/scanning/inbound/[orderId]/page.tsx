@@ -34,6 +34,11 @@ import {
 } from "@/hooks/use-scanning";
 import { APIInboundProgressResponse } from "@/types/scanning";
 import {
+    PooledSettlementModal,
+    type SettlementEntry,
+    type UnsettledLine,
+} from "@/components/scanning/PooledSettlementModal";
+import {
     Camera,
     CheckCircle2,
     AlertTriangle,
@@ -84,6 +89,8 @@ export default function InboundScanningPage() {
     const [currentInspection, setCurrentInspection] = useState<InspectionState | null>(null);
     const [lastScannedQR, setLastScannedQR] = useState<string | null>(null);
     const [manualQRInput, setManualQRInput] = useState("");
+    const [showSettlementModal, setShowSettlementModal] = useState(false);
+    const [unsettledLines, setUnsettledLines] = useState<UnsettledLine[]>([]);
     const [isScanning, setIsScanning] = useState(false);
 
     const videoRef = useRef<HTMLVideoElement>(null);
@@ -554,32 +561,44 @@ export default function InboundScanningPage() {
         );
     };
 
+    const doCompleteScan = (settlements?: SettlementEntry[]) => {
+        completeScan.mutate({ orderId, settlements } as any, {
+            onSuccess: (data: any) => {
+                setShowSettlementModal(false);
+                setStep("complete");
+                const newStatus =
+                    data.data?.new_status ||
+                    data.new_status ||
+                    data.data?.order_status ||
+                    data.order_status ||
+                    "CLOSED";
+                toast.success("Return scan complete", {
+                    description: `Order ${newStatus}`,
+                });
+                setTimeout(() => {
+                    router.push(`/orders/${orderId}`);
+                }, 2000);
+            },
+            onError: (error: any) => {
+                const requiresSettlement =
+                    error?.response?.data?.errorSources?.[0]?.requires_settlement ||
+                    error?.response?.data?.requires_settlement;
+
+                if (Array.isArray(requiresSettlement)) {
+                    setUnsettledLines(requiresSettlement);
+                    setShowSettlementModal(true);
+                    return;
+                }
+
+                toast.error("Failed to complete scan", {
+                    description: error.message || "Unknown error",
+                });
+            },
+        });
+    };
+
     const handleCompleteScan = () => {
-        completeScan.mutate(
-            { orderId },
-            {
-                onSuccess: (data: any) => {
-                    setStep("complete");
-                    const newStatus =
-                        data.data?.new_status ||
-                        data.new_status ||
-                        data.data?.order_status ||
-                        data.order_status ||
-                        "CLOSED";
-                    toast.success("Return scan complete", {
-                        description: `Order ${newStatus}`,
-                    });
-                    setTimeout(() => {
-                        router.push(`/orders/${orderId}`);
-                    }, 2000);
-                },
-                onError: (error) => {
-                    toast.error("Failed to complete scan", {
-                        description: error.message,
-                    });
-                },
-            }
-        );
+        doCompleteScan();
     };
 
     // Render loading state
@@ -1296,6 +1315,13 @@ export default function InboundScanningPage() {
 
             {/* Hidden canvas for photo capture */}
             <canvas ref={canvasRef} className="hidden" />
+            <PooledSettlementModal
+                open={showSettlementModal}
+                onOpenChange={setShowSettlementModal}
+                unsettledLines={unsettledLines}
+                onConfirm={(settlements) => doCompleteScan(settlements)}
+                isPending={completeScan.isPending}
+            />
         </div>
     );
 }
