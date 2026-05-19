@@ -323,9 +323,9 @@ export function AssetTable() {
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="all">All condition</SelectItem>
-                                <SelectItem value="GREEN">Green</SelectItem>
-                                <SelectItem value="ORANGE">Orange</SelectItem>
-                                <SelectItem value="RED">Red</SelectItem>
+                                <SelectItem value="GREEN">GREEN</SelectItem>
+                                <SelectItem value="ORANGE">ORANGE</SelectItem>
+                                <SelectItem value="RED">RED</SelectItem>
                             </SelectContent>
                         </Select>
                         <Select

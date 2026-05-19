@@ -41,9 +41,9 @@ const CONDITION_BORDER: Record<Condition, string> = {
 };
 
 const CONDITION_LABEL: Record<Condition, { text: string; cls: string }> = {
-    RED: { text: "Critical", cls: "text-destructive" },
-    ORANGE: { text: "Flagged", cls: "text-orange-500" },
-    GREEN: { text: "Good", cls: "text-green-500" },
+    RED: { text: "RED", cls: "text-destructive" },
+    ORANGE: { text: "ORANGE", cls: "text-orange-500" },
+    GREEN: { text: "GREEN", cls: "text-green-500" },
 };
 
 const CONDITION_ICON: Record<Condition, React.ReactNode> = {

@@ -36,7 +36,7 @@ export default function AssetCartRulesPage() {
     const [search, setSearch] = useState("");
     const [ruleType, setRuleType] = useState("ALL");
     const [status, setStatus] = useState("ALL");
-    const { data, isLoading } = useCommerceRules();
+    const { data, isLoading } = useCommerceRules({ includeInactive: true });
     const { data: assetsData } = useAssets({ limit: "500", page: "1" });
 
     const assetMap = useMemo(

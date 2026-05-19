@@ -30,17 +30,17 @@ type Props = {
 
 const CONDITION_META: Record<Condition, { label: string; className: string; icon: ReactNode }> = {
     GREEN: {
-        label: "Good",
+        label: "GREEN",
         className: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700",
         icon: <CheckCircle2 className="h-4 w-4" />,
     },
     ORANGE: {
-        label: "Needs Review",
+        label: "ORANGE",
         className: "border-amber-500/30 bg-amber-500/10 text-amber-700",
         icon: <AlertCircle className="h-4 w-4" />,
     },
     RED: {
-        label: "Critical",
+        label: "RED",
         className: "border-red-500/30 bg-red-500/10 text-red-700",
         icon: <Wrench className="h-4 w-4" />,
     },
@@ -307,7 +307,7 @@ export function AssetConditionCard({ asset }: Props) {
                                 placeholder={
                                     targetCondition === "GREEN"
                                         ? "Describe the repair or resolution..."
-                                        : "Describe the damage or issue..."
+                                        : "Describe the condition or issue..."
                                 }
                             />
                         </div>

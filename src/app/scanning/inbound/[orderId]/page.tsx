@@ -69,7 +69,7 @@ type InspectionState = {
     notes: string;
     latestReturnImages: string[];
     damageReportEntries: DamageReportEntryInput[];
-    refurbDaysEstimate: number | null; // Feedback #2: Refurb estimate for damaged items
+    refurbDaysEstimate: number | null; // Feedback #2: Refurb estimate for ORANGE/RED assets
     discrepancyReason: "BROKEN" | "LOST" | "OTHER" | null;
     quantity: number | null;
 };
@@ -460,7 +460,7 @@ export default function InboundScanningPage() {
             (!currentInspection.refurbDaysEstimate || currentInspection.refurbDaysEstimate < 1)
         ) {
             toast.error("Refurb days required", {
-                description: "Please estimate refurbishment time for damaged items",
+                description: "Please estimate refurbishment time for ORANGE/RED assets",
             });
             return;
         }

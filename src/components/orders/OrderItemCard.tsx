@@ -143,7 +143,7 @@ export function OrderItemCard({
                         <ConditionIcon className="h-3.5 w-3.5 mt-0.5 shrink-0" />
                         <div>
                             <span className="font-semibold">
-                                {item.asset?.condition === "RED" ? "Damaged" : "Needs attention"}
+                                {item.asset?.condition === "RED" ? "RED" : "ORANGE"}
                             </span>
                             {item.asset?.refurbishment_days_estimate ? (
                                 <span>

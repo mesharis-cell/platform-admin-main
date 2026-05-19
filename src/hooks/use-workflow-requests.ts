@@ -28,16 +28,17 @@ export type WorkflowAutoOpenTrigger =
     | "SELF_PICKUP_CONFIRMED";
 
 export interface WorkflowAutoOpenCondition {
-    field: "permit_owner" | "requires_permit" | "is_permanent_placement";
-    operator: "EQUALS";
-    value: string | boolean;
+    source:
+        | "permit_requirements.permit_owner"
+        | "permit_requirements.requires_permit"
+        | "is_permanent_placement";
+    operator: "equals" | "truthy";
+    value?: string | boolean;
 }
 
 export interface WorkflowAutoOpenConfig {
-    trigger: WorkflowAutoOpenTrigger;
+    trigger_event: WorkflowAutoOpenTrigger;
     conditions?: WorkflowAutoOpenCondition[];
-    title_template?: string;
-    description_template?: string;
 }
 
 export interface WorkflowFamilyMeta {
@@ -76,7 +77,7 @@ export interface WorkflowDefinitionRecord {
     sla_hours: number | null;
     blocks_fulfillment_default: boolean;
     intake_schema: WorkflowIntakeSchema;
-    auto_open_conditions?: WorkflowAutoOpenConfig[] | null;
+    auto_open_conditions?: WorkflowAutoOpenConfig | null;
     is_active: boolean;
     sort_order: number;
     family?: WorkflowFamilyMeta | null;

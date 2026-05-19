@@ -74,7 +74,7 @@ export function WizardConditionForm({ state, update }: Props) {
                             value={state.conditionNotes}
                             onChange={(e) => update({ conditionNotes: e.target.value })}
                             rows={3}
-                            placeholder="Describe the damage or issue..."
+                            placeholder="Describe the condition or issue..."
                         />
                         <p className="text-xs text-muted-foreground">
                             {state.conditionNotes.length}/10 characters

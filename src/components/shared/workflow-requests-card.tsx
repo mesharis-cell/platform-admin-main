@@ -78,6 +78,33 @@ const getWorkflowIntakeValues = (workflow: WorkflowRequestRecord) => {
         : {};
 };
 
+const definitionFromWorkflow = (
+    workflow: WorkflowRequestRecord,
+    definitions: WorkflowDefinitionRecord[]
+): WorkflowDefinitionRecord =>
+    definitions.find((definition) => definition.code === workflow.workflow_code) || {
+        id: workflow.workflow_definition_id,
+        code: workflow.workflow_code,
+        label: workflow.workflow_label,
+        description: null,
+        workflow_family: workflow.workflow_family,
+        status_model_key: workflow.status_model_key,
+        allowed_entity_types: [workflow.entity_type],
+        requester_roles: [],
+        viewer_roles: [],
+        actor_roles: [],
+        priority_enabled: false,
+        sla_hours: null,
+        blocks_fulfillment_default: false,
+        intake_schema: workflow.intake_schema || { fields: [] },
+        auto_open_conditions: null,
+        is_active: true,
+        sort_order: 0,
+        family: null,
+        status_model: null,
+        company_overrides: [],
+    };
+
 function WorkflowOperationalDetails({
     definition,
     workflow,
@@ -582,10 +609,19 @@ export function WorkflowRequestsCard({
         [attachmentTypesData?.data]
     );
 
-    const grouped = definitions.map((definition) => ({
-        definition,
-        requests: workflows.filter((workflow) => workflow.workflow_code === definition.code),
-    }));
+    const grouped = useMemo(() => {
+        const byCode = new Map<string, WorkflowRequestRecord[]>();
+        workflows.forEach((workflow) => {
+            byCode.set(workflow.workflow_code, [
+                ...(byCode.get(workflow.workflow_code) || []),
+                workflow,
+            ]);
+        });
+        return Array.from(byCode.entries()).map(([code, requests]) => ({
+            definition: definitionFromWorkflow(requests[0]!, definitions),
+            requests,
+        }));
+    }, [definitions, workflows]);
 
     const resetForm = () => {
         setSelectedWorkflowCode(definitions[0]?.code || "");
@@ -713,7 +749,7 @@ export function WorkflowRequestsCard({
                         </DialogTrigger>
                         <DialogContent className="sm:max-w-lg">
                             <DialogHeader>
-                                <DialogTitle>Request Internal Workflow</DialogTitle>
+                                <DialogTitle>Request Workflow</DialogTitle>
                             </DialogHeader>
                             <div className="space-y-4">
                                 <div className="space-y-2">
@@ -829,9 +865,7 @@ export function WorkflowRequestsCard({
                 )}
 
                 {!isLoading && grouped.length === 0 && (
-                    <p className="text-sm text-muted-foreground">
-                        No internal workflow types are enabled for this record.
-                    </p>
+                    <p className="text-sm text-muted-foreground">No workflows requested yet.</p>
                 )}
 
                 {grouped.map(({ definition, requests }) => {

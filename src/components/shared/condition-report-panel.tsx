@@ -28,21 +28,21 @@ const CONDITIONS: {
 }[] = [
     {
         value: "GREEN",
-        label: "Good",
+        label: "GREEN",
         bg: "bg-green-500/10",
         border: "border-green-500",
         text: "text-green-500",
     },
     {
         value: "ORANGE",
-        label: "Damaged",
+        label: "ORANGE",
         bg: "bg-orange-500/10",
         border: "border-orange-500",
         text: "text-orange-500",
     },
     {
         value: "RED",
-        label: "Critical",
+        label: "RED",
         bg: "bg-red-500/10",
         border: "border-red-500",
         text: "text-red-500",
@@ -109,7 +109,7 @@ export function ConditionReportPanel({
                         <textarea
                             value={value.conditionNotes}
                             onChange={(e) => set({ conditionNotes: e.target.value })}
-                            placeholder="Describe the damage or issue…"
+                            placeholder="Describe the condition or issue..."
                             rows={3}
                             disabled={disabled}
                             className="w-full rounded-md border border-input bg-background text-sm px-3 py-2 resize-none focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"

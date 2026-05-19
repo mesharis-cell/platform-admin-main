@@ -116,7 +116,7 @@ export default function ItemsNeedingAttentionPage() {
                         <Card className="border-l-4 border-l-destructive bg-linear-to-br from-destructive/5 to-background">
                             <CardHeader className="pb-3">
                                 <CardDescription className="text-xs uppercase tracking-wider">
-                                    Critical Stock Records
+                                    RED Stock Records
                                 </CardDescription>
                                 <CardTitle className="flex items-baseline gap-2">
                                     <span className="font-mono text-4xl font-bold tabular-nums">
@@ -201,11 +201,9 @@ export default function ItemsNeedingAttentionPage() {
                                             <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="RED,ORANGE">
-                                                All Conditions
-                                            </SelectItem>
-                                            <SelectItem value="RED">Critical (Red)</SelectItem>
-                                            <SelectItem value="ORANGE">Flagged (Orange)</SelectItem>
+                                            <SelectItem value="RED,ORANGE">RED + ORANGE</SelectItem>
+                                            <SelectItem value="RED">RED</SelectItem>
+                                            <SelectItem value="ORANGE">ORANGE</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>

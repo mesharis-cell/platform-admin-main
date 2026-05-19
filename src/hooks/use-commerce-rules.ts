@@ -49,22 +49,25 @@ export type CommerceRuleAcknowledgement = {
 
 type CommerceRuleFilters = {
     assetId?: string | null;
+    includeInactive?: boolean;
     enabled?: boolean;
 };
 
 export function useCommerceRulesForAsset(assetId: string | null, enabled = true) {
-    return useCommerceRules({ assetId, enabled });
+    return useCommerceRules({ assetId, enabled, includeInactive: true });
 }
 
 export function useCommerceRules(filters?: CommerceRuleFilters) {
     const assetId = filters?.assetId;
+    const includeInactive = filters?.includeInactive ?? false;
     const enabled = filters?.enabled ?? true;
     return useQuery({
-        queryKey: ["commerce-rules", "list", assetId || "all"],
+        queryKey: ["commerce-rules", "list", assetId || "all", includeInactive],
         queryFn: async (): Promise<{ data: CommerceRule[] }> => {
             try {
                 const params = new URLSearchParams();
                 if (assetId) params.set("asset_id", assetId);
+                if (includeInactive) params.set("include_inactive", "true");
                 const query = params.toString();
                 const response = await apiClient.get(
                     `/operations/v1/commerce-rules${query ? `?${query}` : ""}`

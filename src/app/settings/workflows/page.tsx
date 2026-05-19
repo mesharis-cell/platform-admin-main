@@ -116,6 +116,14 @@ const normalizeFieldKey = (value: string) =>
         .replace(/[^a-z0-9_]+/g, "_")
         .replace(/^_+|_+$/g, "");
 
+const getAutoOpenConditionSource = (condition: { source?: string; field?: string }) => {
+    if (condition.source) return condition.source;
+    if (condition.field === "permit_owner") return "permit_requirements.permit_owner";
+    if (condition.field === "requires_permit") return "permit_requirements.requires_permit";
+    if (condition.field === "is_permanent_placement") return "is_permanent_placement";
+    return "";
+};
+
 export default function WorkflowSettingsPage() {
     const { user } = useToken();
     const { data, isLoading } = useWorkflowDefinitions();
@@ -184,12 +192,14 @@ export default function WorkflowSettingsPage() {
 
     const startEdit = (definition: WorkflowDefinitionRecord) => {
         if (!canManageWorkflowDefinitions) return;
-        const autoOpen = definition.auto_open_conditions?.[0];
+        const autoOpen = definition.auto_open_conditions;
         const autoOpenRequiresPermit = autoOpen?.conditions?.some(
-            (condition) => condition.field === "requires_permit" && condition.value === true
+            (condition) =>
+                getAutoOpenConditionSource(condition) === "permit_requirements.requires_permit"
         );
         const autoOpenPermitOwner = autoOpen?.conditions?.find(
-            (condition) => condition.field === "permit_owner"
+            (condition) =>
+                getAutoOpenConditionSource(condition) === "permit_requirements.permit_owner"
         )?.value;
         setEditingId(definition.id);
         setForm({
@@ -214,7 +224,7 @@ export default function WorkflowSettingsPage() {
             })),
             required_attachment_type_ids:
                 definition.intake_schema?.required_attachment_type_ids || [],
-            auto_open_trigger: autoOpen?.trigger || "",
+            auto_open_trigger: autoOpen?.trigger_event || "",
             auto_open_requires_permit: autoOpenRequiresPermit === true,
             auto_open_permit_owner:
                 autoOpenPermitOwner === "CLIENT" || autoOpenPermitOwner === "PLATFORM"
@@ -249,15 +259,14 @@ export default function WorkflowSettingsPage() {
         const autoOpenConditions = [];
         if (form.auto_open_requires_permit) {
             autoOpenConditions.push({
-                field: "requires_permit" as const,
-                operator: "EQUALS" as const,
-                value: true,
+                source: "permit_requirements.requires_permit" as const,
+                operator: "truthy" as const,
             });
         }
         if (form.auto_open_permit_owner) {
             autoOpenConditions.push({
-                field: "permit_owner" as const,
-                operator: "EQUALS" as const,
+                source: "permit_requirements.permit_owner" as const,
+                operator: "equals" as const,
                 value: form.auto_open_permit_owner,
             });
         }
@@ -281,12 +290,10 @@ export default function WorkflowSettingsPage() {
                 required_attachment_type_ids: form.required_attachment_type_ids,
             },
             auto_open_conditions: form.auto_open_trigger
-                ? [
-                      {
-                          trigger: form.auto_open_trigger,
-                          conditions: autoOpenConditions,
-                      },
-                  ]
+                ? {
+                      trigger_event: form.auto_open_trigger,
+                      conditions: autoOpenConditions,
+                  }
                 : null,
             is_active: true,
         };

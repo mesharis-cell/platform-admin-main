@@ -1,11 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Plus, Sparkles, Trash2 } from "lucide-react";
+import { AssetSearchSelect } from "@/components/assets/asset-search-select";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -92,6 +94,9 @@ export function AssetCartRulesSection({ assetId, assetName, companyId, brandId }
     const deleteMutation = useDeleteCommerceRule();
     const [isAdding, setIsAdding] = useState(false);
     const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
+    const [deleteRule, setDeleteRule] = useState<CommerceRule | null>(null);
+    const [nameTouched, setNameTouched] = useState(false);
+    const [messageTouched, setMessageTouched] = useState(false);
     const [form, setForm] = useState<RuleForm>(emptyForm);
 
     const rules = data?.data || [];
@@ -104,16 +109,50 @@ export function AssetCartRulesSection({ assetId, assetName, companyId, brandId }
             }),
         [assetId, brandId, companionAssetsData?.data]
     );
+    const companionAsset = companionOptions.find((asset) => asset.id === form.companionAssetId);
+    const generatedName =
+        form.ruleType === "COMPANION"
+            ? `Companion warning - ${assetName}`
+            : `Quantity warning - ${assetName}`;
+    const generatedMessage =
+        form.ruleType === "COMPANION"
+            ? companionAsset
+                ? `You added ${assetName} without ${companionAsset.name}`
+                : ""
+            : `You added ${assetName} with a quantity ${
+                  form.operator === "QUANTITY_LT" ? "below" : "above"
+              } ${form.threshold}`;
+
+    useEffect(() => {
+        if (!isAdding || editingRuleId) return;
+        setForm((prev) => ({
+            ...prev,
+            name: nameTouched ? prev.name : generatedName,
+            message: messageTouched ? prev.message : generatedMessage,
+        }));
+    }, [editingRuleId, generatedMessage, generatedName, isAdding, messageTouched, nameTouched]);
 
     const reset = () => {
         setForm(emptyForm);
         setIsAdding(false);
         setEditingRuleId(null);
+        setNameTouched(false);
+        setMessageTouched(false);
+    };
+
+    const startAdd = () => {
+        setForm(emptyForm);
+        setNameTouched(false);
+        setMessageTouched(false);
+        setEditingRuleId(null);
+        setIsAdding(true);
     };
 
     const startEdit = (rule: CommerceRule) => {
         setEditingRuleId(rule.id);
         setIsAdding(true);
+        setNameTouched(true);
+        setMessageTouched(true);
         setForm(formFromRule(rule));
     };
 
@@ -169,10 +208,12 @@ export function AssetCartRulesSection({ assetId, assetName, companyId, brandId }
         }
     };
 
-    const handleDelete = async (id: string) => {
+    const handleDelete = async () => {
+        if (!deleteRule) return;
         try {
-            await deleteMutation.mutateAsync(id);
+            await deleteMutation.mutateAsync(deleteRule.id);
             toast.success("Rule removed");
+            setDeleteRule(null);
         } catch (err: any) {
             toast.error(err?.message || "Failed to delete rule");
         }
@@ -186,12 +227,7 @@ export function AssetCartRulesSection({ assetId, assetName, companyId, brandId }
                     Cart Rules ({rules.length})
                 </CardTitle>
                 {!isAdding && (
-                    <Button
-                        size="sm"
-                        variant="outline"
-                        className="font-mono"
-                        onClick={() => setIsAdding(true)}
-                    >
+                    <Button size="sm" variant="outline" className="font-mono" onClick={startAdd}>
                         <Plus className="mr-1.5 h-3.5 w-3.5" />
                         Add rule
                     </Button>
@@ -238,7 +274,7 @@ export function AssetCartRulesSection({ assetId, assetName, companyId, brandId }
                             <Button
                                 size="icon"
                                 variant="outline"
-                                onClick={() => handleDelete(rule.id)}
+                                onClick={() => setDeleteRule(rule)}
                                 title="Remove rule"
                             >
                                 <Trash2 className="h-3.5 w-3.5" />
@@ -257,9 +293,10 @@ export function AssetCartRulesSection({ assetId, assetName, companyId, brandId }
                                 <Label className="text-xs font-mono">Internal name *</Label>
                                 <Input
                                     value={form.name}
-                                    onChange={(event) =>
-                                        setForm((prev) => ({ ...prev, name: event.target.value }))
-                                    }
+                                    onChange={(event) => {
+                                        setNameTouched(true);
+                                        setForm((prev) => ({ ...prev, name: event.target.value }));
+                                    }}
                                     className="font-mono"
                                 />
                             </div>
@@ -328,23 +365,14 @@ export function AssetCartRulesSection({ assetId, assetName, companyId, brandId }
                         ) : (
                             <div className="space-y-2">
                                 <Label className="text-xs font-mono">Required companion</Label>
-                                <Select
+                                <AssetSearchSelect
+                                    assets={companionOptions}
                                     value={form.companionAssetId}
-                                    onValueChange={(value) =>
+                                    onChange={(value) =>
                                         setForm((prev) => ({ ...prev, companionAssetId: value }))
                                     }
-                                >
-                                    <SelectTrigger className="font-mono">
-                                        <SelectValue placeholder="Select asset" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {companionOptions.map((asset) => (
-                                            <SelectItem key={asset.id} value={asset.id}>
-                                                {asset.name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                    placeholder="Search asset"
+                                />
                             </div>
                         )}
 
@@ -357,12 +385,13 @@ export function AssetCartRulesSection({ assetId, assetName, companyId, brandId }
                             </div>
                             <Textarea
                                 value={form.message}
-                                onChange={(event) =>
+                                onChange={(event) => {
+                                    setMessageTouched(true);
                                     setForm((prev) => ({
                                         ...prev,
                                         message: event.target.value.slice(0, 360),
-                                    }))
-                                }
+                                    }));
+                                }}
                                 maxLength={360}
                                 rows={2}
                                 className="font-mono text-sm"
@@ -389,6 +418,15 @@ export function AssetCartRulesSection({ assetId, assetName, companyId, brandId }
                     </div>
                 )}
             </CardContent>
+            <ConfirmDialog
+                open={!!deleteRule}
+                onOpenChange={(open) => !open && setDeleteRule(null)}
+                onConfirm={handleDelete}
+                title="Delete Cart Rule"
+                description={`Delete "${deleteRule?.name || "this rule"}"? This cannot be undone.`}
+                confirmText="Delete rule"
+                variant="destructive"
+            />
         </Card>
     );
 }

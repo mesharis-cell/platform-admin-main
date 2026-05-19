@@ -244,15 +244,15 @@ export function CreateAssetDialog({
             return;
         }
 
-        // Feedback #2: Validate refurb days and notes for damaged items
+        // Feedback #2: Validate refurb days and notes for ORANGE/RED assets
         if (formData.condition === "ORANGE" || formData.condition === "RED") {
             if (!formData.refurb_days_estimate || formData.refurb_days_estimate < 1) {
-                toast.error("Refurb days estimate is required for damaged items");
+                toast.error("Refurb days estimate is required for ORANGE/RED assets");
                 return;
             }
             if (!formData.condition_notes || formData.condition_notes.trim().length < 10) {
                 toast.error(
-                    "Condition notes are required for damaged items (minimum 10 characters)"
+                    "Condition notes are required for ORANGE/RED assets (minimum 10 characters)"
                 );
                 return;
             }
@@ -342,7 +342,7 @@ export function CreateAssetDialog({
                     formData.dimensions?.height &&
                     formData.volume_per_unit;
 
-                // Feedback #2: Require refurb days and notes for damaged items
+                // Feedback #2: Require refurb days and notes for ORANGE/RED assets
                 if (formData.condition === "ORANGE" || formData.condition === "RED") {
                     return (
                         hasBasicSpecs &&
@@ -891,10 +891,10 @@ export function CreateAssetDialog({
                                                     />
                                                     <span className="font-mono text-xs font-medium">
                                                         {cond === "GREEN"
-                                                            ? "Good"
+                                                            ? "GREEN"
                                                             : cond === "ORANGE"
-                                                              ? "Minor Issues"
-                                                              : "Damaged"}
+                                                              ? "ORANGE"
+                                                              : "RED"}
                                                     </span>
                                                 </div>
                                             </button>
@@ -902,13 +902,13 @@ export function CreateAssetDialog({
                                     </div>
                                 </div>
 
-                                {/* Conditional fields for damaged items (Feedback #2) */}
+                                {/* Conditional fields for ORANGE/RED assets (Feedback #2) */}
                                 {(formData.condition === "ORANGE" ||
                                     formData.condition === "RED") && (
                                     <div className="space-y-4 p-4 bg-muted/30 rounded-lg border border-border">
                                         <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
                                             <AlertCircle className="w-4 h-4 text-amber-500" />
-                                            <span>Damage Information Required</span>
+                                            <span>Condition Details Required</span>
                                         </div>
 
                                         <div className="space-y-2">
@@ -940,7 +940,7 @@ export function CreateAssetDialog({
 													Condition Notes *
 												</Label> */}
                                             <Textarea
-                                                placeholder="Describe the damage or issues..."
+                                                placeholder="Describe the condition or issues..."
                                                 value={formData.condition_notes || ""}
                                                 onChange={(e) =>
                                                     setFormData({

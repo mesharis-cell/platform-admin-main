@@ -697,7 +697,7 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                                     </>
                                 )}
 
-                                {/* Feedback #2: Display refurb estimate for damaged items */}
+                                {/* Feedback #2: Display refurb estimate for ORANGE/RED assets */}
                                 {asset?.refurb_days_estimate &&
                                     (asset?.condition === "ORANGE" ||
                                         asset?.condition === "RED") && (
