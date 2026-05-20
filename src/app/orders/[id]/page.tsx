@@ -1419,9 +1419,30 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                     <p className="font-mono text-sm font-bold mt-1">
                                         {order?.data?.venue_name}
                                     </p>
-                                    <p className="font-mono text-xs text-muted-foreground mt-0.5">
-                                        {order?.data?.venue_city}, {order?.data?.venue_country}
-                                    </p>
+                                    {/* Street address lives in the venue_location JSONB, not a
+                                    top-level column. Country also comes from venue_location;
+                                    there is no venue_country field on the response. */}
+                                    {order?.data?.venue_location?.address && (
+                                        <p className="font-mono text-xs text-muted-foreground mt-0.5">
+                                            {order.data.venue_location.address}
+                                        </p>
+                                    )}
+                                    {(order?.data?.venue_city ||
+                                        order?.data?.venue_location?.country) && (
+                                        <p className="font-mono text-xs text-muted-foreground mt-0.5">
+                                            {[
+                                                order?.data?.venue_city,
+                                                order?.data?.venue_location?.country,
+                                            ]
+                                                .filter(Boolean)
+                                                .join(", ")}
+                                        </p>
+                                    )}
+                                    {order?.data?.venue_location?.access_notes && (
+                                        <p className="font-mono text-xs text-muted-foreground mt-1 italic">
+                                            Access: {order.data.venue_location.access_notes}
+                                        </p>
+                                    )}
                                 </div>
                                 {order?.data?.special_instructions && (
                                     <>

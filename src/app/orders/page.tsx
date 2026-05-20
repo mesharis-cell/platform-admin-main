@@ -505,9 +505,16 @@ export default function AdminOrdersPage() {
                                                                         <p className="text-sm font-medium text-slate-900">
                                                                             {order.venue_name}
                                                                         </p>
+                                                                        {/* venue_country isn't on the response — country lives in venue_location.country */}
                                                                         <p className="text-xs text-slate-500">
-                                                                            {order.venue_city},{" "}
-                                                                            {order.venue_country}
+                                                                            {[
+                                                                                order.venue_city,
+                                                                                (order as any)
+                                                                                    .venue_location
+                                                                                    ?.country,
+                                                                            ]
+                                                                                .filter(Boolean)
+                                                                                .join(", ")}
                                                                         </p>
                                                                     </div>
                                                                 </div>
