@@ -4,6 +4,7 @@ import { apiClient } from "@/lib/api/api-client";
 import { throwApiError } from "@/lib/utils/throw-api-error";
 import type {
     ApplyServiceRequestConcessionPayload,
+    ApplyServiceRequestFulfillmentOverridePayload,
     CancelServiceRequestPayload,
     CreateServiceRequestPayload,
     ListServiceRequestsParams,
@@ -31,6 +32,7 @@ function buildQueryString(params: ListServiceRequestsParams) {
     if (params.request_status) queryParams.append("request_status", params.request_status);
     if (params.request_type) queryParams.append("request_type", params.request_type);
     if (params.billing_mode) queryParams.append("billing_mode", params.billing_mode);
+    if (params.repair_before_event) queryParams.append("repair_before_event", "true");
     return queryParams.toString();
 }
 
@@ -223,6 +225,35 @@ export function useApplyServiceRequestConcession() {
         onSuccess: (_, variables) => {
             queryClient.invalidateQueries({ queryKey: serviceRequestKeys.detail(variables.id) });
             queryClient.invalidateQueries({ queryKey: serviceRequestKeys.lists() });
+        },
+    });
+}
+
+export function useApplyServiceRequestFulfillmentOverride() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({
+            id,
+            payload,
+        }: {
+            id: string;
+            payload: ApplyServiceRequestFulfillmentOverridePayload;
+        }) => {
+            try {
+                const response = await apiClient.post(
+                    `/operations/v1/service-request/${id}/fulfillment-override`,
+                    payload
+                );
+                return response.data;
+            } catch (error) {
+                throwApiError(error);
+            }
+        },
+        onSuccess: (_, variables) => {
+            queryClient.invalidateQueries({ queryKey: serviceRequestKeys.detail(variables.id) });
+            queryClient.invalidateQueries({ queryKey: serviceRequestKeys.lists() });
+            queryClient.invalidateQueries({ queryKey: ["orders"] });
         },
     });
 }

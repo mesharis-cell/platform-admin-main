@@ -537,6 +537,44 @@ export function useAdminApproveQuote() {
     });
 }
 
+export function useResolveMaintenanceDecisionChangeRequest() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({
+            orderId,
+            requestId,
+            action,
+            rejectionReason,
+        }: {
+            orderId: string;
+            requestId: string;
+            action: "APPROVE" | "REJECT";
+            rejectionReason?: string;
+        }) => {
+            try {
+                const response = await apiClient.patch(
+                    `/client/v1/order/${orderId}/maintenance-decision-change-requests/${requestId}/resolve`,
+                    {
+                        action,
+                        rejection_reason: rejectionReason,
+                    }
+                );
+                return response.data;
+            } catch (error) {
+                throwApiError(error);
+            }
+        },
+        onSuccess: (_data, variables) => {
+            queryClient.invalidateQueries({
+                queryKey: ["orders", "admin-detail", variables.orderId],
+            });
+            queryClient.invalidateQueries({ queryKey: ["orders", "admin-list"] });
+            queryClient.invalidateQueries({ queryKey: ["service-requests"] });
+        },
+    });
+}
+
 /**
  * Admin returns order to Logistics for revisions
  */

@@ -13,6 +13,8 @@ interface OrderItemCardProps {
         service_request_id: string;
         request_status: string;
         blocks_fulfillment: boolean;
+        is_repair_before_event?: boolean;
+        fulfillment_override_applied_at?: string | null;
     } | null;
     item: {
         id: string;
@@ -34,6 +36,9 @@ interface OrderItemCardProps {
             total_weight: number;
             handling_tags?: string[];
             maintenance_decision?: string | null;
+            maintenance_decision_label?: string | null;
+            accepted_current_condition?: boolean;
+            repair_status_label?: string | null;
         };
     };
     orderId: string;
@@ -122,6 +127,33 @@ export function OrderItemCard({
                     WT: {item?.order_item?.total_weight}kg
                 </p>
 
+                {(item.order_item?.maintenance_decision_label ||
+                    item.order_item?.repair_status_label ||
+                    linkedSr?.is_repair_before_event) && (
+                    <div className="flex gap-1 mt-2 flex-wrap">
+                        {item.order_item?.maintenance_decision_label && (
+                            <Badge variant="outline" className="text-[10px] font-mono">
+                                {item.order_item.maintenance_decision_label}
+                            </Badge>
+                        )}
+                        {item.order_item?.repair_status_label && (
+                            <Badge variant="secondary" className="text-[10px] font-mono">
+                                Repair {item.order_item.repair_status_label}
+                            </Badge>
+                        )}
+                        {linkedSr?.is_repair_before_event && (
+                            <Badge className="text-[10px] font-mono bg-orange-500/10 text-orange-700 border-orange-500/20">
+                                Repair Before Event
+                            </Badge>
+                        )}
+                        {linkedSr?.fulfillment_override_applied_at && (
+                            <Badge className="text-[10px] font-mono bg-blue-500/10 text-blue-700 border-blue-500/20">
+                                Exception Approved
+                            </Badge>
+                        )}
+                    </div>
+                )}
+
                 {item?.order_item?.handling_tags && item.order_item.handling_tags.length > 0 && (
                     <div className="flex gap-1 mt-2 flex-wrap">
                         {item.order_item.handling_tags.map((tag: string) => (
@@ -159,7 +191,7 @@ export function OrderItemCard({
                     </div>
                 )}
 
-                {linkedSr && showWarning && (
+                {linkedSr && (showWarning || linkedSr.is_repair_before_event) && (
                     <div className="flex items-center gap-2 mt-2 pt-2 border-t border-border/50 flex-wrap">
                         <Link
                             href={`/service-requests/${linkedSr.id}`}
@@ -171,6 +203,7 @@ export function OrderItemCard({
                             {linkedSr.request_status.replace(/_/g, " ")}
                         </Badge>
                         {linkedSr.blocks_fulfillment &&
+                            !linkedSr.fulfillment_override_applied_at &&
                             !["COMPLETED", "CANCELLED"].includes(linkedSr.request_status) && (
                                 <Badge variant="destructive" className="font-mono text-[10px]">
                                     Blocking

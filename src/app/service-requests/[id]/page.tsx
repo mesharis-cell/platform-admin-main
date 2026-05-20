@@ -99,6 +99,17 @@ export default function ServiceRequestDetailsPage() {
 
     const handleStatusUpdate = async () => {
         if (!request) return;
+        if (request.is_repair_before_event && statusValue === "COMPLETED") {
+            const photos = Array.isArray((request as any).photos) ? (request as any).photos : [];
+            if (!completionNotes.trim()) {
+                toast.error("Completion notes are required for Repair Before Event tasks");
+                return;
+            }
+            if (photos.length === 0) {
+                toast.error("At least one work photo is required before completion");
+                return;
+            }
+        }
 
         try {
             await updateStatus.mutateAsync({
@@ -207,6 +218,11 @@ export default function ServiceRequestDetailsPage() {
         request.billing_mode === "INTERNAL_ONLY"
             ? INTERNAL_ONLY_COMMERCIAL_STATUS_OPTIONS
             : COMMERCIAL_STATUS_OPTIONS;
+    const isRepairBeforeEvent = request.is_repair_before_event === true;
+    const hasFulfillmentException = !!request.fulfillment_override_applied_at;
+    const workPhotoCount = Array.isArray((request as any).photos)
+        ? (request as any).photos.length
+        : 0;
 
     return (
         <div className="min-h-screen bg-background">
@@ -231,6 +247,16 @@ export default function ServiceRequestDetailsPage() {
                             </div>
                         </div>
                         <div className="flex gap-2">
+                            {isRepairBeforeEvent && (
+                                <Badge className="bg-orange-500/10 text-orange-700 border-orange-500/20">
+                                    Repair Before Event
+                                </Badge>
+                            )}
+                            {hasFulfillmentException && (
+                                <Badge className="bg-blue-500/10 text-blue-700 border-blue-500/20">
+                                    Exception Approved
+                                </Badge>
+                            )}
                             <Badge variant="secondary">
                                 {request.request_status.replace(/_/g, " ")}
                             </Badge>
@@ -245,6 +271,40 @@ export default function ServiceRequestDetailsPage() {
             <div className="container mx-auto px-6 py-8">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <div className="lg:col-span-2 space-y-6">
+                        {isRepairBeforeEvent && (
+                            <Card className="border-orange-500/30 bg-orange-500/5">
+                                <CardHeader>
+                                    <CardTitle className="font-mono text-sm uppercase tracking-wide text-orange-700">
+                                        Repair Before Event
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-2 text-sm">
+                                    <p className="text-muted-foreground">
+                                        This is an internal repair task linked to an order item. It
+                                        blocks fulfillment until completed or exception-approved
+                                        from the order blocker panel.
+                                    </p>
+                                    <p>
+                                        Due:{" "}
+                                        {request.requested_due_at
+                                            ? new Date(request.requested_due_at).toLocaleString()
+                                            : "Delivery not scheduled"}
+                                    </p>
+                                    <p>Work photos: {workPhotoCount}</p>
+                                    {hasFulfillmentException && (
+                                        <div className="rounded border border-blue-500/20 bg-blue-500/5 p-3">
+                                            <p className="font-medium text-blue-700">
+                                                Exception approved
+                                            </p>
+                                            <p className="mt-1 text-muted-foreground">
+                                                {request.fulfillment_override_reason}
+                                            </p>
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
+                        )}
+
                         <Card>
                             <CardHeader>
                                 <CardTitle className="font-mono text-sm uppercase tracking-wide">
@@ -420,25 +480,31 @@ export default function ServiceRequestDetailsPage() {
                                         : "Update Operational Status"}
                                 </Button>
 
-                                <Separator />
+                                {!isRepairBeforeEvent && (
+                                    <>
+                                        <Separator />
 
-                                <div className="space-y-2">
-                                    <Label>Cancel Request</Label>
-                                    <Textarea
-                                        value={cancellationReason}
-                                        onChange={(e) => setCancellationReason(e.target.value)}
-                                        placeholder="Cancellation reason (minimum 10 characters)"
-                                    />
-                                    <Button
-                                        variant="destructive"
-                                        onClick={handleCancel}
-                                        disabled={cancelRequest.isPending}
-                                    >
-                                        {cancelRequest.isPending
-                                            ? "Cancelling..."
-                                            : "Cancel Request"}
-                                    </Button>
-                                </div>
+                                        <div className="space-y-2">
+                                            <Label>Cancel Request</Label>
+                                            <Textarea
+                                                value={cancellationReason}
+                                                onChange={(e) =>
+                                                    setCancellationReason(e.target.value)
+                                                }
+                                                placeholder="Cancellation reason (minimum 10 characters)"
+                                            />
+                                            <Button
+                                                variant="destructive"
+                                                onClick={handleCancel}
+                                                disabled={cancelRequest.isPending}
+                                            >
+                                                {cancelRequest.isPending
+                                                    ? "Cancelling..."
+                                                    : "Cancel Request"}
+                                            </Button>
+                                        </div>
+                                    </>
+                                )}
                             </CardContent>
                         </Card>
 

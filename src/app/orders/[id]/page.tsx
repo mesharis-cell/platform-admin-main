@@ -18,8 +18,10 @@ import {
     useAdminOrderDetails,
     useAdminOrderStatusHistory,
     useDownloadGoodsForm,
+    useResolveMaintenanceDecisionChangeRequest,
     useUpdateJobNumber,
 } from "@/hooks/use-orders";
+import { useApplyServiceRequestFulfillmentOverride } from "@/hooks/use-service-requests";
 import { useUploadImage } from "@/hooks/use-assets";
 import { useUploadTruckPhotos } from "@/hooks/use-scanning";
 import { ScanActivityTimeline } from "@/components/scanning/scan-activity-timeline";
@@ -227,6 +229,8 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
     const downloadGoodsForm = useDownloadGoodsForm();
     const uploadImage = useUploadImage();
     const uploadTruckPhotos = useUploadTruckPhotos();
+    const applyFulfillmentOverride = useApplyServiceRequestFulfillmentOverride();
+    const resolveDecisionChangeRequest = useResolveMaintenanceDecisionChangeRequest();
 
     const [isEditingJobNumber, setIsEditingJobNumber] = useState(false);
     const [jobNumber, setJobNumber] = useState("");
@@ -237,6 +241,10 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
     const [deliveryPhotoPreviews, setDeliveryPhotoPreviews] = useState<string[]>([]);
     const [timeWindowsOpen, setTimeWindowsOpen] = useState(false);
     const [updateTimeWindowsLoading, setUpdateTimeWindowsLoading] = useState(false);
+    const [overrideServiceRequest, setOverrideServiceRequest] = useState<any | null>(null);
+    const [overrideReason, setOverrideReason] = useState("");
+    const [rejectingDecisionRequest, setRejectingDecisionRequest] = useState<any | null>(null);
+    const [rejectionReason, setRejectionReason] = useState("");
 
     const [timeWindows, setTimeWindows] = useState<{
         deliveryWindowStart: Date | undefined;
@@ -428,6 +436,61 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
         }
     };
 
+    const handleApplyFulfillmentOverride = async () => {
+        if (!overrideServiceRequest || !overrideReason.trim()) {
+            toast.error("Exception reason is required");
+            return;
+        }
+
+        try {
+            await applyFulfillmentOverride.mutateAsync({
+                id: overrideServiceRequest.id,
+                payload: { reason: overrideReason.trim() },
+            });
+            toast.success("Fulfillment exception approved");
+            setOverrideServiceRequest(null);
+            setOverrideReason("");
+            refetch();
+        } catch (error: any) {
+            toast.error(error.message || "Failed to approve exception");
+        }
+    };
+
+    const handleApproveDecisionChange = async (request: any) => {
+        if (!order?.data) return;
+
+        try {
+            await resolveDecisionChangeRequest.mutateAsync({
+                orderId: order.data.id,
+                requestId: request.id,
+                action: "APPROVE",
+            });
+            toast.success("Decision change approved");
+            refetch();
+        } catch (error: any) {
+            toast.error(error.message || "Failed to approve decision change");
+        }
+    };
+
+    const handleRejectDecisionChange = async () => {
+        if (!order?.data || !rejectingDecisionRequest) return;
+
+        try {
+            await resolveDecisionChangeRequest.mutateAsync({
+                orderId: order.data.id,
+                requestId: rejectingDecisionRequest.id,
+                action: "REJECT",
+                rejectionReason: rejectionReason.trim() || undefined,
+            });
+            toast.success("Decision change rejected");
+            setRejectingDecisionRequest(null);
+            setRejectionReason("");
+            refetch();
+        } catch (error: any) {
+            toast.error(error.message || "Failed to reject decision change");
+        }
+    };
+
     if (isLoading) {
         return (
             <div className="p-8">
@@ -453,6 +516,19 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
     const { total } = getOrderPrice(order?.data?.pricing);
     const currentStatusConfig = STATUS_CONFIG[order.data.order_status] || STATUS_CONFIG.DRAFT;
     const allowedNextStates = currentStatusConfig.nextStates || [];
+    const linkedServiceRequests = order?.data?.linked_service_requests ?? [];
+    const repairBeforeEventRequests = linkedServiceRequests.filter(
+        (sr: any) => sr.is_repair_before_event
+    );
+    const blockingRepairBeforeEventRequests = repairBeforeEventRequests.filter(
+        (sr: any) =>
+            sr.blocks_fulfillment &&
+            !sr.fulfillment_override_applied_at &&
+            !["COMPLETED", "CANCELLED"].includes(sr.request_status)
+    );
+    const pendingDecisionChangeRequests = (
+        order?.data?.maintenance_decision_change_requests ?? []
+    ).filter((request: any) => request.status === "PENDING");
 
     const eventStartDate = order?.data?.event_start_date
         ? new Date(order.data.event_start_date)
@@ -700,6 +776,167 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     {/* Main Content */}
                     <div className="lg:col-span-2 space-y-6">
+                        {pendingDecisionChangeRequests.length > 0 && (
+                            <Card className="border-amber-500/30 bg-amber-500/5">
+                                <CardHeader>
+                                    <CardTitle className="font-mono text-sm flex items-center gap-2 text-amber-700">
+                                        <AlertCircle className="h-4 w-4" />
+                                        MAINTENANCE DECISION REQUESTS
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-3">
+                                    <p className="text-xs text-muted-foreground">
+                                        Pending client decision changes block quote sending until an
+                                        admin approves or rejects them.
+                                    </p>
+                                    {pendingDecisionChangeRequests.map((request: any) => {
+                                        const requestedItem = order.data.items?.find(
+                                            (item: any) =>
+                                                item?.order_item?.id === request.order_item_id
+                                        );
+                                        return (
+                                            <div
+                                                key={request.id}
+                                                className="rounded border border-amber-500/20 bg-background/70 p-3"
+                                            >
+                                                <div className="flex items-start justify-between gap-3">
+                                                    <div>
+                                                        <p className="font-mono text-sm font-semibold">
+                                                            {requestedItem?.order_item
+                                                                ?.asset_name ||
+                                                                requestedItem?.asset?.name ||
+                                                                "Order item"}
+                                                        </p>
+                                                        <p className="mt-1 text-xs text-muted-foreground">
+                                                            Requested:{" "}
+                                                            <span className="font-medium text-foreground">
+                                                                {request.requested_decision_label ||
+                                                                    request.requested_decision?.replace(
+                                                                        /_/g,
+                                                                        " "
+                                                                    )}
+                                                            </span>
+                                                            {request.current_decision_label && (
+                                                                <>
+                                                                    {" "}
+                                                                    from{" "}
+                                                                    <span className="font-medium text-foreground">
+                                                                        {
+                                                                            request.current_decision_label
+                                                                        }
+                                                                    </span>
+                                                                </>
+                                                            )}
+                                                        </p>
+                                                        {request.created_at && (
+                                                            <p className="mt-1 text-[11px] text-muted-foreground">
+                                                                Submitted{" "}
+                                                                {new Date(
+                                                                    request.created_at
+                                                                ).toLocaleString()}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex shrink-0 gap-2">
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline"
+                                                            disabled={
+                                                                resolveDecisionChangeRequest.isPending
+                                                            }
+                                                            onClick={() =>
+                                                                setRejectingDecisionRequest(request)
+                                                            }
+                                                        >
+                                                            Reject
+                                                        </Button>
+                                                        <Button
+                                                            size="sm"
+                                                            disabled={
+                                                                resolveDecisionChangeRequest.isPending
+                                                            }
+                                                            onClick={() =>
+                                                                handleApproveDecisionChange(request)
+                                                            }
+                                                        >
+                                                            Approve
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </CardContent>
+                            </Card>
+                        )}
+
+                        {blockingRepairBeforeEventRequests.length > 0 && (
+                            <Card className="border-red-500/30 bg-red-500/5">
+                                <CardHeader>
+                                    <CardTitle className="font-mono text-sm flex items-center gap-2 text-red-700">
+                                        <Wrench className="h-4 w-4" />
+                                        REPAIR BEFORE EVENT BLOCKERS
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-3">
+                                    <p className="text-xs text-muted-foreground">
+                                        Fulfillment stays blocked until each repair is completed or
+                                        an admin approves an internal exception.
+                                    </p>
+                                    {blockingRepairBeforeEventRequests.map((sr: any) => (
+                                        <div
+                                            key={sr.id}
+                                            className="rounded border border-red-500/20 bg-background/70 p-3"
+                                        >
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div>
+                                                    <div className="flex flex-wrap items-center gap-2">
+                                                        <Link
+                                                            href={`/service-requests/${sr.id}`}
+                                                            className="font-mono text-sm font-semibold text-primary hover:underline"
+                                                        >
+                                                            {sr.service_request_id}
+                                                        </Link>
+                                                        <Badge
+                                                            variant="destructive"
+                                                            className="font-mono text-[10px]"
+                                                        >
+                                                            Blocking
+                                                        </Badge>
+                                                        <Badge
+                                                            variant="outline"
+                                                            className="font-mono text-[10px]"
+                                                        >
+                                                            {sr.request_status?.replace(/_/g, " ")}
+                                                        </Badge>
+                                                    </div>
+                                                    <p className="mt-1 text-xs text-muted-foreground">
+                                                        {sr.title || "Repair before event"}
+                                                    </p>
+                                                    <p className="mt-1 text-[11px] text-muted-foreground">
+                                                        Due:{" "}
+                                                        {sr.requested_due_at
+                                                            ? new Date(
+                                                                  sr.requested_due_at
+                                                              ).toLocaleString()
+                                                            : "Delivery not scheduled"}
+                                                    </p>
+                                                </div>
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    className="shrink-0"
+                                                    onClick={() => setOverrideServiceRequest(sr)}
+                                                >
+                                                    Approve Exception
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </CardContent>
+                            </Card>
+                        )}
+
                         {order?.data?.order_status === "CONFIRMED" &&
                             !order?.data?.delivery_window?.start && (
                                 <Card className="p-4 bg-orange-500/5 border-orange-500/30">
@@ -1490,51 +1727,59 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                         />
 
                         {/* Linked Service Requests */}
-                        {Array.isArray(order?.data?.linked_service_requests) &&
-                            order.data.linked_service_requests.length > 0 && (
-                                <Card>
-                                    <CardHeader>
-                                        <CardTitle className="font-mono text-sm flex items-center gap-2">
-                                            <Wrench className="h-4 w-4 text-primary" />
-                                            LINKED SERVICE REQUESTS (
-                                            {order.data.linked_service_requests.length})
-                                        </CardTitle>
-                                    </CardHeader>
-                                    <CardContent className="space-y-2">
-                                        {order.data.linked_service_requests.map((sr: any) => (
-                                            <div
-                                                key={sr.id}
-                                                className="border rounded p-3 bg-muted/20 space-y-2"
-                                            >
-                                                <div className="flex items-center justify-between gap-3">
-                                                    <Link
-                                                        href={`/service-requests/${sr.id}`}
-                                                        className="font-mono text-xs text-primary hover:underline"
-                                                    >
-                                                        {sr.service_request_id}
-                                                    </Link>
-                                                    <div className="flex items-center gap-2">
-                                                        <Badge className="font-mono text-[10px] border">
-                                                            {sr.request_status}
+                        {linkedServiceRequests.length > 0 && (
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="font-mono text-sm flex items-center gap-2">
+                                        <Wrench className="h-4 w-4 text-primary" />
+                                        LINKED SERVICE REQUESTS ({linkedServiceRequests.length})
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-2">
+                                    {linkedServiceRequests.map((sr: any) => (
+                                        <div
+                                            key={sr.id}
+                                            className="border rounded p-3 bg-muted/20 space-y-2"
+                                        >
+                                            <div className="flex items-center justify-between gap-3">
+                                                <Link
+                                                    href={`/service-requests/${sr.id}`}
+                                                    className="font-mono text-xs text-primary hover:underline"
+                                                >
+                                                    {sr.service_request_id}
+                                                </Link>
+                                                <div className="flex items-center gap-2">
+                                                    {sr.is_repair_before_event && (
+                                                        <Badge className="font-mono text-[10px] border bg-orange-500/10 text-orange-700">
+                                                            Repair Before Event
                                                         </Badge>
-                                                        <Badge className="font-mono text-[10px] border">
-                                                            {sr.commercial_status}
+                                                    )}
+                                                    {sr.fulfillment_override_applied_at && (
+                                                        <Badge className="font-mono text-[10px] border bg-blue-500/10 text-blue-700">
+                                                            Exception Approved
                                                         </Badge>
-                                                    </div>
-                                                </div>
-                                                <div className="flex items-center justify-between font-mono text-xs text-muted-foreground">
-                                                    <span>{sr.request_type}</span>
-                                                    <span>
-                                                        {sr.total
-                                                            ? `AED ${Number(sr.total).toFixed(2)}`
-                                                            : "AED —"}
-                                                    </span>
+                                                    )}
+                                                    <Badge className="font-mono text-[10px] border">
+                                                        {sr.request_status}
+                                                    </Badge>
+                                                    <Badge className="font-mono text-[10px] border">
+                                                        {sr.commercial_status}
+                                                    </Badge>
                                                 </div>
                                             </div>
-                                        ))}
-                                    </CardContent>
-                                </Card>
-                            )}
+                                            <div className="flex items-center justify-between font-mono text-xs text-muted-foreground">
+                                                <span>{sr.request_type}</span>
+                                                <span>
+                                                    {sr.total
+                                                        ? `AED ${Number(sr.total).toFixed(2)}`
+                                                        : "AED —"}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </CardContent>
+                            </Card>
+                        )}
 
                         {/* Order Items */}
                         <Card>
@@ -1674,6 +1919,101 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                     </div>
                 </div>
             </div>
+            <Dialog
+                open={!!overrideServiceRequest}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setOverrideServiceRequest(null);
+                        setOverrideReason("");
+                    }
+                }}
+            >
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="font-mono">
+                            APPROVE FULFILLMENT EXCEPTION
+                        </DialogTitle>
+                        <DialogDescription>
+                            This is final for the repair-before-event blocker. The service request
+                            remains open, but fulfillment can proceed.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-2">
+                        <Label className="font-mono text-xs">REASON</Label>
+                        <Textarea
+                            value={overrideReason}
+                            onChange={(event) => setOverrideReason(event.target.value)}
+                            placeholder="Explain why fulfillment can proceed before this repair is completed."
+                            rows={4}
+                        />
+                    </div>
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                setOverrideServiceRequest(null);
+                                setOverrideReason("");
+                            }}
+                            disabled={applyFulfillmentOverride.isPending}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={handleApplyFulfillmentOverride}
+                            disabled={applyFulfillmentOverride.isPending || !overrideReason.trim()}
+                        >
+                            {applyFulfillmentOverride.isPending ? "Approving..." : "Approve"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+            <Dialog
+                open={!!rejectingDecisionRequest}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setRejectingDecisionRequest(null);
+                        setRejectionReason("");
+                    }
+                }}
+            >
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="font-mono">REJECT DECISION REQUEST</DialogTitle>
+                        <DialogDescription>
+                            Rejection reason is optional and will be visible to the client on the
+                            affected item.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-2">
+                        <Label className="font-mono text-xs">REJECTION REASON</Label>
+                        <Textarea
+                            value={rejectionReason}
+                            onChange={(event) => setRejectionReason(event.target.value)}
+                            placeholder="Optional note for the client."
+                            rows={3}
+                        />
+                    </div>
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                setRejectingDecisionRequest(null);
+                                setRejectionReason("");
+                            }}
+                            disabled={resolveDecisionChangeRequest.isPending}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            onClick={handleRejectDecisionChange}
+                            disabled={resolveDecisionChangeRequest.isPending}
+                        >
+                            {resolveDecisionChangeRequest.isPending ? "Rejecting..." : "Reject"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

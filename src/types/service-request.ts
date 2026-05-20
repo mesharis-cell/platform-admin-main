@@ -70,8 +70,12 @@ export interface ServiceRequest {
     concession_reason: string | null;
     concession_approved_by: string | null;
     concession_applied_at: string | null;
+    fulfillment_override_reason: string | null;
+    fulfillment_override_approved_by: string | null;
+    fulfillment_override_applied_at: string | null;
     requested_start_at: string | null;
     requested_due_at: string | null;
+    is_repair_before_event?: boolean;
     created_by: string;
     completed_at: string | null;
     completed_by: string | null;
@@ -110,6 +114,7 @@ export interface ListServiceRequestsParams {
     request_status?: ServiceRequestStatus;
     request_type?: ServiceRequestType;
     billing_mode?: ServiceRequestBillingMode;
+    repair_before_event?: boolean;
 }
 
 export interface ServiceRequestItemInput {
@@ -168,6 +173,10 @@ export interface RespondServiceRequestQuotePayload {
 
 export interface ApplyServiceRequestConcessionPayload {
     concession_reason: string;
+}
+
+export interface ApplyServiceRequestFulfillmentOverridePayload {
+    reason: string;
 }
 
 export interface CancelServiceRequestPayload {

@@ -59,6 +59,9 @@ export function PendingApprovalSection({
     const canApproveQuote = hasPermission(user, ADMIN_ACTION_PERMISSIONS.ordersPricingAdminApprove);
     const canManageServiceItems = canManageLineItems(order.order_status) && canManagePricing;
     const pricing = order?.order_pricing;
+    const pendingDecisionRequests = (order?.maintenance_decision_change_requests || []).filter(
+        (request: any) => request.status === "PENDING"
+    );
     // API now ships the three role projections nested under `projections`
     // for ADMIN responses (see PricingService.projectAllRolesForAdmin).
     // Fall back to the flat admin-shaped pricing for older payloads.
@@ -70,6 +73,10 @@ export function PendingApprovalSection({
 
     const handleApprove = async () => {
         if (!canApproveQuote) return;
+        if (pendingDecisionRequests.length > 0) {
+            toast.error("Resolve pending maintenance decision requests before sending quote");
+            return;
+        }
         if (marginOverride && Math.abs(Number(marginPercent) - currentMarginPercent) < 0.0001) {
             toast.error("Margin is same as company margin");
             return;
@@ -147,6 +154,13 @@ export function PendingApprovalSection({
                         <CardTitle>Approve Quote</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
+                        {pendingDecisionRequests.length > 0 && (
+                            <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-800">
+                                Resolve {pendingDecisionRequests.length} maintenance decision{" "}
+                                {pendingDecisionRequests.length === 1 ? "request" : "requests"}{" "}
+                                before sending this quote.
+                            </div>
+                        )}
                         <div className="space-y-3">
                             <div className="flex items-center space-x-2">
                                 <Checkbox
@@ -192,7 +206,10 @@ export function PendingApprovalSection({
                         <div className="flex gap-3 pt-2">
                             <Button
                                 onClick={handleApprove}
-                                disabled={adminApproveQuote.isPending}
+                                disabled={
+                                    adminApproveQuote.isPending ||
+                                    pendingDecisionRequests.length > 0
+                                }
                                 className="flex-1"
                             >
                                 {adminApproveQuote.isPending

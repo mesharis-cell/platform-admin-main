@@ -118,6 +118,7 @@ export default function ServiceRequestsPage() {
     const [typeFilter, setTypeFilter] = useState("");
     const [billingFilter, setBillingFilter] = useState("");
     const [companyFilter, setCompanyFilter] = useState("");
+    const [repairBeforeEventOnly, setRepairBeforeEventOnly] = useState(false);
     const [sortBy, setSortBy] = useState("created_at");
     const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
@@ -145,10 +146,20 @@ export default function ServiceRequestsPage() {
             request_type: (typeFilter || undefined) as ServiceRequestType | undefined,
             billing_mode: (billingFilter || undefined) as ServiceRequestBillingMode | undefined,
             company_id: companyFilter || undefined,
+            repair_before_event: repairBeforeEventOnly || undefined,
             page,
             limit,
         }),
-        [searchTerm, statusFilter, typeFilter, billingFilter, companyFilter, page, limit]
+        [
+            searchTerm,
+            statusFilter,
+            typeFilter,
+            billingFilter,
+            companyFilter,
+            repairBeforeEventOnly,
+            page,
+            limit,
+        ]
     );
 
     const { data, isLoading, error } = useListServiceRequests(filters);
@@ -201,7 +212,8 @@ export default function ServiceRequestsPage() {
         (statusFilter ? 1 : 0) +
         (typeFilter ? 1 : 0) +
         (billingFilter ? 1 : 0) +
-        (companyFilter ? 1 : 0);
+        (companyFilter ? 1 : 0) +
+        (repairBeforeEventOnly ? 1 : 0);
 
     const clearFilters = () => {
         setSearchTerm("");
@@ -210,6 +222,7 @@ export default function ServiceRequestsPage() {
         setTypeFilter("");
         setBillingFilter("");
         setCompanyFilter("");
+        setRepairBeforeEventOnly(false);
         setPage(1);
     };
 
@@ -740,6 +753,22 @@ export default function ServiceRequestsPage() {
                                     </SelectContent>
                                 </Select>
                             </div>
+                            <div className="space-y-2">
+                                <label className="text-xs font-medium text-foreground uppercase tracking-wide">
+                                    Repair Tasks
+                                </label>
+                                <Button
+                                    type="button"
+                                    variant={repairBeforeEventOnly ? "default" : "outline"}
+                                    className="w-full justify-start font-mono text-xs"
+                                    onClick={() => {
+                                        setRepairBeforeEventOnly((value) => !value);
+                                        setPage(1);
+                                    }}
+                                >
+                                    Repair Before Event
+                                </Button>
+                            </div>
                             <div className="space-y-2 pt-4 border-t border-slate-100">
                                 <label className="text-xs font-medium text-foreground uppercase tracking-wide">
                                     Sort By
@@ -892,6 +921,21 @@ export default function ServiceRequestsPage() {
                                                                 <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
                                                                     {request.title}
                                                                 </p>
+                                                                {(request.is_repair_before_event ||
+                                                                    request.fulfillment_override_applied_at) && (
+                                                                    <div className="mt-1 flex flex-wrap gap-1">
+                                                                        {request.is_repair_before_event && (
+                                                                            <Badge className="text-[10px] bg-orange-500/10 text-orange-700 border-orange-500/20">
+                                                                                Repair Before Event
+                                                                            </Badge>
+                                                                        )}
+                                                                        {request.fulfillment_override_applied_at && (
+                                                                            <Badge className="text-[10px] bg-blue-500/10 text-blue-700 border-blue-500/20">
+                                                                                Exception Approved
+                                                                            </Badge>
+                                                                        )}
+                                                                    </div>
+                                                                )}
                                                             </TableCell>
                                                             <TableCell>
                                                                 <Badge
