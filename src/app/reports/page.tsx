@@ -6,14 +6,25 @@ import { AdminHeader } from "@/components/admin-header";
 import { toast } from "sonner";
 import { useCompanies } from "@/hooks/use-companies";
 import { useAssetCategories } from "@/hooks/use-asset-categories";
-import { useReports, type ReportCardMeta, type ReportFilterMeta, type ReportSection } from "@/hooks/use-reports";
+import {
+    useReports,
+    type ReportCardMeta,
+    type ReportFilterMeta,
+    type ReportSection,
+} from "@/hooks/use-reports";
 import { apiClient } from "@/lib/api/api-client";
 import { throwApiError } from "@/lib/utils/throw-api-error";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 
 const SECTION_ORDER: ReportSection[] = ["INVENTORY", "OPERATIONS", "FINANCIAL"];
 const SECTION_LABEL: Record<ReportSection, string> = {
@@ -80,7 +91,9 @@ export default function ReportsPage() {
             const response = await apiClient.get(url, { responseType: "blob" });
             const contentType = String(response.headers?.["content-type"] ?? "");
             const blob =
-                response.data instanceof Blob ? response.data : new Blob([response.data], { type: contentType });
+                response.data instanceof Blob
+                    ? response.data
+                    : new Blob([response.data], { type: contentType });
             const downloadUrl = URL.createObjectURL(blob);
             if (typeof window === "undefined") {
                 URL.revokeObjectURL(downloadUrl);
@@ -164,7 +177,10 @@ export default function ReportsPage() {
             );
         }
         if (flt.type === "category-include-exclude") {
-            const cat = (value as { mode?: string; values?: string[] }) ?? { mode: "include", values: [] };
+            const cat = (value as { mode?: string; values?: string[] }) ?? {
+                mode: "include",
+                values: [],
+            };
             const selected = new Set(cat.values ?? []);
             const toggle = (name: string) => {
                 const next = new Set(selected);
@@ -260,7 +276,9 @@ export default function ReportsPage() {
                                 {sectionCards.map((card) => (
                                     <Card key={card.key} className="border-border/60">
                                         <CardHeader className="space-y-1">
-                                            <CardTitle className="text-base">{card.label}</CardTitle>
+                                            <CardTitle className="text-base">
+                                                {card.label}
+                                            </CardTitle>
                                             <CardDescription>{card.description}</CardDescription>
                                         </CardHeader>
                                         <CardContent className="space-y-4">
@@ -271,7 +289,9 @@ export default function ReportsPage() {
                                                 disabled={downloading === card.key}
                                             >
                                                 <Download className="h-4 w-4" />
-                                                {downloading === card.key ? "Exporting…" : "Download XLSX"}
+                                                {downloading === card.key
+                                                    ? "Exporting…"
+                                                    : "Download XLSX"}
                                             </Button>
                                         </CardContent>
                                     </Card>
