@@ -15,9 +15,10 @@
  * that message inline + as a toast.
  */
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useOrderEditDetails, type OrderEditDetailsPayload } from "@/hooks/use-orders";
 import { useCities } from "@/hooks/use-cities";
+import { useSearchAssets } from "@/hooks/use-assets";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,6 +34,15 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import {
+    Command,
+    CommandEmpty,
+    CommandGroup,
+    CommandInput,
+    CommandItem,
+    CommandList,
+} from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
     Pencil,
     Save,
     X,
@@ -42,6 +52,10 @@ import {
     Minus,
     Plus,
     Package,
+    Trash2,
+    RotateCcw,
+    PlusCircle,
+    ChevronsUpDown,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -55,12 +69,26 @@ type PermitOwner = "CLIENT" | "PLATFORM" | "UNKNOWN";
 // One editable row per existing order item. `order_item_id` is the
 // `order_item.id` the server reconciles bookings against (NOT the line `item.id`
 // or the asset id). `quantity` is the editable value; `original_quantity` lets
-// us diff without re-deriving from the order on every keystroke.
+// us diff without re-deriving from the order on every keystroke. `pending_remove`
+// marks the row for a REMOVE op — a removed row never also emits a quantity UPDATE.
 interface ItemQuantityRow {
     order_item_id: string;
     asset_name: string;
     quantity: number;
     original_quantity: number;
+    pending_remove: boolean;
+}
+
+// One staged ADD — a brand-new asset to attach to the order. `asset_id` is the
+// catalog asset id; `quantity` the positive integer to add. `asset_name` is kept
+// only for display. Server availability-checks + rejects RED/maintenance assets.
+interface StagedAdd {
+    // Local stable key for React lists (asset_id can collide pre-dedup, and the
+    // user may stage the same asset twice before we merge — server merges anyway).
+    key: string;
+    asset_id: string;
+    asset_name: string;
+    quantity: number;
 }
 
 // Build the editable item-quantity rows from the order detail payload. The
@@ -81,6 +109,7 @@ function buildItemRows(order: any): ItemQuantityRow[] {
                 asset_name: item?.asset?.name || item?.order_item?.asset_name || "Item",
                 quantity,
                 original_quantity: quantity,
+                pending_remove: false,
             };
         })
         .filter((row: ItemQuantityRow | null): row is ItemQuantityRow => row !== null);
@@ -163,6 +192,10 @@ export function EditOrderDetailsCard({ order, canEdit }: EditOrderDetailsCardPro
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [form, setForm] = useState<FormState>(() => buildFormState(order));
     const [itemRows, setItemRows] = useState<ItemQuantityRow[]>(() => buildItemRows(order));
+    const [stagedAdds, setStagedAdds] = useState<StagedAdd[]>([]);
+
+    // Monotonic key generator for staged-add rows (stable React keys).
+    const addKeySeq = useRef(0);
 
     const editDetails = useOrderEditDetails();
     const { data: citiesResponse } = useCities();
@@ -179,6 +212,7 @@ export function EditOrderDetailsCard({ order, canEdit }: EditOrderDetailsCardPro
     const handleEdit = () => {
         setForm(buildFormState(order));
         setItemRows(buildItemRows(order));
+        setStagedAdds([]);
         setErrorMessage(null);
         setIsEditing(true);
     };
@@ -186,6 +220,7 @@ export function EditOrderDetailsCard({ order, canEdit }: EditOrderDetailsCardPro
     const handleCancel = () => {
         setForm(buildFormState(order));
         setItemRows(buildItemRows(order));
+        setStagedAdds([]);
         setErrorMessage(null);
         setIsEditing(false);
     };
@@ -199,6 +234,53 @@ export function EditOrderDetailsCard({ order, canEdit }: EditOrderDetailsCardPro
                 row.order_item_id === orderItemId ? { ...row, quantity: next } : row
             )
         );
+    };
+
+    // Count of existing rows NOT pending removal. Used to keep at least one item
+    // on the order (the server also blocks removing the last item — this is a
+    // friendlier client-side guard). Staged adds count too: removing the last
+    // existing item is fine if the admin staged a replacement add.
+    const remainingItemCount =
+        itemRows.filter((row) => !row.pending_remove).length + stagedAdds.length;
+
+    const toggleItemRemove = (orderItemId: string, remove: boolean) => {
+        setItemRows((prev) =>
+            prev.map((row) =>
+                row.order_item_id === orderItemId ? { ...row, pending_remove: remove } : row
+            )
+        );
+    };
+
+    const addStagedAsset = (asset: { id: string; name: string }) => {
+        // If the same asset is already staged, bump its quantity instead of
+        // adding a duplicate row (server would merge anyway).
+        setStagedAdds((prev) => {
+            const existing = prev.find((s) => s.asset_id === asset.id);
+            if (existing) {
+                return prev.map((s) =>
+                    s.asset_id === asset.id ? { ...s, quantity: s.quantity + 1 } : s
+                );
+            }
+            addKeySeq.current += 1;
+            return [
+                ...prev,
+                {
+                    key: `add-${addKeySeq.current}`,
+                    asset_id: asset.id,
+                    asset_name: asset.name,
+                    quantity: 1,
+                },
+            ];
+        });
+    };
+
+    const setStagedAddQuantity = (key: string, raw: number) => {
+        const next = Number.isFinite(raw) ? Math.max(1, Math.floor(raw)) : 1;
+        setStagedAdds((prev) => prev.map((s) => (s.key === key ? { ...s, quantity: next } : s)));
+    };
+
+    const removeStagedAdd = (key: string) => {
+        setStagedAdds((prev) => prev.filter((s) => s.key !== key));
     };
 
     const buildPayload = (): OrderEditDetailsPayload => {
@@ -272,15 +354,31 @@ export function EditOrderDetailsCard({ order, canEdit }: EditOrderDetailsCardPro
             };
         }
 
-        // Item quantities (Tier C) — only the items whose quantity actually
-        // changed. The server reconciles bookings (availability-checked) and
-        // reprices BASE_OPS; a change on a QUOTED order bounces it to
-        // PRICING_REVIEW. Omit `items` entirely when nothing changed.
-        const changedItems = itemRows
-            .filter((row) => row.quantity !== row.original_quantity)
-            .map((row) => ({ order_item_id: row.order_item_id, quantity: row.quantity }));
-        if (changedItems.length > 0) {
-            payload.items = changedItems;
+        // Item ops (Tier C) — a mix of REMOVE / UPDATE / ADD. The server
+        // reconciles bookings (availability-checked), cancels any bundled
+        // maintenance SR on remove, and reprices BASE_OPS; any op on a QUOTED
+        // order bounces it to PRICING_REVIEW. Omit `items` when there is no op.
+        const itemOps: NonNullable<OrderEditDetailsPayload["items"]> = [];
+
+        for (const row of itemRows) {
+            if (row.pending_remove) {
+                // REMOVE wins — never also emit a quantity UPDATE for a removed row.
+                itemOps.push({ op: "REMOVE", order_item_id: row.order_item_id });
+            } else if (row.quantity !== row.original_quantity) {
+                itemOps.push({
+                    op: "UPDATE",
+                    order_item_id: row.order_item_id,
+                    quantity: row.quantity,
+                });
+            }
+        }
+
+        for (const add of stagedAdds) {
+            itemOps.push({ op: "ADD", asset_id: add.asset_id, quantity: add.quantity });
+        }
+
+        if (itemOps.length > 0) {
+            payload.items = itemOps;
         }
 
         return payload;
@@ -608,18 +706,20 @@ export function EditOrderDetailsCard({ order, canEdit }: EditOrderDetailsCardPro
 
                         <Separator />
 
-                        {/* Item quantities (Tier C — reconciles bookings + reprices) */}
+                        {/* Item ops (Tier C — reconciles bookings + reprices) */}
                         <div className="space-y-3">
                             <Label className="font-mono text-xs font-bold uppercase tracking-wide">
                                 Items
                             </Label>
                             <p className="font-mono text-[10px] text-muted-foreground">
-                                Adjust the quantity of existing items. Changing a quantity
-                                reconciles the asset booking. If inventory isn&apos;t available for
-                                the requested dates and quantities the change is rejected. Editing a
-                                quoted order&apos;s items returns it to pricing review.
+                                Adjust quantities, remove items, or add new assets. Changes
+                                reconcile the asset bookings. If inventory isn&apos;t available for
+                                the requested dates and quantities the change is rejected. Assets
+                                requiring maintenance cannot be added. An order must keep at least
+                                one item. Editing a quoted order&apos;s items returns it to pricing
+                                review.
                             </p>
-                            {itemRows.length === 0 ? (
+                            {itemRows.length === 0 && stagedAdds.length === 0 ? (
                                 <p className="font-mono text-[11px] text-muted-foreground">
                                     No editable items on this order.
                                 </p>
@@ -628,12 +728,135 @@ export function EditOrderDetailsCard({ order, canEdit }: EditOrderDetailsCardPro
                                     {itemRows.map((row) => (
                                         <div
                                             key={row.order_item_id}
-                                            className="flex items-center justify-between gap-3 rounded border border-border bg-muted/30 px-3 py-2"
+                                            className={`flex items-center justify-between gap-3 rounded border px-3 py-2 ${
+                                                row.pending_remove
+                                                    ? "border-red-500/40 bg-red-500/5"
+                                                    : "border-border bg-muted/30"
+                                            }`}
                                         >
                                             <div className="flex items-center gap-2 min-w-0">
                                                 <Package className="h-4 w-4 shrink-0 text-muted-foreground" />
-                                                <span className="font-mono text-sm truncate">
+                                                <span
+                                                    className={`font-mono text-sm truncate ${
+                                                        row.pending_remove
+                                                            ? "line-through text-muted-foreground"
+                                                            : ""
+                                                    }`}
+                                                >
                                                     {row.asset_name}
+                                                </span>
+                                                {row.pending_remove && (
+                                                    <span className="font-mono text-[10px] uppercase tracking-wide text-red-600 shrink-0">
+                                                        Will be removed
+                                                    </span>
+                                                )}
+                                            </div>
+                                            {row.pending_remove ? (
+                                                <div className="flex items-center gap-1 shrink-0">
+                                                    <Button
+                                                        type="button"
+                                                        size="sm"
+                                                        variant="outline"
+                                                        className="h-7 font-mono text-[11px]"
+                                                        onClick={() =>
+                                                            toggleItemRemove(
+                                                                row.order_item_id,
+                                                                false
+                                                            )
+                                                        }
+                                                    >
+                                                        <RotateCcw className="h-3 w-3 mr-1" />
+                                                        UNDO
+                                                    </Button>
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-center gap-1 shrink-0">
+                                                    <Button
+                                                        type="button"
+                                                        size="icon"
+                                                        variant="outline"
+                                                        className="h-7 w-7"
+                                                        disabled={row.quantity <= 1}
+                                                        onClick={() =>
+                                                            setItemQuantity(
+                                                                row.order_item_id,
+                                                                row.quantity - 1
+                                                            )
+                                                        }
+                                                        aria-label="Decrease quantity"
+                                                    >
+                                                        <Minus className="h-3 w-3" />
+                                                    </Button>
+                                                    <Input
+                                                        type="number"
+                                                        min={1}
+                                                        step={1}
+                                                        inputMode="numeric"
+                                                        className="h-7 w-16 text-center font-mono text-sm"
+                                                        value={row.quantity}
+                                                        onChange={(e) =>
+                                                            setItemQuantity(
+                                                                row.order_item_id,
+                                                                parseInt(e.target.value, 10)
+                                                            )
+                                                        }
+                                                    />
+                                                    <Button
+                                                        type="button"
+                                                        size="icon"
+                                                        variant="outline"
+                                                        className="h-7 w-7"
+                                                        onClick={() =>
+                                                            setItemQuantity(
+                                                                row.order_item_id,
+                                                                row.quantity + 1
+                                                            )
+                                                        }
+                                                        aria-label="Increase quantity"
+                                                    >
+                                                        <Plus className="h-3 w-3" />
+                                                    </Button>
+                                                    <Button
+                                                        type="button"
+                                                        size="icon"
+                                                        variant="ghost"
+                                                        className="h-7 w-7 text-muted-foreground hover:text-red-600"
+                                                        // Block removing the only remaining item
+                                                        // (server also enforces this).
+                                                        disabled={remainingItemCount <= 1}
+                                                        onClick={() =>
+                                                            toggleItemRemove(
+                                                                row.order_item_id,
+                                                                true
+                                                            )
+                                                        }
+                                                        aria-label="Remove item"
+                                                        title={
+                                                            remainingItemCount <= 1
+                                                                ? "An order must keep at least one item"
+                                                                : "Remove item"
+                                                        }
+                                                    >
+                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                    </Button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+
+                                    {/* Staged ADDs — new assets not yet on the order */}
+                                    {stagedAdds.map((add) => (
+                                        <div
+                                            key={add.key}
+                                            className="flex items-center justify-between gap-3 rounded border border-emerald-500/40 bg-emerald-500/5 px-3 py-2"
+                                        >
+                                            <div className="flex items-center gap-2 min-w-0">
+                                                <PlusCircle className="h-4 w-4 shrink-0 text-emerald-600" />
+                                                <span className="font-mono text-sm truncate">
+                                                    {add.asset_name}
+                                                </span>
+                                                <span className="font-mono text-[10px] uppercase tracking-wide text-emerald-700 shrink-0">
+                                                    New
                                                 </span>
                                             </div>
                                             <div className="flex items-center gap-1 shrink-0">
@@ -642,11 +865,11 @@ export function EditOrderDetailsCard({ order, canEdit }: EditOrderDetailsCardPro
                                                     size="icon"
                                                     variant="outline"
                                                     className="h-7 w-7"
-                                                    disabled={row.quantity <= 1}
+                                                    disabled={add.quantity <= 1}
                                                     onClick={() =>
-                                                        setItemQuantity(
-                                                            row.order_item_id,
-                                                            row.quantity - 1
+                                                        setStagedAddQuantity(
+                                                            add.key,
+                                                            add.quantity - 1
                                                         )
                                                     }
                                                     aria-label="Decrease quantity"
@@ -659,10 +882,10 @@ export function EditOrderDetailsCard({ order, canEdit }: EditOrderDetailsCardPro
                                                     step={1}
                                                     inputMode="numeric"
                                                     className="h-7 w-16 text-center font-mono text-sm"
-                                                    value={row.quantity}
+                                                    value={add.quantity}
                                                     onChange={(e) =>
-                                                        setItemQuantity(
-                                                            row.order_item_id,
+                                                        setStagedAddQuantity(
+                                                            add.key,
                                                             parseInt(e.target.value, 10)
                                                         )
                                                     }
@@ -673,20 +896,38 @@ export function EditOrderDetailsCard({ order, canEdit }: EditOrderDetailsCardPro
                                                     variant="outline"
                                                     className="h-7 w-7"
                                                     onClick={() =>
-                                                        setItemQuantity(
-                                                            row.order_item_id,
-                                                            row.quantity + 1
+                                                        setStagedAddQuantity(
+                                                            add.key,
+                                                            add.quantity + 1
                                                         )
                                                     }
                                                     aria-label="Increase quantity"
                                                 >
                                                     <Plus className="h-3 w-3" />
                                                 </Button>
+                                                <Button
+                                                    type="button"
+                                                    size="icon"
+                                                    variant="ghost"
+                                                    className="h-7 w-7 text-muted-foreground hover:text-red-600"
+                                                    onClick={() => removeStagedAdd(add.key)}
+                                                    aria-label="Discard staged item"
+                                                    title="Discard staged item"
+                                                >
+                                                    <X className="h-3.5 w-3.5" />
+                                                </Button>
                                             </div>
                                         </div>
                                     ))}
                                 </div>
                             )}
+
+                            {/* Add-item picker — searches assets scoped to the order's company */}
+                            <AddItemPicker
+                                companyId={order?.company?.id}
+                                stagedAssetIds={stagedAdds.map((s) => s.asset_id)}
+                                onAdd={addStagedAsset}
+                            />
                         </div>
 
                         <Separator />
@@ -824,5 +1065,121 @@ export function EditOrderDetailsCard({ order, canEdit }: EditOrderDetailsCardPro
                 )}
             </CardContent>
         </Card>
+    );
+}
+
+// Asset add affordance for the Items section. Reuses the app's `useSearchAssets`
+// hook (server-side debounced search, gated to >=2 chars + a company id, the
+// same hook the inbound-request editor uses) and renders the Popover + Command
+// combobox shape from AssetSearchSelect. Scoped to the order's company so the
+// admin only sees the tenant's catalog. Selecting an asset stages an ADD op in
+// the parent; the server is authoritative on availability + rejects
+// maintenance-requiring (RED) assets, so no maintenance UI lives here.
+interface AddItemPickerProps {
+    companyId?: string;
+    stagedAssetIds: string[];
+    onAdd: (asset: { id: string; name: string }) => void;
+}
+
+function AddItemPicker({ companyId, stagedAssetIds, onAdd }: AddItemPickerProps) {
+    const [open, setOpen] = useState(false);
+    const [searchTerm, setSearchTerm] = useState("");
+    const [debouncedTerm, setDebouncedTerm] = useState("");
+    const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const onSearchChange = (value: string) => {
+        setSearchTerm(value);
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+        debounceRef.current = setTimeout(() => setDebouncedTerm(value), 300);
+    };
+
+    // useSearchAssets only fires for term length >= 2 AND a company id.
+    const { data: searchResponse, isLoading } = useSearchAssets(debouncedTerm, companyId);
+    const assets: any[] = Array.isArray(searchResponse?.data) ? searchResponse.data : [];
+
+    if (!companyId) {
+        return (
+            <p className="font-mono text-[11px] text-muted-foreground">
+                Cannot add items — order has no associated company.
+            </p>
+        );
+    }
+
+    return (
+        <Popover
+            open={open}
+            onOpenChange={(next) => {
+                setOpen(next);
+                if (!next) {
+                    setSearchTerm("");
+                    setDebouncedTerm("");
+                }
+            }}
+        >
+            <PopoverTrigger asChild>
+                <Button
+                    type="button"
+                    variant="outline"
+                    role="combobox"
+                    className="w-full justify-between gap-2 font-mono text-xs"
+                >
+                    <span className="flex items-center gap-2">
+                        <PlusCircle className="h-3.5 w-3.5" />
+                        ADD ITEM
+                    </span>
+                    <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                <Command shouldFilter={false}>
+                    <CommandInput
+                        placeholder="Search assets..."
+                        value={searchTerm}
+                        onValueChange={onSearchChange}
+                    />
+                    <CommandList>
+                        <CommandEmpty>
+                            {searchTerm.trim().length < 2
+                                ? "Type at least 2 characters to search."
+                                : isLoading
+                                  ? "Searching…"
+                                  : "No matching assets."}
+                        </CommandEmpty>
+                        {assets.length > 0 && (
+                            <CommandGroup>
+                                {assets.map((asset) => {
+                                    const alreadyStaged = stagedAssetIds.includes(asset.id);
+                                    return (
+                                        <CommandItem
+                                            key={asset.id}
+                                            value={asset.id}
+                                            onSelect={() => {
+                                                onAdd({ id: asset.id, name: asset.name });
+                                                setOpen(false);
+                                                setSearchTerm("");
+                                                setDebouncedTerm("");
+                                            }}
+                                            className="items-center gap-2"
+                                        >
+                                            <Package className="h-4 w-4 shrink-0 text-muted-foreground" />
+                                            <span className="min-w-0 flex-1">
+                                                <span className="block truncate font-mono text-sm">
+                                                    {asset.name}
+                                                </span>
+                                                <span className="block truncate font-mono text-[10px] text-muted-foreground">
+                                                    {asset.qr_code || "—"} ·{" "}
+                                                    {asset.category || "Uncategorized"}
+                                                    {alreadyStaged ? " · already staged" : ""}
+                                                </span>
+                                            </span>
+                                        </CommandItem>
+                                    );
+                                })}
+                            </CommandGroup>
+                        )}
+                    </CommandList>
+                </Command>
+            </PopoverContent>
+        </Popover>
     );
 }

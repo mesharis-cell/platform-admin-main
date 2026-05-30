@@ -340,13 +340,26 @@ export interface OrderEditDetailsPayload {
     // it back to PRICING_REVIEW + QUOTE_REVISED. Sent as YYYY-MM-DD strings.
     event_start_date?: string;
     event_end_date?: string;
-    // Tier C (inventory) — quantity change of EXISTING order items. Each entry
-    // names an existing order_item (by id) and its new positive-integer quantity.
+    // Tier C (inventory) — line-item operations on EXISTING / NEW order items.
+    // Each entry is one of three ops (back-compat: an entry with no `op` and a
+    // `order_item_id` + `quantity` is treated as UPDATE):
+    //   • UPDATE — { op?: "UPDATE", order_item_id, quantity } — change an existing
+    //     item's positive-integer quantity.
+    //   • ADD    — { op: "ADD", asset_id, quantity } — add a new asset to the order.
+    //     Server rejects RED / maintenance-requiring assets, merges if the asset is
+    //     already on the order, and availability-checks (409 on conflict).
+    //   • REMOVE — { op: "REMOVE", order_item_id } — remove an item. Server cancels
+    //     its bundled maintenance SR and rejects removing the LAST item.
     // Server reconciles asset bookings (availability-checked: 409 with a message
-    // naming the short asset on conflict) and reprices volume-based BASE_OPS. A
-    // quantity change on a QUOTED order bounces it to PRICING_REVIEW +
-    // QUOTE_REVISED. Send only the items whose quantity actually changed.
-    items?: Array<{ order_item_id: string; quantity: number }>;
+    // naming the short asset on conflict) and reprices volume-based BASE_OPS. Any
+    // item op on a QUOTED order bounces it to PRICING_REVIEW + QUOTE_REVISED. Send
+    // only the items that actually changed; omit `items` entirely when none did.
+    items?: Array<{
+        op?: "UPDATE" | "ADD" | "REMOVE";
+        order_item_id?: string;
+        asset_id?: string;
+        quantity?: number;
+    }>;
 }
 
 export function useOrderEditDetails() {
