@@ -28,6 +28,8 @@ import { ScanActivityTimeline } from "@/components/scanning/scan-activity-timeli
 import { PendingApprovalSection, CancelOrderButton } from "./hybrid-sections";
 import { OrderItemCard } from "@/components/orders/OrderItemCard";
 import { StatusHistoryTimeline } from "@/components/orders/StatusHistoryTimeline";
+import { EditOrderDetailsCard } from "@/components/orders/EditOrderDetailsCard";
+import { OrderChangeHistoryCard } from "@/components/orders/OrderChangeHistoryCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -516,6 +518,14 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
     const { total } = getOrderPrice(order?.data?.pricing);
     const currentStatusConfig = STATUS_CONFIG[order.data.order_status] || STATUS_CONFIG.DRAFT;
     const allowedNextStates = currentStatusConfig.nextStates || [];
+
+    // Order Editing (Phase 1) — descriptive fields are editable only in the
+    // pre-confirmation band; CONFIRMED and beyond are locked (no affordance).
+    const isPreConfirmBand = ["SUBMITTED", "PRICING_REVIEW", "PENDING_APPROVAL", "QUOTED"].includes(
+        order.data.order_status
+    );
+    const canEditOrderDetails =
+        isPreConfirmBand && hasPermission(user, ADMIN_ACTION_PERMISSIONS.ordersEditDetails);
     const linkedServiceRequests = order?.data?.linked_service_requests ?? [];
     const repairBeforeEventRequests = linkedServiceRequests.filter(
         (sr: any) => sr.is_repair_before_event
@@ -1380,6 +1390,11 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                             </Card>
                         )}
 
+                        {/* Order Editing (Phase 1) — descriptive field editor.
+                            Self-gates on canEditOrderDetails (renders nothing
+                            when locked or unpermitted). */}
+                        <EditOrderDetailsCard order={order.data} canEdit={canEditOrderDetails} />
+
                         {/* Event & Venue */}
                         <Card>
                             <CardHeader>
@@ -1878,7 +1893,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                     </div>
 
                     {/* Right: Status History Timeline */}
-                    <div className="lg:col-span-1">
+                    <div className="lg:col-span-1 space-y-6">
                         <Card>
                             <CardHeader>
                                 <CardTitle className="font-mono text-sm flex items-center gap-2">
@@ -1937,6 +1952,9 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                 })()}
                             </CardContent>
                         </Card>
+
+                        {/* Order Editing (Phase 1) — descriptive-field edit log. */}
+                        <OrderChangeHistoryCard orderId={order?.data?.id || null} />
                     </div>
                 </div>
             </div>

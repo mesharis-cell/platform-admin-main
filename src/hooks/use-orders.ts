@@ -300,6 +300,95 @@ export function useUpdateJobNumber() {
 }
 
 /**
+ * Order Editing (Phase 1 — descriptive Tier-A fields)
+ *
+ * Edits the order's descriptive fields via the operations edit endpoint.
+ * Send ONLY the changed keys — every field is optional on the API side.
+ * The API only permits edits while the order is in the pre-confirmation band
+ * (SUBMITTED | PRICING_REVIEW | PENDING_APPROVAL | QUOTED) and returns a 409
+ * otherwise; callers should surface `error.response.data.message`.
+ */
+export interface OrderEditDetailsPayload {
+    contact_name?: string;
+    contact_email?: string;
+    contact_phone?: string;
+    venue_contact_name?: string;
+    venue_contact_email?: string;
+    venue_contact_phone?: string;
+    venue_name?: string;
+    venue_city_id?: string;
+    venue_location?: {
+        country?: string;
+        city?: string;
+        address?: string;
+        access_notes?: string;
+    };
+    special_instructions?: string;
+    permit_requirements?: {
+        requires_permit: boolean;
+        permit_owner?: "CLIENT" | "PLATFORM" | "UNKNOWN";
+        requires_vehicle_docs?: boolean;
+        requires_staff_ids?: boolean;
+        notes?: string;
+    };
+    is_permanent_placement?: boolean;
+    po_number?: string;
+    job_number?: string;
+}
+
+export function useOrderEditDetails() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({
+            orderId,
+            payload,
+        }: {
+            orderId: string;
+            payload: OrderEditDetailsPayload;
+        }) => {
+            try {
+                const response = await apiClient.patch(`/client/v1/order/${orderId}`, payload);
+                return response.data;
+            } catch (error) {
+                throwApiError(error);
+            }
+        },
+        onSuccess: (_data, variables) => {
+            // Refresh the detail view, the list, status history (status may
+            // have reverted), and the change-history timeline.
+            queryClient.invalidateQueries({
+                queryKey: ["orders", "admin-detail", variables.orderId],
+            });
+            queryClient.invalidateQueries({ queryKey: ["orders", "admin-list"] });
+            queryClient.invalidateQueries({
+                queryKey: ["orders", "admin-status-history", variables.orderId],
+            });
+            queryClient.invalidateQueries({
+                queryKey: ["orders", "change-history", variables.orderId],
+            });
+        },
+    });
+}
+
+export function useOrderChangeHistory(orderId: string | null) {
+    return useQuery({
+        queryKey: ["orders", "change-history", orderId],
+        queryFn: async () => {
+            try {
+                const response = await apiClient.get(
+                    `/client/v1/order/${orderId}/change-history`
+                );
+                return response.data;
+            } catch (error) {
+                throwApiError(error);
+            }
+        },
+        enabled: !!orderId,
+    });
+}
+
+/**
  * Export orders as CSV
  */
 export function useExportOrders() {

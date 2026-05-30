@@ -162,6 +162,10 @@ export type Permission =
     | "orders:view_scanning_activity"
     | "orders:view_truck_photos"
     | "orders:export"
+    | "orders:edit_details"
+    | "self_pickups:edit_details"
+    | "inbound_requests:edit_details"
+    | "service_requests:edit_details"
     // Invoicing (Phase 9)
     | "invoices:generate"
     | "invoices:send"
@@ -428,6 +432,7 @@ export const PERMISSION_GROUPS = {
         "orders:create",
         "orders:read",
         "orders:update",
+        "orders:edit_details",
         "orders:add_job_number",
         "orders:add_time_windows",
         "orders:view_status_history",
@@ -650,6 +655,7 @@ export const ADMIN_PERMISSION_GROUPS: Record<string, string[]> = {
     "Order Management": [
         "orders:read",
         "orders:update",
+        "orders:edit_details",
         "orders:add_job_number",
         "orders:add_time_windows",
         "orders:view_status_history",
@@ -726,6 +732,7 @@ export const LOGISTICS_PERMISSION_GROUPS: Record<string, string[]> = {
     "Order Management": [
         "orders:read",
         "orders:update",
+        "orders:edit_details",
         "orders:add_job_number",
         "orders:add_time_windows",
         "orders:view_status_history",

@@ -75,6 +75,7 @@ export const ADMIN_PAGE_PERMISSIONS = {
 export const ADMIN_ACTION_PERMISSIONS = {
     ordersRead: "orders:read",
     ordersUpdate: "orders:update",
+    ordersEditDetails: "orders:edit_details",
     ordersExport: "orders:export",
     ordersAddJobNumber: "orders:add_job_number",
     ordersAddTimeWindows: "orders:add_time_windows",
