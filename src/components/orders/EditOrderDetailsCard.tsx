@@ -32,7 +32,17 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Pencil, Save, X, AlertCircle, Loader2, Calendar } from "lucide-react";
+import {
+    Pencil,
+    Save,
+    X,
+    AlertCircle,
+    Loader2,
+    Calendar,
+    Minus,
+    Plus,
+    Package,
+} from "lucide-react";
 import { toast } from "sonner";
 
 interface EditOrderDetailsCardProps {
@@ -41,6 +51,40 @@ interface EditOrderDetailsCardProps {
 }
 
 type PermitOwner = "CLIENT" | "PLATFORM" | "UNKNOWN";
+
+// One editable row per existing order item. `order_item_id` is the
+// `order_item.id` the server reconciles bookings against (NOT the line `item.id`
+// or the asset id). `quantity` is the editable value; `original_quantity` lets
+// us diff without re-deriving from the order on every keystroke.
+interface ItemQuantityRow {
+    order_item_id: string;
+    asset_name: string;
+    quantity: number;
+    original_quantity: number;
+}
+
+// Build the editable item-quantity rows from the order detail payload. The
+// order exposes physical items at `order.items[]`, each with a top-level line
+// `id`, an `asset` (name) and an `order_item` sub-object (id + quantity). We
+// only keep rows that have a resolvable `order_item.id` — that's the handle the
+// edit endpoint expects.
+function buildItemRows(order: any): ItemQuantityRow[] {
+    const items = Array.isArray(order?.items) ? order.items : [];
+    return items
+        .map((item: any): ItemQuantityRow | null => {
+            const orderItemId = item?.order_item?.id;
+            if (!orderItemId) return null;
+            const qty = Number(item?.order_item?.quantity);
+            const quantity = Number.isFinite(qty) && qty > 0 ? Math.floor(qty) : 1;
+            return {
+                order_item_id: orderItemId,
+                asset_name: item?.asset?.name || item?.order_item?.asset_name || "Item",
+                quantity,
+                original_quantity: quantity,
+            };
+        })
+        .filter((row: ItemQuantityRow | null): row is ItemQuantityRow => row !== null);
+}
 
 interface FormState {
     contact_name: string;
@@ -118,6 +162,7 @@ export function EditOrderDetailsCard({ order, canEdit }: EditOrderDetailsCardPro
     const [isEditing, setIsEditing] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [form, setForm] = useState<FormState>(() => buildFormState(order));
+    const [itemRows, setItemRows] = useState<ItemQuantityRow[]>(() => buildItemRows(order));
 
     const editDetails = useOrderEditDetails();
     const { data: citiesResponse } = useCities();
@@ -133,14 +178,27 @@ export function EditOrderDetailsCard({ order, canEdit }: EditOrderDetailsCardPro
 
     const handleEdit = () => {
         setForm(buildFormState(order));
+        setItemRows(buildItemRows(order));
         setErrorMessage(null);
         setIsEditing(true);
     };
 
     const handleCancel = () => {
         setForm(buildFormState(order));
+        setItemRows(buildItemRows(order));
         setErrorMessage(null);
         setIsEditing(false);
+    };
+
+    // Clamp to a positive integer (min 1). The server is authoritative on
+    // availability; this just keeps the input well-formed.
+    const setItemQuantity = (orderItemId: string, raw: number) => {
+        const next = Number.isFinite(raw) ? Math.max(1, Math.floor(raw)) : 1;
+        setItemRows((prev) =>
+            prev.map((row) =>
+                row.order_item_id === orderItemId ? { ...row, quantity: next } : row
+            )
+        );
     };
 
     const buildPayload = (): OrderEditDetailsPayload => {
@@ -212,6 +270,17 @@ export function EditOrderDetailsCard({ order, canEdit }: EditOrderDetailsCardPro
                 requires_staff_ids: form.requires_staff_ids,
                 notes: form.permit_notes,
             };
+        }
+
+        // Item quantities (Tier C) — only the items whose quantity actually
+        // changed. The server reconciles bookings (availability-checked) and
+        // reprices BASE_OPS; a change on a QUOTED order bounces it to
+        // PRICING_REVIEW. Omit `items` entirely when nothing changed.
+        const changedItems = itemRows
+            .filter((row) => row.quantity !== row.original_quantity)
+            .map((row) => ({ order_item_id: row.order_item_id, quantity: row.quantity }));
+        if (changedItems.length > 0) {
+            payload.items = changedItems;
         }
 
         return payload;
@@ -535,6 +604,89 @@ export function EditOrderDetailsCard({ order, canEdit }: EditOrderDetailsCardPro
                                     </div>
                                 </div>
                             </div>
+                        </div>
+
+                        <Separator />
+
+                        {/* Item quantities (Tier C — reconciles bookings + reprices) */}
+                        <div className="space-y-3">
+                            <Label className="font-mono text-xs font-bold uppercase tracking-wide">
+                                Items
+                            </Label>
+                            <p className="font-mono text-[10px] text-muted-foreground">
+                                Adjust the quantity of existing items. Changing a quantity
+                                reconciles the asset booking. If inventory isn&apos;t available for
+                                the requested dates and quantities the change is rejected. Editing a
+                                quoted order&apos;s items returns it to pricing review.
+                            </p>
+                            {itemRows.length === 0 ? (
+                                <p className="font-mono text-[11px] text-muted-foreground">
+                                    No editable items on this order.
+                                </p>
+                            ) : (
+                                <div className="space-y-2">
+                                    {itemRows.map((row) => (
+                                        <div
+                                            key={row.order_item_id}
+                                            className="flex items-center justify-between gap-3 rounded border border-border bg-muted/30 px-3 py-2"
+                                        >
+                                            <div className="flex items-center gap-2 min-w-0">
+                                                <Package className="h-4 w-4 shrink-0 text-muted-foreground" />
+                                                <span className="font-mono text-sm truncate">
+                                                    {row.asset_name}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center gap-1 shrink-0">
+                                                <Button
+                                                    type="button"
+                                                    size="icon"
+                                                    variant="outline"
+                                                    className="h-7 w-7"
+                                                    disabled={row.quantity <= 1}
+                                                    onClick={() =>
+                                                        setItemQuantity(
+                                                            row.order_item_id,
+                                                            row.quantity - 1
+                                                        )
+                                                    }
+                                                    aria-label="Decrease quantity"
+                                                >
+                                                    <Minus className="h-3 w-3" />
+                                                </Button>
+                                                <Input
+                                                    type="number"
+                                                    min={1}
+                                                    step={1}
+                                                    inputMode="numeric"
+                                                    className="h-7 w-16 text-center font-mono text-sm"
+                                                    value={row.quantity}
+                                                    onChange={(e) =>
+                                                        setItemQuantity(
+                                                            row.order_item_id,
+                                                            parseInt(e.target.value, 10)
+                                                        )
+                                                    }
+                                                />
+                                                <Button
+                                                    type="button"
+                                                    size="icon"
+                                                    variant="outline"
+                                                    className="h-7 w-7"
+                                                    onClick={() =>
+                                                        setItemQuantity(
+                                                            row.order_item_id,
+                                                            row.quantity + 1
+                                                        )
+                                                    }
+                                                    aria-label="Increase quantity"
+                                                >
+                                                    <Plus className="h-3 w-3" />
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
 
                         <Separator />

@@ -340,6 +340,13 @@ export interface OrderEditDetailsPayload {
     // it back to PRICING_REVIEW + QUOTE_REVISED. Sent as YYYY-MM-DD strings.
     event_start_date?: string;
     event_end_date?: string;
+    // Tier C (inventory) — quantity change of EXISTING order items. Each entry
+    // names an existing order_item (by id) and its new positive-integer quantity.
+    // Server reconciles asset bookings (availability-checked: 409 with a message
+    // naming the short asset on conflict) and reprices volume-based BASE_OPS. A
+    // quantity change on a QUOTED order bounces it to PRICING_REVIEW +
+    // QUOTE_REVISED. Send only the items whose quantity actually changed.
+    items?: Array<{ order_item_id: string; quantity: number }>;
 }
 
 export function useOrderEditDetails() {
