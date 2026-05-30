@@ -32,7 +32,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Pencil, Save, X, AlertCircle, Loader2 } from "lucide-react";
+import { Pencil, Save, X, AlertCircle, Loader2, Calendar } from "lucide-react";
 import { toast } from "sonner";
 
 interface EditOrderDetailsCardProps {
@@ -59,6 +59,8 @@ interface FormState {
     is_permanent_placement: boolean;
     po_number: string;
     job_number: string;
+    event_start_date: string;
+    event_end_date: string;
     requires_permit: boolean;
     permit_owner: PermitOwner;
     requires_vehicle_docs: boolean;
@@ -67,6 +69,20 @@ interface FormState {
 }
 
 const NO_CITY = "__none__";
+
+// `<Input type="date">` expects a YYYY-MM-DD value. Order event dates arrive as
+// ISO strings (e.g. "2026-02-15T00:00:00.000Z"); slice the calendar-day portion.
+function toDateInputValue(iso: unknown): string {
+    if (typeof iso !== "string" || iso.length === 0) return "";
+    const parsed = new Date(iso);
+    if (isNaN(parsed.getTime())) return "";
+    // Use UTC parts — event dates are stored at midnight UTC, so the calendar
+    // day must not drift by local timezone.
+    const y = parsed.getUTCFullYear();
+    const m = String(parsed.getUTCMonth() + 1).padStart(2, "0");
+    const d = String(parsed.getUTCDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+}
 
 function buildFormState(order: any): FormState {
     const loc = order?.venue_location ?? {};
@@ -88,6 +104,8 @@ function buildFormState(order: any): FormState {
         is_permanent_placement: Boolean(order?.is_permanent_placement),
         po_number: order?.po_number ?? "",
         job_number: order?.job_number ?? "",
+        event_start_date: toDateInputValue(order?.event_start_date),
+        event_end_date: toDateInputValue(order?.event_end_date),
         requires_permit: Boolean(permit?.requires_permit),
         permit_owner: (permit?.permit_owner as PermitOwner) ?? "UNKNOWN",
         requires_vehicle_docs: Boolean(permit?.requires_vehicle_docs),
@@ -155,6 +173,15 @@ export function EditOrderDetailsCard({ order, canEdit }: EditOrderDetailsCardPro
             payload.is_permanent_placement = form.is_permanent_placement;
         }
 
+        // Event dates (Tier C) — send the YYYY-MM-DD string only when changed.
+        // The server re-derives the booking window and may 409 on availability.
+        if (form.event_start_date !== original.event_start_date) {
+            payload.event_start_date = form.event_start_date;
+        }
+        if (form.event_end_date !== original.event_end_date) {
+            payload.event_end_date = form.event_end_date;
+        }
+
         // venue_location — send the whole object if any sub-field changed.
         if (
             form.venue_address !== original.venue_address ||
@@ -192,6 +219,21 @@ export function EditOrderDetailsCard({ order, canEdit }: EditOrderDetailsCardPro
 
     const handleSave = async () => {
         setErrorMessage(null);
+
+        // Basic client guard — end must be on/after start. The server is
+        // authoritative (and additionally enforces not-in-the-past + availability),
+        // so we keep this minimal and let the API 409 carry the detailed reasons.
+        if (
+            form.event_start_date &&
+            form.event_end_date &&
+            form.event_end_date < form.event_start_date
+        ) {
+            const message = "Event end date must be on or after the start date";
+            setErrorMessage(message);
+            toast.error(message);
+            return;
+        }
+
         const payload = buildPayload();
 
         if (Object.keys(payload).length === 0) {
@@ -444,6 +486,54 @@ export function EditOrderDetailsCard({ order, canEdit }: EditOrderDetailsCardPro
                                     value={form.venue_access_notes}
                                     onChange={(e) => set("venue_access_notes", e.target.value)}
                                 />
+                            </div>
+                        </div>
+
+                        <Separator />
+
+                        {/* Event dates (Tier C — re-derives the booking window) */}
+                        <div className="space-y-3">
+                            <Label className="font-mono text-xs font-bold uppercase tracking-wide">
+                                Event
+                            </Label>
+                            <p className="font-mono text-[10px] text-muted-foreground">
+                                Changing the event dates re-derives the asset booking window. If
+                                inventory isn&apos;t available for the new dates the change is
+                                rejected. Editing a quoted order&apos;s dates returns it to pricing
+                                review.
+                            </p>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div className="space-y-1">
+                                    <Label className="font-mono text-[10px] text-muted-foreground">
+                                        EVENT START DATE
+                                    </Label>
+                                    <div className="relative">
+                                        <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                        <Input
+                                            type="date"
+                                            className="font-mono text-sm pl-10"
+                                            value={form.event_start_date}
+                                            onChange={(e) =>
+                                                set("event_start_date", e.target.value)
+                                            }
+                                        />
+                                    </div>
+                                </div>
+                                <div className="space-y-1">
+                                    <Label className="font-mono text-[10px] text-muted-foreground">
+                                        EVENT END DATE
+                                    </Label>
+                                    <div className="relative">
+                                        <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                        <Input
+                                            type="date"
+                                            className="font-mono text-sm pl-10"
+                                            min={form.event_start_date || undefined}
+                                            value={form.event_end_date}
+                                            onChange={(e) => set("event_end_date", e.target.value)}
+                                        />
+                                    </div>
+                                </div>
                             </div>
                         </div>
 

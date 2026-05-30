@@ -334,6 +334,12 @@ export interface OrderEditDetailsPayload {
     is_permanent_placement?: boolean;
     po_number?: string;
     job_number?: string;
+    // Tier C (inventory) — event dates. Editing these re-derives the booking
+    // window server-side; if availability fails the API returns 409 with a
+    // message naming the short asset(s). A date edit on a QUOTED order bounces
+    // it back to PRICING_REVIEW + QUOTE_REVISED. Sent as YYYY-MM-DD strings.
+    event_start_date?: string;
+    event_end_date?: string;
 }
 
 export function useOrderEditDetails() {
