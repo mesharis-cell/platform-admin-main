@@ -1033,6 +1033,27 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                 return null;
                             })()}
 
+                        {/* Order Editing (Phase 2): a pricing-affecting edit after the
+                            quote was sent bounces the order to PRICING_REVIEW +
+                            QUOTE_REVISED. Admin re-reviews and re-issues via the
+                            existing approval flow. Display-only. */}
+                        {order.data.financial_status === "QUOTE_REVISED" && (
+                            <Card className="p-4 bg-amber-500/5 border-amber-500/30">
+                                <div className="flex items-start gap-3">
+                                    <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                                    <div>
+                                        <p className="font-mono text-sm font-bold text-amber-700">
+                                            Quote Revised
+                                        </p>
+                                        <p className="font-mono text-xs text-muted-foreground mt-1">
+                                            This order was edited after the quote was sent.
+                                            Re-review pricing and re-issue the quote.
+                                        </p>
+                                    </div>
+                                </div>
+                            </Card>
+                        )}
+
                         {/* State-Specific Alerts */}
                         {order.data.order_status === "QUOTED" &&
                             order.data?.final_pricing?.quote_sent_at && (

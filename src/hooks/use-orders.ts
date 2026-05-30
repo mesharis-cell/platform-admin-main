@@ -376,9 +376,7 @@ export function useOrderChangeHistory(orderId: string | null) {
         queryKey: ["orders", "change-history", orderId],
         queryFn: async () => {
             try {
-                const response = await apiClient.get(
-                    `/client/v1/order/${orderId}/change-history`
-                );
+                const response = await apiClient.get(`/client/v1/order/${orderId}/change-history`);
                 return response.data;
             } catch (error) {
                 throwApiError(error);
