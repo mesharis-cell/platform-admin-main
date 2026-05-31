@@ -14,6 +14,7 @@ import {
 } from "@/hooks/use-reports";
 import { apiClient } from "@/lib/api/api-client";
 import { throwApiError } from "@/lib/utils/throw-api-error";
+import { UnauthorizedState } from "@/components/unauthorized-state";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -36,7 +37,7 @@ const SECTION_LABEL: Record<ReportSection, string> = {
 type CardFilterState = Record<string, any>;
 
 export default function ReportsPage() {
-    const { data: reports, isLoading } = useReports();
+    const { data: reports, isLoading, isError } = useReports();
     const { data: companies } = useCompanies({ limit: "200", page: "1" });
     const { data: categories } = useAssetCategories(undefined, { allScopes: true });
     const [filters, setFilters] = useState<Record<string, CardFilterState>>({});
@@ -258,14 +259,22 @@ export default function ReportsPage() {
                             <p className="text-muted-foreground">Loading reports…</p>
                         </CardContent>
                     </Card>
-                ) : grouped.length === 0 ? (
+                ) : isError ? (
                     <Card>
-                        <CardContent className="p-8 text-center">
-                            <p className="text-muted-foreground">
-                                You do not have permission to run any reports.
+                        <CardContent className="p-8 text-center space-y-1">
+                            <p className="font-medium text-foreground">Couldn’t load reports</p>
+                            <p className="text-sm text-muted-foreground">
+                                The reports service didn’t respond. Refresh to retry — if it
+                                persists, the API may be unavailable.
                             </p>
                         </CardContent>
                     </Card>
+                ) : grouped.length === 0 ? (
+                    <UnauthorizedState
+                        title="No Reports Available"
+                        message="Your role doesn’t grant access to any reports. Contact your administrator if you believe this is an error."
+                        backHref="/"
+                    />
                 ) : (
                     grouped.map(({ section, cards: sectionCards }) => (
                         <section key={section} className="space-y-4">
