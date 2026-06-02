@@ -1668,6 +1668,23 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                             </Card>
                         )}
 
+                        {order?.data?.permit_requirements?.requires_permit === false && (
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="font-mono text-sm flex items-center gap-2">
+                                        <FileText className="h-4 w-4 text-primary" />
+                                        PERMIT / ACCESS
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <Label className="font-mono text-xs text-muted-foreground">
+                                        STATUS
+                                    </Label>
+                                    <p className="font-mono text-sm mt-1">No permit required</p>
+                                </CardContent>
+                            </Card>
+                        )}
+
                         {order?.data?.permit_requirements?.requires_permit && (
                             <Card>
                                 <CardHeader>
