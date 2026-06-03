@@ -163,10 +163,12 @@ export default function ReportsPage() {
                         onValueChange={(v) => setF(card.key, flt.key, v === "all" ? "" : v)}
                     >
                         <SelectTrigger>
-                            <SelectValue placeholder={`All ${flt.label.toLowerCase()}`} />
+                            <SelectValue
+                                placeholder={flt.allLabel ?? `All ${flt.label.toLowerCase()}`}
+                            />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="all">All</SelectItem>
+                            <SelectItem value="all">{flt.allLabel ?? "All"}</SelectItem>
                             {flt.options.map((opt) => (
                                 <SelectItem key={opt.value} value={opt.value}>
                                     {opt.label}

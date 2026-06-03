@@ -19,6 +19,8 @@ export interface ReportFilterMeta {
     scope?: "document" | "item";
     mode?: "include-only" | "include-exclude";
     options?: { value: string; label: string }[];
+    /** status-filter only: overrides the default "All" option label (e.g. "Summary"). */
+    allLabel?: string;
     default?: unknown;
 }
 
