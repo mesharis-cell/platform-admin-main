@@ -1,14 +1,16 @@
 "use client";
 
 /**
- * Order Editing (Phase 1) — read-only change-history timeline.
+ * Self-pickup change-history card (Order Editing — Phase 4, read-only).
  *
- * Renders the rows returned by GET /operations/v1/order/:id/change-history
- * (newest first) via the shared ChangeHistoryTimeline. Humanizes the `field`
- * key, shows old → new, who made the change, and "on behalf of" when present.
+ * Admin-side mirror of the warehouse self-pickup change log. Renders the rows
+ * from GET /operations/v1/self-pickup/:id/change-history (newest first) via the
+ * shared ChangeHistoryTimeline — which uses the field-aware `formatChangeValue`
+ * so object diffs (item_quantities, permit_requirements, venue_location) never
+ * crash JSX. Surfaces "on behalf of" attribution for company-manager edits.
  */
 
-import { useOrderChangeHistory } from "@/hooks/use-orders";
+import { useAdminSelfPickupChangeHistory } from "@/hooks/use-self-pickups";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { History } from "lucide-react";
 import {
@@ -16,35 +18,29 @@ import {
     type ChangeHistoryEntry,
 } from "@/components/shared/change-history-timeline";
 
-interface OrderChangeHistoryCardProps {
-    orderId: string | null;
+interface SelfPickupChangeHistoryCardProps {
+    selfPickupId: string | null;
 }
 
-// Friendly labels for the fields the API tracks. Falls back to a
+// Friendly labels for the SP fields the API tracks. Falls back to a
 // title-cased version of the raw key for anything not listed.
 const FIELD_LABELS: Record<string, string> = {
     contact_name: "Contact Name",
     contact_email: "Contact Email",
     contact_phone: "Contact Phone",
-    venue_contact_name: "Venue Contact Name",
-    venue_contact_email: "Venue Contact Email",
-    venue_contact_phone: "Venue Contact Phone",
-    venue_name: "Venue Name",
-    venue_city_id: "Venue City",
-    venue_location: "Venue Location",
-    "venue_location.address": "Venue Address",
-    "venue_location.access_notes": "Venue Access Notes",
-    "venue_location.country": "Venue Country",
-    "venue_location.city": "Venue City",
+    pickup_contact_name: "Pickup Contact Name",
+    pickup_contact_email: "Pickup Contact Email",
+    pickup_contact_phone: "Pickup Contact Phone",
     special_instructions: "Special Instructions",
-    permit_requirements: "Permit Requirements",
-    is_permanent_placement: "Permanent Placement",
+    item_quantities: "Item Quantities",
     po_number: "PO Number",
     job_number: "Job Number",
+    pickup_date: "Pickup Date",
+    return_date: "Return Date",
 };
 
-export function OrderChangeHistoryCard({ orderId }: OrderChangeHistoryCardProps) {
-    const { data, isLoading } = useOrderChangeHistory(orderId);
+export function SelfPickupChangeHistoryCard({ selfPickupId }: SelfPickupChangeHistoryCardProps) {
+    const { data, isLoading } = useAdminSelfPickupChangeHistory(selfPickupId);
 
     const entries: ChangeHistoryEntry[] = Array.isArray(data?.data) ? data.data : [];
 

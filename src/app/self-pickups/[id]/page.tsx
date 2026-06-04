@@ -23,12 +23,18 @@ import { CommerceRuleAcknowledgementsCard } from "@/components/shared/commerce-r
 import { SelfPickupPendingApprovalSection } from "./hybrid-sections";
 import { CancelSelfPickupModal } from "@/components/self-pickups/CancelSelfPickupModal";
 import { MarkAsNoCostButton } from "@/components/self-pickups/MarkAsNoCostButton";
+import { SelfPickupChangeHistoryCard } from "@/components/self-pickups/SelfPickupChangeHistoryCard";
+import { EditSelfPickupDetailsCard } from "@/components/self-pickups/EditSelfPickupDetailsCard";
 import { OrderLineItemsList } from "@/components/orders/OrderLineItemsList";
 import { useToken } from "@/lib/auth/use-token";
 import { hasPermission } from "@/lib/auth/permissions";
 import { ADMIN_ACTION_PERMISSIONS } from "@/lib/auth/permission-map";
 
 const MARK_NO_COST_STATUSES = ["PRICING_REVIEW", "PENDING_APPROVAL"];
+
+// Pre-confirmation editable band — mirrors the order edit band + the API's
+// editSelfPickupSchema gate. The API re-checks (409/400) if the pickup has moved on.
+const EDITABLE_STATUSES = ["SUBMITTED", "PRICING_REVIEW", "PENDING_APPROVAL", "QUOTED"];
 
 const CANCELLABLE_STATUSES = [
     "SUBMITTED",
@@ -90,6 +96,14 @@ export default function SelfPickupDetailPage({ params }: { params: Promise<{ id:
     // Reuse orders' add_job_number permission (pricing/approval context).
     const canEditJobNumber = hasPermission(user, ADMIN_ACTION_PERMISSIONS.ordersAddJobNumber);
     const canMarkNoCost = hasPermission(user, ADMIN_ACTION_PERMISSIONS.selfPickupsMarkNoCost);
+    // Pre-confirmation band + self_pickups:edit_details. NO_COST pickups lock all
+    // line-item mutations server-side, so the items editor would 400 — gate the
+    // whole card off NO_COST too (the descriptive fields alone aren't worth a card).
+    const canEditDetails =
+        hasPermission(user, ADMIN_ACTION_PERMISSIONS.selfPickupsEditDetails) &&
+        pickup != null &&
+        pickup.pricing_mode !== "NO_COST" &&
+        EDITABLE_STATUSES.includes(pickup.self_pickup_status);
 
     const handleJobNumberSave = async () => {
         if (!pickup) return;
@@ -352,6 +366,12 @@ export default function SelfPickupDetailPage({ params }: { params: Promise<{ id:
                             </CardContent>
                         </Card>
 
+                        {/* Edit pickup details (Order Editing — Phase 4 retrofit).
+                            Renders only when canEditDetails (pre-confirmation band +
+                            self_pickups:edit_details + not NO_COST). Diffs a snapshot
+                            and PATCHes only changed keys; the API re-checks the band. */}
+                        <EditSelfPickupDetailsCard pickup={pickup} canEdit={canEditDetails} />
+
                         {/* Pricing / line-items area.
                             NO_COST pickups: hide the entire pricing + line-items
                             surface and render a single neutral info card. Line
@@ -512,6 +532,9 @@ export default function SelfPickupDetailPage({ params }: { params: Promise<{ id:
                                 </div>
                             </CardContent>
                         </Card>
+
+                        {/* Field-level edit history (Order Editing — Phase 4, read-only) */}
+                        <SelfPickupChangeHistoryCard selfPickupId={id} />
                     </div>
                 </div>
             </div>

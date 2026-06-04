@@ -135,20 +135,21 @@ export function AssetStockSection({ assetId, assetName, stockMode }: Props) {
         setExporting(true);
         try {
             const params = new URLSearchParams();
-            params.append("asset_id", assetId);
             if (filter !== "ALL") params.append("movement_type", filter);
-            const url = `/operations/v1/export/stock-movements?${params.toString()}`;
+            const qs = params.toString();
+            const url = `/operations/v1/asset/${assetId}/stock-movements/export${qs ? `?${qs}` : ""}`;
             const response = await apiClient.get(url, { responseType: "blob" });
+            const xlsxType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
             const blob =
                 response.data instanceof Blob
                     ? response.data
-                    : new Blob([response.data], { type: "text/csv;charset=utf-8;" });
+                    : new Blob([response.data], { type: xlsxType });
             const downloadUrl = URL.createObjectURL(blob);
             // eslint-disable-next-line creatr/no-browser-globals-in-ssr
             const link = window.document.createElement("a");
             link.href = downloadUrl;
             const safeName = assetName.replace(/[^a-z0-9-_]+/gi, "_").slice(0, 60) || "stock";
-            link.download = `stock-movements-${safeName}-${new Date().toISOString().slice(0, 10)}.csv`;
+            link.download = `stock-movements-${safeName}-${new Date().toISOString().slice(0, 10)}.xlsx`;
             link.click();
             URL.revokeObjectURL(downloadUrl);
             toast.success("Stock movements exported");
@@ -205,7 +206,7 @@ export function AssetStockSection({ assetId, assetName, stockMode }: Props) {
                                 size="sm"
                                 onClick={handleExport}
                                 disabled={exporting}
-                                title="Export this asset ledger as CSV"
+                                title="Export this asset ledger as XLSX"
                                 className="gap-1.5"
                             >
                                 <Download className="h-4 w-4" />

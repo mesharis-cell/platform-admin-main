@@ -113,6 +113,7 @@ export const ADMIN_ACTION_PERMISSIONS = {
     warehouseOpsRatesUpdate: "warehouse_ops_rates:update",
     // Self-pickup actions — mirror orders' naming (SP4 of self-pickup parity sprint).
     selfPickupsRead: "self_pickups:read",
+    selfPickupsEditDetails: "self_pickups:edit_details",
     selfPickupsCancel: "self_pickups:cancel",
     selfPickupsSubmitForApproval: "pricing:review",
     selfPickupsPricingAdjust: "pricing:adjust",

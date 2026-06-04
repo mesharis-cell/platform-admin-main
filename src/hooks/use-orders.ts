@@ -393,6 +393,12 @@ export function useOrderEditDetails() {
             queryClient.invalidateQueries({
                 queryKey: ["orders", "change-history", variables.orderId],
             });
+            // A Tier-C edit on a QUOTED order bounces it back to PRICING_REVIEW,
+            // so refresh both ops queue lists too (usePricingReviewOrders /
+            // usePendingApprovalOrders) — otherwise the order won't surface in
+            // those queue pages until a manual refetch.
+            queryClient.invalidateQueries({ queryKey: ["orders", "pricing-review"] });
+            queryClient.invalidateQueries({ queryKey: ["orders", "pending-approval"] });
         },
     });
 }

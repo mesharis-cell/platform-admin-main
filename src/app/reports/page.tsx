@@ -65,7 +65,11 @@ export default function ReportsPage() {
             if (flt.type === "category-include-exclude") {
                 const cat = f[flt.key] as { mode?: string; values?: string[] } | undefined;
                 if (cat?.values?.length) {
-                    const param = cat.mode === "exclude" ? "category_exclude" : "category_include";
+                    // include-only filters never emit category_exclude (the report drops it).
+                    const param =
+                        flt.mode !== "include-only" && cat.mode === "exclude"
+                            ? "category_exclude"
+                            : "category_include";
                     cat.values.forEach((v) => q.append(param, v));
                 }
             } else {
@@ -108,10 +112,26 @@ export default function ReportsPage() {
             URL.revokeObjectURL(downloadUrl);
             toast.success(`${card.label} exported successfully`);
         } catch (error) {
-            try {
-                throwApiError(error);
-            } catch (apiError: any) {
-                toast.error(apiError?.message || `Failed to export ${card.label}`);
+            // Downloads use responseType: "blob", so a JSON error body arrives as a
+            // Blob and its message is lost. Decode the blob and pull out `.message`
+            // before falling back to the generic axios-error path.
+            const blobBody = (error as { response?: { data?: unknown } })?.response?.data;
+            if (blobBody instanceof Blob) {
+                let message = `Failed to export ${card.label}`;
+                try {
+                    const text = await blobBody.text();
+                    const parsed = JSON.parse(text);
+                    if (parsed?.message) message = String(parsed.message);
+                } catch {
+                    // Not a JSON error body — keep the generic message.
+                }
+                toast.error(message);
+            } else {
+                try {
+                    throwApiError(error);
+                } catch (apiError: any) {
+                    toast.error(apiError?.message || `Failed to export ${card.label}`);
+                }
             }
         } finally {
             setDownloading(null);
@@ -180,35 +200,41 @@ export default function ReportsPage() {
             );
         }
         if (flt.type === "category-include-exclude") {
+            const includeOnly = flt.mode === "include-only";
             const cat = (value as { mode?: string; values?: string[] }) ?? {
                 mode: "include",
                 values: [],
             };
+            // In include-only mode the report drops any exclude payload, so force
+            // (and surface) "include" and never offer the Exclude option.
+            const effectiveMode = includeOnly ? "include" : (cat.mode ?? "include");
             const selected = new Set(cat.values ?? []);
             const toggle = (name: string) => {
                 const next = new Set(selected);
                 if (next.has(name)) next.delete(name);
                 else next.add(name);
-                setF(card.key, flt.key, { mode: cat.mode ?? "include", values: [...next] });
+                setF(card.key, flt.key, { mode: effectiveMode, values: [...next] });
             };
             return (
                 <div key={flt.key} className="space-y-1.5">
                     <div className="flex items-center justify-between">
                         <Label className="text-xs">{flt.label}</Label>
-                        <Select
-                            value={cat.mode ?? "include"}
-                            onValueChange={(m) =>
-                                setF(card.key, flt.key, { mode: m, values: cat.values ?? [] })
-                            }
-                        >
-                            <SelectTrigger className="h-7 w-[110px] text-xs">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="include">Include</SelectItem>
-                                <SelectItem value="exclude">Exclude</SelectItem>
-                            </SelectContent>
-                        </Select>
+                        {!includeOnly && (
+                            <Select
+                                value={cat.mode ?? "include"}
+                                onValueChange={(m) =>
+                                    setF(card.key, flt.key, { mode: m, values: cat.values ?? [] })
+                                }
+                            >
+                                <SelectTrigger className="h-7 w-[110px] text-xs">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="include">Include</SelectItem>
+                                    <SelectItem value="exclude">Exclude</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        )}
                     </div>
                     <div className="flex flex-wrap gap-1.5">
                         {categories?.data?.map((c) => (

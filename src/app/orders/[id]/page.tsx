@@ -1954,6 +1954,15 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                             label: entry.status,
                                             color: "bg-slate-500/10 text-slate-600 border-slate-500/20",
                                         };
+                                        // On-behalf-of attribution (migration 0067).
+                                        // Render defensively: only when both names are
+                                        // present (the column may not be applied yet).
+                                        const actedBy = entry.acted_by_name;
+                                        const onBehalfOf = entry.on_behalf_of_name;
+                                        const attribution =
+                                            actedBy && onBehalfOf
+                                                ? `${cfg.label} by ${actedBy} on behalf of ${onBehalfOf}`
+                                                : null;
                                         return {
                                             id: entry.id,
                                             label: cfg.label,
@@ -1961,6 +1970,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                             timestamp: entry.timestamp,
                                             user: entry.updated_by_user?.name || "System",
                                             note: entry.notes || null,
+                                            attribution,
                                             isActive: index === activeIndex,
                                         };
                                     });

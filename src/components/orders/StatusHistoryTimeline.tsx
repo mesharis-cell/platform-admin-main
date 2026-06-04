@@ -17,6 +17,12 @@ export interface StatusTimelineEntry {
     user?: string | null;
     /** Optional note or comment */
     note?: string | null;
+    /**
+     * Optional on-behalf-of attribution (e.g. an admin/logistics user who
+     * approved or declined a quote on behalf of the client). Rendered as a
+     * secondary line when present.
+     */
+    attribution?: string | null;
     /** Highlight this entry as the current/active state */
     isActive?: boolean;
 }
@@ -95,6 +101,11 @@ export function StatusHistoryTimeline({
                             })}
                         </p>
                         {entry.user && <p className="font-mono text-[10px] mt-0.5">{entry.user}</p>}
+                        {entry.attribution && (
+                            <p className="font-mono text-[10px] text-muted-foreground mt-0.5">
+                                {entry.attribution}
+                            </p>
+                        )}
                         {entry.note && (
                             <p className="font-mono text-[10px] text-muted-foreground italic mt-2 p-2 bg-muted/20 rounded border">
                                 {entry.note}
