@@ -1,103 +1,84 @@
 "use client";
 
 /**
- * Order Editing (Phase 1) — inline editor for descriptive (Tier-A) fields.
+ * Order Editing — admin inline editor, restructured to PER-SECTION editing
+ * (twin of the client's OrderEditPanel).
  *
- * View mode renders nothing of its own beyond an "EDIT DETAILS" affordance —
- * the surrounding detail page already shows contact / venue / permit cards.
- * Edit mode opens a form covering the Tier-A fields; on save we diff against
- * the original order snapshot and send ONLY the changed keys to
- * PATCH /operations/v1/order/:id (via useOrderEditDetails).
+ * "Edit Details" reveals controlled section editors — Contact, Venue Contact,
+ * Venue & Logistics (with the shared <PermitSection> 1:1 twin of the client's),
+ * Event Dates (lead-time-gated + feasibility helper), and Items (bounded
+ * <QtyStepper> + 2-step <OpsAssetPicker>). On save we diff the working draft
+ * against the original order snapshot and PATCH ONLY the changed keys to
+ * /operations/v1/order/:id (via useOrderEditDetails). No optimistic mutation —
+ * a successful save invalidates the detail/history queries and the refetch
+ * drives the UI.
  *
- * The card is only rendered when `canEdit` is true (pre-confirmation band +
- * orders:edit_details permission), computed by the parent page. The API
- * re-checks the band and returns 409 if the order has moved on; we surface
- * that message inline + as a toast.
+ * The card self-gates on `canEdit` (pre-confirmation band + orders:edit_details
+ * permission, computed by the parent page) — it renders nothing when locked.
+ * The API re-checks the band and 409s if the order has moved on; we surface that
+ * message inline + as a toast. The save-gate fix (only block on a permit edited
+ * INTO the ambiguous required-but-no-owner state, not pre-existing) is preserved.
  */
 
 import { useMemo, useRef, useState } from "react";
+import { Pencil, Save, X, AlertCircle, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { useOrderEditDetails, type OrderEditDetailsPayload } from "@/hooks/use-orders";
 import { useCities } from "@/hooks/use-cities";
+import { usePlatform } from "@/lib/hooks/use-platform";
+import { useOpsFeasibilityConfig, useOpsFeasibility } from "@/hooks/use-order-feasibility";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
+import { type PermitSectionValue } from "@/components/permits/PermitSection";
+import { ContactEditor, type ContactDraft } from "./editing/ContactEditor";
+import { VenueContactEditor, type VenueContactDraft } from "./editing/VenueContactEditor";
+import { DescriptiveFieldsEditor, type DescriptiveDraft } from "./editing/DescriptiveFieldsEditor";
+import { EventDatesEditor, type EventDatesDraft } from "./editing/EventDatesEditor";
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-    OpsAssetPicker,
-    type NamedAssetSelection,
-} from "@/components/assets/asset-picker/OpsAssetPicker";
-import {
-    Pencil,
-    Save,
-    X,
-    AlertCircle,
-    Loader2,
-    Calendar,
-    Minus,
-    Plus,
-    Package,
-    Trash2,
-    RotateCcw,
-    PlusCircle,
-} from "lucide-react";
-import { toast } from "sonner";
-import { PermitWarningAlert, derivePermitChoice } from "@/components/permits/permit-warning-alert";
+    OrderItemsQuantityEditor,
+    type ItemQuantityRow,
+    type StagedAdd,
+} from "./editing/OrderItemsQuantityEditor";
+import { OrderEditFeasibilityHelper } from "./editing/OrderEditFeasibilityHelper";
+import type { NamedAssetSelection } from "@/components/assets/asset-picker/OpsAssetPicker";
 
 interface EditOrderDetailsCardProps {
     order: any;
     canEdit: boolean;
+    /** Whether the admin may edit the platform job number (admin-only field). */
+    canEditJobNumber?: boolean;
 }
 
-type PermitOwner = "CLIENT" | "PLATFORM" | "UNKNOWN";
+const s = (v: unknown): string => (typeof v === "string" ? v : v == null ? "" : String(v));
 
-// One editable row per existing order item. `order_item_id` is the
-// `order_item.id` the server reconciles bookings against (NOT the line `item.id`
-// or the asset id). `quantity` is the editable value; `original_quantity` lets
-// us diff without re-deriving from the order on every keystroke. `pending_remove`
-// marks the row for a REMOVE op — a removed row never also emits a quantity UPDATE.
-interface ItemQuantityRow {
-    order_item_id: string;
-    asset_name: string;
-    quantity: number;
-    original_quantity: number;
-    pending_remove: boolean;
+// `<Input type="date">` expects YYYY-MM-DD. Event dates arrive as ISO strings;
+// take the calendar-day portion in UTC so the day never drifts by timezone.
+function toDateInputValue(iso: unknown): string {
+    if (typeof iso !== "string" || iso.length === 0) return "";
+    const m = /^(\d{4}-\d{2}-\d{2})/.exec(iso);
+    if (m) return m[1];
+    const parsed = new Date(iso);
+    if (isNaN(parsed.getTime())) return "";
+    const y = parsed.getUTCFullYear();
+    const mo = String(parsed.getUTCMonth() + 1).padStart(2, "0");
+    const d = String(parsed.getUTCDate()).padStart(2, "0");
+    return `${y}-${mo}-${d}`;
 }
 
-// One staged ADD — a brand-new asset to attach to the order. `asset_id` is the
-// catalog asset id; `quantity` the positive integer to add. `asset_name` is kept
-// only for display. Server availability-checks + rejects RED/maintenance assets.
-interface StagedAdd {
-    // Local stable key for React lists (asset_id can collide pre-dedup, and the
-    // user may stage the same asset twice before we merge — server merges anyway).
-    key: string;
-    asset_id: string;
-    asset_name: string;
-    quantity: number;
+interface Draft {
+    contact: ContactDraft;
+    venueContact: VenueContactDraft;
+    descriptive: DescriptiveDraft;
+    eventDates: EventDatesDraft;
+    itemRows: ItemQuantityRow[];
+    stagedAdds: StagedAdd[];
 }
 
-// Build the editable item-quantity rows from the order detail payload. The
-// order exposes physical items at `order.items[]`, each with a top-level line
-// `id`, an `asset` (name) and an `order_item` sub-object (id + quantity). We
-// only keep rows that have a resolvable `order_item.id` — that's the handle the
-// edit endpoint expects.
+// Build the editable item-quantity rows from the order detail payload. Each row's
+// `max` bound is available_quantity + currently-booked qty (the most the order can
+// hold without exceeding stock); 0 = unbounded above when availability isn't
+// exposed on the item (server stays authoritative).
 function buildItemRows(order: any): ItemQuantityRow[] {
     const items = Array.isArray(order?.items) ? order.items : [];
     return items
@@ -106,115 +87,144 @@ function buildItemRows(order: any): ItemQuantityRow[] {
             if (!orderItemId) return null;
             const qty = Number(item?.order_item?.quantity);
             const quantity = Number.isFinite(qty) && qty > 0 ? Math.floor(qty) : 1;
+            const availRaw = Number(item?.asset?.available_quantity);
+            // available_quantity is the stock NOT already booked; the rows current
+            // booked qty is held out, so the ceiling is avail + this row's booking.
+            const max = Number.isFinite(availRaw) ? availRaw + quantity : 0;
             return {
                 order_item_id: orderItemId,
                 asset_name: item?.asset?.name || item?.order_item?.asset_name || "Item",
                 quantity,
                 original_quantity: quantity,
                 pending_remove: false,
+                max,
             };
         })
         .filter((row: ItemQuantityRow | null): row is ItemQuantityRow => row !== null);
 }
 
-interface FormState {
-    contact_name: string;
-    contact_email: string;
-    contact_phone: string;
-    venue_contact_name: string;
-    venue_contact_email: string;
-    venue_contact_phone: string;
-    venue_name: string;
-    venue_city_id: string;
-    venue_address: string;
-    venue_access_notes: string;
-    venue_country: string;
-    venue_city_text: string;
-    special_instructions: string;
-    is_permanent_placement: boolean;
-    po_number: string;
-    job_number: string;
-    event_start_date: string;
-    event_end_date: string;
-    requires_permit: boolean;
-    permit_owner: PermitOwner;
-    requires_vehicle_docs: boolean;
-    requires_staff_ids: boolean;
-    permit_notes: string;
-}
-
-const NO_CITY = "__none__";
-
-// `<Input type="date">` expects a YYYY-MM-DD value. Order event dates arrive as
-// ISO strings (e.g. "2026-02-15T00:00:00.000Z"); slice the calendar-day portion.
-function toDateInputValue(iso: unknown): string {
-    if (typeof iso !== "string" || iso.length === 0) return "";
-    const parsed = new Date(iso);
-    if (isNaN(parsed.getTime())) return "";
-    // Use UTC parts — event dates are stored at midnight UTC, so the calendar
-    // day must not drift by local timezone.
-    const y = parsed.getUTCFullYear();
-    const m = String(parsed.getUTCMonth() + 1).padStart(2, "0");
-    const d = String(parsed.getUTCDate()).padStart(2, "0");
-    return `${y}-${m}-${d}`;
-}
-
-function buildFormState(order: any): FormState {
-    const loc = order?.venue_location ?? {};
-    const permit = order?.permit_requirements ?? {};
+function buildPermit(order: any): PermitSectionValue {
+    const permit = order?.permit_requirements ?? null;
+    const requires = Boolean(permit?.requires_permit);
     return {
-        contact_name: order?.contact_name ?? "",
-        contact_email: order?.contact_email ?? "",
-        contact_phone: order?.contact_phone ?? "",
-        venue_contact_name: order?.venue_contact_name ?? "",
-        venue_contact_email: order?.venue_contact_email ?? "",
-        venue_contact_phone: order?.venue_contact_phone ?? "",
-        venue_name: order?.venue_name ?? "",
-        venue_city_id: order?.venue_city_id ?? "",
-        venue_address: loc?.address ?? "",
-        venue_access_notes: loc?.access_notes ?? "",
-        venue_country: loc?.country ?? "",
-        venue_city_text: loc?.city ?? "",
-        special_instructions: order?.special_instructions ?? "",
-        is_permanent_placement: Boolean(order?.is_permanent_placement),
-        po_number: order?.po_number ?? "",
-        job_number: order?.job_number ?? "",
-        event_start_date: toDateInputValue(order?.event_start_date),
-        event_end_date: toDateInputValue(order?.event_end_date),
-        requires_permit: Boolean(permit?.requires_permit),
-        permit_owner: (permit?.permit_owner as PermitOwner) ?? "UNKNOWN",
+        // permit_decision is null only when the order never answered the permit
+        // question; an existing requires_permit flag implies a "yes" decision.
+        permit_decision: permit == null ? null : requires ? "yes" : "no",
+        requires_permit: requires,
+        permit_owner: (permit?.permit_owner as PermitSectionValue["permit_owner"]) ?? "UNKNOWN",
         requires_vehicle_docs: Boolean(permit?.requires_vehicle_docs),
         requires_staff_ids: Boolean(permit?.requires_staff_ids),
-        permit_notes: permit?.notes ?? "",
+        permit_notes: s(permit?.notes),
+        venue_access_notes: s(order?.venue_location?.access_notes),
     };
 }
 
-export function EditOrderDetailsCard({ order, canEdit }: EditOrderDetailsCardProps) {
+function buildDraft(order: any): Draft {
+    const loc = order?.venue_location ?? {};
+    return {
+        contact: {
+            contact_name: s(order?.contact_name),
+            contact_email: s(order?.contact_email),
+            contact_phone: s(order?.contact_phone),
+        },
+        venueContact: {
+            venue_contact_name: s(order?.venue_contact_name),
+            venue_contact_email: s(order?.venue_contact_email),
+            venue_contact_phone: s(order?.venue_contact_phone),
+        },
+        descriptive: {
+            venue_name: s(order?.venue_name),
+            venue_city_id: s(order?.venue_city_id),
+            venue_address: s(loc?.address),
+            venue_country: s(loc?.country),
+            venue_city_text: s(loc?.city),
+            special_instructions: s(order?.special_instructions),
+            is_permanent_placement: Boolean(order?.is_permanent_placement),
+            po_number: s(order?.po_number),
+            job_number: s(order?.job_number),
+            permit: buildPermit(order),
+        },
+        eventDates: {
+            event_start_date: toDateInputValue(order?.event_start_date),
+            event_end_date: toDateInputValue(order?.event_end_date),
+        },
+        itemRows: buildItemRows(order),
+        stagedAdds: [],
+    };
+}
+
+// Compute the lead-time floor (YYYY-MM-DD) from the resolved feasibility config —
+// the earliest the event start can be picked. Mirrors checkout's calculateMinDate.
+function computeMinDate(
+    config:
+        | {
+              minimum_lead_hours?: number;
+              exclude_weekends?: boolean;
+              weekend_days?: number[];
+          }
+        | null
+        | undefined
+): string | undefined {
+    if (!config) return undefined;
+    const leadHours = config.minimum_lead_hours ?? 24;
+    const date = new Date();
+    date.setTime(date.getTime() + leadHours * 60 * 60 * 1000);
+    if (config.exclude_weekends) {
+        const weekendDays = new Set(config.weekend_days ?? [0, 6]);
+        while (weekendDays.has(date.getDay())) date.setDate(date.getDate() + 1);
+    }
+    const y = date.getFullYear();
+    const mo = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    return `${y}-${mo}-${d}`;
+}
+
+export function EditOrderDetailsCard({
+    order,
+    canEdit,
+    canEditJobNumber = true,
+}: EditOrderDetailsCardProps) {
     const [isEditing, setIsEditing] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
-    const [form, setForm] = useState<FormState>(() => buildFormState(order));
-    const [itemRows, setItemRows] = useState<ItemQuantityRow[]>(() => buildItemRows(order));
-    const [stagedAdds, setStagedAdds] = useState<StagedAdd[]>([]);
-    const [pickerOpen, setPickerOpen] = useState(false);
-
-    // Monotonic key generator for staged-add rows (stable React keys).
+    const [draft, setDraft] = useState<Draft>(() => buildDraft(order));
     const addKeySeq = useRef(0);
 
     const editDetails = useOrderEditDetails();
     const { data: citiesResponse } = useCities();
     const cities = Array.isArray(citiesResponse?.data) ? citiesResponse.data : [];
+    const { data: platform } = usePlatform();
+
+    // Lead-time + weekend rules scoped to the order's company. Drives the date
+    // `min` and the feasibility helper's floor copy.
+    const { data: feasibilityConfig } = useOpsFeasibilityConfig(canEdit ? order?.id : null);
+    const minDate = useMemo(() => computeMinDate(feasibilityConfig), [feasibilityConfig]);
+
+    // enable_event_date_inputs per-company → platform default. When OFF, the
+    // event-date section is hidden (task #10).
+    const eventDateInputsEnabled = useMemo(() => {
+        const companyFeatures = (order?.company?.features ?? null) as Record<
+            string,
+            unknown
+        > | null;
+        if (companyFeatures && typeof companyFeatures.enable_event_date_inputs === "boolean") {
+            return companyFeatures.enable_event_date_inputs;
+        }
+        const platformValue = (platform?.features as Record<string, unknown> | undefined)?.[
+            "enable_event_date_inputs"
+        ];
+        return platformValue === true;
+    }, [order?.company?.features, platform?.features]);
 
     // The pristine snapshot to diff against when saving.
-    const original = useMemo(() => buildFormState(order), [order]);
+    const original = useMemo(() => buildDraft(order), [order]);
 
-    // Asset ids the picker should mark "already added" (not selectable): assets
-    // currently on the order (excluding rows pending removal) + already-staged
-    // adds. The picker matches on the concrete asset_id it would emit.
+    // Asset ids the picker should mark "already added": assets currently on the
+    // order (excluding rows pending removal) + already-staged adds.
     const alreadyOnEntityAssetIds = useMemo(() => {
         const ids = new Set<string>();
         const items = Array.isArray(order?.items) ? order.items : [];
         const pendingRemovedItemIds = new Set(
-            itemRows.filter((r) => r.pending_remove).map((r) => r.order_item_id)
+            draft.itemRows.filter((r) => r.pending_remove).map((r) => r.order_item_id)
         );
         for (const item of items) {
             const orderItemId = item?.order_item?.id;
@@ -222,69 +232,78 @@ export function EditOrderDetailsCard({ order, canEdit }: EditOrderDetailsCardPro
             const assetId = item?.asset?.id ?? item?.order_item?.asset_id;
             if (assetId) ids.add(assetId);
         }
-        for (const add of stagedAdds) ids.add(add.asset_id);
+        for (const add of draft.stagedAdds) ids.add(add.asset_id);
         return Array.from(ids);
-    }, [order, itemRows, stagedAdds]);
+    }, [order, draft.itemRows, draft.stagedAdds]);
+
+    // Feasibility subscription — fires on the staged item set + the picked event
+    // start date. Only meaningful when the date section is shown.
+    const feasibilityItems = useMemo(() => {
+        const items = Array.isArray(order?.items) ? order.items : [];
+        const removed = new Set(
+            draft.itemRows.filter((r) => r.pending_remove).map((r) => r.order_item_id)
+        );
+        const out: Array<{ asset_id: string }> = [];
+        for (const item of items) {
+            const orderItemId = item?.order_item?.id;
+            if (orderItemId && removed.has(orderItemId)) continue;
+            const assetId = item?.asset?.id ?? item?.order_item?.asset_id;
+            if (assetId) out.push({ asset_id: assetId });
+        }
+        for (const add of draft.stagedAdds) out.push({ asset_id: add.asset_id });
+        return out;
+    }, [order, draft.itemRows, draft.stagedAdds]);
+
+    const { data: feasibility, isFetching: feasibilityLoading } = useOpsFeasibility({
+        orderId: order?.id,
+        items: feasibilityItems,
+        eventStartDate: draft.eventDates.event_start_date || null,
+        enabled: isEditing && eventDateInputsEnabled,
+    });
 
     if (!canEdit) return null;
 
-    const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
-        setForm((prev) => ({ ...prev, [key]: value }));
-
     const handleEdit = () => {
-        setForm(buildFormState(order));
-        setItemRows(buildItemRows(order));
-        setStagedAdds([]);
+        setDraft(buildDraft(order));
         setErrorMessage(null);
         setIsEditing(true);
     };
 
     const handleCancel = () => {
-        setForm(buildFormState(order));
-        setItemRows(buildItemRows(order));
-        setStagedAdds([]);
+        setDraft(buildDraft(order));
         setErrorMessage(null);
         setIsEditing(false);
     };
 
-    // Clamp to a positive integer (min 1). The server is authoritative on
-    // availability; this just keeps the input well-formed.
-    const setItemQuantity = (orderItemId: string, raw: number) => {
-        const next = Number.isFinite(raw) ? Math.max(1, Math.floor(raw)) : 1;
-        setItemRows((prev) =>
-            prev.map((row) =>
-                row.order_item_id === orderItemId ? { ...row, quantity: next } : row
-            )
-        );
+    // --- item ops handlers -------------------------------------------------
+    const setItemQuantity = (orderItemId: string, next: number) => {
+        const qty = Number.isFinite(next) ? Math.max(1, Math.floor(next)) : 1;
+        setDraft((prev) => ({
+            ...prev,
+            itemRows: prev.itemRows.map((row) =>
+                row.order_item_id === orderItemId ? { ...row, quantity: qty } : row
+            ),
+        }));
     };
-
-    // Count of existing rows NOT pending removal. Used to keep at least one item
-    // on the order (the server also blocks removing the last item — this is a
-    // friendlier client-side guard). Staged adds count too: removing the last
-    // existing item is fine if the admin staged a replacement add.
-    const remainingItemCount =
-        itemRows.filter((row) => !row.pending_remove).length + stagedAdds.length;
 
     const toggleItemRemove = (orderItemId: string, remove: boolean) => {
-        setItemRows((prev) =>
-            prev.map((row) =>
+        setDraft((prev) => ({
+            ...prev,
+            itemRows: prev.itemRows.map((row) =>
                 row.order_item_id === orderItemId ? { ...row, pending_remove: remove } : row
-            )
-        );
+            ),
+        }));
     };
 
-    // Stage a batch of picker selections (multi-select + per-item qty). Each
-    // selection carries its chosen quantity; if an asset is already staged we
-    // bump it by that quantity (server merges duplicate ADDs anyway).
     const addStagedAssets = (selections: NamedAssetSelection[]) => {
         if (selections.length === 0) return;
-        setStagedAdds((prev) => {
-            const next = [...prev];
+        setDraft((prev) => {
+            const next = [...prev.stagedAdds];
             for (const sel of selections) {
                 const qty = Number.isFinite(sel.quantity)
                     ? Math.max(1, Math.floor(sel.quantity))
                     : 1;
-                const idx = next.findIndex((s) => s.asset_id === sel.assetId);
+                const idx = next.findIndex((a) => a.asset_id === sel.assetId);
                 if (idx >= 0) {
                     next[idx] = { ...next[idx], quantity: next[idx].quantity + qty };
                 } else {
@@ -294,102 +313,111 @@ export function EditOrderDetailsCard({ order, canEdit }: EditOrderDetailsCardPro
                         asset_id: sel.assetId,
                         asset_name: sel.name,
                         quantity: qty,
+                        max: Number.isFinite(sel.availableQuantity) ? sel.availableQuantity : 0,
                     });
                 }
             }
-            return next;
+            return { ...prev, stagedAdds: next };
         });
     };
 
-    const setStagedAddQuantity = (key: string, raw: number) => {
-        const next = Number.isFinite(raw) ? Math.max(1, Math.floor(raw)) : 1;
-        setStagedAdds((prev) => prev.map((s) => (s.key === key ? { ...s, quantity: next } : s)));
+    const setStagedAddQuantity = (key: string, next: number) => {
+        const qty = Number.isFinite(next) ? Math.max(1, Math.floor(next)) : 1;
+        setDraft((prev) => ({
+            ...prev,
+            stagedAdds: prev.stagedAdds.map((a) => (a.key === key ? { ...a, quantity: qty } : a)),
+        }));
     };
 
     const removeStagedAdd = (key: string) => {
-        setStagedAdds((prev) => prev.filter((s) => s.key !== key));
+        setDraft((prev) => ({
+            ...prev,
+            stagedAdds: prev.stagedAdds.filter((a) => a.key !== key),
+        }));
     };
 
+    // --- diff → payload ----------------------------------------------------
     const buildPayload = (): OrderEditDetailsPayload => {
         const payload: OrderEditDetailsPayload = {};
+        const d = draft;
+        const o = original;
 
-        // Top-level string fields — only include when changed.
-        const simpleFields: Array<[keyof FormState, keyof OrderEditDetailsPayload]> = [
-            ["contact_name", "contact_name"],
-            ["contact_email", "contact_email"],
-            ["contact_phone", "contact_phone"],
-            ["venue_contact_name", "venue_contact_name"],
-            ["venue_contact_email", "venue_contact_email"],
-            ["venue_contact_phone", "venue_contact_phone"],
-            ["venue_name", "venue_name"],
-            ["special_instructions", "special_instructions"],
-            ["po_number", "po_number"],
-            ["job_number", "job_number"],
-        ];
-        for (const [formKey, payloadKey] of simpleFields) {
-            if (form[formKey] !== original[formKey]) {
-                (payload as Record<string, unknown>)[payloadKey] = form[formKey];
-            }
-        }
+        // Contact + venue contact + simple descriptive (changed-only).
+        if (d.contact.contact_name !== o.contact.contact_name)
+            payload.contact_name = d.contact.contact_name;
+        if (d.contact.contact_email !== o.contact.contact_email)
+            payload.contact_email = d.contact.contact_email;
+        if (d.contact.contact_phone !== o.contact.contact_phone)
+            payload.contact_phone = d.contact.contact_phone;
 
-        if (form.venue_city_id !== original.venue_city_id) {
-            payload.venue_city_id = form.venue_city_id;
-        }
+        if (d.venueContact.venue_contact_name !== o.venueContact.venue_contact_name)
+            payload.venue_contact_name = d.venueContact.venue_contact_name;
+        if (d.venueContact.venue_contact_email !== o.venueContact.venue_contact_email)
+            payload.venue_contact_email = d.venueContact.venue_contact_email;
+        if (d.venueContact.venue_contact_phone !== o.venueContact.venue_contact_phone)
+            payload.venue_contact_phone = d.venueContact.venue_contact_phone;
 
-        if (form.is_permanent_placement !== original.is_permanent_placement) {
-            payload.is_permanent_placement = form.is_permanent_placement;
-        }
+        const dd = d.descriptive;
+        const od = o.descriptive;
+        if (dd.venue_name !== od.venue_name) payload.venue_name = dd.venue_name;
+        if (dd.venue_city_id !== od.venue_city_id) payload.venue_city_id = dd.venue_city_id;
+        if (dd.special_instructions !== od.special_instructions)
+            payload.special_instructions = dd.special_instructions;
+        if (dd.po_number !== od.po_number) payload.po_number = dd.po_number;
+        if (canEditJobNumber && dd.job_number !== od.job_number) payload.job_number = dd.job_number;
+        if (dd.is_permanent_placement !== od.is_permanent_placement)
+            payload.is_permanent_placement = dd.is_permanent_placement;
 
-        // Event dates (Tier C) — send the YYYY-MM-DD string only when changed.
-        // The server re-derives the booking window and may 409 on availability.
-        if (form.event_start_date !== original.event_start_date) {
-            payload.event_start_date = form.event_start_date;
-        }
-        if (form.event_end_date !== original.event_end_date) {
-            payload.event_end_date = form.event_end_date;
-        }
-
-        // venue_location — send the whole object if any sub-field changed.
+        // venue_location — send the whole object if address/country/free-text-city
+        // OR the in-permit access notes changed (access_notes lives here).
+        const accessNotesChanged = dd.permit.venue_access_notes !== od.permit.venue_access_notes;
         if (
-            form.venue_address !== original.venue_address ||
-            form.venue_access_notes !== original.venue_access_notes ||
-            form.venue_country !== original.venue_country ||
-            form.venue_city_text !== original.venue_city_text
+            dd.venue_address !== od.venue_address ||
+            dd.venue_country !== od.venue_country ||
+            dd.venue_city_text !== od.venue_city_text ||
+            accessNotesChanged
         ) {
             payload.venue_location = {
-                country: form.venue_country,
-                city: form.venue_city_text,
-                address: form.venue_address,
-                access_notes: form.venue_access_notes,
+                country: dd.venue_country,
+                city: dd.venue_city_text,
+                address: dd.venue_address,
+                access_notes: dd.permit.venue_access_notes,
             };
         }
 
-        // permit_requirements — send the whole object if any sub-field changed.
-        if (
-            form.requires_permit !== original.requires_permit ||
-            form.permit_owner !== original.permit_owner ||
-            form.requires_vehicle_docs !== original.requires_vehicle_docs ||
-            form.requires_staff_ids !== original.requires_staff_ids ||
-            form.permit_notes !== original.permit_notes
-        ) {
+        // permit_requirements — send the whole object if any permit sub-field
+        // changed. Map PermitSection's shape → the wire shape.
+        const p = dd.permit;
+        const op = od.permit;
+        const permitChanged =
+            p.requires_permit !== op.requires_permit ||
+            p.permit_owner !== op.permit_owner ||
+            p.requires_vehicle_docs !== op.requires_vehicle_docs ||
+            p.requires_staff_ids !== op.requires_staff_ids ||
+            p.permit_notes !== op.permit_notes;
+        if (permitChanged) {
             payload.permit_requirements = {
-                requires_permit: form.requires_permit,
-                permit_owner: form.permit_owner,
-                requires_vehicle_docs: form.requires_vehicle_docs,
-                requires_staff_ids: form.requires_staff_ids,
-                notes: form.permit_notes,
+                requires_permit: p.requires_permit,
+                permit_owner: p.permit_owner,
+                requires_vehicle_docs: p.requires_vehicle_docs,
+                requires_staff_ids: p.requires_staff_ids,
+                notes: p.permit_notes,
             };
         }
 
-        // Item ops (Tier C) — a mix of REMOVE / UPDATE / ADD. The server
-        // reconciles bookings (availability-checked), cancels any bundled
-        // maintenance SR on remove, and reprices BASE_OPS; any op on a QUOTED
-        // order bounces it to PRICING_REVIEW. Omit `items` when there is no op.
-        const itemOps: NonNullable<OrderEditDetailsPayload["items"]> = [];
+        // Event dates (Tier C) — only when the inputs are exposed + changed.
+        if (eventDateInputsEnabled) {
+            if (d.eventDates.event_start_date !== o.eventDates.event_start_date)
+                payload.event_start_date = d.eventDates.event_start_date;
+            if (d.eventDates.event_end_date !== o.eventDates.event_end_date)
+                payload.event_end_date = d.eventDates.event_end_date;
+        }
 
-        for (const row of itemRows) {
+        // Item ops (Tier C) — REMOVE / UPDATE / ADD. A removed row never also
+        // emits a quantity UPDATE.
+        const itemOps: NonNullable<OrderEditDetailsPayload["items"]> = [];
+        for (const row of d.itemRows) {
             if (row.pending_remove) {
-                // REMOVE wins — never also emit a quantity UPDATE for a removed row.
                 itemOps.push({ op: "REMOVE", order_item_id: row.order_item_id });
             } else if (row.quantity !== row.original_quantity) {
                 itemOps.push({
@@ -399,29 +427,29 @@ export function EditOrderDetailsCard({ order, canEdit }: EditOrderDetailsCardPro
                 });
             }
         }
-
-        for (const add of stagedAdds) {
+        for (const add of d.stagedAdds) {
             itemOps.push({ op: "ADD", asset_id: add.asset_id, quantity: add.quantity });
         }
-
-        if (itemOps.length > 0) {
-            payload.items = itemOps;
-        }
+        if (itemOps.length > 0) payload.items = itemOps;
 
         return payload;
     };
 
-    // Mirror the client/checkout rule: a permit that's required but with no owner
-    // chosen (UNKNOWN) is an ambiguous state we don't let the admin persist. Drives
-    // both the inline consequence alert and the SAVE-button disable below.
-    const permitChoice = derivePermitChoice(form.requires_permit, form.permit_owner);
-    const permitOwnerUnresolved = form.requires_permit && form.permit_owner === "UNKNOWN";
+    const payload = buildPayload();
+    const hasChanges = Object.keys(payload).length > 0;
+
+    // Save-gate fix (preserved): only block on a permit that was EDITED into the
+    // ambiguous required-but-no-owner state — never on a pre-existing one that an
+    // unrelated edit (e.g. adding an item) didn't touch.
+    const permitChangedThisSession = "permit_requirements" in payload;
+    const permitOwnerUnresolved =
+        permitChangedThisSession &&
+        draft.descriptive.permit.requires_permit &&
+        draft.descriptive.permit.permit_owner === "UNKNOWN";
 
     const handleSave = async () => {
         setErrorMessage(null);
 
-        // Block the ambiguous "needs a permit but no owner" state — same rule the
-        // client checkout enforces. Server is still authoritative; this is a UX guard.
         if (permitOwnerUnresolved) {
             const message = "Select who arranges the permit before saving";
             setErrorMessage(message);
@@ -429,13 +457,11 @@ export function EditOrderDetailsCard({ order, canEdit }: EditOrderDetailsCardPro
             return;
         }
 
-        // Basic client guard — end must be on/after start. The server is
-        // authoritative (and additionally enforces not-in-the-past + availability),
-        // so we keep this minimal and let the API 409 carry the detailed reasons.
         if (
-            form.event_start_date &&
-            form.event_end_date &&
-            form.event_end_date < form.event_start_date
+            eventDateInputsEnabled &&
+            draft.eventDates.event_start_date &&
+            draft.eventDates.event_end_date &&
+            draft.eventDates.event_end_date < draft.eventDates.event_start_date
         ) {
             const message = "Event end date must be on or after the start date";
             setErrorMessage(message);
@@ -443,9 +469,7 @@ export function EditOrderDetailsCard({ order, canEdit }: EditOrderDetailsCardPro
             return;
         }
 
-        const payload = buildPayload();
-
-        if (Object.keys(payload).length === 0) {
+        if (!hasChanges) {
             toast.info("No changes to save");
             setIsEditing(false);
             return;
@@ -456,15 +480,21 @@ export function EditOrderDetailsCard({ order, canEdit }: EditOrderDetailsCardPro
             toast.success("Order details updated");
             setIsEditing(false);
         } catch (error: unknown) {
-            // useOrderEditDetails → throwApiError rethrows a plain Error whose
-            // message is already error.response.data.message (incl. the 409
-            // editable-band message). Surface it inline + as a toast.
             const message =
                 (error instanceof Error && error.message) || "Failed to update order details";
             setErrorMessage(message);
             toast.error(message);
         }
     };
+
+    // Feasibility helper inputs — does the picked start clear the lead floor?
+    const floorDate = feasibility?.lead_floor_date ?? null;
+    const pickedStart = draft.eventDates.event_start_date;
+    const userDateFeasible =
+        pickedStart && floorDate ? (pickedStart >= floorDate ? true : false) : null;
+    const blockingIssues = (feasibility?.issues ?? []).filter(
+        (i) => i.maintenance_mode === "MANDATORY_RED" || i.condition === "RED"
+    );
 
     return (
         <Card>
@@ -500,7 +530,9 @@ export function EditOrderDetailsCard({ order, canEdit }: EditOrderDetailsCardPro
                                 size="sm"
                                 className="font-mono text-xs"
                                 onClick={handleSave}
-                                disabled={editDetails.isPending || permitOwnerUnresolved}
+                                disabled={
+                                    editDetails.isPending || !hasChanges || permitOwnerUnresolved
+                                }
                             >
                                 {editDetails.isPending ? (
                                     <Loader2 className="h-3 w-3 mr-2 animate-spin" />
@@ -513,11 +545,11 @@ export function EditOrderDetailsCard({ order, canEdit }: EditOrderDetailsCardPro
                     )}
                 </div>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-5">
                 {!isEditing ? (
                     <p className="font-mono text-xs text-muted-foreground">
-                        Edit contact, venue, permit, and reference fields while the order is
-                        pre-confirmation. Changes are logged in the edit history.
+                        Edit contact, venue, permit, dates, items, and reference fields while the
+                        order is pre-confirmation. Changes are logged in the edit history.
                     </p>
                 ) : (
                     <>
@@ -529,621 +561,123 @@ export function EditOrderDetailsCard({ order, canEdit }: EditOrderDetailsCardPro
                         )}
 
                         {/* Execution Contact */}
-                        <div className="space-y-3">
-                            <Label className="font-mono text-xs font-bold uppercase tracking-wide">
+                        <section className="space-y-3">
+                            <p className="font-mono text-xs font-bold uppercase tracking-wide">
                                 Execution Contact
-                            </Label>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                <div className="space-y-1">
-                                    <Label className="font-mono text-[10px] text-muted-foreground">
-                                        NAME
-                                    </Label>
-                                    <Input
-                                        className="font-mono text-sm"
-                                        value={form.contact_name}
-                                        onChange={(e) => set("contact_name", e.target.value)}
-                                    />
-                                </div>
-                                <div className="space-y-1">
-                                    <Label className="font-mono text-[10px] text-muted-foreground">
-                                        EMAIL
-                                    </Label>
-                                    <Input
-                                        type="email"
-                                        className="font-mono text-sm"
-                                        value={form.contact_email}
-                                        onChange={(e) => set("contact_email", e.target.value)}
-                                    />
-                                </div>
-                                <div className="space-y-1">
-                                    <Label className="font-mono text-[10px] text-muted-foreground">
-                                        PHONE
-                                    </Label>
-                                    <Input
-                                        className="font-mono text-sm"
-                                        value={form.contact_phone}
-                                        onChange={(e) => set("contact_phone", e.target.value)}
-                                    />
-                                </div>
-                            </div>
-                        </div>
+                            </p>
+                            <ContactEditor
+                                value={draft.contact}
+                                onChange={(patch) =>
+                                    setDraft((prev) => ({
+                                        ...prev,
+                                        contact: { ...prev.contact, ...patch },
+                                    }))
+                                }
+                                disabled={editDetails.isPending}
+                            />
+                        </section>
 
                         <Separator />
 
                         {/* Venue Contact */}
-                        <div className="space-y-3">
-                            <Label className="font-mono text-xs font-bold uppercase tracking-wide">
+                        <section className="space-y-3">
+                            <p className="font-mono text-xs font-bold uppercase tracking-wide">
                                 Venue Contact
-                            </Label>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                <div className="space-y-1">
-                                    <Label className="font-mono text-[10px] text-muted-foreground">
-                                        NAME
-                                    </Label>
-                                    <Input
-                                        className="font-mono text-sm"
-                                        value={form.venue_contact_name}
-                                        onChange={(e) => set("venue_contact_name", e.target.value)}
-                                    />
-                                </div>
-                                <div className="space-y-1">
-                                    <Label className="font-mono text-[10px] text-muted-foreground">
-                                        EMAIL
-                                    </Label>
-                                    <Input
-                                        type="email"
-                                        className="font-mono text-sm"
-                                        value={form.venue_contact_email}
-                                        onChange={(e) => set("venue_contact_email", e.target.value)}
-                                    />
-                                </div>
-                                <div className="space-y-1">
-                                    <Label className="font-mono text-[10px] text-muted-foreground">
-                                        PHONE
-                                    </Label>
-                                    <Input
-                                        className="font-mono text-sm"
-                                        value={form.venue_contact_phone}
-                                        onChange={(e) => set("venue_contact_phone", e.target.value)}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        <Separator />
-
-                        {/* Venue */}
-                        <div className="space-y-3">
-                            <Label className="font-mono text-xs font-bold uppercase tracking-wide">
-                                Venue
-                            </Label>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                <div className="space-y-1">
-                                    <Label className="font-mono text-[10px] text-muted-foreground">
-                                        VENUE NAME
-                                    </Label>
-                                    <Input
-                                        className="font-mono text-sm"
-                                        value={form.venue_name}
-                                        onChange={(e) => set("venue_name", e.target.value)}
-                                    />
-                                </div>
-                                <div className="space-y-1">
-                                    <Label className="font-mono text-[10px] text-muted-foreground">
-                                        CITY (REGISTERED)
-                                    </Label>
-                                    <Select
-                                        value={form.venue_city_id || NO_CITY}
-                                        onValueChange={(value) =>
-                                            set("venue_city_id", value === NO_CITY ? "" : value)
-                                        }
-                                    >
-                                        <SelectTrigger className="font-mono text-sm">
-                                            <SelectValue placeholder="Select city" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value={NO_CITY}>—</SelectItem>
-                                            {cities.map((city: any) => (
-                                                <SelectItem key={city.id} value={city.id}>
-                                                    {city.name}
-                                                    {city.country?.name
-                                                        ? `, ${city.country.name}`
-                                                        : ""}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="space-y-1">
-                                    <Label className="font-mono text-[10px] text-muted-foreground">
-                                        ADDRESS
-                                    </Label>
-                                    <Input
-                                        className="font-mono text-sm"
-                                        value={form.venue_address}
-                                        onChange={(e) => set("venue_address", e.target.value)}
-                                    />
-                                </div>
-                                <div className="space-y-1">
-                                    <Label className="font-mono text-[10px] text-muted-foreground">
-                                        COUNTRY (FREE TEXT)
-                                    </Label>
-                                    <Input
-                                        className="font-mono text-sm"
-                                        value={form.venue_country}
-                                        onChange={(e) => set("venue_country", e.target.value)}
-                                    />
-                                </div>
-                                <div className="space-y-1">
-                                    <Label className="font-mono text-[10px] text-muted-foreground">
-                                        CITY (FREE TEXT)
-                                    </Label>
-                                    <Input
-                                        className="font-mono text-sm"
-                                        value={form.venue_city_text}
-                                        onChange={(e) => set("venue_city_text", e.target.value)}
-                                    />
-                                </div>
-                            </div>
-                            <div className="space-y-1">
-                                <Label className="font-mono text-[10px] text-muted-foreground">
-                                    ACCESS NOTES
-                                </Label>
-                                <Textarea
-                                    className="font-mono text-sm"
-                                    rows={2}
-                                    value={form.venue_access_notes}
-                                    onChange={(e) => set("venue_access_notes", e.target.value)}
-                                />
-                            </div>
-                        </div>
-
-                        <Separator />
-
-                        {/* Event dates (Tier C — re-derives the booking window) */}
-                        <div className="space-y-3">
-                            <Label className="font-mono text-xs font-bold uppercase tracking-wide">
-                                Event
-                            </Label>
-                            <p className="font-mono text-[10px] text-muted-foreground">
-                                Changing the event dates re-derives the asset booking window. If
-                                inventory isn&apos;t available for the new dates the change is
-                                rejected. Editing a quoted order&apos;s dates returns it to pricing
-                                review.
                             </p>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                <div className="space-y-1">
-                                    <Label className="font-mono text-[10px] text-muted-foreground">
-                                        EVENT START DATE
-                                    </Label>
-                                    <div className="relative">
-                                        <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                        <Input
-                                            type="date"
-                                            className="font-mono text-sm pl-10"
-                                            value={form.event_start_date}
-                                            onChange={(e) =>
-                                                set("event_start_date", e.target.value)
-                                            }
-                                        />
-                                    </div>
-                                </div>
-                                <div className="space-y-1">
-                                    <Label className="font-mono text-[10px] text-muted-foreground">
-                                        EVENT END DATE
-                                    </Label>
-                                    <div className="relative">
-                                        <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                        <Input
-                                            type="date"
-                                            className="font-mono text-sm pl-10"
-                                            min={form.event_start_date || undefined}
-                                            value={form.event_end_date}
-                                            onChange={(e) => set("event_end_date", e.target.value)}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <Separator />
-
-                        {/* Item ops (Tier C — reconciles bookings + reprices) */}
-                        <div className="space-y-3">
-                            <Label className="font-mono text-xs font-bold uppercase tracking-wide">
-                                Items
-                            </Label>
-                            <p className="font-mono text-[10px] text-muted-foreground">
-                                Adjust quantities, remove items, or add new assets. Changes
-                                reconcile the asset bookings. If inventory isn&apos;t available for
-                                the requested dates and quantities the change is rejected. Assets
-                                requiring maintenance cannot be added. An order must keep at least
-                                one item. Editing a quoted order&apos;s items returns it to pricing
-                                review.
-                            </p>
-                            {itemRows.length === 0 && stagedAdds.length === 0 ? (
-                                <p className="font-mono text-[11px] text-muted-foreground">
-                                    No editable items on this order.
-                                </p>
-                            ) : (
-                                <div className="space-y-2">
-                                    {itemRows.map((row) => (
-                                        <div
-                                            key={row.order_item_id}
-                                            className={`flex items-center justify-between gap-3 rounded border px-3 py-2 ${
-                                                row.pending_remove
-                                                    ? "border-red-500/40 bg-red-500/5"
-                                                    : "border-border bg-muted/30"
-                                            }`}
-                                        >
-                                            <div className="flex items-center gap-2 min-w-0">
-                                                <Package className="h-4 w-4 shrink-0 text-muted-foreground" />
-                                                <span
-                                                    className={`font-mono text-sm truncate ${
-                                                        row.pending_remove
-                                                            ? "line-through text-muted-foreground"
-                                                            : ""
-                                                    }`}
-                                                >
-                                                    {row.asset_name}
-                                                </span>
-                                                {row.pending_remove && (
-                                                    <span className="font-mono text-[10px] uppercase tracking-wide text-red-600 shrink-0">
-                                                        Will be removed
-                                                    </span>
-                                                )}
-                                            </div>
-                                            {row.pending_remove ? (
-                                                <div className="flex items-center gap-1 shrink-0">
-                                                    <Button
-                                                        type="button"
-                                                        size="sm"
-                                                        variant="outline"
-                                                        className="h-7 font-mono text-[11px]"
-                                                        onClick={() =>
-                                                            toggleItemRemove(
-                                                                row.order_item_id,
-                                                                false
-                                                            )
-                                                        }
-                                                    >
-                                                        <RotateCcw className="h-3 w-3 mr-1" />
-                                                        UNDO
-                                                    </Button>
-                                                </div>
-                                            ) : (
-                                                <div className="flex items-center gap-1 shrink-0">
-                                                    <Button
-                                                        type="button"
-                                                        size="icon"
-                                                        variant="outline"
-                                                        className="h-7 w-7"
-                                                        disabled={row.quantity <= 1}
-                                                        onClick={() =>
-                                                            setItemQuantity(
-                                                                row.order_item_id,
-                                                                row.quantity - 1
-                                                            )
-                                                        }
-                                                        aria-label="Decrease quantity"
-                                                    >
-                                                        <Minus className="h-3 w-3" />
-                                                    </Button>
-                                                    <Input
-                                                        type="number"
-                                                        min={1}
-                                                        step={1}
-                                                        inputMode="numeric"
-                                                        className="h-7 w-16 text-center font-mono text-sm"
-                                                        value={row.quantity}
-                                                        onChange={(e) =>
-                                                            setItemQuantity(
-                                                                row.order_item_id,
-                                                                parseInt(e.target.value, 10)
-                                                            )
-                                                        }
-                                                    />
-                                                    <Button
-                                                        type="button"
-                                                        size="icon"
-                                                        variant="outline"
-                                                        className="h-7 w-7"
-                                                        onClick={() =>
-                                                            setItemQuantity(
-                                                                row.order_item_id,
-                                                                row.quantity + 1
-                                                            )
-                                                        }
-                                                        aria-label="Increase quantity"
-                                                    >
-                                                        <Plus className="h-3 w-3" />
-                                                    </Button>
-                                                    <Button
-                                                        type="button"
-                                                        size="icon"
-                                                        variant="ghost"
-                                                        className="h-7 w-7 text-muted-foreground hover:text-red-600"
-                                                        // Block removing the only remaining item
-                                                        // (server also enforces this).
-                                                        disabled={remainingItemCount <= 1}
-                                                        onClick={() =>
-                                                            toggleItemRemove(
-                                                                row.order_item_id,
-                                                                true
-                                                            )
-                                                        }
-                                                        aria-label="Remove item"
-                                                        title={
-                                                            remainingItemCount <= 1
-                                                                ? "An order must keep at least one item"
-                                                                : "Remove item"
-                                                        }
-                                                    >
-                                                        <Trash2 className="h-3.5 w-3.5" />
-                                                    </Button>
-                                                </div>
-                                            )}
-                                        </div>
-                                    ))}
-
-                                    {/* Staged ADDs — new assets not yet on the order */}
-                                    {stagedAdds.map((add) => (
-                                        <div
-                                            key={add.key}
-                                            className="flex items-center justify-between gap-3 rounded border border-emerald-500/40 bg-emerald-500/5 px-3 py-2"
-                                        >
-                                            <div className="flex items-center gap-2 min-w-0">
-                                                <PlusCircle className="h-4 w-4 shrink-0 text-emerald-600" />
-                                                <span className="font-mono text-sm truncate">
-                                                    {add.asset_name}
-                                                </span>
-                                                <span className="font-mono text-[10px] uppercase tracking-wide text-emerald-700 shrink-0">
-                                                    New
-                                                </span>
-                                            </div>
-                                            <div className="flex items-center gap-1 shrink-0">
-                                                <Button
-                                                    type="button"
-                                                    size="icon"
-                                                    variant="outline"
-                                                    className="h-7 w-7"
-                                                    disabled={add.quantity <= 1}
-                                                    onClick={() =>
-                                                        setStagedAddQuantity(
-                                                            add.key,
-                                                            add.quantity - 1
-                                                        )
-                                                    }
-                                                    aria-label="Decrease quantity"
-                                                >
-                                                    <Minus className="h-3 w-3" />
-                                                </Button>
-                                                <Input
-                                                    type="number"
-                                                    min={1}
-                                                    step={1}
-                                                    inputMode="numeric"
-                                                    className="h-7 w-16 text-center font-mono text-sm"
-                                                    value={add.quantity}
-                                                    onChange={(e) =>
-                                                        setStagedAddQuantity(
-                                                            add.key,
-                                                            parseInt(e.target.value, 10)
-                                                        )
-                                                    }
-                                                />
-                                                <Button
-                                                    type="button"
-                                                    size="icon"
-                                                    variant="outline"
-                                                    className="h-7 w-7"
-                                                    onClick={() =>
-                                                        setStagedAddQuantity(
-                                                            add.key,
-                                                            add.quantity + 1
-                                                        )
-                                                    }
-                                                    aria-label="Increase quantity"
-                                                >
-                                                    <Plus className="h-3 w-3" />
-                                                </Button>
-                                                <Button
-                                                    type="button"
-                                                    size="icon"
-                                                    variant="ghost"
-                                                    className="h-7 w-7 text-muted-foreground hover:text-red-600"
-                                                    onClick={() => removeStagedAdd(add.key)}
-                                                    aria-label="Discard staged item"
-                                                    title="Discard staged item"
-                                                >
-                                                    <X className="h-3.5 w-3.5" />
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-
-                            {/* Add-item picker — the canonical AssetPicker (ops adapter)
-                                in a dialog, scoped to the order's company. Selecting
-                                assets stages ADD ops exactly as the old text combobox did. */}
-                            {order?.company?.id ? (
-                                <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
-                                    <DialogTrigger asChild>
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            className="w-full justify-center gap-2 font-mono text-xs"
-                                        >
-                                            <PlusCircle className="h-3.5 w-3.5" />
-                                            ADD ITEMS
-                                        </Button>
-                                    </DialogTrigger>
-                                    <DialogContent className="max-w-4xl gap-0 overflow-hidden p-0">
-                                        <DialogHeader className="border-b border-border px-6 py-4">
-                                            <DialogTitle className="font-mono text-sm font-bold uppercase tracking-wide">
-                                                Add Items
-                                            </DialogTitle>
-                                            <DialogDescription className="font-mono text-xs">
-                                                Search the tenant catalog and select assets to add
-                                                to this order.
-                                            </DialogDescription>
-                                        </DialogHeader>
-                                        <OpsAssetPicker
-                                            companyId={order.company.id}
-                                            alreadyOnEntity={alreadyOnEntityAssetIds}
-                                            entityNoun="order"
-                                            onConfirm={(selections) => {
-                                                addStagedAssets(selections);
-                                                setPickerOpen(false);
-                                            }}
-                                        />
-                                    </DialogContent>
-                                </Dialog>
-                            ) : (
-                                <p className="font-mono text-[11px] text-muted-foreground">
-                                    Cannot add items — order has no associated company.
-                                </p>
-                            )}
-                        </div>
-
-                        <Separator />
-
-                        {/* Special instructions */}
-                        <div className="space-y-1">
-                            <Label className="font-mono text-xs font-bold uppercase tracking-wide">
-                                Special Instructions
-                            </Label>
-                            <Textarea
-                                className="font-mono text-sm"
-                                rows={3}
-                                value={form.special_instructions}
-                                onChange={(e) => set("special_instructions", e.target.value)}
-                            />
-                        </div>
-
-                        <Separator />
-
-                        {/* Reference numbers + permanent placement */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <div className="space-y-1">
-                                <Label className="font-mono text-[10px] text-muted-foreground">
-                                    CLIENT PO NUMBER
-                                </Label>
-                                <Input
-                                    className="font-mono text-sm"
-                                    value={form.po_number}
-                                    onChange={(e) => set("po_number", e.target.value)}
-                                />
-                            </div>
-                            <div className="space-y-1">
-                                <Label className="font-mono text-[10px] text-muted-foreground">
-                                    PLATFORM JOB NUMBER
-                                </Label>
-                                <Input
-                                    className="font-mono text-sm"
-                                    value={form.job_number}
-                                    onChange={(e) => set("job_number", e.target.value)}
-                                />
-                            </div>
-                        </div>
-                        <label className="flex items-center gap-2 cursor-pointer">
-                            <Checkbox
-                                checked={form.is_permanent_placement}
-                                onCheckedChange={(checked) =>
-                                    set("is_permanent_placement", checked === true)
+                            <VenueContactEditor
+                                value={draft.venueContact}
+                                onChange={(patch) =>
+                                    setDraft((prev) => ({
+                                        ...prev,
+                                        venueContact: { ...prev.venueContact, ...patch },
+                                    }))
                                 }
+                                disabled={editDetails.isPending}
                             />
-                            <span className="font-mono text-xs">Permanent placement</span>
-                        </label>
+                        </section>
 
                         <Separator />
 
-                        {/* Permit requirements */}
-                        <div className="space-y-3">
-                            <Label className="font-mono text-xs font-bold uppercase tracking-wide">
-                                Permit / Access
-                            </Label>
-                            <label className="flex items-center gap-2 cursor-pointer">
-                                <Checkbox
-                                    checked={form.requires_permit}
-                                    onCheckedChange={(checked) =>
-                                        set("requires_permit", checked === true)
-                                    }
-                                />
-                                <span className="font-mono text-xs">Requires permit</span>
-                            </label>
+                        {/* Venue & Logistics (incl. the shared PermitSection) */}
+                        <section className="space-y-3">
+                            <DescriptiveFieldsEditor
+                                value={draft.descriptive}
+                                onChange={(patch) =>
+                                    setDraft((prev) => ({
+                                        ...prev,
+                                        descriptive: { ...prev.descriptive, ...patch },
+                                    }))
+                                }
+                                disabled={editDetails.isPending}
+                                cities={cities as any}
+                                companyName={order?.company?.name}
+                                canEditJobNumber={canEditJobNumber}
+                            />
+                        </section>
 
-                            {form.requires_permit && (
-                                <div className="space-y-3 border-l-2 border-border pl-4">
-                                    <div className="space-y-1">
-                                        <Label className="font-mono text-[10px] text-muted-foreground">
-                                            PERMIT OWNER
-                                        </Label>
-                                        <Select
-                                            value={form.permit_owner}
-                                            onValueChange={(value) =>
-                                                set("permit_owner", value as PermitOwner)
-                                            }
-                                        >
-                                            <SelectTrigger className="font-mono text-sm">
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="CLIENT">
-                                                    Client will arrange permits
-                                                </SelectItem>
-                                                <SelectItem value="PLATFORM">
-                                                    Ops will arrange permits
-                                                </SelectItem>
-                                                <SelectItem value="UNKNOWN">
-                                                    Not specified
-                                                </SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    {/* Consequence / blocking messaging — parity with
-                                        the client checkout + quote-review permit alert. */}
-                                    <PermitWarningAlert
-                                        choice={permitChoice}
-                                        companyName={order?.company?.name}
+                        {/* Event Dates — gated on enable_event_date_inputs (#10) */}
+                        {eventDateInputsEnabled && (
+                            <>
+                                <Separator />
+                                <section className="space-y-3">
+                                    <p className="font-mono text-xs font-bold uppercase tracking-wide">
+                                        Event
+                                    </p>
+                                    <EventDatesEditor
+                                        value={draft.eventDates}
+                                        onChange={(patch) =>
+                                            setDraft((prev) => ({
+                                                ...prev,
+                                                eventDates: { ...prev.eventDates, ...patch },
+                                            }))
+                                        }
+                                        disabled={editDetails.isPending}
+                                        minDate={minDate}
+                                        helper={
+                                            <OrderEditFeasibilityHelper
+                                                isLoading={feasibilityLoading}
+                                                floorDate={floorDate}
+                                                userEventDate={pickedStart}
+                                                userDateFeasible={userDateFeasible}
+                                                blockingItems={blockingIssues}
+                                                config={feasibility?.config ?? null}
+                                                onUseFloorDate={() =>
+                                                    floorDate &&
+                                                    setDraft((prev) => ({
+                                                        ...prev,
+                                                        eventDates: {
+                                                            ...prev.eventDates,
+                                                            event_start_date: floorDate,
+                                                        },
+                                                    }))
+                                                }
+                                            />
+                                        }
                                     />
-                                    <label className="flex items-center gap-2 cursor-pointer">
-                                        <Checkbox
-                                            checked={form.requires_vehicle_docs}
-                                            onCheckedChange={(checked) =>
-                                                set("requires_vehicle_docs", checked === true)
-                                            }
-                                        />
-                                        <span className="font-mono text-xs">
-                                            Requires vehicle docs
-                                        </span>
-                                    </label>
-                                    <label className="flex items-center gap-2 cursor-pointer">
-                                        <Checkbox
-                                            checked={form.requires_staff_ids}
-                                            onCheckedChange={(checked) =>
-                                                set("requires_staff_ids", checked === true)
-                                            }
-                                        />
-                                        <span className="font-mono text-xs">
-                                            Requires staff IDs
-                                        </span>
-                                    </label>
-                                    <div className="space-y-1">
-                                        <Label className="font-mono text-[10px] text-muted-foreground">
-                                            PERMIT NOTES
-                                        </Label>
-                                        <Textarea
-                                            className="font-mono text-sm"
-                                            rows={2}
-                                            value={form.permit_notes}
-                                            onChange={(e) => set("permit_notes", e.target.value)}
-                                        />
-                                    </div>
-                                </div>
-                            )}
-                        </div>
+                                </section>
+                            </>
+                        )}
+
+                        <Separator />
+
+                        {/* Items — bounded QtyStepper + 2-step OpsAssetPicker */}
+                        <section className="space-y-3">
+                            <p className="font-mono text-xs font-bold uppercase tracking-wide">
+                                Items
+                            </p>
+                            <OrderItemsQuantityEditor
+                                items={draft.itemRows}
+                                onSetItemQuantity={setItemQuantity}
+                                onToggleRemove={toggleItemRemove}
+                                stagedAdds={draft.stagedAdds}
+                                onAddAssets={addStagedAssets}
+                                onChangeAddQty={setStagedAddQuantity}
+                                onRemoveAdd={removeStagedAdd}
+                                companyId={order?.company?.id}
+                                alreadyOnEntity={alreadyOnEntityAssetIds}
+                                disabled={editDetails.isPending}
+                            />
+                        </section>
                     </>
                 )}
             </CardContent>

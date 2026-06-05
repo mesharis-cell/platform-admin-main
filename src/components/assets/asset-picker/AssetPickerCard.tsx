@@ -13,7 +13,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { AlertCircle, Boxes, Check, Minus, Plus } from "lucide-react";
+import { AlertCircle, Boxes, Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,6 +23,7 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog";
+import { QtyStepper, clampQty } from "./QtyStepper";
 import type { AssetCondition, AssetPickerItem, AssetPickerSibling } from "./types";
 
 function hexWithAlpha(hex: string | null | undefined, alphaHex: string) {
@@ -35,77 +36,6 @@ function conditionBadgeClass(condition: AssetCondition) {
     if (condition === "RED") return "bg-red-500/10 text-red-700 border-red-500/25";
     if (condition === "ORANGE") return "bg-amber-500/10 text-amber-700 border-amber-500/25";
     return "bg-emerald-500/10 text-emerald-700 border-emerald-500/25";
-}
-
-const clampQty = (n: number, max: number): number => {
-    if (!Number.isFinite(n)) return 1;
-    const i = Math.floor(n);
-    if (i < 1) return 1;
-    if (max > 0 && i > max) return max;
-    return i;
-};
-
-/** Inline quantity stepper bounded by `max` (availableQuantity). */
-function QtyStepper({
-    qty,
-    max,
-    name,
-    disabled,
-    onChange,
-}: {
-    qty: number;
-    max: number;
-    name: string;
-    disabled?: boolean;
-    onChange: (next: number) => void;
-}) {
-    return (
-        <div className="flex items-center overflow-hidden rounded-md border border-border shrink-0">
-            <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => onChange(qty - 1)}
-                disabled={disabled || qty <= 1}
-                aria-label={`Decrease quantity of ${name}`}
-                className="h-8 w-8 rounded-none border-r border-border p-0 hover:bg-muted"
-            >
-                <Minus className="h-3 w-3" />
-            </Button>
-            <input
-                type="number"
-                inputMode="numeric"
-                min={1}
-                max={max > 0 ? max : undefined}
-                step={1}
-                value={qty}
-                data-testid="asset-picker-qty"
-                onChange={(e) => {
-                    const parsed = parseInt(e.target.value, 10);
-                    if (Number.isNaN(parsed)) return;
-                    onChange(parsed);
-                }}
-                onBlur={(e) => {
-                    const parsed = parseInt(e.target.value, 10);
-                    onChange(Number.isNaN(parsed) ? 1 : parsed);
-                }}
-                disabled={disabled}
-                aria-label={`Quantity of ${name}`}
-                className="h-8 w-12 border-0 bg-transparent text-center font-mono text-sm outline-none focus-visible:ring-0 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-            />
-            <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => onChange(qty + 1)}
-                disabled={disabled || (max > 0 && qty >= max)}
-                aria-label={`Increase quantity of ${name}`}
-                className="h-8 w-8 rounded-none border-l border-border p-0 hover:bg-muted"
-            >
-                <Plus className="h-3 w-3" />
-            </Button>
-        </div>
-    );
 }
 
 export interface AssetPickerCardProps {

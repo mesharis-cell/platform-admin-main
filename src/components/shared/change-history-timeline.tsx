@@ -48,6 +48,14 @@ function humanizeField(field: string, fieldLabels?: Record<string, string>): str
         .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+// Human labels for the edit tier: A = descriptive (no money/inventory),
+// B = pricing/money, C = inventory/scheduling (dates/qty/assets → reconcile).
+const TIER_LABELS: Record<string, string> = {
+    A: "Details",
+    B: "Pricing",
+    C: "Inventory",
+};
+
 export function ChangeHistoryTimeline({
     entries,
     isLoading,
@@ -83,8 +91,13 @@ export function ChangeHistoryTimeline({
                                     <Badge
                                         variant="outline"
                                         className="font-mono text-[10px] px-2 py-0.5"
+                                        title={
+                                            TIER_LABELS[entry.change_tier]
+                                                ? `Tier ${entry.change_tier}`
+                                                : undefined
+                                        }
                                     >
-                                        {entry.change_tier.replace(/_/g, " ")}
+                                        {TIER_LABELS[entry.change_tier] ?? entry.change_tier}
                                     </Badge>
                                 )}
                             </div>

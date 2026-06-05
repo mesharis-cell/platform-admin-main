@@ -49,9 +49,13 @@ function mapOpsAsset(asset: OpsAssetRow): AssetPickerItem {
     };
 }
 
-/** A confirmed selection enriched with the chosen asset's display name. */
+/**
+ * A confirmed selection enriched with the chosen asset's display name and its
+ * availableQuantity (so a staging editor can bound the staged-add qty stepper).
+ */
 export interface NamedAssetSelection extends AssetPickerSelection {
     name: string;
+    availableQuantity: number;
 }
 
 export function OpsAssetPicker({
@@ -80,10 +84,11 @@ export function OpsAssetPicker({
         return rows.map(mapOpsAsset);
     }, [data]);
 
-    // Index name by the asset_id the picker will emit.
-    const nameByAssetId = useMemo(() => {
-        const map = new Map<string, string>();
-        for (const item of items) map.set(item.id, item.name);
+    // Index name + availableQuantity by the asset_id the picker will emit.
+    const itemByAssetId = useMemo(() => {
+        const map = new Map<string, { name: string; availableQuantity: number }>();
+        for (const item of items)
+            map.set(item.id, { name: item.name, availableQuantity: item.availableQuantity });
         return map;
     }, [items]);
 
@@ -100,10 +105,14 @@ export function OpsAssetPicker({
             entityNoun={entityNoun}
             onConfirm={(selections) => {
                 onConfirm(
-                    selections.map((s) => ({
-                        ...s,
-                        name: nameByAssetId.get(s.assetId) ?? "Asset",
-                    }))
+                    selections.map((s) => {
+                        const meta = itemByAssetId.get(s.assetId);
+                        return {
+                            ...s,
+                            name: meta?.name ?? "Asset",
+                            availableQuantity: meta?.availableQuantity ?? 0,
+                        };
+                    })
                 );
             }}
         />

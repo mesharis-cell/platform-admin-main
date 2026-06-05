@@ -1047,7 +1047,8 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                         </p>
                                         <p className="font-mono text-xs text-muted-foreground mt-1">
                                             This order was edited after the quote was sent.
-                                            Re-review pricing and re-issue the quote.
+                                            Re-review the revised pricing and re-approve to re-issue
+                                            the quote to the client.
                                         </p>
                                     </div>
                                 </div>
@@ -1414,7 +1415,11 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                         {/* Order Editing (Phase 1) — descriptive field editor.
                             Self-gates on canEditOrderDetails (renders nothing
                             when locked or unpermitted). */}
-                        <EditOrderDetailsCard order={order.data} canEdit={canEditOrderDetails} />
+                        <EditOrderDetailsCard
+                            order={order.data}
+                            canEdit={canEditOrderDetails}
+                            canEditJobNumber={canEditJobNumber}
+                        />
 
                         {/* Event & Venue */}
                         <Card>
