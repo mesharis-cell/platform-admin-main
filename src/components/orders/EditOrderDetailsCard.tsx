@@ -1,27 +1,56 @@
 "use client";
 
 /**
- * Order Editing — admin inline editor, restructured to PER-SECTION editing
- * (twin of the client's OrderEditPanel).
+ * Order Editing — admin PER-SECTION INLINE editor (twin of the client's
+ * OrderDetailEdit.tsx, adapted to the admin's editor components + visual
+ * language).
  *
- * "Edit Details" reveals controlled section editors — Contact, Venue Contact,
- * Venue & Logistics (with the shared <PermitSection> 1:1 twin of the client's),
- * Event Dates (lead-time-gated + feasibility helper), and Items (bounded
- * <QtyStepper> + 2-step <OpsAssetPicker>). On save we diff the working draft
- * against the original order snapshot and PATCH ONLY the changed keys to
- * /operations/v1/order/:id (via useOrderEditDetails). No optimistic mutation —
- * a successful save invalidates the detail/history queries and the refetch
- * drives the UI.
+ * There is NO master "Edit Details" toggle. Each logical section renders its own
+ * inline-editable card — Contact, Venue Contact, Venue & Logistics (with the
+ * shared <PermitSection> bundled in the admin DescriptiveFieldsEditor), Event
+ * Dates (lead-time-gated + feasibility helper), and Items (bounded <QtyStepper>
+ * + 2-step <OpsAssetPicker>). Each section shows its current values with its OWN
+ * inline "Edit" affordance; clicking it flips THAT section into its editor in
+ * place, with its OWN Save / Cancel. Only one section is open at a time, so a
+ * per-section Save's diff naturally carries only that section's keys (gated by
+ * SECTION_KEYS). Items are ALWAYS inline (edited directly in the list), with
+ * their own save bar shown only when there are item changes.
+ *
+ * The save contract is unchanged: a shared working `draft` is built from the
+ * order snapshot (`original`); `buildPayload()` emits ONLY changed, allowlisted
+ * keys; a per-section Save PATCHes that diff to /operations/v1/order/:id (via
+ * useOrderEditDetails). No optimistic mutation — a successful save invalidates
+ * the detail/history queries and the refetch drives the UI.
  *
  * The card self-gates on `canEdit` (pre-confirmation band + orders:edit_details
  * permission, computed by the parent page) — it renders nothing when locked.
- * The API re-checks the band and 409s if the order has moved on; we surface that
- * message inline + as a toast. The save-gate fix (only block on a permit edited
- * INTO the ambiguous required-but-no-owner state, not pre-existing) is preserved.
+ * Preserved from the prior implementation:
+ *   - The save-gate fix: a required permit edited INTO the ambiguous
+ *     required-but-no-owner state blocks save ONLY when the payload actually
+ *     carries permit_requirements (never a pre-existing one untouched by an
+ *     unrelated edit).
+ *   - QUOTE_REVISED handling (status_reverted surfaced in the toast).
+ *   - job_number is admin-only (canEditJobNumber).
+ *   - enable_event_date_inputs per-company gating (reads order.company.features →
+ *     platform default). When OFF, the dates section is read-only (no Edit).
+ *   - Bounded item quantities (item.asset.available_quantity).
+ *   - Feasibility blocks save on a too-soon edited event window.
  */
 
 import { useMemo, useRef, useState } from "react";
-import { Pencil, Save, X, AlertCircle, Loader2 } from "lucide-react";
+import {
+    Pencil,
+    Save,
+    X,
+    AlertCircle,
+    Loader2,
+    User,
+    MapPin,
+    Building2,
+    Calendar,
+    Package,
+    Check,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useOrderEditDetails, type OrderEditDetailsPayload } from "@/hooks/use-orders";
 import { useCities } from "@/hooks/use-cities";
@@ -29,7 +58,6 @@ import { usePlatform } from "@/lib/hooks/use-platform";
 import { useOpsFeasibilityConfig, useOpsFeasibility } from "@/hooks/use-order-feasibility";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { type PermitSectionValue } from "@/components/permits/PermitSection";
 import { ContactEditor, type ContactDraft } from "./editing/ContactEditor";
 import { VenueContactEditor, type VenueContactDraft } from "./editing/VenueContactEditor";
@@ -50,6 +78,9 @@ interface EditOrderDetailsCardProps {
     canEditJobNumber?: boolean;
 }
 
+/** The independently-editable sections (Items are always inline, never here). */
+type SectionKey = "contact" | "venueContact" | "descriptive" | "eventDates";
+
 const s = (v: unknown): string => (typeof v === "string" ? v : v == null ? "" : String(v));
 
 // `<Input type="date">` expects YYYY-MM-DD. Event dates arrive as ISO strings;
@@ -64,6 +95,21 @@ function toDateInputValue(iso: unknown): string {
     const mo = String(parsed.getUTCMonth() + 1).padStart(2, "0");
     const d = String(parsed.getUTCDate()).padStart(2, "0");
     return `${y}-${mo}-${d}`;
+}
+
+function fmtDisplayDate(iso: unknown): string {
+    const ymd = toDateInputValue(iso);
+    if (!ymd) return "";
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd);
+    if (!m) return ymd;
+    const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
+    if (isNaN(d.getTime())) return ymd;
+    return d.toLocaleDateString("en-US", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+        timeZone: "UTC",
+    });
 }
 
 interface Draft {
@@ -179,14 +225,139 @@ function computeMinDate(
     return `${y}-${mo}-${d}`;
 }
 
+/** Which payload keys belong to which section — used to scope per-section diffs. */
+const SECTION_KEYS: Record<SectionKey, (keyof OrderEditDetailsPayload)[]> = {
+    contact: ["contact_name", "contact_email", "contact_phone"],
+    venueContact: ["venue_contact_name", "venue_contact_email", "venue_contact_phone"],
+    // The admin DescriptiveFieldsEditor bundles the venue fields AND the shared
+    // PermitSection (which owns access_notes), so this one section owns all of
+    // venue_location + permit_requirements too.
+    descriptive: [
+        "venue_name",
+        "venue_city_id",
+        "venue_location",
+        "special_instructions",
+        "is_permanent_placement",
+        "po_number",
+        "job_number",
+        "permit_requirements",
+    ],
+    eventDates: ["event_start_date", "event_end_date"],
+};
+
+// ----- small view-mode primitives (admin font-mono read rows) -----
+
+function ReadRow({ label, value }: { label: string; value?: string | null }) {
+    return (
+        <div>
+            <p className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground mb-1">
+                {label}
+            </p>
+            <p className="font-mono text-sm break-words">
+                {value && value.trim() ? value : <span className="text-muted-foreground">—</span>}
+            </p>
+        </div>
+    );
+}
+
+function SectionCard({
+    icon,
+    title,
+    editing,
+    canEdit = true,
+    onEdit,
+    children,
+    testId,
+}: {
+    icon: React.ReactNode;
+    title: string;
+    editing: boolean;
+    canEdit?: boolean;
+    onEdit: () => void;
+    children: React.ReactNode;
+    testId?: string;
+}) {
+    return (
+        <Card className={editing ? "border-primary/40" : undefined} data-testid={testId}>
+            <CardHeader>
+                <div className="flex items-center justify-between gap-4">
+                    <CardTitle className="font-mono text-sm flex items-center gap-2">
+                        <span className="text-primary">{icon}</span>
+                        {title}
+                    </CardTitle>
+                    {!editing && canEdit && (
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            className="font-mono text-xs shrink-0"
+                            onClick={onEdit}
+                            data-testid={testId ? `${testId}-edit` : undefined}
+                        >
+                            <Pencil className="h-3 w-3 mr-2" />
+                            EDIT
+                        </Button>
+                    )}
+                </div>
+            </CardHeader>
+            <CardContent className="space-y-4">{children}</CardContent>
+        </Card>
+    );
+}
+
+function SectionFooter({
+    onCancel,
+    onSave,
+    saving,
+    canSave,
+    testId,
+}: {
+    onCancel: () => void;
+    onSave: () => void;
+    saving: boolean;
+    canSave: boolean;
+    testId?: string;
+}) {
+    return (
+        <div className="flex items-center justify-end gap-2 border-t border-border/40 pt-4">
+            <Button
+                size="sm"
+                variant="outline"
+                className="font-mono text-xs"
+                onClick={onCancel}
+                disabled={saving}
+            >
+                <X className="h-3 w-3 mr-2" />
+                CANCEL
+            </Button>
+            <Button
+                size="sm"
+                className="font-mono text-xs"
+                onClick={onSave}
+                disabled={saving || !canSave}
+                data-testid={testId}
+            >
+                {saving ? (
+                    <Loader2 className="h-3 w-3 mr-2 animate-spin" />
+                ) : (
+                    <Save className="h-3 w-3 mr-2" />
+                )}
+                SAVE
+            </Button>
+        </div>
+    );
+}
+
 export function EditOrderDetailsCard({
     order,
     canEdit,
     canEditJobNumber = true,
 }: EditOrderDetailsCardProps) {
-    const [isEditing, setIsEditing] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [draft, setDraft] = useState<Draft>(() => buildDraft(order));
+    // Only one section is open at a time. Items are ALWAYS inline (never in this
+    // state). When a section opens, we reseed the draft from the order so it opens
+    // clean and the diff only ever carries that section's changes.
+    const [openSection, setOpenSection] = useState<SectionKey | null>(null);
     const addKeySeq = useRef(0);
 
     const editDetails = useOrderEditDetails();
@@ -200,7 +371,7 @@ export function EditOrderDetailsCard({
     const minDate = useMemo(() => computeMinDate(feasibilityConfig), [feasibilityConfig]);
 
     // enable_event_date_inputs per-company → platform default. When OFF, the
-    // event-date section is hidden (task #10).
+    // event-date section is read-only (no inline Edit affordance).
     const eventDateInputsEnabled = useMemo(() => {
         const companyFeatures = (order?.company?.features ?? null) as Record<
             string,
@@ -215,7 +386,7 @@ export function EditOrderDetailsCard({
         return platformValue === true;
     }, [order?.company?.features, platform?.features]);
 
-    // The pristine snapshot to diff against when saving.
+    // The pristine snapshot to diff against when saving (reseeds on refetch).
     const original = useMemo(() => buildDraft(order), [order]);
 
     // Asset ids the picker should mark "already added": assets currently on the
@@ -237,7 +408,7 @@ export function EditOrderDetailsCard({
     }, [order, draft.itemRows, draft.stagedAdds]);
 
     // Feasibility subscription — fires on the staged item set + the picked event
-    // start date. Only meaningful when the date section is shown.
+    // start date. Only meaningful while the dates section is open + exposed.
     const feasibilityItems = useMemo(() => {
         const items = Array.isArray(order?.items) ? order.items : [];
         const removed = new Set(
@@ -258,24 +429,10 @@ export function EditOrderDetailsCard({
         orderId: order?.id,
         items: feasibilityItems,
         eventStartDate: draft.eventDates.event_start_date || null,
-        enabled: isEditing && eventDateInputsEnabled,
+        enabled: openSection === "eventDates" && eventDateInputsEnabled,
     });
 
-    if (!canEdit) return null;
-
-    const handleEdit = () => {
-        setDraft(buildDraft(order));
-        setErrorMessage(null);
-        setIsEditing(true);
-    };
-
-    const handleCancel = () => {
-        setDraft(buildDraft(order));
-        setErrorMessage(null);
-        setIsEditing(false);
-    };
-
-    // --- item ops handlers -------------------------------------------------
+    // --- item ops handlers (always-inline items section) -------------------
     const setItemQuantity = (orderItemId: string, next: number) => {
         const qty = Number.isFinite(next) ? Math.max(1, Math.floor(next)) : 1;
         setDraft((prev) => ({
@@ -437,6 +594,7 @@ export function EditOrderDetailsCard({
 
     const payload = buildPayload();
     const hasChanges = Object.keys(payload).length > 0;
+    const hasItemChanges = "items" in payload;
 
     // Save-gate fix (preserved): only block on a permit that was EDITED into the
     // ambiguous required-but-no-owner state — never on a pre-existing one that an
@@ -447,8 +605,56 @@ export function EditOrderDetailsCard({
         draft.descriptive.permit.requires_permit &&
         draft.descriptive.permit.permit_owner === "UNKNOWN";
 
-    const handleSave = async () => {
+    const endBeforeStart =
+        !!draft.eventDates.event_start_date &&
+        !!draft.eventDates.event_end_date &&
+        draft.eventDates.event_end_date < draft.eventDates.event_start_date;
+
+    // Feasibility helper inputs — does the picked start clear the lead floor?
+    const floorDate = feasibility?.lead_floor_date ?? null;
+    const pickedStart = draft.eventDates.event_start_date;
+    const userDateFeasible =
+        pickedStart && floorDate ? (pickedStart >= floorDate ? true : false) : null;
+    const blockingIssues = (feasibility?.issues ?? []).filter(
+        (i) => i.maintenance_mode === "MANDATORY_RED" || i.condition === "RED"
+    );
+    // Block save when the edited dates aren't feasible (checkout's Next gate).
+    const feasibilityBlocks =
+        openSection === "eventDates" &&
+        eventDateInputsEnabled &&
+        SECTION_KEYS.eventDates.some((k) => k in payload) &&
+        userDateFeasible === false;
+
+    // ---- open / cancel / save plumbing ----
+
+    const handleOpen = (key: SectionKey) => {
+        setDraft(buildDraft(order));
         setErrorMessage(null);
+        setOpenSection(key);
+    };
+
+    const handleCancelSection = () => {
+        setDraft(buildDraft(order));
+        setErrorMessage(null);
+        setOpenSection(null);
+    };
+
+    const handleDiscardItemChanges = () => {
+        setDraft((prev) => ({
+            ...prev,
+            itemRows: buildItemRows(order),
+            stagedAdds: [],
+        }));
+    };
+
+    const saveSection = async (section: SectionKey | "items") => {
+        setErrorMessage(null);
+
+        if (!hasChanges) {
+            toast.info("No changes to save");
+            if (section !== "items") setOpenSection(null);
+            return;
+        }
 
         if (permitOwnerUnresolved) {
             const message = "Select who arranges the permit before saving";
@@ -469,16 +675,23 @@ export function EditOrderDetailsCard({
             return;
         }
 
-        if (!hasChanges) {
-            toast.info("No changes to save");
-            setIsEditing(false);
+        if (feasibilityBlocks) {
+            const message =
+                "This event date is too soon for the selected items. Pick a later date.";
+            setErrorMessage(message);
+            toast.error(message);
             return;
         }
 
         try {
-            await editDetails.mutateAsync({ orderId: order.id, payload });
-            toast.success("Order details updated");
-            setIsEditing(false);
+            const result = await editDetails.mutateAsync({ orderId: order.id, payload });
+            const data = (result as { data?: { status_reverted?: boolean } } | undefined)?.data;
+            if (data?.status_reverted) {
+                toast.success("Order details updated. The quote was withdrawn for re-review.");
+            } else {
+                toast.success("Order details updated");
+            }
+            if (section !== "items") setOpenSection(null);
         } catch (error: unknown) {
             const message =
                 (error instanceof Error && error.message) || "Failed to update order details";
@@ -487,200 +700,295 @@ export function EditOrderDetailsCard({
         }
     };
 
-    // Feasibility helper inputs — does the picked start clear the lead floor?
-    const floorDate = feasibility?.lead_floor_date ?? null;
-    const pickedStart = draft.eventDates.event_start_date;
-    const userDateFeasible =
-        pickedStart && floorDate ? (pickedStart >= floorDate ? true : false) : null;
-    const blockingIssues = (feasibility?.issues ?? []).filter(
-        (i) => i.maintenance_mode === "MANDATORY_RED" || i.condition === "RED"
-    );
+    if (!canEdit) return null;
+
+    const saving = editDetails.isPending;
+    const cityName = order?.venue_city || order?.venue_location?.city || "";
 
     return (
-        <Card>
-            <CardHeader>
-                <div className="flex items-center justify-between">
-                    <CardTitle className="font-mono text-sm flex items-center gap-2">
-                        <Pencil className="h-4 w-4 text-primary" />
-                        EDIT ORDER DETAILS
-                    </CardTitle>
-                    {!isEditing ? (
+        <div className="space-y-4">
+            {errorMessage && (
+                <div className="flex items-start gap-2 rounded-md border border-red-500/40 bg-red-500/5 px-3 py-2 text-xs text-red-700 font-mono">
+                    <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                    <span>{errorMessage}</span>
+                </div>
+            )}
+
+            {/* Contact */}
+            <SectionCard
+                icon={<User className="h-4 w-4" />}
+                title="EXECUTION CONTACT"
+                editing={openSection === "contact"}
+                onEdit={() => handleOpen("contact")}
+                testId="order-section-contact"
+            >
+                {openSection === "contact" ? (
+                    <>
+                        <ContactEditor
+                            value={draft.contact}
+                            onChange={(patch) =>
+                                setDraft((prev) => ({
+                                    ...prev,
+                                    contact: { ...prev.contact, ...patch },
+                                }))
+                            }
+                            disabled={saving}
+                        />
+                        <SectionFooter
+                            onCancel={handleCancelSection}
+                            onSave={() => saveSection("contact")}
+                            saving={saving}
+                            canSave={SECTION_KEYS.contact.some((k) => k in payload)}
+                            testId="order-section-contact-save"
+                        />
+                    </>
+                ) : (
+                    <div className="grid gap-3 sm:grid-cols-3">
+                        <ReadRow label="Name" value={order?.contact_name} />
+                        <ReadRow label="Email" value={order?.contact_email} />
+                        <ReadRow label="Phone" value={order?.contact_phone} />
+                    </div>
+                )}
+            </SectionCard>
+
+            {/* Venue Contact */}
+            <SectionCard
+                icon={<MapPin className="h-4 w-4" />}
+                title="VENUE CONTACT"
+                editing={openSection === "venueContact"}
+                onEdit={() => handleOpen("venueContact")}
+                testId="order-section-venue-contact"
+            >
+                {openSection === "venueContact" ? (
+                    <>
+                        <VenueContactEditor
+                            value={draft.venueContact}
+                            onChange={(patch) =>
+                                setDraft((prev) => ({
+                                    ...prev,
+                                    venueContact: { ...prev.venueContact, ...patch },
+                                }))
+                            }
+                            disabled={saving}
+                        />
+                        <SectionFooter
+                            onCancel={handleCancelSection}
+                            onSave={() => saveSection("venueContact")}
+                            saving={saving}
+                            canSave={SECTION_KEYS.venueContact.some((k) => k in payload)}
+                            testId="order-section-venue-contact-save"
+                        />
+                    </>
+                ) : (
+                    <div className="grid gap-3 sm:grid-cols-3">
+                        <ReadRow label="Name" value={order?.venue_contact_name} />
+                        <ReadRow label="Email" value={order?.venue_contact_email} />
+                        <ReadRow label="Phone" value={order?.venue_contact_phone} />
+                    </div>
+                )}
+            </SectionCard>
+
+            {/* Venue & Logistics (incl. the bundled shared PermitSection) */}
+            <SectionCard
+                icon={<Building2 className="h-4 w-4" />}
+                title="VENUE, LOGISTICS & PERMIT"
+                editing={openSection === "descriptive"}
+                onEdit={() => handleOpen("descriptive")}
+                testId="order-section-descriptive"
+            >
+                {openSection === "descriptive" ? (
+                    <>
+                        <DescriptiveFieldsEditor
+                            value={draft.descriptive}
+                            onChange={(patch) =>
+                                setDraft((prev) => ({
+                                    ...prev,
+                                    descriptive: { ...prev.descriptive, ...patch },
+                                }))
+                            }
+                            disabled={saving}
+                            cities={cities as any}
+                            companyName={order?.company?.name}
+                            canEditJobNumber={canEditJobNumber}
+                        />
+                        {draft.descriptive.permit.requires_permit &&
+                            draft.descriptive.permit.permit_owner === "UNKNOWN" && (
+                                <p
+                                    role="alert"
+                                    className="font-mono text-[11px] font-medium text-destructive"
+                                >
+                                    Select who arranges the permit before saving.
+                                </p>
+                            )}
+                        <SectionFooter
+                            onCancel={handleCancelSection}
+                            onSave={() => saveSection("descriptive")}
+                            saving={saving}
+                            canSave={
+                                SECTION_KEYS.descriptive.some((k) => k in payload) &&
+                                !permitOwnerUnresolved
+                            }
+                            testId="order-section-descriptive-save"
+                        />
+                    </>
+                ) : (
+                    <div className="space-y-3">
+                        <div className="grid gap-3 sm:grid-cols-2">
+                            <ReadRow label="Venue Name" value={order?.venue_name} />
+                            <ReadRow label="City" value={cityName} />
+                        </div>
+                        <ReadRow label="Address" value={order?.venue_location?.address} />
+                        <ReadRow label="Special Instructions" value={order?.special_instructions} />
+                        <div className="grid gap-3 sm:grid-cols-2">
+                            <ReadRow
+                                label="Permanent Placement"
+                                value={order?.is_permanent_placement ? "Yes" : "No"}
+                            />
+                            <ReadRow label="PO Number" value={order?.po_number} />
+                        </div>
+                        {canEditJobNumber && (
+                            <ReadRow label="Job Number" value={order?.job_number} />
+                        )}
+                        <ReadRow
+                            label="Permit Required"
+                            value={order?.permit_requirements?.requires_permit ? "Yes" : "No"}
+                        />
+                        {order?.permit_requirements?.requires_permit && (
+                            <ReadRow
+                                label="Who Arranges"
+                                value={
+                                    order.permit_requirements.permit_owner === "CLIENT"
+                                        ? `${order?.company?.name || "Client"} will arrange it`
+                                        : order.permit_requirements.permit_owner === "PLATFORM"
+                                          ? "Ops will arrange it"
+                                          : "Not decided yet"
+                                }
+                            />
+                        )}
+                        <ReadRow label="Access Notes" value={order?.venue_location?.access_notes} />
+                    </div>
+                )}
+            </SectionCard>
+
+            {/* Event Dates — gated on enable_event_date_inputs */}
+            <SectionCard
+                icon={<Calendar className="h-4 w-4" />}
+                title="EVENT DATES"
+                editing={openSection === "eventDates"}
+                canEdit={eventDateInputsEnabled}
+                onEdit={() => handleOpen("eventDates")}
+                testId="order-section-event-dates"
+            >
+                {openSection === "eventDates" ? (
+                    <>
+                        <EventDatesEditor
+                            value={draft.eventDates}
+                            onChange={(patch) =>
+                                setDraft((prev) => ({
+                                    ...prev,
+                                    eventDates: { ...prev.eventDates, ...patch },
+                                }))
+                            }
+                            disabled={saving}
+                            minDate={minDate}
+                            helper={
+                                <OrderEditFeasibilityHelper
+                                    isLoading={feasibilityLoading}
+                                    floorDate={floorDate}
+                                    userEventDate={pickedStart}
+                                    userDateFeasible={userDateFeasible}
+                                    blockingItems={blockingIssues}
+                                    config={feasibility?.config ?? null}
+                                    onUseFloorDate={() =>
+                                        floorDate &&
+                                        setDraft((prev) => ({
+                                            ...prev,
+                                            eventDates: {
+                                                ...prev.eventDates,
+                                                event_start_date: floorDate,
+                                            },
+                                        }))
+                                    }
+                                />
+                            }
+                        />
+                        <SectionFooter
+                            onCancel={handleCancelSection}
+                            onSave={() => saveSection("eventDates")}
+                            saving={saving}
+                            canSave={
+                                SECTION_KEYS.eventDates.some((k) => k in payload) &&
+                                !endBeforeStart &&
+                                !feasibilityBlocks
+                            }
+                            testId="order-section-event-dates-save"
+                        />
+                    </>
+                ) : (
+                    <div className="grid gap-3 sm:grid-cols-2">
+                        <ReadRow label="Start" value={fmtDisplayDate(order?.event_start_date)} />
+                        <ReadRow label="End" value={fmtDisplayDate(order?.event_end_date)} />
+                        {!eventDateInputsEnabled && (
+                            <p className="sm:col-span-2 font-mono text-[11px] text-muted-foreground">
+                                Event dates are managed by the platform for this account.
+                            </p>
+                        )}
+                    </div>
+                )}
+            </SectionCard>
+
+            {/* Items — ALWAYS inline (edited directly in the list). */}
+            <SectionCard
+                icon={<Package className="h-4 w-4" />}
+                title="ITEMS"
+                editing={false}
+                canEdit={false}
+                onEdit={() => {}}
+                testId="order-section-items"
+            >
+                <OrderItemsQuantityEditor
+                    items={draft.itemRows}
+                    onSetItemQuantity={setItemQuantity}
+                    onToggleRemove={toggleItemRemove}
+                    stagedAdds={draft.stagedAdds}
+                    onAddAssets={addStagedAssets}
+                    onChangeAddQty={setStagedAddQuantity}
+                    onRemoveAdd={removeStagedAdd}
+                    companyId={order?.company?.id}
+                    alreadyOnEntity={alreadyOnEntityAssetIds}
+                    disabled={saving}
+                />
+
+                {/* Save bar for item ops — only shown when there are item changes. */}
+                {hasItemChanges && (
+                    <div className="flex items-center justify-end gap-2 border-t border-border/40 pt-4">
                         <Button
                             size="sm"
                             variant="outline"
                             className="font-mono text-xs"
-                            onClick={handleEdit}
+                            onClick={handleDiscardItemChanges}
+                            disabled={saving}
                         >
-                            <Pencil className="h-3 w-3 mr-2" />
-                            EDIT
+                            <X className="h-3 w-3 mr-2" />
+                            DISCARD ITEM CHANGES
                         </Button>
-                    ) : (
-                        <div className="flex items-center gap-2">
-                            <Button
-                                size="sm"
-                                variant="outline"
-                                className="font-mono text-xs"
-                                onClick={handleCancel}
-                                disabled={editDetails.isPending}
-                            >
-                                <X className="h-3 w-3 mr-2" />
-                                CANCEL
-                            </Button>
-                            <Button
-                                size="sm"
-                                className="font-mono text-xs"
-                                onClick={handleSave}
-                                disabled={
-                                    editDetails.isPending || !hasChanges || permitOwnerUnresolved
-                                }
-                            >
-                                {editDetails.isPending ? (
-                                    <Loader2 className="h-3 w-3 mr-2 animate-spin" />
-                                ) : (
-                                    <Save className="h-3 w-3 mr-2" />
-                                )}
-                                SAVE
-                            </Button>
-                        </div>
-                    )}
-                </div>
-            </CardHeader>
-            <CardContent className="space-y-5">
-                {!isEditing ? (
-                    <p className="font-mono text-xs text-muted-foreground">
-                        Edit contact, venue, permit, dates, items, and reference fields while the
-                        order is pre-confirmation. Changes are logged in the edit history.
-                    </p>
-                ) : (
-                    <>
-                        {errorMessage && (
-                            <div className="flex items-start gap-2 rounded-md border border-red-500/40 bg-red-500/5 px-3 py-2 text-xs text-red-700 font-mono">
-                                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-                                <span>{errorMessage}</span>
-                            </div>
-                        )}
-
-                        {/* Execution Contact */}
-                        <section className="space-y-3">
-                            <p className="font-mono text-xs font-bold uppercase tracking-wide">
-                                Execution Contact
-                            </p>
-                            <ContactEditor
-                                value={draft.contact}
-                                onChange={(patch) =>
-                                    setDraft((prev) => ({
-                                        ...prev,
-                                        contact: { ...prev.contact, ...patch },
-                                    }))
-                                }
-                                disabled={editDetails.isPending}
-                            />
-                        </section>
-
-                        <Separator />
-
-                        {/* Venue Contact */}
-                        <section className="space-y-3">
-                            <p className="font-mono text-xs font-bold uppercase tracking-wide">
-                                Venue Contact
-                            </p>
-                            <VenueContactEditor
-                                value={draft.venueContact}
-                                onChange={(patch) =>
-                                    setDraft((prev) => ({
-                                        ...prev,
-                                        venueContact: { ...prev.venueContact, ...patch },
-                                    }))
-                                }
-                                disabled={editDetails.isPending}
-                            />
-                        </section>
-
-                        <Separator />
-
-                        {/* Venue & Logistics (incl. the shared PermitSection) */}
-                        <section className="space-y-3">
-                            <DescriptiveFieldsEditor
-                                value={draft.descriptive}
-                                onChange={(patch) =>
-                                    setDraft((prev) => ({
-                                        ...prev,
-                                        descriptive: { ...prev.descriptive, ...patch },
-                                    }))
-                                }
-                                disabled={editDetails.isPending}
-                                cities={cities as any}
-                                companyName={order?.company?.name}
-                                canEditJobNumber={canEditJobNumber}
-                            />
-                        </section>
-
-                        {/* Event Dates — gated on enable_event_date_inputs (#10) */}
-                        {eventDateInputsEnabled && (
-                            <>
-                                <Separator />
-                                <section className="space-y-3">
-                                    <p className="font-mono text-xs font-bold uppercase tracking-wide">
-                                        Event
-                                    </p>
-                                    <EventDatesEditor
-                                        value={draft.eventDates}
-                                        onChange={(patch) =>
-                                            setDraft((prev) => ({
-                                                ...prev,
-                                                eventDates: { ...prev.eventDates, ...patch },
-                                            }))
-                                        }
-                                        disabled={editDetails.isPending}
-                                        minDate={minDate}
-                                        helper={
-                                            <OrderEditFeasibilityHelper
-                                                isLoading={feasibilityLoading}
-                                                floorDate={floorDate}
-                                                userEventDate={pickedStart}
-                                                userDateFeasible={userDateFeasible}
-                                                blockingItems={blockingIssues}
-                                                config={feasibility?.config ?? null}
-                                                onUseFloorDate={() =>
-                                                    floorDate &&
-                                                    setDraft((prev) => ({
-                                                        ...prev,
-                                                        eventDates: {
-                                                            ...prev.eventDates,
-                                                            event_start_date: floorDate,
-                                                        },
-                                                    }))
-                                                }
-                                            />
-                                        }
-                                    />
-                                </section>
-                            </>
-                        )}
-
-                        <Separator />
-
-                        {/* Items — bounded QtyStepper + 2-step OpsAssetPicker */}
-                        <section className="space-y-3">
-                            <p className="font-mono text-xs font-bold uppercase tracking-wide">
-                                Items
-                            </p>
-                            <OrderItemsQuantityEditor
-                                items={draft.itemRows}
-                                onSetItemQuantity={setItemQuantity}
-                                onToggleRemove={toggleItemRemove}
-                                stagedAdds={draft.stagedAdds}
-                                onAddAssets={addStagedAssets}
-                                onChangeAddQty={setStagedAddQuantity}
-                                onRemoveAdd={removeStagedAdd}
-                                companyId={order?.company?.id}
-                                alreadyOnEntity={alreadyOnEntityAssetIds}
-                                disabled={editDetails.isPending}
-                            />
-                        </section>
-                    </>
+                        <Button
+                            size="sm"
+                            className="font-mono text-xs"
+                            onClick={() => saveSection("items")}
+                            disabled={saving}
+                            data-testid="order-section-items-save"
+                        >
+                            {saving ? (
+                                <Loader2 className="h-3 w-3 mr-2 animate-spin" />
+                            ) : (
+                                <Check className="h-3 w-3 mr-2" />
+                            )}
+                            SAVE ITEM CHANGES
+                        </Button>
+                    </div>
                 )}
-            </CardContent>
-        </Card>
+            </SectionCard>
+        </div>
     );
 }
