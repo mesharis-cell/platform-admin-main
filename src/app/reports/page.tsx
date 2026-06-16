@@ -36,6 +36,10 @@ const SECTION_LABEL: Record<ReportSection, string> = {
 
 type CardFilterState = Record<string, any>;
 
+// Sentinel for an OPTIONAL company filter's "All companies" choice — buildQuery
+// omits company_id for it, and the API treats a missing company_id as all-companies.
+const ALL_COMPANIES_SENTINEL = "__all__";
+
 export default function ReportsPage() {
     const { data: reports, isLoading, isError } = useReports();
     const { data: companies } = useCompanies({ limit: "200", page: "1" });
@@ -74,7 +78,8 @@ export default function ReportsPage() {
                 }
             } else {
                 const v = f[flt.key];
-                if (v) q.append(flt.key, String(v));
+                // The all-companies sentinel means "omit company_id" → API runs platform-wide.
+                if (v && v !== ALL_COMPANIES_SENTINEL) q.append(flt.key, String(v));
             }
         }
         return q.toString();
@@ -149,9 +154,16 @@ export default function ReportsPage() {
                     </Label>
                     <Select value={value || ""} onValueChange={(v) => setF(card.key, flt.key, v)}>
                         <SelectTrigger>
-                            <SelectValue placeholder="Select company" />
+                            <SelectValue
+                                placeholder={flt.required ? "Select company" : "All companies"}
+                            />
                         </SelectTrigger>
                         <SelectContent>
+                            {!flt.required && (
+                                <SelectItem value={ALL_COMPANIES_SENTINEL}>
+                                    All companies
+                                </SelectItem>
+                            )}
                             {companies?.data?.map((company) => (
                                 <SelectItem key={company.id} value={company.id}>
                                     {company.name}
