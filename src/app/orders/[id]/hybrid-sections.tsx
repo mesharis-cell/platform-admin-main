@@ -11,6 +11,16 @@ import { CancelOrderModal } from "@/components/orders/CancelOrderModal";
 import { OrderLineItemsList } from "@/components/orders/OrderLineItemsList";
 import { ReturnToLogisticsModal } from "@/components/orders/ReturnToLogisticsModal";
 import { PricingBreakdownTabs } from "@/components/pricing/PricingBreakdownTabs";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -23,7 +33,7 @@ import { canManageLineItems } from "@/lib/order-helpers";
 import { useToken } from "@/lib/auth/use-token";
 import { hasPermission } from "@/lib/auth/permissions";
 import { ADMIN_ACTION_PERMISSIONS } from "@/lib/auth/permission-map";
-import { DollarSign, Plus } from "lucide-react";
+import { AlertTriangle, DollarSign, Plus } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -48,6 +58,24 @@ export function PendingApprovalSection({
 
     const [addCatalogOpen, setAddCatalogOpen] = useState(false);
     const [addCustomOpen, setAddCustomOpen] = useState(false);
+    // When the order is already QUOTED, adding/editing/voiding a line item pulls the sent quote
+    // back to PENDING_APPROVAL for admin re-review (financial_status -> QUOTE_REVISED) and notifies
+    // the client. Gate the add actions behind an explicit confirm so the revert is never a surprise.
+    const isQuoted = order.order_status === "QUOTED";
+    const [pendingAdd, setPendingAdd] = useState<"catalog" | "custom" | null>(null);
+    const openAdd = (type: "catalog" | "custom") => {
+        if (isQuoted) {
+            setPendingAdd(type);
+            return;
+        }
+        if (type === "catalog") setAddCatalogOpen(true);
+        else setAddCustomOpen(true);
+    };
+    const confirmPendingAdd = () => {
+        if (pendingAdd === "catalog") setAddCatalogOpen(true);
+        else if (pendingAdd === "custom") setAddCustomOpen(true);
+        setPendingAdd(null);
+    };
     const [marginOverride, setMarginOverride] = useState(false);
     const currentMarginPercent = Number(
         order?.order_pricing?.margin?.percent ?? order?.company?.platform_margin_percent ?? 0
@@ -115,12 +143,12 @@ export function PendingApprovalSection({
                                 <Button
                                     size="sm"
                                     variant="outline"
-                                    onClick={() => setAddCatalogOpen(true)}
+                                    onClick={() => openAdd("catalog")}
                                 >
                                     <Plus className="h-4 w-4 mr-1" />
                                     Catalog Service
                                 </Button>
-                                <Button size="sm" onClick={() => setAddCustomOpen(true)}>
+                                <Button size="sm" onClick={() => openAdd("custom")}>
                                     <Plus className="h-4 w-4 mr-1" />
                                     Custom Charge
                                 </Button>
@@ -129,6 +157,17 @@ export function PendingApprovalSection({
                     </div>
                 </CardHeader>
                 <CardContent>
+                    {isQuoted && (
+                        <div className="mb-4 flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-800">
+                            <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-amber-600" />
+                            <span>
+                                This quote has already been sent to the client. Adding, editing, or
+                                voiding a line item will pull the order back to admin re-approval
+                                and mark the quote as being revised — the client&apos;s estimate
+                                download is paused until you re-approve and re-issue the quote.
+                            </span>
+                        </div>
+                    )}
                     <OrderLineItemsList
                         targetId={orderId}
                         canManage={canManageServiceItems}
@@ -226,6 +265,31 @@ export function PendingApprovalSection({
                     </CardContent>
                 </Card>
             )}
+
+            {/* Confirm pulling back a sent quote before opening an add-item modal. Only gates the
+                QUOTED state; pre-quote statuses open the modal directly (no revert happens). */}
+            <AlertDialog
+                open={pendingAdd !== null}
+                onOpenChange={(open) => !open && setPendingAdd(null)}
+            >
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Pull back the sent quote?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This order is currently <strong>QUOTED</strong>. Adding a line item will
+                            return it to <strong>admin approval</strong> for re-review, mark the
+                            quote as being revised, and notify the client. Their current cost
+                            estimate download is paused until you re-approve and re-issue the quote.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={confirmPendingAdd}>
+                            Continue & add item
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
 
             {/* Modals */}
             <AddCatalogLineItemModal
