@@ -9,7 +9,10 @@ export type ReportFilterType =
     | "category-include-exclude"
     | "group"
     | "status"
-    | "team";
+    | "team"
+    // multi-select toggle over the four billing entity arms (ORDER /
+    // SERVICE_REQUEST / SELF_PICKUP / INBOUND_REQUEST). Absent/empty ⇒ all four.
+    | "entity-toggle";
 
 export interface ReportFilterMeta {
     key: string;

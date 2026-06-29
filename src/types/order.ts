@@ -38,6 +38,7 @@ export type FinancialStatus =
     | "PENDING_INVOICE"
     | "INVOICED"
     | "PAID"
+    | "NOT_APPLICABLE"
     | "CANCELLED";
 
 export type MaintenanceDecision = "FIX_IN_ORDER" | "USE_AS_IS";

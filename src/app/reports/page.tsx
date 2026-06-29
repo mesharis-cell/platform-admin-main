@@ -40,6 +40,17 @@ type CardFilterState = Record<string, any>;
 // omits company_id for it, and the API treats a missing company_id as all-companies.
 const ALL_COMPANIES_SENTINEL = "__all__";
 
+// Readable labels for the entity-toggle filter. The API ships raw enum values
+// (ORDER / SERVICE_REQUEST / …) as both value + label, so we humanise them here.
+const ENTITY_TYPE_LABELS: Record<string, string> = {
+    ORDER: "Orders",
+    SERVICE_REQUEST: "Service Requests",
+    SELF_PICKUP: "Self-Pickups",
+    INBOUND_REQUEST: "Inbound",
+};
+const entityLabel = (opt: { value: string; label: string }) =>
+    ENTITY_TYPE_LABELS[opt.value] ?? opt.label;
+
 export default function ReportsPage() {
     const { data: reports, isLoading, isError } = useReports();
     const { data: companies } = useCompanies({ limit: "200", page: "1" });
@@ -75,6 +86,18 @@ export default function ReportsPage() {
                             ? "category_exclude"
                             : "category_include";
                     cat.values.forEach((v) => q.append(param, v));
+                }
+            } else if (flt.type === "entity-toggle") {
+                const all = (flt.options ?? []).map((o) => o.value);
+                const selected = (f[flt.key] as string[] | undefined) ?? all;
+                // When every entity is selected (the default), omit the param so the
+                // URL stays clean and the API's "absent = all four" rule applies.
+                const allSelected =
+                    all.length > 0 &&
+                    selected.length === all.length &&
+                    all.every((v) => selected.includes(v));
+                if (!allSelected) {
+                    selected.forEach((v) => q.append(flt.key, v));
                 }
             } else {
                 const v = f[flt.key];
@@ -267,6 +290,36 @@ export default function ReportsPage() {
                             Coarse filter — matches any line item in the document.
                         </p>
                     )}
+                </div>
+            );
+        }
+        if (flt.type === "entity-toggle" && flt.options?.length) {
+            const all = flt.options.map((o) => o.value);
+            // No state ⇒ all selected (matches the API default + buildQuery's omission).
+            const selected = new Set((value as string[] | undefined) ?? all);
+            const toggle = (v: string) => {
+                const next = new Set(selected);
+                if (next.has(v)) next.delete(v);
+                else next.add(v);
+                setF(card.key, flt.key, [...next]);
+            };
+            return (
+                <div key={flt.key} className="space-y-1.5">
+                    <Label className="text-xs">{flt.label}</Label>
+                    <div className="flex flex-wrap gap-1.5">
+                        {flt.options.map((opt) => (
+                            <Button
+                                key={opt.value}
+                                type="button"
+                                size="sm"
+                                variant={selected.has(opt.value) ? "default" : "outline"}
+                                className="h-6 px-2 text-[11px]"
+                                onClick={() => toggle(opt.value)}
+                            >
+                                {entityLabel(opt)}
+                            </Button>
+                        ))}
+                    </div>
                 </div>
             );
         }
