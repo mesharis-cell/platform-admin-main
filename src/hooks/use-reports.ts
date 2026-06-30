@@ -10,6 +10,9 @@ export type ReportFilterType =
     | "group"
     | "status"
     | "team"
+    // brand picker (searchable combobox over /brand). Used by the inbound-log
+    // report; key is "brand_id".
+    | "brand"
     // multi-select toggle over the four billing entity arms (ORDER /
     // SERVICE_REQUEST / SELF_PICKUP / INBOUND_REQUEST). Absent/empty ⇒ all four.
     | "entity-toggle";

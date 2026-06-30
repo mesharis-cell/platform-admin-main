@@ -1,11 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Download, FileBarChart } from "lucide-react";
+import { Suspense, useCallback, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { FileBarChart } from "lucide-react";
 import { AdminHeader } from "@/components/admin-header";
 import { toast } from "sonner";
-import { useCompanies } from "@/hooks/use-companies";
-import { useAssetCategories } from "@/hooks/use-asset-categories";
 import {
     useReports,
     type ReportCardMeta,
@@ -15,50 +14,33 @@ import {
 import { apiClient } from "@/lib/api/api-client";
 import { throwApiError } from "@/lib/utils/throw-api-error";
 import { UnauthorizedState } from "@/components/unauthorized-state";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ReportCard } from "@/components/reports/report-card";
+import { ALL_COMPANIES_SENTINEL } from "@/components/reports/report-filter";
+import { GlobalDateStrip, type DateRange } from "@/components/reports/global-date-strip";
 
 const SECTION_ORDER: ReportSection[] = ["INVENTORY", "OPERATIONS", "FINANCIAL"];
 const SECTION_LABEL: Record<ReportSection, string> = {
     INVENTORY: "Inventory",
-    OPERATIONS: "Orders & Operations",
+    OPERATIONS: "Operations",
     FINANCIAL: "Financial",
 };
 
-type CardFilterState = Record<string, any>;
+type CardFilterState = Record<string, unknown>;
 
-// Sentinel for an OPTIONAL company filter's "All companies" choice — buildQuery
-// omits company_id for it, and the API treats a missing company_id as all-companies.
-const ALL_COMPANIES_SENTINEL = "__all__";
+function ReportsPageInner() {
+    const router = useRouter();
+    const searchParams = useSearchParams();
 
-// Readable labels for the entity-toggle filter. The API ships raw enum values
-// (ORDER / SERVICE_REQUEST / …) as both value + label, so we humanise them here.
-const ENTITY_TYPE_LABELS: Record<string, string> = {
-    ORDER: "Orders",
-    SERVICE_REQUEST: "Service Requests",
-    SELF_PICKUP: "Self-Pickups",
-    INBOUND_REQUEST: "Inbound",
-};
-const entityLabel = (opt: { value: string; label: string }) =>
-    ENTITY_TYPE_LABELS[opt.value] ?? opt.label;
-
-export default function ReportsPage() {
     const { data: reports, isLoading, isError } = useReports();
-    const { data: companies } = useCompanies({ limit: "200", page: "1" });
-    const { data: categories } = useAssetCategories(undefined, { allScopes: true });
     const [filters, setFilters] = useState<Record<string, CardFilterState>>({});
+    // Per-tab global date range (pre-fills date_from/date_to across the tab's cards).
+    const [tabDates, setTabDates] = useState<Record<string, DateRange>>({});
     const [downloading, setDownloading] = useState<string | null>(null);
 
-    const cards = reports ?? [];
+    const cards = useMemo(() => reports ?? [], [reports]);
 
     const grouped = useMemo(
         () =>
@@ -69,9 +51,45 @@ export default function ReportsPage() {
         [cards]
     );
 
-    const setF = (cardKey: string, fKey: string, value: any) =>
+    // Active tab persists in the URL (?tab=FINANCIAL) so refresh/deep-link lands here.
+    const tabParam = searchParams.get("tab") as ReportSection | null;
+    const activeTab: ReportSection =
+        tabParam && grouped.some((g) => g.section === tabParam)
+            ? tabParam
+            : (grouped[0]?.section ?? "INVENTORY");
+
+    const setActiveTab = useCallback(
+        (tab: string) => {
+            const params = new URLSearchParams(Array.from(searchParams.entries()));
+            params.set("tab", tab);
+            router.replace(`?${params.toString()}`, { scroll: false });
+        },
+        [router, searchParams]
+    );
+
+    const setF = (cardKey: string, fKey: string, value: unknown) =>
         setFilters((prev) => ({ ...prev, [cardKey]: { ...(prev[cardKey] ?? {}), [fKey]: value } }));
     const getF = (cardKey: string, fKey: string) => filters[cardKey]?.[fKey];
+
+    // Apply a date range to every card in a section. Empty strings clear that
+    // card's date_from/date_to so a cleared global range removes the pre-fill.
+    const applyTabDates = (section: ReportSection, range: DateRange) => {
+        setTabDates((prev) => ({ ...prev, [section]: range }));
+        const sectionCards = grouped.find((g) => g.section === section)?.cards ?? [];
+        setFilters((prev) => {
+            const next = { ...prev };
+            for (const card of sectionCards) {
+                const hasFrom = card.filters.some((f) => f.key === "date_from");
+                const hasTo = card.filters.some((f) => f.key === "date_to");
+                if (!hasFrom && !hasTo) continue;
+                const cardState = { ...(next[card.key] ?? {}) };
+                if (hasFrom) cardState.date_from = range.from;
+                if (hasTo) cardState.date_to = range.to;
+                next[card.key] = cardState;
+            }
+            return next;
+        });
+    };
 
     const buildQuery = (card: ReportCardMeta): string => {
         const f = filters[card.key] ?? {};
@@ -99,6 +117,10 @@ export default function ReportsPage() {
                 if (!allSelected) {
                     selected.forEach((v) => q.append(flt.key, v));
                 }
+            } else if (flt.type === "status" && Array.isArray(f[flt.key])) {
+                // Multi-select status (orders) emits a repeated param the API parses
+                // as an IN-list. An empty array means "all" → omit.
+                (f[flt.key] as string[]).forEach((v) => q.append(flt.key, v));
             } else {
                 const v = f[flt.key];
                 // The all-companies sentinel means "omit company_id" → API runs platform-wide.
@@ -157,183 +179,16 @@ export default function ReportsPage() {
             } else {
                 try {
                     throwApiError(error);
-                } catch (apiError: any) {
-                    toast.error(apiError?.message || `Failed to export ${card.label}`);
+                } catch (apiError: unknown) {
+                    toast.error(
+                        (apiError as { message?: string })?.message ||
+                            `Failed to export ${card.label}`
+                    );
                 }
             }
         } finally {
             setDownloading(null);
         }
-    };
-
-    const renderFilter = (card: ReportCardMeta, flt: ReportFilterMeta) => {
-        const value = getF(card.key, flt.key);
-        if (flt.type === "company") {
-            return (
-                <div key={flt.key} className="space-y-1.5">
-                    <Label className="text-xs">
-                        {flt.label}
-                        {flt.required ? " *" : ""}
-                    </Label>
-                    <Select value={value || ""} onValueChange={(v) => setF(card.key, flt.key, v)}>
-                        <SelectTrigger>
-                            <SelectValue
-                                placeholder={flt.required ? "Select company" : "All companies"}
-                            />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {!flt.required && (
-                                <SelectItem value={ALL_COMPANIES_SENTINEL}>
-                                    All companies
-                                </SelectItem>
-                            )}
-                            {companies?.data?.map((company) => (
-                                <SelectItem key={company.id} value={company.id}>
-                                    {company.name}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
-            );
-        }
-        if (flt.type === "date") {
-            return (
-                <div key={flt.key} className="space-y-1.5">
-                    <Label className="text-xs">{flt.label}</Label>
-                    <Input
-                        type="date"
-                        value={value || ""}
-                        onChange={(e) => setF(card.key, flt.key, e.target.value)}
-                    />
-                </div>
-            );
-        }
-        if (flt.type === "status" && flt.options?.length) {
-            return (
-                <div key={flt.key} className="space-y-1.5">
-                    <Label className="text-xs">{flt.label}</Label>
-                    <Select
-                        value={value || "all"}
-                        onValueChange={(v) => setF(card.key, flt.key, v === "all" ? "" : v)}
-                    >
-                        <SelectTrigger>
-                            <SelectValue
-                                placeholder={flt.allLabel ?? `All ${flt.label.toLowerCase()}`}
-                            />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">{flt.allLabel ?? "All"}</SelectItem>
-                            {flt.options.map((opt) => (
-                                <SelectItem key={opt.value} value={opt.value}>
-                                    {opt.label}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
-            );
-        }
-        if (flt.type === "category-include-exclude") {
-            const includeOnly = flt.mode === "include-only";
-            const cat = (value as { mode?: string; values?: string[] }) ?? {
-                mode: "include",
-                values: [],
-            };
-            // In include-only mode the report drops any exclude payload, so force
-            // (and surface) "include" and never offer the Exclude option.
-            const effectiveMode = includeOnly ? "include" : (cat.mode ?? "include");
-            const selected = new Set(cat.values ?? []);
-            const toggle = (name: string) => {
-                const next = new Set(selected);
-                if (next.has(name)) next.delete(name);
-                else next.add(name);
-                setF(card.key, flt.key, { mode: effectiveMode, values: [...next] });
-            };
-            return (
-                <div key={flt.key} className="space-y-1.5">
-                    <div className="flex items-center justify-between">
-                        <Label className="text-xs">{flt.label}</Label>
-                        {!includeOnly && (
-                            <Select
-                                value={cat.mode ?? "include"}
-                                onValueChange={(m) =>
-                                    setF(card.key, flt.key, { mode: m, values: cat.values ?? [] })
-                                }
-                            >
-                                <SelectTrigger className="h-7 w-[110px] text-xs">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="include">Include</SelectItem>
-                                    <SelectItem value="exclude">Exclude</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        )}
-                    </div>
-                    <div className="flex flex-wrap gap-1.5">
-                        {categories?.data?.map((c) => (
-                            <Button
-                                key={c.id}
-                                type="button"
-                                size="sm"
-                                variant={selected.has(c.name) ? "default" : "outline"}
-                                className="h-6 px-2 text-[11px]"
-                                onClick={() => toggle(c.name)}
-                            >
-                                {c.name}
-                            </Button>
-                        ))}
-                    </div>
-                    {flt.scope === "document" && (
-                        <p className="text-[10px] text-muted-foreground">
-                            Coarse filter — matches any line item in the document.
-                        </p>
-                    )}
-                </div>
-            );
-        }
-        if (flt.type === "entity-toggle" && flt.options?.length) {
-            const all = flt.options.map((o) => o.value);
-            // No state ⇒ all selected (matches the API default + buildQuery's omission).
-            const selected = new Set((value as string[] | undefined) ?? all);
-            const toggle = (v: string) => {
-                const next = new Set(selected);
-                if (next.has(v)) next.delete(v);
-                else next.add(v);
-                setF(card.key, flt.key, [...next]);
-            };
-            return (
-                <div key={flt.key} className="space-y-1.5">
-                    <Label className="text-xs">{flt.label}</Label>
-                    <div className="flex flex-wrap gap-1.5">
-                        {flt.options.map((opt) => (
-                            <Button
-                                key={opt.value}
-                                type="button"
-                                size="sm"
-                                variant={selected.has(opt.value) ? "default" : "outline"}
-                                className="h-6 px-2 text-[11px]"
-                                onClick={() => toggle(opt.value)}
-                            >
-                                {entityLabel(opt)}
-                            </Button>
-                        ))}
-                    </div>
-                </div>
-            );
-        }
-        // group / team / status-without-options → free text id
-        return (
-            <div key={flt.key} className="space-y-1.5">
-                <Label className="text-xs">{flt.label}</Label>
-                <Input
-                    value={value || ""}
-                    placeholder={flt.label}
-                    onChange={(e) => setF(card.key, flt.key, e.target.value)}
-                />
-            </div>
-        );
     };
 
     return (
@@ -345,7 +200,7 @@ export default function ReportsPage() {
                 stats={{ label: "AVAILABLE REPORTS", value: cards.length }}
             />
 
-            <div className="mx-auto max-w-[1600px] px-6 py-8 space-y-8">
+            <div className="mx-auto max-w-[1600px] px-6 py-8">
                 {isLoading ? (
                     <Card>
                         <CardContent className="p-8 text-center">
@@ -369,40 +224,54 @@ export default function ReportsPage() {
                         backHref="/"
                     />
                 ) : (
-                    grouped.map(({ section, cards: sectionCards }) => (
-                        <section key={section} className="space-y-4">
-                            <h2 className="text-xs uppercase tracking-[0.2em] text-muted-foreground font-mono">
-                                {SECTION_LABEL[section]}
-                            </h2>
-                            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                                {sectionCards.map((card) => (
-                                    <Card key={card.key} className="border-border/60">
-                                        <CardHeader className="space-y-1">
-                                            <CardTitle className="text-base">
-                                                {card.label}
-                                            </CardTitle>
-                                            <CardDescription>{card.description}</CardDescription>
-                                        </CardHeader>
-                                        <CardContent className="space-y-4">
-                                            {card.filters.map((flt) => renderFilter(card, flt))}
-                                            <Button
-                                                className="w-full gap-2"
-                                                onClick={() => run(card)}
-                                                disabled={downloading === card.key}
-                                            >
-                                                <Download className="h-4 w-4" />
-                                                {downloading === card.key
-                                                    ? "Exporting…"
-                                                    : "Download XLSX"}
-                                            </Button>
-                                        </CardContent>
-                                    </Card>
-                                ))}
-                            </div>
-                        </section>
-                    ))
+                    <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+                        <TabsList className="h-10">
+                            {grouped.map(({ section, cards: sectionCards }) => (
+                                <TabsTrigger key={section} value={section} className="gap-2">
+                                    {SECTION_LABEL[section]}
+                                    <Badge
+                                        variant="secondary"
+                                        className="h-5 min-w-5 justify-center px-1.5 text-[11px]"
+                                    >
+                                        {sectionCards.length}
+                                    </Badge>
+                                </TabsTrigger>
+                            ))}
+                        </TabsList>
+
+                        {grouped.map(({ section, cards: sectionCards }) => (
+                            <TabsContent key={section} value={section} className="space-y-5">
+                                <GlobalDateStrip
+                                    value={tabDates[section] ?? { from: "", to: "" }}
+                                    onApply={(range) => applyTabDates(section, range)}
+                                />
+                                <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                                    {sectionCards.map((card) => (
+                                        <ReportCard
+                                            key={card.key}
+                                            card={card}
+                                            state={filters[card.key] ?? {}}
+                                            setFilter={(fKey, value) => setF(card.key, fKey, value)}
+                                            downloading={downloading === card.key}
+                                            onDownload={() => run(card)}
+                                            missingRequired={missingRequired(card)}
+                                        />
+                                    ))}
+                                </div>
+                            </TabsContent>
+                        ))}
+                    </Tabs>
                 )}
             </div>
         </div>
+    );
+}
+
+export default function ReportsPage() {
+    // useSearchParams() requires a Suspense boundary under Next 15's app router.
+    return (
+        <Suspense fallback={null}>
+            <ReportsPageInner />
+        </Suspense>
     );
 }
