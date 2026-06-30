@@ -35,6 +35,18 @@ function presetLast30(): DateRange {
     return { from: fmt(from), to: fmt(to) };
 }
 
+function presetThisWeek(): DateRange {
+    const now = new Date();
+    // Monday-anchored week: shift Sunday (0) back to the previous Monday.
+    const day = now.getDay();
+    const diffToMonday = (day + 6) % 7;
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - diffToMonday);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    return { from: fmt(monday), to: fmt(sunday) };
+}
+
 function presetThisMonth(): DateRange {
     const now = new Date();
     return {
@@ -94,6 +106,14 @@ export function GlobalDateStrip({ value, onApply }: GlobalDateStripProps) {
                         onClick={() => onApply(presetLast30())}
                     >
                         Last 30 days
+                    </Button>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onApply(presetThisWeek())}
+                    >
+                        This week
                     </Button>
                     <Button
                         type="button"

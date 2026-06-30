@@ -8,6 +8,31 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { ReportFilter, ALL_COMPANIES_SENTINEL } from "@/components/reports/report-filter";
 import type { ReportCardMeta, ReportFilterMeta } from "@/hooks/use-reports";
 
+/**
+ * Layout-only grouping: collapse a consecutive pair of `date` filters (the
+ * From/To window) into one row so they render side-by-side instead of as two
+ * stacked full-width cells. Every other filter renders on its own. This only
+ * affects visual arrangement — each filter keeps its own value/onChange.
+ */
+type FilterRow =
+    | { kind: "single"; flt: ReportFilterMeta }
+    | { kind: "pair"; flts: [ReportFilterMeta, ReportFilterMeta] };
+
+function groupFilterRows(filters: ReportFilterMeta[]): FilterRow[] {
+    const rows: FilterRow[] = [];
+    for (let i = 0; i < filters.length; i++) {
+        const current = filters[i];
+        const next = filters[i + 1];
+        if (current.type === "date" && next?.type === "date") {
+            rows.push({ kind: "pair", flts: [current, next] });
+            i += 1; // consume the paired filter
+        } else {
+            rows.push({ kind: "single", flt: current });
+        }
+    }
+    return rows;
+}
+
 interface ReportCardProps {
     card: ReportCardMeta;
     /** This card's filter state ({ [filterKey]: value }). */
@@ -48,6 +73,9 @@ export function ReportCard({
     );
     const blocked = missingRequired.length > 0;
 
+    // Layout grouping only — pairs the From/To date filters onto one row.
+    const filterRows = useMemo(() => groupFilterRows(card.filters), [card.filters]);
+
     const downloadButton = (
         <Button className="w-full gap-2" onClick={onDownload} disabled={downloading || blocked}>
             <Download className="h-4 w-4" />
@@ -79,20 +107,37 @@ export function ReportCard({
                 </TooltipProvider>
             </CardHeader>
             <CardContent className="flex flex-1 flex-col gap-4">
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    {card.filters.map((flt) => (
-                        <ReportFilter
-                            key={flt.key}
-                            flt={flt}
-                            value={state[flt.key]}
-                            onChange={(v) => setFilter(flt.key, v)}
-                            companyId={companyId}
-                        />
-                    ))}
+                <div className="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2">
+                    {filterRows.map((row) =>
+                        row.kind === "pair" ? (
+                            <div
+                                key={row.flts[0].key}
+                                className="grid grid-cols-2 gap-3 sm:col-span-2"
+                            >
+                                {row.flts.map((flt) => (
+                                    <ReportFilter
+                                        key={flt.key}
+                                        flt={flt}
+                                        value={state[flt.key]}
+                                        onChange={(v) => setFilter(flt.key, v)}
+                                        companyId={companyId}
+                                    />
+                                ))}
+                            </div>
+                        ) : (
+                            <ReportFilter
+                                key={row.flt.key}
+                                flt={row.flt}
+                                value={state[row.flt.key]}
+                                onChange={(v) => setFilter(row.flt.key, v)}
+                                companyId={companyId}
+                            />
+                        )
+                    )}
                 </div>
 
                 {showAllCompaniesWarning && (
-                    <div className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-700 dark:text-amber-400">
+                    <div className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-700">
                         <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                         <span>All-companies mode — set a date range to avoid the row cap.</span>
                     </div>

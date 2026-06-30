@@ -187,7 +187,7 @@ export function ReportFilter({ flt, value, onChange, companyId }: ReportFilterPr
         }));
         return (
             <div className="space-y-1.5">
-                <div className="flex items-center justify-between gap-2">
+                <div className="flex min-h-[20px] flex-wrap items-center justify-between gap-x-2 gap-y-1">
                     <FilterLabel
                         flt={flt}
                         hint={
@@ -197,7 +197,7 @@ export function ReportFilter({ flt, value, onChange, companyId }: ReportFilterPr
                         }
                     />
                     {!includeOnly && (
-                        <div className="inline-flex rounded-md border border-input p-0.5">
+                        <div className="inline-flex shrink-0 rounded-md border border-input p-0.5">
                             {(["include", "exclude"] as const).map((m) => (
                                 <Button
                                     key={m}
@@ -221,6 +221,7 @@ export function ReportFilter({ flt, value, onChange, companyId }: ReportFilterPr
                     placeholder="All categories"
                     searchPlaceholder="Search categories…"
                     emptyText="No categories found."
+                    className="h-9"
                 />
             </div>
         );
