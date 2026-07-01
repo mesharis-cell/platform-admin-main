@@ -1485,6 +1485,28 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                         </p>
                                     )}
                                 </div>
+                                {/* Permanent-placement — the Yes/No the client picks at
+                                checkout. Read-only display matching the warehouse tag. NOT NULL
+                                DEFAULT false, so always rendered. */}
+                                <Separator />
+                                <div>
+                                    <Label className="font-mono text-xs text-muted-foreground">
+                                        PERMANENT PLACEMENT
+                                    </Label>
+                                    <div className="mt-1">
+                                        <Badge
+                                            className={`font-mono text-xs px-3 py-1 border ${
+                                                order?.data?.is_permanent_placement
+                                                    ? "border-primary/40 text-primary bg-primary/5"
+                                                    : "border-border text-muted-foreground bg-muted/20"
+                                            }`}
+                                        >
+                                            {order?.data?.is_permanent_placement
+                                                ? "PERMANENT"
+                                                : "TEMPORARY"}
+                                        </Badge>
+                                    </div>
+                                </div>
                                 {order?.data?.special_instructions && (
                                     <>
                                         <Separator />
