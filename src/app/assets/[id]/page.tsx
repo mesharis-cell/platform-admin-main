@@ -241,7 +241,7 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                 return "bg-secondary/10 text-secondary border-secondary/20";
             case "OUT":
                 return "bg-purple-500/10 text-purple-600 border-purple-500/20";
-            case "IN_MAINTENANCE":
+            case "MAINTENANCE":
                 return "bg-muted-foreground/10 text-muted-foreground border-muted-foreground/20";
             default:
                 return "bg-gray-500/10 text-gray-600 border-gray-500/20";
