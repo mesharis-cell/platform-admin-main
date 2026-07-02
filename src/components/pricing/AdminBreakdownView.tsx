@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { Minus, EyeOff } from "lucide-react";
+import { Minus, EyeOff, Tag } from "lucide-react";
 import type { BreakdownLine, OrderPricing } from "@/types/hybrid-pricing";
 
 interface Props {
@@ -57,6 +57,8 @@ export function AdminBreakdownView({ projection }: Props) {
                     const lineMargin = sell - buy;
                     const noMargin = line.apply_margin === false;
                     const logisticsHidden = line.logistics_visible === false;
+                    // Per-unit sell override is active when the marker is non-null.
+                    const sellOverride = line.sell_unit_rate_override != null;
                     return (
                         <div
                             key={line.line_id}
@@ -78,6 +80,11 @@ export function AdminBreakdownView({ projection }: Props) {
                                 {logisticsHidden && (
                                     <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wide text-indigo-600">
                                         <EyeOff className="h-2.5 w-2.5" /> hidden from logistics
+                                    </span>
+                                )}
+                                {sellOverride && (
+                                    <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wide text-primary">
+                                        <Tag className="h-2.5 w-2.5" /> sell override
                                     </span>
                                 )}
                             </span>

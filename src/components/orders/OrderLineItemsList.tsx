@@ -12,9 +12,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { Edit, Minus, Plus, Save, Trash2, X } from "lucide-react";
+import { Edit, Minus, Plus, RotateCcw, Save, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import {
     useListLineItems,
@@ -41,11 +40,16 @@ type EditDraft = {
     billingMode: LineItemBillingMode;
     notes: string;
     metadataJson: string;
-    // applyMargin in the draft is always explicit true/false. The raw
-    // line column is nullable (NULL = inherit from service_type), but
-    // once admin opens edit + saves, we send an explicit value either
-    // way — breaking inheritance is intentional at that point.
-    applyMargin: boolean;
+    // Per-unit sell override. `sellUnitRate` is a free-text string; blank =
+    // no override (blanket-margin math applies). `sellTouched` records that
+    // the sell/margin control was explicitly edited during this edit session
+    // so the save path knows whether to include sellUnitRate in the payload
+    // (untouched = OMIT so the API leaves the column as-is).
+    sellUnitRate: string;
+    sellTouched: boolean;
+    // Snapshot of the override that existed on the line when edit opened.
+    // Used to render the "Override" chip + decide reset semantics.
+    hadOverride: boolean;
 };
 
 const EMPTY_DRAFT: EditDraft = {
@@ -54,7 +58,41 @@ const EMPTY_DRAFT: EditDraft = {
     billingMode: "BILLABLE",
     notes: "",
     metadataJson: "",
-    applyMargin: true,
+    sellUnitRate: "",
+    sellTouched: false,
+    hadOverride: false,
+};
+
+// margin% derived from buy + sell. Returns a display token, not just a number,
+// because buy=0 is a legitimate "fee" line where margin% is undefined.
+const deriveMargin = (
+    buy: number,
+    sell: number
+): { display: string; isFee: boolean; percent: number | null } => {
+    if (!Number.isFinite(buy) || !Number.isFinite(sell)) {
+        return { display: "—", isFee: false, percent: null };
+    }
+    if (buy > 0) {
+        const pct = Math.round(((sell - buy) / buy) * 100);
+        return { display: `${pct}%`, isFee: false, percent: pct };
+    }
+    // buy == 0
+    if (sell > 0) {
+        return { display: "Fee", isFee: true, percent: null };
+    }
+    return { display: "—", isFee: false, percent: null };
+};
+
+const roundMoney = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
+
+// Read the active sell override off a line item. The list response runs
+// mapArraySnakeToCamel, so it arrives as `sellUnitRate`; fall back to the raw
+// snake key defensively. NULL / absent = no override.
+const readSellOverride = (item: OrderLineItem): number | null => {
+    const raw = item.sellUnitRate ?? item.sell_unit_rate ?? null;
+    if (raw == null) return null;
+    const num = Number(raw);
+    return Number.isFinite(num) ? num : null;
 };
 
 const getSystemLineCopy = (item: OrderLineItem) => {
@@ -70,16 +108,19 @@ const mapDraftFromItem = (item: OrderLineItem): EditDraft => {
     const metadataJson =
         metadata && Object.keys(metadata).length > 0 ? JSON.stringify(metadata, null, 2) : "";
 
+    const sellOverride = readSellOverride(item);
+
     return {
         quantity: String(item.quantity ?? 1),
         unitRate: String(item.unitRate ?? 0),
         billingMode: (item.billingMode || "BILLABLE") as LineItemBillingMode,
         notes: item.notes || "",
         metadataJson,
-        // Treat null (inheriting) as "on" in the form — the typical default.
-        // Lines that inherit a false service_type default will show as "on"
-        // here visually; admin toggles off to set an explicit override.
-        applyMargin: item.applyMargin === false ? false : true,
+        // Pre-fill the sell field only when a real override exists. Blank when
+        // none — so the placeholder can hint the auto (blanket-margin) sell.
+        sellUnitRate: sellOverride != null ? String(sellOverride) : "",
+        sellTouched: false,
+        hadOverride: sellOverride != null,
     };
 };
 
@@ -187,6 +228,26 @@ export function OrderLineItemsList({
                     return;
                 }
 
+                // Sell override: only include in the payload when the sell/margin
+                // control was actually edited this session (sellTouched).
+                //   - blank field  → send null  (clear override → back to auto)
+                //   - number field → send that number (set/keep override)
+                //   - untouched    → OMIT the key (absent = no change)
+                let sellUnitRatePayload: { sellUnitRate?: number | null } = {};
+                if (draft.sellTouched) {
+                    const trimmed = draft.sellUnitRate.trim();
+                    if (trimmed === "") {
+                        sellUnitRatePayload = { sellUnitRate: null };
+                    } else {
+                        const sellNum = Number(trimmed);
+                        if (!Number.isFinite(sellNum) || sellNum < 0) {
+                            toast.error("Sell rate must be 0 or greater");
+                            return;
+                        }
+                        sellUnitRatePayload = { sellUnitRate: sellNum };
+                    }
+                }
+
                 await updateLineItem.mutateAsync({
                     itemId: item.id,
                     data: {
@@ -195,7 +256,7 @@ export function OrderLineItemsList({
                         billingMode: draft.billingMode,
                         notes: draft.notes || undefined,
                         metadata,
-                        applyMargin: draft.applyMargin,
+                        ...sellUnitRatePayload,
                     },
                 });
                 toast.success("Line item updated");
@@ -237,6 +298,45 @@ export function OrderLineItemsList({
         const current = Number(draft.quantity || "1");
         const next = Math.max(1, Math.floor(current + delta));
         setDraft((prev) => ({ ...prev, quantity: String(next) }));
+    };
+
+    // --- Linked Buy · Sell · Margin% control -------------------------------
+    // Editing buy HOLDS the sell (per owner: "hold sell") and lets margin%
+    // re-derive. Editing sell keeps buy, re-derives margin%. Editing margin%
+    // keeps buy, recomputes sell = buy × (1 + margin%/100).
+
+    const handleBuyChange = (value: string) => {
+        // Hold sell as-is; margin% re-derives from the new buy in render.
+        setDraft((prev) => ({ ...prev, unitRate: value }));
+    };
+
+    const handleSellChange = (value: string) => {
+        // A sell edit is an explicit override. Blank clears it (auto margin).
+        setDraft((prev) => ({ ...prev, sellUnitRate: value, sellTouched: true }));
+    };
+
+    const handleMarginChange = (value: string) => {
+        setDraft((prev) => {
+            const trimmed = value.trim();
+            // Blank margin → clear the sell override (back to auto).
+            if (trimmed === "") {
+                return { ...prev, sellUnitRate: "", sellTouched: true };
+            }
+            const pct = Number(trimmed);
+            const buy = Number(prev.unitRate || 0);
+            if (!Number.isFinite(pct) || !Number.isFinite(buy) || buy <= 0) {
+                // Can't derive a sell from margin% when buy is 0/invalid.
+                // Keep the sell untouched-blank; the "Fee" display governs.
+                return prev;
+            }
+            const sell = roundMoney(buy * (1 + pct / 100));
+            return { ...prev, sellUnitRate: String(sell), sellTouched: true };
+        });
+    };
+
+    // "Reset to auto" — clear the sell override so blanket-margin math resumes.
+    const handleResetSell = () => {
+        setDraft((prev) => ({ ...prev, sellUnitRate: "", sellTouched: true }));
     };
 
     if (isLoading) {
@@ -281,6 +381,11 @@ export function OrderLineItemsList({
                               ? "Pricing Locked"
                               : "Pricing Editable"}
                     </Badge>
+                    {!isSystemLine && readSellOverride(item) != null ? (
+                        <Badge variant="secondary" className="text-xs">
+                            Sell override
+                        </Badge>
+                    ) : null}
                     {canManageVisibility ? (
                         <div className="ml-auto">
                             <LineVisibilityChip
@@ -307,6 +412,11 @@ export function OrderLineItemsList({
                         <p className="text-xs text-muted-foreground mt-1">
                             {item.quantity || 0} {item.unit || "unit"} ×{" "}
                             {item.unitRate?.toFixed(2) || "0.00"} AED
+                            {!isSystemLine && readSellOverride(item) != null ? (
+                                <span className="ml-2 inline-flex items-center gap-1 text-primary">
+                                    · Sell override {readSellOverride(item)?.toFixed(2)} AED / unit
+                                </span>
+                            ) : null}
                         </p>
                         {isSystemLine ? (
                             <p className="text-xs text-muted-foreground mt-1">
@@ -327,7 +437,7 @@ export function OrderLineItemsList({
                     </>
                 ) : (
                     <div className="mt-3 space-y-3 rounded-md border border-border/80 bg-background p-3">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div className="space-y-1">
                                 <Label className="text-xs">Quantity</Label>
                                 <div className="flex items-center gap-1">
@@ -368,22 +478,6 @@ export function OrderLineItemsList({
                                 </div>
                             </div>
                             <div className="space-y-1">
-                                <Label className="text-xs">Unit Rate (AED)</Label>
-                                <Input
-                                    value={draft.unitRate}
-                                    type="number"
-                                    min={0}
-                                    step="0.01"
-                                    disabled={pricingLocked}
-                                    onChange={(event) =>
-                                        setDraft((prev) => ({
-                                            ...prev,
-                                            unitRate: event.target.value,
-                                        }))
-                                    }
-                                />
-                            </div>
-                            <div className="space-y-1">
                                 <Label className="text-xs">Billing Mode</Label>
                                 <Select
                                     value={draft.billingMode}
@@ -407,28 +501,133 @@ export function OrderLineItemsList({
                             </div>
                         </div>
 
-                        {/* Per-line margin policy override. Defaults to current
-                            effective state (true if line.apply_margin is null
-                            or true; false only when explicitly false). Toggling
-                            saves an explicit override — once edited, the line
-                            no longer inherits from its service_type default. */}
-                        <div className="flex items-start justify-between gap-3 rounded-md border border-border/60 p-3">
-                            <div className="space-y-0.5">
-                                <Label className="text-xs">Apply margin</Label>
-                                <p className="text-[11px] text-muted-foreground leading-snug">
-                                    {draft.applyMargin
-                                        ? "Margin is applied to this line (sell = buy × (1 + margin%))."
-                                        : "Margin is OFF — sell equals buy (pass-through, no markup)."}
-                                </p>
-                            </div>
-                            <Switch
-                                checked={draft.applyMargin}
-                                onCheckedChange={(v) =>
-                                    setDraft((prev) => ({ ...prev, applyMargin: v }))
-                                }
-                                disabled={pricingLocked}
-                            />
-                        </div>
+                        {/* Linked Buy · Sell · Margin% control. Buy is the unit
+                            cost. Sell is the optional per-unit override — blank
+                            means blanket-margin math (the placeholder hints the
+                            auto sell). Margin% is the derived lever:
+                              • edit margin% → sell = buy × (1 + margin%/100)
+                              • edit sell    → margin% re-derives
+                              • edit buy     → sell is HELD, margin% re-derives
+                            buy=0 shows "Fee" (margin% undefined). An override chip
+                            + "Reset to auto" surface/clear an active override. */}
+                        {(() => {
+                            const buyNum = Number(draft.unitRate || 0);
+                            const sellTrimmed = draft.sellUnitRate.trim();
+                            const hasSell = sellTrimmed !== "";
+                            const sellNum = hasSell ? Number(sellTrimmed) : NaN;
+                            const autoSell =
+                                Number.isFinite(buyNum) && buyNum >= 0
+                                    ? roundMoney(buyNum) // fallback hint when margin unknown at line level
+                                    : 0;
+                            // Effective sell used to derive margin%: the typed
+                            // override if present, else the auto (buy passthrough
+                            // hint — the real blanket margin is applied server-side).
+                            const effectiveSell = hasSell ? sellNum : autoSell;
+                            const margin = deriveMargin(buyNum, effectiveSell);
+                            // An override is "active" whenever a sell value is
+                            // present in the draft (pending save). Also treat the
+                            // line's pre-existing override as active until the user
+                            // explicitly touches (and possibly clears) the control.
+                            const overrideActive =
+                                hasSell || (draft.hadOverride && !draft.sellTouched);
+                            const marginValue =
+                                hasSell && margin.percent != null ? String(margin.percent) : "";
+                            return (
+                                <div className="space-y-2 rounded-md border border-border/60 p-3">
+                                    <div className="flex items-center justify-between gap-2">
+                                        <Label className="text-xs">Pricing (per unit)</Label>
+                                        <div className="flex items-center gap-2">
+                                            {overrideActive && (
+                                                <Badge
+                                                    variant="secondary"
+                                                    className="text-[10px] uppercase tracking-wide"
+                                                >
+                                                    Override
+                                                </Badge>
+                                            )}
+                                            {overrideActive && !pricingLocked ? (
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="h-6 px-2 text-[11px]"
+                                                    onClick={handleResetSell}
+                                                >
+                                                    <RotateCcw className="h-3 w-3 mr-1" />
+                                                    Reset to auto
+                                                </Button>
+                                            ) : null}
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-3">
+                                        <div className="space-y-1">
+                                            <Label className="text-[11px] text-muted-foreground">
+                                                Buy (AED)
+                                            </Label>
+                                            <Input
+                                                value={draft.unitRate}
+                                                type="number"
+                                                min={0}
+                                                step="0.01"
+                                                disabled={pricingLocked}
+                                                onChange={(event) =>
+                                                    handleBuyChange(event.target.value)
+                                                }
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <Label className="text-[11px] text-muted-foreground">
+                                                Sell (AED)
+                                            </Label>
+                                            <Input
+                                                value={draft.sellUnitRate}
+                                                type="number"
+                                                min={0}
+                                                step="0.01"
+                                                disabled={pricingLocked}
+                                                placeholder="auto"
+                                                onChange={(event) =>
+                                                    handleSellChange(event.target.value)
+                                                }
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <Label className="text-[11px] text-muted-foreground">
+                                                Margin %
+                                            </Label>
+                                            {margin.isFee ? (
+                                                <Input
+                                                    value="Fee"
+                                                    readOnly
+                                                    className="bg-muted text-center"
+                                                    disabled={pricingLocked}
+                                                />
+                                            ) : (
+                                                <Input
+                                                    value={marginValue}
+                                                    type="number"
+                                                    step="1"
+                                                    disabled={pricingLocked}
+                                                    placeholder={hasSell ? "—" : "auto"}
+                                                    onChange={(event) =>
+                                                        handleMarginChange(event.target.value)
+                                                    }
+                                                />
+                                            )}
+                                        </div>
+                                    </div>
+                                    <p className="text-[11px] text-muted-foreground leading-snug">
+                                        {overrideActive
+                                            ? "Sell override active — this line ignores blanket-margin math."
+                                            : "Sell is blank — this line uses the blanket-margin calculation. Set a sell or margin % to override."}
+                                    </p>
+                                </div>
+                            );
+                        })()}
+
+                        {/* legacy apply-margin toggle removed — Margin % above is
+                            the control now; the apply_margin column stays in the
+                            data/API and is no longer edited from this form. */}
 
                         <div className="space-y-1">
                             <Label className="text-xs">Notes</Label>

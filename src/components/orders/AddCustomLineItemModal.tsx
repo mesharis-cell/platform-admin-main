@@ -36,6 +36,24 @@ interface AddCustomLineItemModalProps {
     purposeType?: "ORDER" | "INBOUND_REQUEST" | "SERVICE_REQUEST" | "SELF_PICKUP";
 }
 
+const roundMoney = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
+
+// margin% display token from buy + sell. buy=0 with sell>0 = "Fee".
+const deriveMargin = (
+    buy: number,
+    sell: number
+): { display: string; isFee: boolean; percent: number | null } => {
+    if (!Number.isFinite(buy) || !Number.isFinite(sell)) {
+        return { display: "—", isFee: false, percent: null };
+    }
+    if (buy > 0) {
+        const pct = Math.round(((sell - buy) / buy) * 100);
+        return { display: `${pct}%`, isFee: false, percent: pct };
+    }
+    if (sell > 0) return { display: "Fee", isFee: true, percent: null };
+    return { display: "—", isFee: false, percent: null };
+};
+
 export function AddCustomLineItemModal({
     open,
     onOpenChange,
@@ -50,6 +68,9 @@ export function AddCustomLineItemModal({
     const [quantity, setQuantity] = useState("1");
     const [unit, setUnit] = useState("service");
     const [unitRate, setUnitRate] = useState("");
+    // Optional per-unit sell override. Blank = no override (blanket-margin
+    // math). A value is sent as sell_unit_rate on create.
+    const [sellUnitRate, setSellUnitRate] = useState("");
     const [notes, setNotes] = useState("");
     const [tripDirection, setTripDirection] = useState<
         "DELIVERY" | "PICKUP" | "ACCESS" | "TRANSFER"
@@ -113,6 +134,18 @@ export function AddCustomLineItemModal({
             };
         }
 
+        // Optional per-unit sell override. Blank = omit (blanket-margin math).
+        const sellTrimmed = sellUnitRate.trim();
+        let sellOverride: number | undefined;
+        if (sellTrimmed !== "") {
+            const sellNum = Number(sellTrimmed);
+            if (!Number.isFinite(sellNum) || sellNum < 0) {
+                toast.error("Please enter a valid sell rate");
+                return;
+            }
+            sellOverride = sellNum;
+        }
+
         try {
             await createLineItem.mutateAsync({
                 description: description.trim(),
@@ -125,6 +158,7 @@ export function AddCustomLineItemModal({
                 metadata,
                 apply_margin: applyMargin,
                 logistics_visible: logisticsVisible,
+                ...(sellOverride !== undefined ? { sell_unit_rate: sellOverride } : {}),
             });
             toast.success("Custom line item added");
             onOpenChange(false);
@@ -134,6 +168,7 @@ export function AddCustomLineItemModal({
             setQuantity("1");
             setUnit("service");
             setUnitRate("");
+            setSellUnitRate("");
             setNotes("");
             setTripDirection("DELIVERY");
             setTruckPlate("");
@@ -258,6 +293,99 @@ export function AddCustomLineItemModal({
                             Total is calculated as qty × unit rate and margin is applied later.
                         </p>
                     </div>
+
+                    {/* Optional per-unit sell override. Buy above (Unit Rate) is
+                        the cost. Enter a Sell (or Margin %) to override the
+                        blanket-margin math for this line; leave blank for auto.
+                          • edit Margin % → Sell = Buy × (1 + margin%/100)
+                          • edit Sell     → Margin % re-derives
+                        Buy = 0 shows "Fee" (margin % undefined). */}
+                    {(() => {
+                        const sellTrimmed = sellUnitRate.trim();
+                        const hasSell = sellTrimmed !== "";
+                        const sellNum = hasSell ? Number(sellTrimmed) : NaN;
+                        const margin = deriveMargin(unitRateNum, hasSell ? sellNum : unitRateNum);
+                        const marginValue =
+                            hasSell && margin.percent != null ? String(margin.percent) : "";
+                        const onMargin = (value: string) => {
+                            const t = value.trim();
+                            if (t === "") {
+                                setSellUnitRate("");
+                                return;
+                            }
+                            const pct = Number(t);
+                            if (!Number.isFinite(pct) || !(unitRateNum > 0)) return;
+                            setSellUnitRate(String(roundMoney(unitRateNum * (1 + pct / 100))));
+                        };
+                        return (
+                            <div className="space-y-2 rounded-md border border-border p-4">
+                                <div className="flex items-center justify-between gap-2">
+                                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                                        Sell override (optional)
+                                    </p>
+                                    {hasSell && (
+                                        <button
+                                            type="button"
+                                            className="text-[11px] text-muted-foreground hover:text-foreground underline"
+                                            onClick={() => setSellUnitRate("")}
+                                        >
+                                            Reset to auto
+                                        </button>
+                                    )}
+                                </div>
+                                <div className="grid grid-cols-3 gap-3">
+                                    <div>
+                                        <Label className="text-[11px] text-muted-foreground">
+                                            Buy (AED)
+                                        </Label>
+                                        <Input
+                                            value={unitRate || "0"}
+                                            readOnly
+                                            className="bg-muted"
+                                        />
+                                    </div>
+                                    <div>
+                                        <Label className="text-[11px] text-muted-foreground">
+                                            Sell (AED)
+                                        </Label>
+                                        <Input
+                                            type="number"
+                                            step="0.01"
+                                            min="0"
+                                            value={sellUnitRate}
+                                            placeholder="auto"
+                                            onChange={(e) => setSellUnitRate(e.target.value)}
+                                        />
+                                    </div>
+                                    <div>
+                                        <Label className="text-[11px] text-muted-foreground">
+                                            Margin %
+                                        </Label>
+                                        {margin.isFee ? (
+                                            <Input
+                                                value="Fee"
+                                                readOnly
+                                                className="bg-muted text-center"
+                                            />
+                                        ) : (
+                                            <Input
+                                                type="number"
+                                                step="1"
+                                                value={marginValue}
+                                                placeholder={hasSell ? "—" : "auto"}
+                                                onChange={(e) => onMargin(e.target.value)}
+                                            />
+                                        )}
+                                    </div>
+                                </div>
+                                <p className="text-[11px] text-muted-foreground leading-snug">
+                                    {hasSell
+                                        ? "Sell override set — this line ignores blanket-margin math."
+                                        : "Blank sell = blanket-margin calculation. Set a sell or margin % to override."}
+                                </p>
+                            </div>
+                        );
+                    })()}
 
                     {isTransportCategory && (
                         <div className="space-y-4 rounded-md border border-border p-4">

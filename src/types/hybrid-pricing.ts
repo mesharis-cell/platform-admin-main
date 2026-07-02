@@ -107,7 +107,11 @@ export interface OrderLineItem {
     total: number;
     buy_unit_rate?: number;
     buy_total?: number;
-    sell_unit_rate?: number;
+    // Per-unit sell override (ADMIN-only). NULL / absent = blanket-margin math.
+    // Note: the list endpoint runs mapArraySnakeToCamel, so at runtime this
+    // arrives as `sellUnitRate`. Both keys are declared so either read compiles.
+    sell_unit_rate?: number | null;
+    sellUnitRate?: number | null;
     sell_total?: number;
     addedBy: string;
     addedAt: string;
@@ -161,6 +165,8 @@ export interface CreateCustomLineItemRequest {
     metadata?: Record<string, unknown>;
     apply_margin?: boolean | null;
     logistics_visible?: boolean;
+    // Per-unit sell override (ADMIN-only). Omit = no override; null = clear.
+    sell_unit_rate?: number | null;
 }
 
 export interface UpdateLineItemRequest {
@@ -173,6 +179,11 @@ export interface UpdateLineItemRequest {
     clientPriceVisible?: boolean;
     applyMargin?: boolean | null;
     logisticsVisible?: boolean;
+    // Per-unit sell override (ADMIN-only). Mapped to sell_unit_rate by the
+    // update hook (mapCamelToSnake). number = set override, null = clear it,
+    // OMITTED = untouched (no change). Never send `undefined` — the API schema
+    // is .strict() and undefined would still emit a sell_unit_rate key.
+    sellUnitRate?: number | null;
 }
 
 export interface PatchLineItemMetadataRequest {
@@ -324,6 +335,9 @@ export interface BreakdownLine {
     buy_total?: number;
     sell_unit_price?: number;
     sell_total?: number;
+    // ADMIN-only "override active" marker. NULL = today's blanket-margin math;
+    // a number = admin set a per-unit sell override on this line.
+    sell_unit_rate_override?: number | null;
     unit_price?: number | null;
     total?: number | null;
     billing_mode?: string;
