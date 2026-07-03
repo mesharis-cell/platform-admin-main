@@ -16,6 +16,7 @@
 /playwright-report
 /test-results
 .env.playwright.local
+/scripts/order-training-shots
 
 # next.js
 /.next/
