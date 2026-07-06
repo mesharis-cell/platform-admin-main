@@ -622,22 +622,13 @@ export function useAdminApproveQuote() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async ({
-            orderId,
-            marginOverridePercent,
-            marginOverrideReason,
-        }: {
-            orderId: string;
-            marginOverridePercent?: number;
-            marginOverrideReason?: string;
-        }) => {
+        mutationFn: async ({ orderId }: { orderId: string }) => {
             try {
+                // Blanket margin override retired (pricing-ledger P1-6). Approve is a
+                // pure one-click send — all pricing lives on the per-line ledger.
                 const response = await apiClient.post(
                     `/client/v1/order/${orderId}/admin-approve-quote`,
-                    {
-                        margin_override_percent: marginOverridePercent,
-                        margin_override_reason: marginOverrideReason,
-                    }
+                    {}
                 );
                 return response.data;
             } catch (error) {
