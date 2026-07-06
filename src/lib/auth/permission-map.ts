@@ -31,7 +31,6 @@ export const ADMIN_NAV_PERMISSIONS = {
     workflowDefinitions: ["workflow_definitions:read", "workflow_definitions:*"],
     accessPolicies: ["access_policies:read", "access_policies:*"],
     serviceTypes: ["service_types:manage", "service_types:*"],
-    warehouseOpsRates: ["warehouse_ops_rates:read", "warehouse_ops_rates:*"],
     countries: ["countries:read", "countries:*"],
     cities: ["cities:read", "cities:*"],
     resetPassword: ["auth:reset_password", "auth:*"],
@@ -67,7 +66,6 @@ export const ADMIN_PAGE_PERMISSIONS = {
     workflowDefinitions: "workflow_definitions:view_page",
     accessPolicies: "access_policies:view_page",
     serviceTypes: "service_types:view_page",
-    warehouseOpsRates: "warehouse_ops_rates:view_page",
     countries: "countries:view_page",
     cities: "cities:view_page",
 } as const;
@@ -109,8 +107,6 @@ export const ADMIN_ACTION_PERMISSIONS = {
     usersManagePassword: "users:manage_password",
     inboundRequestsCreate: "inbound_requests:create",
     serviceRequestsCreate: "service_requests:create",
-    warehouseOpsRatesRead: "warehouse_ops_rates:read",
-    warehouseOpsRatesUpdate: "warehouse_ops_rates:update",
     // Self-pickup actions — mirror orders' naming (SP4 of self-pickup parity sprint).
     selfPickupsRead: "self_pickups:read",
     selfPickupsEditDetails: "self_pickups:edit_details",
