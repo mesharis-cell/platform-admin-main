@@ -4,24 +4,6 @@
  */
 
 // ============================================================
-// Pricing Configuration
-// ============================================================
-
-export interface PricingConfig {
-    id: string;
-    platformId: string;
-    companyId: string | null;
-    warehouseOpsRate: number;
-    isActive: boolean;
-    createdAt: string;
-    updatedAt: string;
-}
-
-export interface SetPricingConfigRequest {
-    warehouseOpsRate: number;
-}
-
-// ============================================================
 // Transport Rates
 // ============================================================
 
@@ -122,8 +104,6 @@ export interface OrderLineItem {
     billingMode?: LineItemBillingMode;
     metadata?: TransportLineItemMetadata | Record<string, unknown> | null;
     clientPriceVisible?: boolean;
-    // Per-line policy. NULL = inherit from service_type default.
-    applyMargin?: boolean | null;
     // When false, server strips this line from LOGISTICS projections + list.
     logisticsVisible?: boolean;
     canEditPricingFields?: boolean;
@@ -148,7 +128,6 @@ export interface CreateCatalogLineItemRequest {
     notes?: string;
     billing_mode?: LineItemBillingMode;
     metadata?: Record<string, unknown>;
-    apply_margin?: boolean | null;
     logistics_visible?: boolean;
     // Per-unit sell override (ADMIN-only, BILLABLE-only). Accepted directly at
     // catalog-create since Phase 1 — kills the old create-then-PUT loop. Omit =
@@ -170,7 +149,6 @@ export interface CreateCustomLineItemRequest {
     notes?: string;
     billing_mode?: LineItemBillingMode;
     metadata?: Record<string, unknown>;
-    apply_margin?: boolean | null;
     logistics_visible?: boolean;
     // Per-unit sell override (ADMIN-only). Omit = no override; null = clear.
     sell_unit_rate?: number | null;
@@ -184,7 +162,6 @@ export interface UpdateLineItemRequest {
     billingMode?: LineItemBillingMode;
     metadata?: Record<string, unknown>;
     clientPriceVisible?: boolean;
-    applyMargin?: boolean | null;
     logisticsVisible?: boolean;
     // Per-unit sell override (ADMIN-only). Mapped to sell_unit_rate by the
     // update hook (mapCamelToSnake). number = set override, null = clear it,
@@ -355,7 +332,6 @@ export interface BreakdownLine {
     total?: number | null;
     billing_mode?: string;
     client_price_visible?: boolean;
-    apply_margin?: boolean;
     logistics_visible?: boolean;
     is_voided?: boolean;
     notes?: string | null;

@@ -34,6 +34,7 @@ import {
     useVoidLineItem,
 } from "@/hooks/use-order-line-items";
 import { usePricingPreview } from "@/hooks/use-pricing-ledger";
+import { usePlatform } from "@/lib/hooks/use-platform";
 import { useToken } from "@/lib/auth/use-token";
 import { hasPermission } from "@/lib/auth/permissions";
 import type { OrderLineItem, OrderPricing, PurposeType } from "@/types/hybrid-pricing";
@@ -44,13 +45,17 @@ export interface PricingLedgerProps {
     // Drives editability + post-quote banner copy.
     entityStatus: string;
     pricingMode: "STANDARD" | "NO_COST";
+    // SERVICE_REQUEST only: its billing mode. An INTERNAL_ONLY SR is never
+    // client-billed, so the API rejects "mark no-cost" on it — hide the action.
+    billingMode?: string;
     // The entity page supplies the approve mutation + label (approve stays one
     // click, never a gate — decision 8). Omit to hide the approve slot.
     onApprove?: () => void;
     approveLabel?: string;
     approveDisabled?: boolean;
     approveBusy?: boolean;
-    // Defaults to the platform display currency used across the breakdown views.
+    // Override the display currency. Omit to use the platform display currency
+    // (resolved via usePlatform inside the component; falls back to AED).
     currency?: string;
 }
 
@@ -101,14 +106,24 @@ export function PricingLedger({
     entityId,
     entityStatus,
     pricingMode,
+    billingMode,
     onApprove,
     approveLabel = "Approve & send quote",
     approveDisabled,
     approveBusy,
-    currency = "AED",
+    currency,
 }: PricingLedgerProps) {
     const { user } = useToken();
     const canAdjust = hasPermission(user, "pricing:adjust");
+    // Currency: explicit prop wins, else the platform display currency (same
+    // source order emails + the breakdown views read), else AED as a last resort.
+    const { data: platform } = usePlatform();
+    const resolvedCurrency = currency ?? platform?.config?.currency ?? "AED";
+    // No-cost is a client-billing waiver — it makes no sense (and the API 400s)
+    // on an INTERNAL_ONLY service request, which is never billed to a client.
+    const noCostApplicable = !(
+        purposeType === "SERVICE_REQUEST" && billingMode === "INTERNAL_ONLY"
+    );
 
     const [lens, setLens] = useState<Lens>("edit");
     const [addCatalogOpen, setAddCatalogOpen] = useState(false);
@@ -321,7 +336,7 @@ export function PricingLedger({
                                                 seedMarginPercent={seedMarginPercent}
                                                 editable={ledgerEditable}
                                                 allowVisibility={ledgerEditable}
-                                                currency={currency}
+                                                currency={resolvedCurrency}
                                                 onUpdate={handleUpdate(item.id)}
                                                 onVoid={() => handleVoid(item.id)}
                                                 onToggleVisibility={(next) =>
@@ -405,7 +420,7 @@ export function PricingLedger({
                         <Button size="sm" variant="outline" onClick={() => setBulkOpen(true)}>
                             <Percent className="mr-1 h-4 w-4" /> Bulk margin…
                         </Button>
-                        {canAdjust ? (
+                        {canAdjust && noCostApplicable ? (
                             <Button
                                 size="sm"
                                 variant="outline"
@@ -423,28 +438,32 @@ export function PricingLedger({
                     <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm md:grid-cols-3">
                         <div className="flex justify-between">
                             <span className="text-muted-foreground">Buy Σ</span>
-                            <span className="font-mono">{money(buyTotal, currency)}</span>
+                            <span className="font-mono">{money(buyTotal, resolvedCurrency)}</span>
                         </div>
                         <div className="flex justify-between">
                             <span className="text-muted-foreground">Sell Σ</span>
-                            <span className="font-mono">{money(sellTotal, currency)}</span>
+                            <span className="font-mono">{money(sellTotal, resolvedCurrency)}</span>
                         </div>
                         <div className="flex justify-between">
                             <span className="text-muted-foreground">
                                 Margin ({blendedPercent.toFixed(1)}%)
                             </span>
-                            <span className="font-mono">{money(marginAmount, currency)}</span>
+                            <span className="font-mono">
+                                {money(marginAmount, resolvedCurrency)}
+                            </span>
                         </div>
                         {vatPercent > 0 ? (
                             <div className="flex justify-between">
                                 <span className="text-muted-foreground">VAT ({vatPercent}%)</span>
-                                <span className="font-mono">{money(vatAmount, currency)}</span>
+                                <span className="font-mono">
+                                    {money(vatAmount, resolvedCurrency)}
+                                </span>
                             </div>
                         ) : null}
                         <div className="col-span-2 flex justify-between border-t border-border pt-1 md:col-span-3">
                             <span className="font-semibold">Client total</span>
                             <span className="font-mono font-semibold">
-                                {money(clientTotal, currency)}
+                                {money(clientTotal, resolvedCurrency)}
                             </span>
                         </div>
                     </div>

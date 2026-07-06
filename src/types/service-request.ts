@@ -66,10 +66,6 @@ export interface ServiceRequest {
     related_order_id: string | null;
     related_order_item_id: string | null;
     request_pricing_id: string | null;
-    client_sell_override_total: string | null;
-    concession_reason: string | null;
-    concession_approved_by: string | null;
-    concession_applied_at: string | null;
     fulfillment_override_reason: string | null;
     fulfillment_override_approved_by: string | null;
     fulfillment_override_applied_at: string | null;
@@ -169,10 +165,6 @@ export interface UpdateServiceRequestCommercialStatusPayload {
 export interface RespondServiceRequestQuotePayload {
     action: "APPROVE" | "DECLINE" | "REQUEST_REVISION";
     note?: string;
-}
-
-export interface ApplyServiceRequestConcessionPayload {
-    concession_reason: string;
 }
 
 export interface ApplyServiceRequestFulfillmentOverridePayload {

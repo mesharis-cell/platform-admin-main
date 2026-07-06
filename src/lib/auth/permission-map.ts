@@ -116,5 +116,10 @@ export const ADMIN_ACTION_PERMISSIONS = {
     selfPickupsSubmitForApproval: "pricing:review",
     selfPickupsPricingAdjust: "pricing:adjust",
     selfPickupsPricingAdminApprove: "pricing:admin_approve",
+    // Gate for the SP admin/logistics approve action — matches the route's
+    // requirePermission(SELF_PICKUPS_APPROVE). Distinct from the generic
+    // pricing:admin_approve the button previously used (that key doesn't gate
+    // the SP /approve route, so a policy granting only one of them would skew).
+    selfPickupsApprove: "self_pickups:approve",
     selfPickupsMarkNoCost: "self_pickups:mark_no_cost",
 } as const;

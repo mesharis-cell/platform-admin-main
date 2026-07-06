@@ -562,6 +562,7 @@ export default function ServiceRequestDetailsPage() {
                             purposeType="SERVICE_REQUEST"
                             entityId={request.id}
                             entityStatus={request.commercial_status}
+                            billingMode={request.billing_mode}
                             pricingMode={
                                 (request as { pricing_mode?: "STANDARD" | "NO_COST" })
                                     .pricing_mode || "STANDARD"

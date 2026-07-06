@@ -44,10 +44,10 @@ export function SelfPickupPendingApprovalSection({
     const adminApproveQuote = useAdminApproveQuote();
     const [returnToLogisticsOpen, setReturnToLogisticsOpen] = useState(false);
 
-    const canApproveQuote = hasPermission(
-        user,
-        ADMIN_ACTION_PERMISSIONS.selfPickupsPricingAdminApprove
-    );
+    // Gate on the key the SP /approve route actually enforces
+    // (self_pickups:approve) — NOT the generic pricing:admin_approve, which the
+    // route does not check (fixes the button-vs-route permission skew).
+    const canApproveQuote = hasPermission(user, ADMIN_ACTION_PERMISSIONS.selfPickupsApprove);
     // Approve + Return-to-Logistics are admin actions surfaced only while the
     // pickup awaits admin decision. (LOGISTICS may also approve SP quotes, but
     // this is the ADMIN app — middleware-gated; the API accepts both roles.)
