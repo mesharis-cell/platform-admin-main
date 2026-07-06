@@ -29,6 +29,9 @@ const invalidateLineItemRelatedQueries = (
     purposeType: "ORDER" | "INBOUND_REQUEST" | "SERVICE_REQUEST" | "SELF_PICKUP"
 ) => {
     queryClient.invalidateQueries({ queryKey: lineItemsKeys.list(targetId, purposeType) });
+    // Refresh the PricingLedger's role-preview (footer totals + client/logistics
+    // lenses) live after any line-item mutation. Prefix match covers both roles.
+    queryClient.invalidateQueries({ queryKey: ["pricing-preview", purposeType, targetId] });
 
     if (purposeType === "ORDER") {
         queryClient.invalidateQueries({ queryKey: ["orders"] });
