@@ -22,15 +22,11 @@ import { EntityAttachmentsCard } from "@/components/shared/entity-attachments-ca
 import { CommerceRuleAcknowledgementsCard } from "@/components/shared/commerce-rule-acknowledgements-card";
 import { SelfPickupPendingApprovalSection } from "./hybrid-sections";
 import { CancelSelfPickupModal } from "@/components/self-pickups/CancelSelfPickupModal";
-import { MarkAsNoCostButton } from "@/components/self-pickups/MarkAsNoCostButton";
 import { SelfPickupChangeHistoryCard } from "@/components/self-pickups/SelfPickupChangeHistoryCard";
 import { EditSelfPickupDetailsCard } from "@/components/self-pickups/EditSelfPickupDetailsCard";
-import { OrderLineItemsList } from "@/components/orders/OrderLineItemsList";
 import { useToken } from "@/lib/auth/use-token";
 import { hasPermission } from "@/lib/auth/permissions";
 import { ADMIN_ACTION_PERMISSIONS } from "@/lib/auth/permission-map";
-
-const MARK_NO_COST_STATUSES = ["PRICING_REVIEW", "PENDING_APPROVAL"];
 
 // Pre-confirmation editable band — mirrors the order edit band + the API's
 // editSelfPickupSchema gate. The API re-checks (409/400) if the pickup has moved on.
@@ -95,7 +91,6 @@ export default function SelfPickupDetailPage({ params }: { params: Promise<{ id:
     const canCancel = hasPermission(user, ADMIN_ACTION_PERMISSIONS.selfPickupsCancel);
     // Reuse orders' add_job_number permission (pricing/approval context).
     const canEditJobNumber = hasPermission(user, ADMIN_ACTION_PERMISSIONS.ordersAddJobNumber);
-    const canMarkNoCost = hasPermission(user, ADMIN_ACTION_PERMISSIONS.selfPickupsMarkNoCost);
     // Pre-confirmation band + self_pickups:edit_details. NO_COST pickups lock all
     // line-item mutations server-side, so the items editor would 400 — gate the
     // whole card off NO_COST too (the descriptive fields alone aren't worth a card).
@@ -191,16 +186,6 @@ export default function SelfPickupDetailPage({ params }: { params: Promise<{ id:
                                     Submit for Approval
                                 </Button>
                             )}
-                            {canMarkNoCost &&
-                                pickup.pricing_mode === "STANDARD" &&
-                                MARK_NO_COST_STATUSES.includes(pickup.self_pickup_status) && (
-                                    <MarkAsNoCostButton
-                                        entityType="SELF_PICKUP"
-                                        entityId={pickup.id}
-                                        entityIdReadable={pickup.self_pickup_id}
-                                        onSuccess={() => refetch()}
-                                    />
-                                )}
                             {pickup.self_pickup_status === "CONFIRMED" && (
                                 <Button
                                     onClick={() => {
@@ -391,18 +376,16 @@ export default function SelfPickupDetailPage({ params }: { params: Promise<{ id:
                                     disabled.
                                 </CardContent>
                             </Card>
-                        ) : pickup.self_pickup_status === "PENDING_APPROVAL" ? (
+                        ) : (
+                            // PricingLedger for every non-NO_COST status — editable
+                            // through QUOTED, read-only lenses beyond (self-gated by
+                            // status inside the ledger). Approve slot + Return-to-
+                            // Logistics surface only at PENDING_APPROVAL.
                             <SelfPickupPendingApprovalSection
                                 pickup={pickup}
                                 selfPickupId={pickup.id}
                                 onRefresh={() => refetch()}
                                 isRefetching={isFetching}
-                            />
-                        ) : (
-                            <OrderLineItemsList
-                                targetId={pickup.id}
-                                purposeType="SELF_PICKUP"
-                                canManage={pickup.self_pickup_status === "PRICING_REVIEW"}
                             />
                         )}
                     </div>

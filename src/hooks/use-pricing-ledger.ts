@@ -106,7 +106,10 @@ const invalidateLedgerQueries = (
         queryClient.invalidateQueries({ queryKey: ["service-requests"] });
     } else {
         queryClient.invalidateQueries({ queryKey: ["self-pickups"] });
-        queryClient.invalidateQueries({ queryKey: ["self-pickup-detail", entityId] });
+        // SP detail query key is ["self-pickup", id] (selfPickupKeys.detail) — the
+        // page re-routes to the NO_COST card + status badge off this refetch after
+        // a ledger no-cost/bulk-margin. (Was ["self-pickup-detail"] — dead key.)
+        queryClient.invalidateQueries({ queryKey: ["self-pickup", entityId] });
     }
 };
 
