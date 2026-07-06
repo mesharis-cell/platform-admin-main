@@ -352,7 +352,7 @@ export interface InvoiceListParams {
 export interface OrderPricing {
     breakdown_lines?: Array<{
         line_id: string;
-        line_kind?: "BASE_OPS" | "RATE_CARD" | "CUSTOM";
+        line_kind?: "SYSTEM" | "RATE_CARD" | "CUSTOM";
         category?: string;
         label: string;
         quantity: number;
@@ -372,8 +372,7 @@ export interface OrderPricing {
         is_override: boolean;
         override_reason: string | null;
     };
-    warehouse_ops_rate?: number;
-    base_ops_total?: number;
+    system_total?: number;
     subtotal?: number;
     vat?: {
         percent: number;
@@ -394,7 +393,7 @@ export interface OrderPricing {
         override_reason: string | null;
     };
     sell?: {
-        base_ops_total: number;
+        system_total: number;
         subtotal?: number;
         vat_amount?: number;
         final_total: number;
