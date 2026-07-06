@@ -60,14 +60,6 @@ export default function CompanyEditPage() {
         label: featureRegistry[key].label,
         description: featureRegistry[key].description,
     }));
-    const canReadWarehouseOpsRate =
-        hasPermission(user, ADMIN_ACTION_PERMISSIONS.warehouseOpsRatesRead) ||
-        hasPermission(user, ADMIN_ACTION_PERMISSIONS.warehouseOpsRatesUpdate);
-    const canUpdateWarehouseOpsRate = hasPermission(
-        user,
-        ADMIN_ACTION_PERMISSIONS.warehouseOpsRatesUpdate
-    );
-
     const companies = data?.data || [];
     const company = companies.find((c: Company) => c.id === companyId) || null;
 
@@ -87,7 +79,6 @@ export default function CompanyEditPage() {
             },
         },
         platform_margin_percent: 0.3,
-        warehouse_ops_rate: null as number | null,
         vat_percent_override: null as number | null,
         contact_email: "" as string | undefined,
         contact_phone: "",
@@ -130,7 +121,6 @@ export default function CompanyEditPage() {
                 },
             },
             platform_margin_percent: parseFloat(String(company.platform_margin_percent)),
-            warehouse_ops_rate: parseFloat(String(company.warehouse_ops_rate)),
             vat_percent_override:
                 company.vat_percent_override !== null && company.vat_percent_override !== undefined
                     ? parseFloat(String(company.vat_percent_override))
@@ -212,11 +202,6 @@ export default function CompanyEditPage() {
 
             const { domain: _domain, ...updatePayload } = {
                 ...formData,
-                ...(canUpdateWarehouseOpsRate
-                    ? {}
-                    : {
-                          warehouse_ops_rate: undefined,
-                      }),
                 settings: {
                     ...formData.settings,
                     branding: {
@@ -415,37 +400,6 @@ export default function CompanyEditPage() {
                                     </span>
                                 </div>
                             </div>
-                            {canReadWarehouseOpsRate && (
-                                <div className="space-y-2">
-                                    <Label
-                                        htmlFor="warehouse_ops_rate"
-                                        className="font-mono text-xs"
-                                    >
-                                        WAREHOUSE OPS RATE
-                                    </Label>
-                                    <Input
-                                        id="warehouse_ops_rate"
-                                        type="number"
-                                        step="0.01"
-                                        min="0"
-                                        value={formData.warehouse_ops_rate ?? ""}
-                                        onChange={(e) =>
-                                            setFormData({
-                                                ...formData,
-                                                warehouse_ops_rate:
-                                                    e.target.value === ""
-                                                        ? null
-                                                        : parseFloat(e.target.value),
-                                            })
-                                        }
-                                        disabled={!canUpdateWarehouseOpsRate}
-                                        className="font-mono"
-                                    />
-                                    <p className="text-xs text-muted-foreground font-mono">
-                                        Default rate applied to orders (2 decimal places)
-                                    </p>
-                                </div>
-                            )}
                             <div className="space-y-2">
                                 <Label htmlFor="minimum_lead_hours" className="font-mono text-xs">
                                     ORDER LEAD TIME OVERRIDE (HOURS)

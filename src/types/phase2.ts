@@ -33,7 +33,6 @@ export interface Company {
     created_at: Date;
     updated_at: Date;
     deleted_at: Date | null;
-    warehouse_ops_rate: number | null;
     vat_percent_override: number | null;
     domains: [
         {
