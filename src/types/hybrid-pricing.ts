@@ -150,6 +150,10 @@ export interface CreateCatalogLineItemRequest {
     metadata?: Record<string, unknown>;
     apply_margin?: boolean | null;
     logistics_visible?: boolean;
+    // Per-unit sell override (ADMIN-only, BILLABLE-only). Accepted directly at
+    // catalog-create since Phase 1 — kills the old create-then-PUT loop. Omit =
+    // no override (server seed-derives from prices.margin_percent).
+    sell_unit_rate?: number | null;
 }
 
 export interface CreateCustomLineItemRequest {

@@ -24,7 +24,7 @@ import { Switch } from "@/components/ui/switch";
 import { Minus, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { useListServiceTypes } from "@/hooks/use-service-types";
-import { useCreateCatalogLineItem, useUpdateLineItem } from "@/hooks/use-order-line-items";
+import { useCreateCatalogLineItem } from "@/hooks/use-order-line-items";
 import type { LineItemBillingMode, ServiceCategory } from "@/types/hybrid-pricing";
 
 const roundMoney = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
@@ -70,10 +70,6 @@ export function AddCatalogLineItemModal({
 }: AddCatalogLineItemModalProps) {
     const resolvedTargetId = targetId || orderId || "";
     const createLineItem = useCreateCatalogLineItem(resolvedTargetId, purposeType);
-    // Sell override on catalog lines isn't accepted at create time (the API
-    // catalog-create schema has no sell_unit_rate). We create the line, then
-    // immediately PUT it with the computed sell_unit_rate — a create-then-PUT.
-    const updateLineItem = useUpdateLineItem(resolvedTargetId, purposeType);
 
     const [search, setSearch] = useState("");
     const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -83,19 +79,15 @@ export function AddCatalogLineItemModal({
     const [billingMode, setBillingMode] = useState<LineItemBillingMode>("BILLABLE");
     const [notes, setNotes] = useState("");
     const [selectedById, setSelectedById] = useState<Record<string, SelectedEntry>>({});
-    // Margin policy override for this bulk insert. When `override` is off,
-    // we leave apply_margin out of the payload so each line inherits its
-    // service_type default (the typical case). When on, we send the chosen
-    // value verbatim for every selected line. Same applies to logistics
-    // visibility — default ON inherits, OFF strips from logistics.
-    const [overrideApplyMargin, setOverrideApplyMargin] = useState(false);
-    const [applyMargin, setApplyMargin] = useState(true);
+    // Logistics visibility override for this bulk insert. Default ON inherits
+    // (visible to logistics); OFF strips the selected lines from logistics.
     const [overrideLogisticsVisible, setOverrideLogisticsVisible] = useState(false);
     const [logisticsVisible, setLogisticsVisible] = useState(true);
     // Optional sell override applied to ALL selected lines. Since selected
     // services have heterogeneous buy rates, the override is expressed as a
     // single MARGIN % — each line's sell is computed from its own default_rate
-    // (sell = default_rate × (1 + margin%/100)) and applied via create-then-PUT.
+    // (sell = default_rate × (1 + margin%/100)) and sent as sell_unit_rate
+    // directly on create (BILLABLE lines only).
     const [overrideSellMargin, setOverrideSellMargin] = useState(false);
     const [sellMarginPercent, setSellMarginPercent] = useState("");
 
@@ -115,8 +107,6 @@ export function AddCatalogLineItemModal({
             setBillingMode("BILLABLE");
             setNotes("");
             setSelectedById({});
-            setOverrideApplyMargin(false);
-            setApplyMargin(true);
             setOverrideLogisticsVisible(false);
             setLogisticsVisible(true);
             setOverrideSellMargin(false);
@@ -235,26 +225,24 @@ export function AddCatalogLineItemModal({
                     return;
                 }
 
-                const created = await createLineItem.mutateAsync({
+                // Optional per-unit sell override, computed from THIS line's own
+                // rate-card buy and sent directly on create (schema accepts it
+                // since Phase 1). Sell overrides are BILLABLE-only server-side, so
+                // only attach one for billable lines.
+                let sellUnitRate: number | undefined;
+                if (marginPct != null && billingMode === "BILLABLE") {
+                    const buy = Number(selected.service.default_rate ?? 0);
+                    sellUnitRate = roundMoney(buy * (1 + marginPct / 100));
+                }
+
+                await createLineItem.mutateAsync({
                     service_type_id: id,
                     quantity: quantityValue,
                     billing_mode: billingMode,
                     notes: notes.trim() || undefined,
-                    ...(overrideApplyMargin ? { apply_margin: applyMargin } : {}),
                     ...(overrideLogisticsVisible ? { logistics_visible: logisticsVisible } : {}),
+                    ...(sellUnitRate !== undefined ? { sell_unit_rate: sellUnitRate } : {}),
                 });
-
-                // Create-then-PUT: apply the per-unit sell override computed from
-                // this line's own buy (default_rate). The catalog-create response
-                // carries the new line's id + unit_rate.
-                if (marginPct != null && created?.id) {
-                    const buy = Number(created.unit_rate ?? selected.service.default_rate ?? 0);
-                    const sell = roundMoney(buy * (1 + marginPct / 100));
-                    await updateLineItem.mutateAsync({
-                        itemId: created.id as string,
-                        data: { sellUnitRate: sell },
-                    });
-                }
             }
 
             toast.success(`${selectedIds.length} service line item(s) added`);
@@ -618,40 +606,17 @@ export function AddCatalogLineItemModal({
                     </div>
 
                     {/* Optional policy overrides for this bulk insert. Leaving
-                        both off (default) lets each line inherit its service
-                        type's apply_margin default and start visible to all. */}
+                        both off (default) lets each line seed its sell from the
+                        entity's margin and start visible to all. */}
                     <div className="space-y-3 rounded-md border border-border p-4">
                         <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                             Policy overrides (optional)
                         </p>
                         <p className="text-[11px] text-muted-foreground">
-                            Leave off to inherit each service type's defaults. Toggle on only if you
-                            need every selected line to share a specific policy that differs from
-                            its type default.
+                            Leave off to use the entity's default margin + full logistics
+                            visibility. Toggle on only if every selected line should share a
+                            specific policy.
                         </p>
-
-                        <div className="flex items-start justify-between gap-3 pt-2">
-                            <div className="space-y-0.5">
-                                <Label className="text-sm">Override margin policy</Label>
-                                <p className="text-[11px] text-muted-foreground leading-snug">
-                                    {overrideApplyMargin
-                                        ? applyMargin
-                                            ? "Force apply margin for all selected lines."
-                                            : "Force pass-through (no margin) for all selected."
-                                        : "Each line uses its service type's default."}
-                                </p>
-                            </div>
-                            <Switch
-                                checked={overrideApplyMargin}
-                                onCheckedChange={setOverrideApplyMargin}
-                            />
-                        </div>
-                        {overrideApplyMargin && (
-                            <div className="flex items-center justify-between gap-3 pl-3 border-l-2 border-primary">
-                                <Label className="text-sm">Apply margin</Label>
-                                <Switch checked={applyMargin} onCheckedChange={setApplyMargin} />
-                            </div>
-                        )}
 
                         <div className="flex items-start justify-between gap-3 pt-2">
                             <div className="space-y-0.5">
@@ -682,15 +647,15 @@ export function AddCatalogLineItemModal({
                         {/* Optional per-unit sell override for every selected
                             line. Expressed as a single margin % because selected
                             services have different buy rates; each line's sell is
-                            computed from its own default_rate and applied via a
-                            create-then-PUT (catalog-create doesn't accept sell). */}
+                            computed from its own rate-card buy and sent as
+                            sell_unit_rate directly on create. BILLABLE lines only. */}
                         <div className="flex items-start justify-between gap-3 pt-2">
                             <div className="space-y-0.5">
                                 <Label className="text-sm">Override sell (margin %)</Label>
                                 <p className="text-[11px] text-muted-foreground leading-snug">
                                     {overrideSellMargin
-                                        ? "Each selected line's sell = its rate-card buy × (1 + margin %). Overrides blanket-margin math."
-                                        : "Leave off to use blanket-margin math for each line."}
+                                        ? "Each selected billable line's sell = its rate-card buy × (1 + margin %)."
+                                        : "Leave off to seed each line's sell from the entity margin."}
                                 </p>
                             </div>
                             <Switch
