@@ -1,0 +1,515 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { AlertTriangle, Ban, Info, Percent, Plus, RefreshCw } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+import { AddCatalogLineItemModal } from "@/components/orders/AddCatalogLineItemModal";
+import { AddCustomLineItemModal } from "@/components/orders/AddCustomLineItemModal";
+import { ClientBreakdownView } from "@/components/pricing/ClientBreakdownView";
+import { LogisticsBreakdownView } from "@/components/pricing/LogisticsBreakdownView";
+import { BulkMarginDialog } from "@/components/pricing/BulkMarginDialog";
+import { NoCostDialog } from "@/components/pricing/NoCostDialog";
+import { PricingLedgerRow } from "@/components/pricing/PricingLedgerRow";
+
+import {
+    useListLineItems,
+    usePatchLineItemVisibility,
+    useUpdateLineItem,
+    useVoidLineItem,
+} from "@/hooks/use-order-line-items";
+import { usePricingPreview } from "@/hooks/use-pricing-ledger";
+import { useToken } from "@/lib/auth/use-token";
+import { hasPermission } from "@/lib/auth/permissions";
+import type { OrderLineItem, OrderPricing, PurposeType } from "@/types/hybrid-pricing";
+
+export interface PricingLedgerProps {
+    purposeType: PurposeType;
+    entityId: string;
+    // Drives editability + post-quote banner copy.
+    entityStatus: string;
+    pricingMode: "STANDARD" | "NO_COST";
+    // The entity page supplies the approve mutation + label (approve stays one
+    // click, never a gate — decision 8). Omit to hide the approve slot.
+    onApprove?: () => void;
+    approveLabel?: string;
+    approveDisabled?: boolean;
+    approveBusy?: boolean;
+    // Defaults to the platform display currency used across the breakdown views.
+    currency?: string;
+}
+
+type Lens = "edit" | "client" | "logistics";
+
+// Statuses at/after which line-item pricing is locked (financial lock / terminal).
+// Mirrors canManageLineItems(order-helpers) but generic across the 4 entities:
+// the set of statuses that still permit pricing edits. Anything else is locked.
+const PRICING_EDITABLE_STATUSES = new Set([
+    "DRAFT",
+    "SUBMITTED",
+    "PRICING_REVIEW",
+    "PENDING_APPROVAL",
+    "QUOTED",
+]);
+
+// Statuses where a sent quote gets pulled back on edit (post-quote warning).
+const POST_QUOTE_STATUSES = new Set(["QUOTED"]);
+
+const money = (n: number, currency: string) => `${Number(n || 0).toFixed(2)} ${currency}`;
+
+/**
+ * PricingLedger — the single editable money table for all four billable entities
+ * (PLAN §2.3 / §5.2). Edit lens (ADMIN) + server-projected preview lenses. Owns
+ * the add-line modals, bulk-margin, and no-cost actions; renders the caller's
+ * approve action in the footer slot.
+ *
+ * Canonical-copy-per-repo: the admin build. A buy-only warehouse variant is a
+ * separate copy (Phase 4).
+ */
+export function PricingLedger({
+    purposeType,
+    entityId,
+    entityStatus,
+    pricingMode,
+    onApprove,
+    approveLabel = "Approve & send quote",
+    approveDisabled,
+    approveBusy,
+    currency = "AED",
+}: PricingLedgerProps) {
+    const { user } = useToken();
+    const canAdjust = hasPermission(user, "pricing:adjust");
+
+    const [lens, setLens] = useState<Lens>("edit");
+    const [addCatalogOpen, setAddCatalogOpen] = useState(false);
+    const [addCustomOpen, setAddCustomOpen] = useState(false);
+    const [bulkOpen, setBulkOpen] = useState(false);
+    const [noCostOpen, setNoCostOpen] = useState(false);
+    // QUOTED pull-back confirm gates add actions only (decision 7).
+    const [pendingAdd, setPendingAdd] = useState<"catalog" | "custom" | null>(null);
+
+    const isNoCost = pricingMode === "NO_COST";
+    const isPostQuote = POST_QUOTE_STATUSES.has(entityStatus);
+    const statusEditable = PRICING_EDITABLE_STATUSES.has(entityStatus);
+    const ledgerEditable = canAdjust && statusEditable && !isNoCost;
+
+    // Edit-lens rows: existing list hook (camelCase, auto-invalidated by every
+    // mutation). Preview lenses + footer totals: the role-preview endpoint.
+    const { data: rawItems, isLoading: itemsLoading } = useListLineItems(entityId, purposeType);
+    const clientPreview = usePricingPreview(purposeType, entityId, "CLIENT");
+    const logisticsPreview = usePricingPreview(
+        purposeType,
+        entityId,
+        "LOGISTICS",
+        lens === "logistics"
+    );
+
+    const updateLineItem = useUpdateLineItem(entityId, purposeType);
+    const voidLineItem = useVoidLineItem(entityId, purposeType);
+    const patchVisibility = usePatchLineItemVisibility(entityId, purposeType);
+
+    const activeItems: OrderLineItem[] = useMemo(
+        () => (rawItems || []).filter((i: OrderLineItem) => !i.isVoided),
+        [rawItems]
+    );
+
+    // Footer totals + seed margin come from the ADMIN projection (always fetched
+    // alongside the CLIENT preview). null = entity not priced yet (degraded).
+    const adminPricing: OrderPricing | null = clientPreview.data?.admin.pricing ?? null;
+    const totals = adminPricing?.totals || {};
+    const seedMarginPercent = Number(
+        adminPricing?.margin_policy?.percent ?? adminPricing?.margin?.percent ?? 0
+    );
+
+    const buyTotal = Number(totals.buy_total ?? 0);
+    const sellTotal = Number(totals.sell_total ?? 0);
+    const marginAmount = Number(totals.margin_amount ?? sellTotal - buyTotal);
+    const blendedPercent = buyTotal > 0 ? (marginAmount / buyTotal) * 100 : 0;
+    const vatPercent = Number(adminPricing?.vat?.percent ?? totals.vat_percent ?? 0);
+    const vatAmount = Number(adminPricing?.vat?.amount ?? totals.vat_amount ?? 0);
+    const clientTotal = Number(totals.sell_total_with_vat ?? totals.total ?? sellTotal + vatAmount);
+
+    // Advisory warnings — informational, never blocking.
+    const warnings = useMemo(() => {
+        const out: string[] = [];
+        for (const it of activeItems) {
+            if (it.lineItemType === "SYSTEM") continue;
+            if ((it.billingMode || "BILLABLE") !== "BILLABLE") continue;
+            const buy = Number(it.unitRate ?? 0);
+            const sellOverride = it.sellUnitRate ?? it.sell_unit_rate ?? null;
+            if (sellOverride == null) {
+                out.push(`"${it.description}" has no sell price set.`);
+            } else if (buy > 0 && Math.abs(Number(sellOverride) - buy) < 0.005) {
+                out.push(`"${it.description}" is billable at 0% margin (sell = buy).`);
+            }
+        }
+        return out;
+    }, [activeItems]);
+
+    const openAdd = (type: "catalog" | "custom") => {
+        if (isPostQuote) {
+            setPendingAdd(type);
+            return;
+        }
+        if (type === "catalog") setAddCatalogOpen(true);
+        else setAddCustomOpen(true);
+    };
+    const confirmPendingAdd = () => {
+        if (pendingAdd === "catalog") setAddCatalogOpen(true);
+        else if (pendingAdd === "custom") setAddCustomOpen(true);
+        setPendingAdd(null);
+    };
+
+    const handleUpdate =
+        (itemId: string) =>
+        async (data: Parameters<typeof updateLineItem.mutateAsync>[0]["data"]) => {
+            return updateLineItem.mutateAsync({ itemId, data });
+        };
+    const handleVoid = async (itemId: string) => {
+        try {
+            await voidLineItem.mutateAsync({
+                itemId,
+                data: { void_reason: "Removed via pricing ledger" },
+            });
+            toast.success("Line removed");
+        } catch (error: any) {
+            toast.error(error.message || "Failed to remove line");
+        }
+    };
+    const handleToggleVisibility = async (
+        itemId: string,
+        next: { clientPriceVisible?: boolean; logisticsVisible?: boolean }
+    ) => {
+        try {
+            await patchVisibility.mutateAsync({ itemId, data: next });
+        } catch (error: any) {
+            toast.error(error.message || "Failed to update visibility");
+        }
+    };
+
+    const postQuoteCopy =
+        purposeType === "ORDER"
+            ? "This quote has been sent. Editing a line pulls the order back to admin re-approval, marks the quote as being revised, and notifies the client — their estimate download pauses until you re-approve."
+            : "This quote has been sent. Editing a line will revise it and re-notify the recipient.";
+
+    return (
+        <div className="rounded-lg border border-border bg-card">
+            {/* Header + lenses */}
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3">
+                <div className="flex items-center gap-2">
+                    <h3 className="font-mono text-xs font-bold uppercase tracking-wide">
+                        Pricing Ledger
+                    </h3>
+                    {isNoCost ? (
+                        <Badge
+                            variant="outline"
+                            className="gap-1 border-slate-500/40 text-[10px] text-slate-600"
+                        >
+                            <Ban className="h-3 w-3" /> No-cost
+                        </Badge>
+                    ) : null}
+                </div>
+                <Tabs value={lens} onValueChange={(v) => setLens(v as Lens)}>
+                    <TabsList className="h-8 bg-muted/50">
+                        <TabsTrigger value="edit" className="text-xs">
+                            Edit
+                        </TabsTrigger>
+                        <TabsTrigger value="client" className="text-xs">
+                            Preview as client
+                        </TabsTrigger>
+                        <TabsTrigger value="logistics" className="text-xs">
+                            Preview as logistics
+                        </TabsTrigger>
+                    </TabsList>
+                </Tabs>
+            </div>
+
+            {/* Banners */}
+            {isPostQuote && !isNoCost ? (
+                <div className="flex items-start gap-2 border-b border-amber-500/30 bg-amber-500/10 px-5 py-2.5 text-xs text-amber-800">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                    <span>{postQuoteCopy}</span>
+                </div>
+            ) : null}
+            {isNoCost ? (
+                <div className="flex items-start gap-2 border-b border-border bg-muted/40 px-5 py-2.5 text-xs text-muted-foreground">
+                    <Info className="mt-0.5 h-4 w-4 shrink-0" />
+                    <span>
+                        This entity is marked no-cost. All pricing is zeroed and locked; the client
+                        sees a zero total.
+                    </span>
+                </div>
+            ) : null}
+
+            <div className="p-4">
+                <Tabs value={lens} className="w-full">
+                    {/* EDIT LENS */}
+                    <TabsContent value="edit" className="mt-0">
+                        {itemsLoading ? (
+                            <p className="py-6 text-center text-sm text-muted-foreground">
+                                Loading lines…
+                            </p>
+                        ) : activeItems.length === 0 ? (
+                            <p className="py-6 text-center text-sm text-muted-foreground">
+                                No line items yet.
+                            </p>
+                        ) : (
+                            <div className="overflow-x-auto rounded-md border border-border">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow className="border-border/50 bg-muted/50">
+                                            <TableHead className="w-8" />
+                                            <TableHead className="font-mono text-[10px] font-bold uppercase">
+                                                Line
+                                            </TableHead>
+                                            <TableHead className="text-right font-mono text-[10px] font-bold uppercase">
+                                                Buy/u
+                                            </TableHead>
+                                            <TableHead className="text-right font-mono text-[10px] font-bold uppercase">
+                                                Sell/u
+                                            </TableHead>
+                                            <TableHead className="text-right font-mono text-[10px] font-bold uppercase">
+                                                Margin
+                                            </TableHead>
+                                            <TableHead className="text-center font-mono text-[10px] font-bold uppercase">
+                                                Mode
+                                            </TableHead>
+                                            <TableHead className="text-center font-mono text-[10px] font-bold uppercase">
+                                                Client
+                                            </TableHead>
+                                            <TableHead className="text-right font-mono text-[10px] font-bold uppercase">
+                                                Total
+                                            </TableHead>
+                                            <TableHead className="w-20" />
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {activeItems.map((item) => (
+                                            <PricingLedgerRow
+                                                key={item.id}
+                                                item={item}
+                                                seedMarginPercent={seedMarginPercent}
+                                                editable={ledgerEditable}
+                                                allowVisibility={ledgerEditable}
+                                                currency={currency}
+                                                onUpdate={handleUpdate(item.id)}
+                                                onVoid={() => handleVoid(item.id)}
+                                                onToggleVisibility={(next) =>
+                                                    handleToggleVisibility(item.id, next)
+                                                }
+                                            />
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        )}
+
+                        {/* Advisory warnings */}
+                        {warnings.length > 0 ? (
+                            <div className="mt-3 space-y-1 rounded-md border border-amber-500/20 bg-amber-500/5 p-3">
+                                {warnings.map((w, i) => (
+                                    <p
+                                        key={i}
+                                        className="flex items-center gap-1.5 text-[11px] text-amber-700"
+                                    >
+                                        <AlertTriangle className="h-3 w-3 shrink-0" /> {w}
+                                    </p>
+                                ))}
+                            </div>
+                        ) : null}
+                    </TabsContent>
+
+                    {/* CLIENT PREVIEW */}
+                    <TabsContent value="client" className="mt-0">
+                        <div className="mb-3 flex items-center gap-2 rounded-md bg-secondary/10 px-3 py-2 text-[11px] text-secondary">
+                            <Info className="h-3 w-3 shrink-0" />
+                            <span>
+                                Exactly what the client receives — sell + VAT only, from the server
+                                projection.
+                            </span>
+                        </div>
+                        {clientPreview.isLoading ? (
+                            <p className="py-6 text-center text-sm text-muted-foreground">
+                                Loading preview…
+                            </p>
+                        ) : (
+                            <ClientBreakdownView
+                                projection={clientPreview.data?.preview.pricing ?? null}
+                            />
+                        )}
+                    </TabsContent>
+
+                    {/* LOGISTICS PREVIEW */}
+                    <TabsContent value="logistics" className="mt-0">
+                        <div className="mb-3 flex items-center gap-2 rounded-md bg-indigo-100 px-3 py-2 text-[11px] text-indigo-700">
+                            <Info className="h-3 w-3 shrink-0" />
+                            <span>
+                                Exactly what logistics receives — buy-side only, from the server
+                                projection.
+                            </span>
+                        </div>
+                        {logisticsPreview.isLoading ? (
+                            <p className="py-6 text-center text-sm text-muted-foreground">
+                                Loading preview…
+                            </p>
+                        ) : (
+                            <LogisticsBreakdownView
+                                projection={logisticsPreview.data?.preview.pricing ?? null}
+                            />
+                        )}
+                    </TabsContent>
+                </Tabs>
+            </div>
+
+            {/* Footer — actions + totals */}
+            <div className="space-y-3 border-t border-border px-5 py-4">
+                {/* Actions */}
+                {lens === "edit" && ledgerEditable ? (
+                    <div className="flex flex-wrap items-center gap-2">
+                        <Button size="sm" variant="outline" onClick={() => openAdd("catalog")}>
+                            <Plus className="mr-1 h-4 w-4" /> Catalog
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => openAdd("custom")}>
+                            <Plus className="mr-1 h-4 w-4" /> Custom
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => setBulkOpen(true)}>
+                            <Percent className="mr-1 h-4 w-4" /> Bulk margin…
+                        </Button>
+                        {canAdjust ? (
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-slate-600"
+                                onClick={() => setNoCostOpen(true)}
+                            >
+                                <Ban className="mr-1 h-4 w-4" /> No cost
+                            </Button>
+                        ) : null}
+                    </div>
+                ) : null}
+
+                {/* Totals grid */}
+                {adminPricing ? (
+                    <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm md:grid-cols-3">
+                        <div className="flex justify-between">
+                            <span className="text-muted-foreground">Buy Σ</span>
+                            <span className="font-mono">{money(buyTotal, currency)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-muted-foreground">Sell Σ</span>
+                            <span className="font-mono">{money(sellTotal, currency)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-muted-foreground">
+                                Margin ({blendedPercent.toFixed(1)}%)
+                            </span>
+                            <span className="font-mono">{money(marginAmount, currency)}</span>
+                        </div>
+                        {vatPercent > 0 ? (
+                            <div className="flex justify-between">
+                                <span className="text-muted-foreground">VAT ({vatPercent}%)</span>
+                                <span className="font-mono">{money(vatAmount, currency)}</span>
+                            </div>
+                        ) : null}
+                        <div className="col-span-2 flex justify-between border-t border-border pt-1 md:col-span-3">
+                            <span className="font-semibold">Client total</span>
+                            <span className="font-mono font-semibold">
+                                {money(clientTotal, currency)}
+                            </span>
+                        </div>
+                    </div>
+                ) : (
+                    // Degraded — no prices row yet.
+                    <div className="flex flex-col items-start gap-2 rounded-md border border-dashed border-border bg-muted/20 p-4">
+                        <p className="text-sm text-muted-foreground">
+                            Not priced yet — add or edit a line to generate pricing.
+                        </p>
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => clientPreview.refetch()}
+                            disabled={clientPreview.isFetching}
+                        >
+                            <RefreshCw
+                                className={cn(
+                                    "mr-1 h-4 w-4",
+                                    clientPreview.isFetching && "animate-spin"
+                                )}
+                            />
+                            Refresh
+                        </Button>
+                    </div>
+                )}
+
+                {/* Approve slot */}
+                {onApprove ? (
+                    <div className="flex justify-end pt-1">
+                        <Button onClick={onApprove} disabled={approveDisabled || approveBusy}>
+                            {approveBusy ? "Working…" : approveLabel}
+                        </Button>
+                    </div>
+                ) : null}
+            </div>
+
+            {/* QUOTED pull-back confirm (add actions only) */}
+            <AlertDialog
+                open={pendingAdd !== null}
+                onOpenChange={(open) => !open && setPendingAdd(null)}
+            >
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Pull back the sent quote?</AlertDialogTitle>
+                        <AlertDialogDescription>{postQuoteCopy}</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={confirmPendingAdd}>
+                            Continue &amp; add line
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Modals + dialogs */}
+            <AddCatalogLineItemModal
+                open={addCatalogOpen}
+                onOpenChange={setAddCatalogOpen}
+                targetId={entityId}
+                purposeType={purposeType}
+            />
+            <AddCustomLineItemModal
+                open={addCustomOpen}
+                onOpenChange={setAddCustomOpen}
+                targetId={entityId}
+                purposeType={purposeType}
+            />
+            <BulkMarginDialog
+                open={bulkOpen}
+                onOpenChange={setBulkOpen}
+                purposeType={purposeType}
+                entityId={entityId}
+            />
+            <NoCostDialog
+                open={noCostOpen}
+                onOpenChange={setNoCostOpen}
+                purposeType={purposeType}
+                entityId={entityId}
+            />
+        </div>
+    );
+}
