@@ -95,11 +95,7 @@ const readSellOverride = (item: OrderLineItem): number | null => {
     return Number.isFinite(num) ? num : null;
 };
 
-const getSystemLineCopy = (item: OrderLineItem) => {
-    if (item.systemKey === "BASE_OPS") {
-        return "Calculated from total volume and warehouse operations rate.";
-    }
-
+const getSystemLineCopy = (_item: OrderLineItem) => {
     return "Calculated automatically by the platform.";
 };
 

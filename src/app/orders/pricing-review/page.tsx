@@ -107,7 +107,7 @@ export default function PricingReviewPage() {
                                 </CardHeader>
                                 <CardContent className="space-y-4">
                                     {/* Order Details */}
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
                                         <div>
                                             <div className="flex items-center gap-2 text-muted-foreground mb-1">
                                                 <Calendar className="h-4 w-4" />
@@ -135,17 +135,6 @@ export default function PricingReviewPage() {
                                             </div>
                                             <p className="font-medium">
                                                 {order?.calculated_totals.volume} m³
-                                            </p>
-                                        </div>
-                                        <div>
-                                            <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                                                <DollarSign className="h-4 w-4" />
-                                                <span>Base Price</span>
-                                            </div>
-                                            <p className="font-medium font-mono">
-                                                {Number(
-                                                    order.order_pricing?.base_ops_total
-                                                ).toFixed(2)}
                                             </p>
                                         </div>
                                     </div>

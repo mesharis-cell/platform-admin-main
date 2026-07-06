@@ -326,7 +326,7 @@ export interface UpdateOrderTransportTripPayload {
 // nulled per role (e.g. total = null for client-hidden lines).
 export interface BreakdownLine {
     line_id: string;
-    line_kind?: "BASE_OPS" | "RATE_CARD" | "CUSTOM";
+    line_kind?: "SYSTEM" | "RATE_CARD" | "CUSTOM";
     category?: string;
     label: string;
     quantity: number;
@@ -351,11 +351,11 @@ export interface BreakdownLine {
 export interface OrderPricing {
     breakdown_lines?: BreakdownLine[];
     totals?: {
-        buy_base_ops_total?: number;
+        buy_system_total?: number;
         buy_rate_card_total?: number;
         buy_custom_total?: number;
         buy_total?: number;
-        sell_base_ops_total?: number;
+        sell_system_total?: number;
         sell_rate_card_total?: number;
         sell_custom_total?: number;
         sell_total?: number;
@@ -364,7 +364,7 @@ export interface OrderPricing {
         vat_percent?: number;
         vat_amount?: number;
         sell_total_with_vat?: number;
-        base_ops_total?: number;
+        system_total?: number;
         rate_card_total?: number;
         custom_total?: number;
         total?: number;
@@ -374,10 +374,9 @@ export interface OrderPricing {
         is_override: boolean;
         override_reason: string | null;
     };
-    warehouse_ops_rate?: number;
-    base_ops_total: number;
+    system_total: number;
     sell?: {
-        base_ops_total: number;
+        system_total: number;
         subtotal?: number;
         vat_amount?: number;
         final_total: number;

@@ -107,8 +107,6 @@ export type Permission =
     | "access_policies:update"
     | "platform_settings:read"
     | "platform_settings:update"
-    | "warehouse_ops_rates:read"
-    | "warehouse_ops_rates:update"
     | "service_types:manage"
     // Page visibility
     | "analytics:view_page"
@@ -137,7 +135,6 @@ export type Permission =
     | "workflow_definitions:view_page"
     | "access_policies:view_page"
     | "service_types:view_page"
-    | "warehouse_ops_rates:view_page"
     | "countries:view_page"
     | "cities:view_page"
     // Pricing & Quoting (Phase 8)
@@ -234,7 +231,6 @@ export type Permission =
     | "notification_rules:*"
     | "access_policies:*"
     | "platform_settings:*"
-    | "warehouse_ops_rates:*"
     | "service_types:*"
     | "pricing:*"
     | "quotes:*"
@@ -418,7 +414,6 @@ export const PERMISSION_GROUPS = {
     "Notification Rules": ["notification_rules:read", "notification_rules:update"],
     "Access Policies": ["access_policies:read", "access_policies:update"],
     "Platform Settings": ["platform_settings:read", "platform_settings:update"],
-    "Warehouse Ops Rates": ["warehouse_ops_rates:read", "warehouse_ops_rates:update"],
     "Service Types": ["service_types:manage"],
     "Pricing & Quoting": [
         "pricing:review",
@@ -518,7 +513,6 @@ export const ADMIN_PERMISSION_GROUPS: Record<string, string[]> = {
         "workflow_definitions:view_page",
         "access_policies:view_page",
         "service_types:view_page",
-        "warehouse_ops_rates:view_page",
         "countries:view_page",
         "cities:view_page",
         "self_pickups:view_page",
@@ -638,11 +632,6 @@ export const ADMIN_PERMISSION_GROUPS: Record<string, string[]> = {
         "platform_settings:read",
         "platform_settings:update",
         "platform_settings:*",
-    ],
-    "Warehouse Ops Rates": [
-        "warehouse_ops_rates:read",
-        "warehouse_ops_rates:update",
-        "warehouse_ops_rates:*",
     ],
     "Service Types": ["service_types:manage", "service_types:*"],
     "Pricing Review": [

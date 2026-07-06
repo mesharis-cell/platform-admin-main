@@ -351,8 +351,9 @@ export interface OrderEditDetailsPayload {
     //   • REMOVE — { op: "REMOVE", order_item_id } — remove an item. Server cancels
     //     its bundled maintenance SR and rejects removing the LAST item.
     // Server reconciles asset bookings (availability-checked: 409 with a message
-    // naming the short asset on conflict) and reprices volume-based BASE_OPS. Any
-    // item op on a QUOTED order bounces it to PRICING_REVIEW + QUOTE_REVISED. Send
+    // naming the short asset on conflict) and refreshes item volume/weight
+    // aggregation (no longer feeds any charge — BASE_OPS removed). Any item op
+    // on a QUOTED order bounces it to PRICING_REVIEW + QUOTE_REVISED. Send
     // only the items that actually changed; omit `items` entirely when none did.
     items?: Array<{
         op?: "UPDATE" | "ADD" | "REMOVE";
@@ -798,13 +799,16 @@ export function useUpdateOrderPricing() {
     });
 }
 
-export function useRecalculateBaseOps() {
+// Resyncs order-item volume/weight aggregation from current asset dimensions.
+// No pricing side-effect since volume no longer feeds any charge (BASE_OPS
+// removed) — this only refreshes calculated_totals.
+export function useResyncItemDimensions() {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: async (orderId: string) => {
             try {
                 const response = await apiClient.post(
-                    `/client/v1/order/${orderId}/recalculate-base-ops`
+                    `/client/v1/order/${orderId}/resync-item-dimensions`
                 );
                 return response.data;
             } catch (error) {

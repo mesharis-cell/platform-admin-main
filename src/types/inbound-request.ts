@@ -132,7 +132,7 @@ export interface InboundRequestDetails {
     request_pricing: {
         breakdown_lines?: Array<{
             line_id: string;
-            line_kind?: "BASE_OPS" | "RATE_CARD" | "CUSTOM";
+            line_kind?: "SYSTEM" | "RATE_CARD" | "CUSTOM";
             label: string;
             quantity: number;
             unit: string;
@@ -143,7 +143,7 @@ export interface InboundRequestDetails {
             billing_mode?: string;
             is_voided?: boolean;
         }>;
-        base_ops_total?: string | number;
+        system_total?: string | number;
         subtotal?: string | number;
         vat?: {
             percent: number;

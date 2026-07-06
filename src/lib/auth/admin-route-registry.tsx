@@ -293,15 +293,6 @@ export const ADMIN_ROUTE_REGISTRY: AdminRouteDefinition[] = [
         requiredAnyPermission: ADMIN_NAV_PERMISSIONS.serviceTypes,
     },
     {
-        name: "Warehouse Ops Rates",
-        href: "/settings/pricing/warehouse-opt-rates",
-        icon: Warehouse,
-        section: "Platform Settings",
-        requiredPagePermission: ADMIN_PAGE_PERMISSIONS.warehouseOpsRates,
-        requiredAnyPermission: ADMIN_NAV_PERMISSIONS.warehouseOpsRates,
-        requiredFeature: "enable_base_operations",
-    },
-    {
         name: "Countries",
         href: "/settings/locations/countries",
         icon: Globe,
@@ -339,12 +330,6 @@ export const ADMIN_ROUTE_REGISTRY: AdminRouteDefinition[] = [
         name: "Scanning",
         href: "/scanning",
         redirectTo: "/orders",
-        showInNav: false,
-    },
-    {
-        name: "Pricing Config",
-        href: "/settings/pricing/config",
-        redirectTo: "/settings/pricing/warehouse-opt-rates",
         showInNav: false,
     },
 ];
