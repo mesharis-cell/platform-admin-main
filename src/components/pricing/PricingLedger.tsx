@@ -59,12 +59,27 @@ type Lens = "edit" | "client" | "logistics";
 // Statuses at/after which line-item pricing is locked (financial lock / terminal).
 // Mirrors canManageLineItems(order-helpers) but generic across the 4 entities:
 // the set of statuses that still permit pricing edits. Anything else is locked.
+//
+// ORDER / SELF_PICKUP / INBOUND_REQUEST callers pass the entity's OPERATIONAL
+// status (DRAFT…QUOTED). SERVICE_REQUEST money editability keys off the
+// COMMERCIAL status instead (dual-status model), so the SR-commercial editable
+// states — INTERNAL, PENDING_QUOTE (QUOTED is shared) — are unioned in. This
+// mirrors the API's getLineItemEditability SR branch exactly: the SR locked set
+// is QUOTE_APPROVED / INVOICED / PAID, so everything before QUOTE_APPROVED stays
+// editable. (CANCELLED is deliberately NOT included — a cancelled SR is never
+// edited from the UI even though the API doesn't hard-lock it.) None of these SR
+// strings collide with the other three entities' statuses, so the shared set
+// stays safe. The per-line `canEditPricingFields` from the API remains the
+// authoritative lock inside PricingLedgerRow.
 const PRICING_EDITABLE_STATUSES = new Set([
     "DRAFT",
     "SUBMITTED",
     "PRICING_REVIEW",
     "PENDING_APPROVAL",
     "QUOTED",
+    // SR commercial editable states (pre-QUOTE_APPROVED)
+    "INTERNAL",
+    "PENDING_QUOTE",
 ]);
 
 // Statuses where a sent quote gets pulled back on edit (post-quote warning).

@@ -1,10 +1,7 @@
 "use client";
 
 import { StatusHistoryTimeline } from "@/components/orders/StatusHistoryTimeline";
-import { AddCatalogLineItemModal } from "@/components/orders/AddCatalogLineItemModal";
-import { AddCustomLineItemModal } from "@/components/orders/AddCustomLineItemModal";
-import { OrderLineItemsList } from "@/components/orders/OrderLineItemsList";
-import { PricingBreakdownTabs } from "@/components/pricing/PricingBreakdownTabs";
+import { PricingLedger } from "@/components/pricing";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,7 +18,6 @@ import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { usePlatform } from "@/contexts/platform-context";
 import {
-    useApplyServiceRequestConcession,
     useCancelServiceRequest,
     useDownloadServiceRequestCostEstimate,
     useServiceRequestDetails,
@@ -29,7 +25,7 @@ import {
     useUpdateServiceRequestStatus,
 } from "@/hooks/use-service-requests";
 import type { ServiceRequestCommercialStatus, ServiceRequestStatus } from "@/types/service-request";
-import { ArrowLeft, Download, Plus } from "lucide-react";
+import { ArrowLeft, Download } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -70,17 +66,13 @@ export default function ServiceRequestDetailsPage() {
     const updateStatus = useUpdateServiceRequestStatus();
     const updateCommercialStatus = useUpdateServiceRequestCommercialStatus();
     const cancelRequest = useCancelServiceRequest();
-    const applyConcession = useApplyServiceRequestConcession();
     const downloadCostEstimate = useDownloadServiceRequestCostEstimate();
-    const [addCatalogOpen, setAddCatalogOpen] = useState(false);
-    const [addCustomOpen, setAddCustomOpen] = useState(false);
     const [statusValue, setStatusValue] = useState<ServiceRequestStatus>("SUBMITTED");
     const [statusNote, setStatusNote] = useState("");
     const [completionNotes, setCompletionNotes] = useState("");
     const [commercialStatusValue, setCommercialStatusValue] =
         useState<ServiceRequestCommercialStatus>("INTERNAL");
     const [commercialNote, setCommercialNote] = useState("");
-    const [concessionReason, setConcessionReason] = useState("");
     const [cancellationReason, setCancellationReason] = useState("");
 
     const request = data?.data;
@@ -188,25 +180,6 @@ export default function ServiceRequestDetailsPage() {
             toast.success("Cost estimate downloaded");
         } catch (error: any) {
             toast.error(error.message || "Failed to download cost estimate");
-        }
-    };
-
-    const handleApplyConcession = async () => {
-        if (!request) return;
-        if (!concessionReason.trim() || concessionReason.trim().length < 10) {
-            toast.error("Concession reason must be at least 10 characters");
-            return;
-        }
-        try {
-            await applyConcession.mutateAsync({
-                id: request.id,
-                payload: { concession_reason: concessionReason.trim() },
-            });
-            toast.success("Concession applied");
-            setConcessionReason("");
-            refetch();
-        } catch (error: any) {
-            toast.error(error.message || "Failed to apply concession");
         }
     };
 
@@ -568,91 +541,32 @@ export default function ServiceRequestDetailsPage() {
                                             : "Cost Estimate"}
                                     </Button>
                                 </div>
-                                {request.billing_mode === "CLIENT_BILLABLE" &&
-                                    request.blocks_fulfillment && (
-                                        <div className="space-y-2 border rounded p-3 bg-amber-500/5">
-                                            <Label>Concession Reason (sets client sell to 0)</Label>
-                                            <Textarea
-                                                value={concessionReason}
-                                                onChange={(e) =>
-                                                    setConcessionReason(e.target.value)
-                                                }
-                                                placeholder="Explain why concession is required..."
-                                            />
-                                            <Button
-                                                variant="outline"
-                                                onClick={handleApplyConcession}
-                                                disabled={applyConcession.isPending}
-                                            >
-                                                {applyConcession.isPending
-                                                    ? "Applying..."
-                                                    : "Apply Client Concession"}
-                                            </Button>
-                                        </div>
-                                    )}
+                                <p className="text-xs text-muted-foreground">
+                                    To waive charges, use the{" "}
+                                    <span className="font-medium">No cost</span> action in the
+                                    Pricing Ledger below (captures the concession reason).
+                                </p>
                             </CardContent>
                         </Card>
 
-                        <Card>
-                            <CardHeader>
-                                <div className="flex items-center justify-between">
-                                    <CardTitle className="font-mono text-sm uppercase tracking-wide">
-                                        Service Line Items
-                                    </CardTitle>
-                                    <div className="flex gap-2">
-                                        <Button
-                                            size="sm"
-                                            variant="outline"
-                                            onClick={() => setAddCatalogOpen(true)}
-                                        >
-                                            <Plus className="h-3 w-3 mr-1" />
-                                            Catalog
-                                        </Button>
-                                        <Button size="sm" onClick={() => setAddCustomOpen(true)}>
-                                            <Plus className="h-3 w-3 mr-1" />
-                                            Custom
-                                        </Button>
-                                    </div>
-                                </div>
-                            </CardHeader>
-                            <CardContent>
-                                <OrderLineItemsList
-                                    targetId={request.id}
-                                    purposeType="SERVICE_REQUEST"
-                                    canManage={
-                                        request.request_status !== "COMPLETED" &&
-                                        request.request_status !== "CANCELLED"
-                                    }
-                                />
-                            </CardContent>
-                        </Card>
-
-                        {/* Pricing breakdown — only for CLIENT_BILLABLE SRs once
-                            a quote flow has started. INTERNAL_ONLY SRs never
-                            surface pricing; INTERNAL commercial status hasn't
-                            entered the quote lifecycle yet. */}
-                        {request.billing_mode === "CLIENT_BILLABLE" &&
-                            (
-                                [
-                                    "PENDING_QUOTE",
-                                    "QUOTED",
-                                    "QUOTE_APPROVED",
-                                    "INVOICED",
-                                    "PAID",
-                                ] as ServiceRequestCommercialStatus[]
-                            ).includes(request.commercial_status) &&
-                            (request as any).request_pricing && (
-                                <PricingBreakdownTabs
-                                    projections={
-                                        (request as any).request_pricing.projections || {
-                                            admin: (request as any).request_pricing,
-                                            logistics: null,
-                                            client: null,
-                                        }
-                                    }
-                                    calculatedAt={(request as any).request_pricing.calculated_at}
-                                />
-                            )}
+                        {/* The single editable money table: line items + role-preview
+                            lenses + footer totals + add / bulk-margin / no-cost
+                            actions. SR money editability keys off the COMMERCIAL
+                            status (dual-status model): the ledger self-gates editable
+                            pre-QUOTE_APPROVED and locks at QUOTE_APPROVED / INVOICED /
+                            PAID, mirroring the API's getLineItemEditability SR branch.
+                            The `◎ No cost` footer action captures the concession reason
+                            and posts the SR concession route (P1-8). No approve slot —
+                            SR commercial status is driven by the dropdown above. */}
+                        <PricingLedger
+                            purposeType="SERVICE_REQUEST"
+                            entityId={request.id}
+                            entityStatus={request.commercial_status}
+                            pricingMode={
+                                (request as { pricing_mode?: "STANDARD" | "NO_COST" })
+                                    .pricing_mode || "STANDARD"
+                            }
+                        />
                     </div>
 
                     <div className="lg:col-span-1">
@@ -685,19 +599,6 @@ export default function ServiceRequestDetailsPage() {
                     </div>
                 </div>
             </div>
-
-            <AddCatalogLineItemModal
-                open={addCatalogOpen}
-                onOpenChange={setAddCatalogOpen}
-                targetId={request.id}
-                purposeType="SERVICE_REQUEST"
-            />
-            <AddCustomLineItemModal
-                open={addCustomOpen}
-                onOpenChange={setAddCustomOpen}
-                targetId={request.id}
-                purposeType="SERVICE_REQUEST"
-            />
         </div>
     );
 }
