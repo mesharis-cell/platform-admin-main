@@ -395,9 +395,9 @@ export function useOrderEditDetails() {
                 queryKey: ["orders", "change-history", variables.orderId],
             });
             // A Tier-C edit on a QUOTED order bounces it back to PRICING_REVIEW,
-            // so refresh both ops queue lists too (usePricingReviewOrders /
-            // usePendingApprovalOrders) — otherwise the order won't surface in
-            // those queue pages until a manual refetch.
+            // so refresh the ops queue lists too (usePendingApprovalOrders) —
+            // otherwise the order won't surface in those queue pages until a
+            // manual refetch. (The "pricing-review" key is a legacy no-op now.)
             queryClient.invalidateQueries({ queryKey: ["orders", "pricing-review"] });
             queryClient.invalidateQueries({ queryKey: ["orders", "pending-approval"] });
         },
@@ -477,25 +477,6 @@ export function useDownloadGoodsForm() {
 // ============================================================
 // Phase 8: Pricing & Quoting System Hooks
 // ============================================================
-
-/**
- * List orders in PRICING_REVIEW status (Logistics Staff)
- */
-export function usePricingReviewOrders() {
-    return useQuery({
-        queryKey: ["orders", "pricing-review"],
-        queryFn: async () => {
-            const response = await fetch("/api/admin/orders/pricing-review");
-
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.error || "Failed to fetch pricing review orders");
-            }
-
-            return response.json();
-        },
-    });
-}
 
 /**
  * List orders in PENDING_APPROVAL status (Admin)
