@@ -98,7 +98,10 @@ export interface OrderLineItem {
     orderId: string;
     serviceTypeId: string | null;
     lineItemType: LineItemType;
-    systemKey?: "BASE_OPS" | null;
+    // `systemLineKeyEnum` keeps BASE_OPS forever (PG enums don't shrink) and the
+    // future AUTO_FEE handler (PLAN §11) adds more keys — so this is `string | null`,
+    // not a closed BASE_OPS union. (P0 review LOW note: converge admin+warehouse+client.)
+    systemKey?: string | null;
     category: ServiceCategory;
     description: string;
     quantity: number | null;
@@ -407,6 +410,37 @@ export interface OrderPricing {
         admin: OrderPricing | null;
         logistics: OrderPricing | null;
         client: OrderPricing | null;
+    };
+}
+
+// ============================================================
+// Role-Preview (Pricing Ledger)
+// ============================================================
+
+export type PreviewRole = "CLIENT" | "LOGISTICS";
+
+/**
+ * Response of `GET /operations/v1/pricing/:purposeType/:entityId/preview?role=`.
+ *
+ * ADMIN-only. Carries BOTH the admin edit lens (`admin.pricing` money projection
+ * + `admin.line_items` full editable rows) AND the requested preview role's
+ * server projection (`preview.pricing` + `preview.line_items`) — produced by the
+ * SAME functions the real role payloads use, so it stays the single leak gate.
+ * `admin.pricing` / `preview.pricing` are `null` when the entity is not priced yet.
+ */
+export interface PricingPreviewResponse {
+    purpose_type: PurposeType;
+    entity_id: string;
+    role: PreviewRole;
+    pricing_mode: "STANDARD" | "NO_COST";
+    admin: {
+        pricing: OrderPricing | null;
+        line_items: OrderLineItem[];
+    };
+    preview: {
+        role: PreviewRole;
+        pricing: OrderPricing | null;
+        line_items: OrderLineItem[];
     };
 }
 
