@@ -1,24 +1,27 @@
 "use client";
 
 /**
- * PENDING_APPROVAL Section (Admin Review) for Inbound Requests
+ * Pricing Section for Inbound Requests (New Stock Requests).
+ *
+ * Mirrors app/orders/[id]/hybrid-sections.tsx (Phase 2): the PricingLedger
+ * (purposeType INBOUND_REQUEST) owns the entire line-item + pricing + preview-lens
+ * + add / bulk-margin / no-cost surface. This section supplies the inbound approve
+ * mutation + Return-to-Logistics action, surfaced only while the request awaits
+ * admin decision (PENDING_APPROVAL). The ledger self-gates editability off the
+ * request status (editable through QUOTED via PRICING_EDITABLE_STATUSES; locked at
+ * NO_COST / financial lock / terminal — CONFIRMED / DECLINED / COMPLETED /
+ * CANCELLED).
  */
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { DollarSign, Plus } from "lucide-react";
 import { toast } from "sonner";
-import { AddCatalogLineItemModal } from "@/components/orders/AddCatalogLineItemModal";
-import { AddCustomLineItemModal } from "@/components/orders/AddCustomLineItemModal";
-import { OrderLineItemsList } from "@/components/orders/OrderLineItemsList";
-import { PricingBreakdownTabs } from "@/components/pricing/PricingBreakdownTabs";
+import { PricingLedger } from "@/components/pricing";
 import { ReturnInboundRequestToLogisticsModal } from "./return-to-logistics-modal";
 import { useAdminApproveInboundRequest } from "@/hooks/use-inbound-requests";
+import { useToken } from "@/lib/auth/use-token";
+import { hasPermission } from "@/lib/auth/permissions";
+import { ADMIN_ACTION_PERMISSIONS } from "@/lib/auth/permission-map";
 import type { InboundRequestDetails } from "@/types/inbound-request";
 
 interface InboundRequestPendingApprovalSectionProps {
@@ -32,45 +35,21 @@ export function PendingApprovalSection({
     request,
     requestId,
     onRefresh,
-    isRefetching,
 }: InboundRequestPendingApprovalSectionProps) {
+    const { user } = useToken();
     const adminApproveRequest = useAdminApproveInboundRequest();
-
-    const [addCatalogOpen, setAddCatalogOpen] = useState(false);
-    const [addCustomOpen, setAddCustomOpen] = useState(false);
-    const [marginOverride, setMarginOverride] = useState(false);
-    // Default margin from pricing
-    const [marginPercent, setMarginPercent] = useState<any>(
-        Number(request?.request_pricing?.margin?.percent || 0)
-    );
-    const [marginReason, setMarginReason] = useState("");
     const [returnToLogisticsOpen, setReturnToLogisticsOpen] = useState(false);
 
-    const pricing = request.request_pricing as any;
-    const currentMarginPercent = Number(pricing?.margin?.percent || 0);
-    const projections = pricing?.projections || {
-        admin: pricing || null,
-        logistics: null,
-        client: null,
-    };
+    // "pricing:admin_approve" is the entity-agnostic pricing approve permission
+    // (ADMIN via pricing:* wildcard); the approve-request route enforces it too.
+    const canApproveQuote = hasPermission(user, ADMIN_ACTION_PERMISSIONS.ordersPricingAdminApprove);
+    const isPendingApproval = request.request_status === "PENDING_APPROVAL";
+    const showAdminActions = isPendingApproval && canApproveQuote;
 
     const handleApprove = async () => {
-        if (marginOverride && Math.abs(Number(marginPercent) - currentMarginPercent) < 0.0001) {
-            toast.error("Margin is same as current margin");
-            return;
-        }
-
-        if (marginOverride && !marginReason.trim()) {
-            toast.error("Please provide reason for margin override");
-            return;
-        }
-
+        if (!canApproveQuote) return;
         try {
-            await adminApproveRequest.mutateAsync({
-                id: requestId,
-                marginOverridePercent: marginOverride ? Number(marginPercent) : undefined,
-                marginOverrideReason: marginOverride ? marginReason : undefined,
-            });
+            await adminApproveRequest.mutateAsync({ id: requestId });
             toast.success("Request approved and sent to client");
             onRefresh?.();
         } catch (error: any) {
@@ -78,137 +57,34 @@ export function PendingApprovalSection({
         }
     };
 
-    const isPendingApproval = request.request_status === "PENDING_APPROVAL";
-
     return (
         <div className="space-y-6">
-            {/* Service Line Items */}
-            <Card>
-                <CardHeader>
-                    <div className="flex items-center justify-between">
-                        <CardTitle className="flex items-center gap-2">
-                            <DollarSign className="h-5 w-5" />
-                            Service Line Items
-                        </CardTitle>
-                        {isPendingApproval && (
-                            <div className="flex gap-2">
-                                <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => setAddCatalogOpen(true)}
-                                >
-                                    <Plus className="h-4 w-4 mr-1" />
-                                    Catalog Service
-                                </Button>
-                                <Button size="sm" onClick={() => setAddCustomOpen(true)}>
-                                    <Plus className="h-4 w-4 mr-1" />
-                                    Custom Charge
-                                </Button>
-                            </div>
-                        )}
-                    </div>
-                </CardHeader>
-                <CardContent>
-                    <OrderLineItemsList
-                        targetId={requestId}
-                        canManage={isPendingApproval}
-                        purposeType="INBOUND_REQUEST"
-                    />
-                </CardContent>
-            </Card>
-
-            {/* Tabbed pricing breakdown — three role views from the same snapshot */}
-            <PricingBreakdownTabs
-                projections={projections}
-                calculatedAt={pricing?.calculated_at}
-                onRefresh={onRefresh}
-                isRefetching={isRefetching}
+            {/* The single editable money table: line items + role-preview lenses +
+                footer totals + add / bulk-margin / no-cost actions. Owns the QUOTED
+                pull-back confirm + post-quote banner internally. */}
+            <PricingLedger
+                purposeType="INBOUND_REQUEST"
+                entityId={requestId}
+                entityStatus={request.request_status}
+                pricingMode={
+                    (request as { pricing_mode?: "STANDARD" | "NO_COST" }).pricing_mode ||
+                    "STANDARD"
+                }
+                onApprove={showAdminActions ? handleApprove : undefined}
+                approveLabel="Approve & Send Quote to Client"
+                approveBusy={adminApproveRequest.isPending}
             />
 
-            {isPendingApproval && (
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Approve Quote</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="space-y-3">
-                            <div className="flex items-center space-x-2">
-                                <Checkbox
-                                    id="marginOverride"
-                                    checked={marginOverride}
-                                    onCheckedChange={(checked) =>
-                                        setMarginOverride(checked as boolean)
-                                    }
-                                />
-                                <Label htmlFor="marginOverride" className="cursor-pointer">
-                                    Override platform margin
-                                </Label>
-                            </div>
-
-                            {marginOverride && (
-                                <div className="space-y-3 pl-6 border-l-2 border-primary">
-                                    <div>
-                                        <Label>Margin Percent (%)</Label>
-                                        <Input
-                                            type="number"
-                                            step="0.01"
-                                            min="0"
-                                            max="100"
-                                            value={marginPercent}
-                                            onChange={(e) =>
-                                                setMarginPercent(Number(e.target.value || 0))
-                                            }
-                                        />
-                                    </div>
-                                    <div>
-                                        <Label>Reason for Override</Label>
-                                        <Textarea
-                                            value={marginReason}
-                                            onChange={(e) => setMarginReason(e.target.value)}
-                                            placeholder="e.g., High-value request, premium service justifies higher margin"
-                                            rows={2}
-                                        />
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="flex gap-3 pt-2">
-                            <Button
-                                onClick={handleApprove}
-                                disabled={adminApproveRequest.isPending}
-                                className="flex-1"
-                            >
-                                {adminApproveRequest.isPending
-                                    ? "Approving..."
-                                    : "Approve & Send Quote to Client"}
-                            </Button>
-                            <Button
-                                variant="outline"
-                                onClick={() => setReturnToLogisticsOpen(true)}
-                            >
-                                Return to Logistics
-                            </Button>
-                        </div>
-                    </CardContent>
-                </Card>
+            {/* Return-to-Logistics: hands a pending-approval request back for
+                revision. Not a pricing action, so it sits beside the ledger. */}
+            {showAdminActions && (
+                <div className="flex justify-end">
+                    <Button variant="outline" onClick={() => setReturnToLogisticsOpen(true)}>
+                        Return to Logistics
+                    </Button>
+                </div>
             )}
 
-            {/* Modals */}
-            <AddCatalogLineItemModal
-                open={addCatalogOpen}
-                onOpenChange={setAddCatalogOpen}
-                targetId={requestId}
-                purposeType="INBOUND_REQUEST"
-            />
-            <AddCustomLineItemModal
-                open={addCustomOpen}
-                onOpenChange={setAddCustomOpen}
-                targetId={requestId}
-                purposeType="INBOUND_REQUEST"
-            />
-
-            {/* Return to Logistics Modal */}
             <ReturnInboundRequestToLogisticsModal
                 open={returnToLogisticsOpen}
                 onOpenChange={setReturnToLogisticsOpen}

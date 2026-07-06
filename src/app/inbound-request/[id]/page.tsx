@@ -12,17 +12,14 @@ import { RequestHeader } from "@/components/inbound-request/request-header";
 import { RequestInfoCard } from "@/components/inbound-request/request-info-card";
 import { RequestItemsList } from "@/components/inbound-request/request-items-list";
 import { RequestPricingCard } from "@/components/inbound-request/request-pricing-card";
-import { AddCatalogLineItemModal } from "@/components/orders/AddCatalogLineItemModal";
-import { AddCustomLineItemModal } from "@/components/orders/AddCustomLineItemModal";
 import { OrderApprovalRequestSubmitBtn } from "@/components/orders/OrderApprovalRequestSubmitBtn";
-import { OrderLineItemsList } from "@/components/orders/OrderLineItemsList";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { inboundRequestKeys, useInboundRequest } from "@/hooks/use-inbound-requests";
 import type { InboundRequestStatus } from "@/types/inbound-request";
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertCircle, ArrowLeft, CheckCircle2, DollarSign, Plus } from "lucide-react";
+import { AlertCircle, ArrowLeft, CheckCircle2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { use, useState } from "react";
 import { EntityAttachmentsCard } from "@/components/shared/entity-attachments-card";
@@ -35,14 +32,6 @@ export default function InboundRequestDetailsPage({ params }: { params: Promise<
     const { data, isLoading, isFetching } = useInboundRequest(id);
 
     const request = data?.data;
-    const pricing = request?.request_pricing;
-    const breakdownLines = Array.isArray(pricing?.breakdown_lines)
-        ? pricing.breakdown_lines.filter(
-              (line: any) => !line.is_voided && (line.billing_mode || "BILLABLE") === "BILLABLE"
-          )
-        : [];
-    const [addCatalogOpen, setAddCatalogOpen] = useState(false);
-    const [addCustomOpen, setAddCustomOpen] = useState(false);
     const [completeDialogOpen, setCompleteDialogOpen] = useState(false);
 
     function handleRefresh() {
@@ -104,11 +93,6 @@ export default function InboundRequestDetailsPage({ params }: { params: Promise<
             </div>
         );
     }
-
-    const showCatalogButton = ["PRICING_REVIEW", "PENDING_APPROVAL", "QUOTED"].includes(
-        request.request_status
-    );
-    const showCustomButton = ["PENDING_APPROVAL", "QUOTED"].includes(request.request_status);
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-background via-muted/10 to-background relative">
@@ -195,161 +179,30 @@ export default function InboundRequestDetailsPage({ params }: { params: Promise<
                             title="Supporting Documents"
                         />
 
-                        {request.request_status === "PENDING_APPROVAL" ? (
-                            <PendingApprovalSection
-                                request={request}
-                                requestId={request.id}
-                                onRefresh={handleRefresh}
-                                isRefetching={isFetching}
-                            />
-                        ) : (
-                            <>
-                                {/* Service Line Items */}
-                                <Card>
-                                    <CardHeader>
-                                        <div className="flex items-center justify-between">
-                                            <CardTitle className="flex items-center gap-2">
-                                                <DollarSign className="h-5 w-5" />
-                                                Service Line Items
-                                            </CardTitle>
-                                            <div className="flex gap-2">
-                                                {showCatalogButton && (
-                                                    <Button
-                                                        size="sm"
-                                                        variant="outline"
-                                                        onClick={() => setAddCatalogOpen(true)}
-                                                    >
-                                                        <Plus className="h-4 w-4 mr-1" />
-                                                        Catalog Service
-                                                    </Button>
-                                                )}
-                                                {showCustomButton && (
-                                                    <Button
-                                                        size="sm"
-                                                        onClick={() => setAddCustomOpen(true)}
-                                                    >
-                                                        <Plus className="h-4 w-4 mr-1" />
-                                                        Custom Charge
-                                                    </Button>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <OrderLineItemsList
-                                            targetId={request.id}
-                                            canManage
-                                            purposeType="INBOUND_REQUEST"
-                                        />
-                                    </CardContent>
-                                </Card>
+                        {/* PricingLedger for every status — editable through QUOTED,
+                            read-only lenses beyond (self-gated inside the ledger).
+                            Approve slot + Return-to-Logistics surface only at
+                            PENDING_APPROVAL. */}
+                        <PendingApprovalSection
+                            request={request}
+                            requestId={request.id}
+                            onRefresh={handleRefresh}
+                            isRefetching={isFetching}
+                        />
 
-                                <Card>
-                                    <CardHeader>
-                                        <CardTitle className="flex items-center gap-2">
-                                            <DollarSign className="h-5 w-5" />
-                                            Pricing Overview
-                                        </CardTitle>
-                                    </CardHeader>
-                                    <CardContent className="space-y-4">
-                                        {!pricing && (
-                                            <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-md">
-                                                <p className="text-sm font-semibold text-destructive mb-2">
-                                                    ⚠️ Pricing calculation failed
-                                                </p>
-                                                <p className="text-xs text-muted-foreground mb-3">
-                                                    This request may be missing pricing
-                                                    configuration.
-                                                </p>
-                                                <p className="text-xs text-muted-foreground">
-                                                    Please contact your Platform Admin to review the
-                                                    pricing setup.
-                                                </p>
-                                            </div>
-                                        )}
-                                        {pricing && (
-                                            <div className="space-y-2 text-sm">
-                                                {pricing.line_items?.catalog_total ? (
-                                                    <div className="flex justify-between p-2 bg-muted/30 rounded">
-                                                        <span className="text-muted-foreground">
-                                                            Service Line Item
-                                                        </span>
-                                                        <span className="font-mono">
-                                                            {pricing.line_items?.catalog_total?.toFixed(
-                                                                2
-                                                            ) || 0}{" "}
-                                                            AED
-                                                        </span>
-                                                    </div>
-                                                ) : null}
-                                                {breakdownLines.length > 0 && (
-                                                    <div className="rounded border border-border/60 overflow-hidden mt-2">
-                                                        <div className="grid grid-cols-12 bg-muted/30 px-3 py-2 text-xs font-medium">
-                                                            <span className="col-span-6">Line</span>
-                                                            <span className="col-span-3 text-right">
-                                                                Buy
-                                                            </span>
-                                                            <span className="col-span-3 text-right">
-                                                                Sell
-                                                            </span>
-                                                        </div>
-                                                        {breakdownLines.map((line: any) => (
-                                                            <div
-                                                                key={line.line_id}
-                                                                className="grid grid-cols-12 px-3 py-2 text-xs border-t border-border/40"
-                                                            >
-                                                                <span className="col-span-6 truncate">
-                                                                    {line.label} ({line.quantity}{" "}
-                                                                    {line.unit})
-                                                                </span>
-                                                                <span className="col-span-3 text-right font-mono">
-                                                                    {Number(
-                                                                        line.buy_total ??
-                                                                            line.total ??
-                                                                            0
-                                                                    ).toFixed(2)}{" "}
-                                                                    AED
-                                                                </span>
-                                                                <span className="col-span-3 text-right font-mono">
-                                                                    {Number(
-                                                                        line.sell_total ??
-                                                                            line.total ??
-                                                                            0
-                                                                    ).toFixed(2)}{" "}
-                                                                    AED
-                                                                </span>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                                <div className="border-t border-border my-2"></div>
-                                                <div className="flex justify-between font-semibold">
-                                                    <span>Estimated Total</span>
-                                                    <span className="font-mono">
-                                                        {Number(pricing.final_total || 0).toFixed(
-                                                            2
-                                                        )}{" "}
-                                                        AED
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </CardContent>
-                                </Card>
-
-                                {request.request_status === "PRICING_REVIEW" && (
-                                    <div className="mt-4">
-                                        <OrderApprovalRequestSubmitBtn
-                                            orderId={request.id}
-                                            type="INBOUND_REQUEST"
-                                            isVisible={true}
-                                            onSubmitSuccess={() => {
-                                                handleRefresh();
-                                            }}
-                                        />
-                                    </div>
-                                )}
-                            </>
+                        {/* PRICING_REVIEW submit is a status transition (logistics →
+                            admin), not a pricing action — kept beside the ledger. */}
+                        {request.request_status === "PRICING_REVIEW" && (
+                            <div className="mt-4">
+                                <OrderApprovalRequestSubmitBtn
+                                    orderId={request.id}
+                                    type="INBOUND_REQUEST"
+                                    isVisible={true}
+                                    onSubmitSuccess={() => {
+                                        handleRefresh();
+                                    }}
+                                />
+                            </div>
                         )}
                     </div>
 
@@ -367,18 +220,6 @@ export default function InboundRequestDetailsPage({ params }: { params: Promise<
                 </div>
 
                 {/* Modals */}
-                <AddCatalogLineItemModal
-                    open={addCatalogOpen}
-                    onOpenChange={setAddCatalogOpen}
-                    targetId={request.id}
-                    purposeType="INBOUND_REQUEST"
-                />
-                <AddCustomLineItemModal
-                    open={addCustomOpen}
-                    onOpenChange={setAddCustomOpen}
-                    targetId={request.id}
-                    purposeType="INBOUND_REQUEST"
-                />
                 <CompleteInboundDialog
                     open={completeDialogOpen}
                     onOpenChange={setCompleteDialogOpen}

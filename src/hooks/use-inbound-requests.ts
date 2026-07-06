@@ -107,26 +107,15 @@ async function submitInboundRequestForApproval(id: string): Promise<InboundReque
     }
 }
 
-// Admin approve inbound request
-async function adminApproveInboundRequest({
-    id,
-    marginOverridePercent,
-    marginOverrideReason,
-}: {
-    id: string;
-    marginOverridePercent?: number;
-    marginOverrideReason?: string;
-}): Promise<InboundRequestDetails> {
+// Admin approve inbound request.
+// Blanket margin-override retired (P1-6): the approve-request schema is empty-strict,
+// so any margin_override_* key 400s. Per-line sell/margin now lives in the
+// PricingLedger; approve is a one-click send (decision 8).
+async function adminApproveInboundRequest({ id }: { id: string }): Promise<InboundRequestDetails> {
     try {
-        const payload: any = {};
-        if (marginOverridePercent !== undefined)
-            payload.margin_override_percent = marginOverridePercent;
-        if (marginOverrideReason !== undefined)
-            payload.margin_override_reason = marginOverrideReason;
-
         const response = await apiClient.post(
             `/client/v1/inbound-request/${id}/approve-request`,
-            payload
+            {}
         );
         return response.data;
     } catch (error) {
