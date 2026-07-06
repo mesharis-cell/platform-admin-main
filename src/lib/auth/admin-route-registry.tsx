@@ -321,12 +321,6 @@ export const ADMIN_ROUTE_REGISTRY: AdminRouteDefinition[] = [
         showInNav: false,
     },
     {
-        name: "Pricing Review",
-        href: "/orders/pricing-review",
-        redirectTo: "/orders/pending-approval",
-        showInNav: false,
-    },
-    {
         name: "Scanning",
         href: "/scanning",
         redirectTo: "/orders",
