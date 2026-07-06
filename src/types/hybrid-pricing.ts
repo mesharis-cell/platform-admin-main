@@ -275,6 +275,12 @@ export interface ApproveLineItemRequestPayload {
     notes?: string;
     billingMode?: LineItemBillingMode;
     adminNote?: string;
+    // LIR approval is a full commercial decision (PLAN decision 6): the admin can
+    // set the created line's per-line sell rate + client visibility. sellUnitRate
+    // absent/null → seed-derived sell (server margin math); only valid on BILLABLE
+    // lines (API rejects otherwise). clientPriceVisible defaults false.
+    sellUnitRate?: number | null;
+    clientPriceVisible?: boolean;
 }
 
 export interface RejectLineItemRequestPayload {

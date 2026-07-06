@@ -13,6 +13,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
@@ -32,6 +33,11 @@ type DraftMap = Record<
         quantity: string;
         unit: string;
         unitRate: string;
+        // Commercial half of the approval decision (P3-4). Empty sellRate → the
+        // server seed-derives sell from the entity margin. Only applies to
+        // BILLABLE lines (API rejects a sell override on non-billable).
+        sellRate: string;
+        clientPriceVisible: boolean;
         notes: string;
         adminNote: string;
         billingMode: LineItemBillingMode;
@@ -46,6 +52,10 @@ const toDraft = (request: any) => ({
     quantity: String(request.quantity ?? 1),
     unit: request.unit || "service",
     unitRate: String(request.unitRate ?? 0),
+    // Empty by default — leaving it blank means "seed-derived sell" (the API's
+    // own default when sell_unit_rate is absent/null).
+    sellRate: "",
+    clientPriceVisible: false,
     notes: request.notes || "",
     adminNote: "",
     billingMode: "BILLABLE" as LineItemBillingMode,
@@ -108,6 +118,20 @@ export default function LineItemRequestsPage() {
             return;
         }
 
+        // Sell override is only meaningful (and only accepted by the API) on
+        // BILLABLE lines. Blank → omit so the server seed-derives the sell.
+        const isBillable = draft.billingMode === "BILLABLE";
+        const sellRaw = draft.sellRate.trim();
+        let sellUnitRate: number | undefined;
+        if (isBillable && sellRaw !== "") {
+            const parsed = Number(sellRaw);
+            if (!Number.isFinite(parsed) || parsed < 0) {
+                toast.error("Sell rate must be 0 or greater");
+                return;
+            }
+            sellUnitRate = parsed;
+        }
+
         try {
             await approve.mutateAsync({
                 id: request.id,
@@ -120,6 +144,8 @@ export default function LineItemRequestsPage() {
                     notes: draft.notes.trim() || undefined,
                     adminNote: draft.adminNote.trim() || undefined,
                     billingMode: draft.billingMode,
+                    ...(sellUnitRate !== undefined ? { sellUnitRate } : {}),
+                    clientPriceVisible: isBillable ? draft.clientPriceVisible : false,
                 },
             });
             toast.success("Line item request approved");
@@ -352,7 +378,7 @@ export default function LineItemRequestsPage() {
                                             </div>
                                             <div className="space-y-1">
                                                 <Label className="text-[10px] font-mono uppercase tracking-wide text-muted-foreground">
-                                                    Unit Rate
+                                                    Unit Rate (Buy)
                                                 </Label>
                                                 <Input
                                                     type="number"
@@ -370,7 +396,58 @@ export default function LineItemRequestsPage() {
                                                     }
                                                 />
                                             </div>
+                                            {/* Commercial half (P3-4): per-line sell override.
+                                                Only BILLABLE lines can carry a sell override
+                                                (API guard). Blank → seed-derived sell. */}
+                                            <div className="space-y-1">
+                                                <Label className="text-[10px] font-mono uppercase tracking-wide text-muted-foreground">
+                                                    Sell Rate (override)
+                                                </Label>
+                                                <Input
+                                                    type="number"
+                                                    min={0}
+                                                    step="0.01"
+                                                    value={draft.sellRate}
+                                                    disabled={
+                                                        !isRequested ||
+                                                        draft.billingMode !== "BILLABLE"
+                                                    }
+                                                    placeholder={
+                                                        draft.billingMode === "BILLABLE"
+                                                            ? "Auto (seed margin)"
+                                                            : "N/A"
+                                                    }
+                                                    className="font-mono"
+                                                    onChange={(event) =>
+                                                        setDraftValue(
+                                                            request,
+                                                            "sellRate",
+                                                            event.target.value
+                                                        )
+                                                    }
+                                                />
+                                            </div>
                                         </div>
+
+                                        {/* Client price visibility — whether this individual
+                                            line's price shows on client-facing views. Only
+                                            meaningful for BILLABLE lines. */}
+                                        {draft.billingMode === "BILLABLE" && (
+                                            <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                                                <Checkbox
+                                                    checked={draft.clientPriceVisible}
+                                                    disabled={!isRequested}
+                                                    onCheckedChange={(checked) =>
+                                                        setDraftValue(
+                                                            request,
+                                                            "clientPriceVisible",
+                                                            checked === true
+                                                        )
+                                                    }
+                                                />
+                                                Show this line&apos;s price to the client
+                                            </label>
+                                        )}
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                             <div className="space-y-1">
                                                 <Label className="text-[10px] font-mono uppercase tracking-wide text-muted-foreground">

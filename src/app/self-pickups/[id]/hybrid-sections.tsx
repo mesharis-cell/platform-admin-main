@@ -1,30 +1,25 @@
 "use client";
 
 /**
- * Hybrid Pricing Sections for Self-Pickup Detail.
- * Direct port of app/orders/[id]/hybrid-sections.tsx — identical layout,
- * identical pricing card, identical margin override UX. Swaps entity-scoped
- * imports (ORDER → SELF_PICKUP) + related hook/modal/permission names only.
- * See SP3 in .claude/plans/tender-knitting-avalanche.md.
+ * Hybrid Pricing Section for Self-Pickup Detail.
+ *
+ * Mirrors app/orders/[id]/hybrid-sections.tsx (Phase 2): the PricingLedger
+ * (purposeType SELF_PICKUP) owns the entire line-item + pricing + preview-lens +
+ * add / bulk-margin / no-cost surface. This section only supplies the SP approve
+ * mutation + Return-to-Logistics action, surfaced while the pickup awaits admin
+ * decision (PENDING_APPROVAL). The ledger self-gates editability off the SP status
+ * (editable through QUOTED via PRICING_EDITABLE_STATUSES; locked at NO_COST /
+ * financial lock / terminal).
  */
 
-import { AddCatalogLineItemModal } from "@/components/orders/AddCatalogLineItemModal";
-import { AddCustomLineItemModal } from "@/components/orders/AddCustomLineItemModal";
-import { OrderLineItemsList } from "@/components/orders/OrderLineItemsList";
 import { ReturnToLogisticsSelfPickupModal } from "@/components/self-pickups/ReturnToLogisticsSelfPickupModal";
-import { PricingBreakdownTabs } from "@/components/pricing/PricingBreakdownTabs";
+import { PricingLedger } from "@/components/pricing";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { useAdminApproveQuote } from "@/hooks/use-self-pickups";
 
 import { useToken } from "@/lib/auth/use-token";
 import { hasPermission } from "@/lib/auth/permissions";
 import { ADMIN_ACTION_PERMISSIONS } from "@/lib/auth/permission-map";
-import { DollarSign, Plus } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -35,64 +30,34 @@ interface HybridPricingSectionProps {
     isRefetching?: boolean;
 }
 
-const LINE_ITEM_MANAGEABLE_STATUSES = ["PRICING_REVIEW", "PENDING_APPROVAL"];
-
 /**
- * PENDING_APPROVAL Section (Admin Review).
- * Renders the full pricing review card + approve/return-to-logistics actions.
+ * Self-pickup pricing section. Renders for every non-NO_COST status; the ledger
+ * shows read-only lenses once the pickup is past the editable band. The approve
+ * slot + Return-to-Logistics appear only at PENDING_APPROVAL.
  */
 export function SelfPickupPendingApprovalSection({
     pickup,
     selfPickupId,
     onRefresh,
-    isRefetching,
 }: HybridPricingSectionProps) {
     const { user } = useToken();
     const adminApproveQuote = useAdminApproveQuote();
-
-    const [addCatalogOpen, setAddCatalogOpen] = useState(false);
-    const [addCustomOpen, setAddCustomOpen] = useState(false);
-    const [marginOverride, setMarginOverride] = useState(false);
-    const currentMarginPercent = Number(
-        pickup?.self_pickup_pricing?.margin?.percent ??
-            pickup?.company?.platform_margin_percent ??
-            0
-    );
-    const [marginPercent, setMarginPercent] = useState(currentMarginPercent);
-    const [marginReason, setMarginReason] = useState("");
     const [returnToLogisticsOpen, setReturnToLogisticsOpen] = useState(false);
-    const canManagePricing = hasPermission(user, ADMIN_ACTION_PERMISSIONS.selfPickupsPricingAdjust);
+
     const canApproveQuote = hasPermission(
         user,
         ADMIN_ACTION_PERMISSIONS.selfPickupsPricingAdminApprove
     );
-    const canManageServiceItems =
-        LINE_ITEM_MANAGEABLE_STATUSES.includes(pickup.self_pickup_status) && canManagePricing;
-    const pricing = pickup?.self_pickup_pricing;
-    const projections = pricing?.projections || {
-        admin: pricing || null,
-        logistics: null,
-        client: null,
-    };
+    // Approve + Return-to-Logistics are admin actions surfaced only while the
+    // pickup awaits admin decision. (LOGISTICS may also approve SP quotes, but
+    // this is the ADMIN app — middleware-gated; the API accepts both roles.)
+    const isPendingApproval = pickup.self_pickup_status === "PENDING_APPROVAL";
+    const showAdminActions = isPendingApproval && canApproveQuote;
 
     const handleApprove = async () => {
         if (!canApproveQuote) return;
-        if (marginOverride && Math.abs(Number(marginPercent) - currentMarginPercent) < 0.0001) {
-            toast.error("Margin is same as company margin");
-            return;
-        }
-
-        if (marginOverride && !marginReason.trim()) {
-            toast.error("Please provide reason for margin override");
-            return;
-        }
-
         try {
-            await adminApproveQuote.mutateAsync({
-                id: selfPickupId,
-                marginOverridePercent: marginOverride ? marginPercent : undefined,
-                marginOverrideReason: marginOverride ? marginReason : undefined,
-            });
+            await adminApproveQuote.mutateAsync({ id: selfPickupId });
             toast.success("Quote approved and sent to client");
             onRefresh?.();
         } catch (error: unknown) {
@@ -102,134 +67,29 @@ export function SelfPickupPendingApprovalSection({
 
     return (
         <div className="space-y-6">
-            {/* Service Line Items */}
-            <Card>
-                <CardHeader>
-                    <div className="flex items-center justify-between">
-                        <CardTitle className="flex items-center gap-2">
-                            <DollarSign className="h-5 w-5" />
-                            Service Line Items
-                        </CardTitle>
-                        {canManageServiceItems && (
-                            <div className="flex gap-2">
-                                <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => setAddCatalogOpen(true)}
-                                >
-                                    <Plus className="h-4 w-4 mr-1" />
-                                    Catalog Service
-                                </Button>
-                                <Button size="sm" onClick={() => setAddCustomOpen(true)}>
-                                    <Plus className="h-4 w-4 mr-1" />
-                                    Custom Charge
-                                </Button>
-                            </div>
-                        )}
-                    </div>
-                </CardHeader>
-                <CardContent>
-                    <OrderLineItemsList
-                        targetId={selfPickupId}
-                        purposeType="SELF_PICKUP"
-                        canManage={canManageServiceItems}
-                        allowClientVisibilityControls
-                    />
-                </CardContent>
-            </Card>
-
-            {/* Tabbed pricing breakdown — three role views from the same snapshot */}
-            <PricingBreakdownTabs
-                projections={projections}
-                calculatedAt={pricing?.calculated_at}
-                onRefresh={onRefresh}
-                isRefetching={isRefetching}
+            {/* The single editable money table: line items + role-preview lenses +
+                footer totals + add / bulk-margin / no-cost actions. Owns the QUOTED
+                pull-back confirm + post-quote banner internally. */}
+            <PricingLedger
+                purposeType="SELF_PICKUP"
+                entityId={selfPickupId}
+                entityStatus={pickup.self_pickup_status}
+                pricingMode={pickup.pricing_mode || "STANDARD"}
+                onApprove={showAdminActions ? handleApprove : undefined}
+                approveLabel="Approve & Send Quote to Client"
+                approveBusy={adminApproveQuote.isPending}
             />
 
-            {pickup.self_pickup_status === "PENDING_APPROVAL" && canApproveQuote && (
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Approve Quote</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="space-y-3">
-                            <div className="flex items-center space-x-2">
-                                <Checkbox
-                                    id="marginOverride"
-                                    checked={marginOverride}
-                                    onCheckedChange={(checked) =>
-                                        setMarginOverride(checked as boolean)
-                                    }
-                                />
-                                <Label htmlFor="marginOverride" className="cursor-pointer">
-                                    Override platform margin
-                                </Label>
-                            </div>
-
-                            {marginOverride && (
-                                <div className="space-y-3 pl-6 border-l-2 border-primary">
-                                    <div>
-                                        <Label>Margin Percent (%)</Label>
-                                        <Input
-                                            type="number"
-                                            step="0.01"
-                                            min="0"
-                                            max="100"
-                                            value={marginPercent}
-                                            onChange={(e) =>
-                                                setMarginPercent(Number(e.target.value || 0))
-                                            }
-                                        />
-                                    </div>
-                                    <div>
-                                        <Label>Reason for Override</Label>
-                                        <Textarea
-                                            value={marginReason}
-                                            onChange={(e) => setMarginReason(e.target.value)}
-                                            placeholder="e.g., High-value pickup, premium service justifies higher margin"
-                                            rows={2}
-                                        />
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="flex gap-3 pt-2">
-                            <Button
-                                onClick={handleApprove}
-                                disabled={adminApproveQuote.isPending}
-                                className="flex-1"
-                            >
-                                {adminApproveQuote.isPending
-                                    ? "Approving..."
-                                    : "Approve & Send Quote to Client"}
-                            </Button>
-                            <Button
-                                variant="outline"
-                                onClick={() => setReturnToLogisticsOpen(true)}
-                            >
-                                Return to Logistics
-                            </Button>
-                        </div>
-                    </CardContent>
-                </Card>
+            {/* Return-to-Logistics: hands a pending-approval pickup back for
+                revision. Not a pricing action, so it sits beside the ledger. */}
+            {showAdminActions && (
+                <div className="flex justify-end">
+                    <Button variant="outline" onClick={() => setReturnToLogisticsOpen(true)}>
+                        Return to Logistics
+                    </Button>
+                </div>
             )}
 
-            {/* Modals */}
-            <AddCatalogLineItemModal
-                open={addCatalogOpen}
-                onOpenChange={setAddCatalogOpen}
-                targetId={selfPickupId}
-                purposeType="SELF_PICKUP"
-            />
-            <AddCustomLineItemModal
-                open={addCustomOpen}
-                onOpenChange={setAddCustomOpen}
-                targetId={selfPickupId}
-                purposeType="SELF_PICKUP"
-            />
-
-            {/* Return to Logistics Modal */}
             <ReturnToLogisticsSelfPickupModal
                 open={returnToLogisticsOpen}
                 onOpenChange={setReturnToLogisticsOpen}

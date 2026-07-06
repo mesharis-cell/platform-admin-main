@@ -113,21 +113,11 @@ export function useSubmitForApproval() {
 export function useAdminApproveQuote() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: async ({
-            id,
-            marginOverridePercent,
-            marginOverrideReason,
-        }: {
-            id: string;
-            marginOverridePercent?: number;
-            marginOverrideReason?: string;
-        }) => {
-            const body: Record<string, unknown> = {};
-            if (marginOverridePercent !== undefined) {
-                body.margin_override_percent = marginOverridePercent;
-                body.margin_override_reason = marginOverrideReason;
-            }
-            const { data } = await apiClient.post(`/operations/v1/self-pickup/${id}/approve`, body);
+        // Blanket margin-override retired (P1-6): the approve schema is empty-strict,
+        // so any margin_override_* key 400s. Per-line sell/margin now lives in the
+        // PricingLedger; approve is a one-click send (decision 8).
+        mutationFn: async ({ id }: { id: string }) => {
+            const { data } = await apiClient.post(`/operations/v1/self-pickup/${id}/approve`, {});
             return data;
         },
         onSuccess: () => {
@@ -216,22 +206,6 @@ export function useCancelSelfPickup() {
                 notes,
                 notify_client: notifyClient,
             });
-            return data;
-        },
-        onSuccess: () => {
-            qc.invalidateQueries({ queryKey: ["self-pickups"] });
-            qc.invalidateQueries({ queryKey: ["self-pickup"] });
-            qc.invalidateQueries({ queryKey: ["self-pickup-status-history"] });
-        },
-        onError: throwApiError,
-    });
-}
-
-export function useMarkSelfPickupNoCost() {
-    const qc = useQueryClient();
-    return useMutation({
-        mutationFn: async (id: string) => {
-            const { data } = await apiClient.post(`/operations/v1/self-pickup/${id}/mark-no-cost`);
             return data;
         },
         onSuccess: () => {
