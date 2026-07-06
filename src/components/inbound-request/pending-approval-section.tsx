@@ -40,9 +40,9 @@ export function PendingApprovalSection({
     const adminApproveRequest = useAdminApproveInboundRequest();
     const [returnToLogisticsOpen, setReturnToLogisticsOpen] = useState(false);
 
-    // "pricing:admin_approve" is the entity-agnostic pricing approve permission
-    // (ADMIN via pricing:* wildcard); the approve-request route enforces it too.
-    const canApproveQuote = hasPermission(user, ADMIN_ACTION_PERMISSIONS.ordersPricingAdminApprove);
+    // The approve-request route enforces inbound_requests:update — gate on the
+    // same key so the button never shows to a user the API would 403.
+    const canApproveQuote = hasPermission(user, ADMIN_ACTION_PERMISSIONS.inboundRequestsUpdate);
     const isPendingApproval = request.request_status === "PENDING_APPROVAL";
     const showAdminActions = isPendingApproval && canApproveQuote;
 

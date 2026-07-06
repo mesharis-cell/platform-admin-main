@@ -106,6 +106,8 @@ export const ADMIN_ACTION_PERMISSIONS = {
     collectionsDelete: "collections:delete",
     usersManagePassword: "users:manage_password",
     inboundRequestsCreate: "inbound_requests:create",
+    // Gate for the inbound admin-approve action — matches the route's requirePermission.
+    inboundRequestsUpdate: "inbound_requests:update",
     serviceRequestsCreate: "service_requests:create",
     // Self-pickup actions — mirror orders' naming (SP4 of self-pickup parity sprint).
     selfPickupsRead: "self_pickups:read",
