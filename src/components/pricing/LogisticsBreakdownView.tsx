@@ -1,5 +1,13 @@
 "use client";
 
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
 import type { OrderPricing } from "@/types/hybrid-pricing";
 
 interface Props {
@@ -36,36 +44,43 @@ export function LogisticsBreakdownView({ projection }: Props) {
     const buyTotal = Number(totals.buy_total ?? totals.total ?? 0);
 
     return (
-        <div className="space-y-2 text-sm">
-            <div className="rounded border border-border/60 overflow-hidden">
-                <div className="grid grid-cols-12 bg-muted/30 px-3 py-2 text-xs font-medium">
-                    <span className="col-span-9">Line</span>
-                    <span className="col-span-3 text-right">Buy</span>
-                </div>
+        <div className="space-y-3">
+            {/* Same table language as the edit lens; role accent = logistics (indigo) */}
+            <div className="overflow-x-auto rounded-md border border-border border-t-2 border-t-indigo-500">
+                <Table>
+                    <TableHeader>
+                        <TableRow className="border-border/50 bg-muted/50">
+                            <TableHead className="font-mono text-[10px] font-bold uppercase">
+                                Line
+                            </TableHead>
+                            <TableHead className="text-right font-mono text-[10px] font-bold uppercase">
+                                Buy
+                            </TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {lines.map((line) => {
+                            const amount = Number(line.total ?? line.buy_total ?? 0);
+                            return (
+                                <TableRow key={line.line_id} className="border-border/50">
+                                    <TableCell className="py-1.5 text-sm">
+                                        {line.label} ({line.quantity} {line.unit})
+                                    </TableCell>
+                                    <TableCell className="py-1.5 text-right font-mono text-xs tabular-nums">
+                                        {amount.toFixed(2)} AED
+                                    </TableCell>
+                                </TableRow>
+                            );
+                        })}
 
-                {lines.map((line) => {
-                    const amount = Number(line.total ?? line.buy_total ?? 0);
-                    return (
-                        <div
-                            key={line.line_id}
-                            className="grid grid-cols-12 px-3 py-2 text-xs border-t border-border/40"
-                        >
-                            <span className="col-span-9 truncate">
-                                {line.label} ({line.quantity} {line.unit})
-                            </span>
-                            <span className="col-span-3 text-right font-mono">
-                                {amount.toFixed(2)} AED
-                            </span>
-                        </div>
-                    );
-                })}
-
-                <div className="grid grid-cols-12 px-3 py-2 text-xs border-t border-border font-semibold bg-muted/20">
-                    <span className="col-span-9">Total (buy)</span>
-                    <span className="col-span-3 text-right font-mono">
-                        {buyTotal.toFixed(2)} AED
-                    </span>
-                </div>
+                        <TableRow className="border-t border-border bg-muted/20 font-semibold hover:bg-muted/20">
+                            <TableCell className="py-2">Total (buy)</TableCell>
+                            <TableCell className="py-2 text-right font-mono text-xs tabular-nums">
+                                {buyTotal.toFixed(2)} AED
+                            </TableCell>
+                        </TableRow>
+                    </TableBody>
+                </Table>
             </div>
         </div>
     );
