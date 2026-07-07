@@ -24,9 +24,14 @@ import { SelfPickupPendingApprovalSection } from "./hybrid-sections";
 import { CancelSelfPickupModal } from "@/components/self-pickups/CancelSelfPickupModal";
 import { SelfPickupChangeHistoryCard } from "@/components/self-pickups/SelfPickupChangeHistoryCard";
 import { EditSelfPickupDetailsCard } from "@/components/self-pickups/EditSelfPickupDetailsCard";
+import {
+    CollapsibleHistoryColumn,
+    type HistoryRailEntry,
+} from "@/components/shared/collapsible-history-column";
 import { useToken } from "@/lib/auth/use-token";
 import { hasPermission } from "@/lib/auth/permissions";
 import { ADMIN_ACTION_PERMISSIONS } from "@/lib/auth/permission-map";
+import { cn } from "@/lib/utils";
 
 // Pre-confirmation editable band — mirrors the order edit band + the API's
 // editSelfPickupSchema gate. The API re-checks (409/400) if the pickup has moved on.
@@ -79,9 +84,27 @@ export default function SelfPickupDetailPage({ params }: { params: Promise<{ id:
     const [cancelOpen, setCancelOpen] = useState(false);
     const [isEditingJobNumber, setIsEditingJobNumber] = useState(false);
     const [jobNumber, setJobNumber] = useState("");
+    // History rail collapse state (item 1). Default collapsed on every load — NOT
+    // persisted. Drives both the compact rail and the grid template so the main
+    // column widens when the rail is collapsed.
+    const [historyCollapsed, setHistoryCollapsed] = useState(true);
 
     const pickup = pickupData?.data;
     const history = historyData?.data || [];
+    const historyRailEntries: HistoryRailEntry[] = (history as any[]).map((entry: any) => {
+        const cfg = PICKUP_STATUS_CONFIG[entry.status] || {
+            label: entry.status,
+            color: "bg-gray-100 text-gray-700 border-gray-300",
+        };
+        return {
+            id: entry.id,
+            label: cfg.label,
+            badgeClassName: cfg.color,
+            timestamp: entry.timestamp,
+            user: entry.updated_by_name || "System",
+            isActive: entry.status === pickup?.status,
+        };
+    });
 
     // Initialize job number state on first load
     if (pickup && !jobNumber && pickup.job_number) {
@@ -217,9 +240,97 @@ export default function SelfPickupDetailPage({ params }: { params: Promise<{ id:
 
             <div className="container mx-auto px-6 py-8 space-y-6">
                 {/* Main content grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div
+                    className={cn(
+                        "grid grid-cols-1 gap-6",
+                        historyCollapsed ? "lg:grid-cols-[minmax(0,1fr)_128px]" : "lg:grid-cols-3"
+                    )}
+                >
                     {/* Main column */}
-                    <div className="lg:col-span-2 space-y-6">
+                    <div className={cn("space-y-6", historyCollapsed ? "" : "lg:col-span-2")}>
+                        {/* Job Number / PO / Decline — moved here from the sidebar so the
+                            right column can collapse to a compact history rail (mirrors
+                            the orders detail layout, where these live in the main column). */}
+                        <Card className="border-2 border-primary/20 bg-primary/5">
+                            <CardContent className="pt-6">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex-1">
+                                        <Label className="font-mono text-xs text-muted-foreground">
+                                            PLATFORM JOB NUMBER
+                                        </Label>
+                                        {isEditingJobNumber && canEditJobNumber ? (
+                                            <Input
+                                                value={jobNumber}
+                                                onChange={(e) => setJobNumber(e.target.value)}
+                                                placeholder="JOB-XXXX"
+                                                className="mt-2 font-mono"
+                                            />
+                                        ) : (
+                                            <p className="mt-2 font-mono text-lg font-bold">
+                                                {jobNumber || "—"}
+                                            </p>
+                                        )}
+                                    </div>
+                                    <div className="flex items-center justify-center gap-2">
+                                        {isEditingJobNumber && canEditJobNumber ? (
+                                            <>
+                                                <Button
+                                                    size="icon"
+                                                    variant="ghost"
+                                                    onClick={() => setIsEditingJobNumber(false)}
+                                                >
+                                                    <X className="h-4 w-4" />
+                                                </Button>
+                                                <Button
+                                                    size="icon"
+                                                    disabled={updateJobNumber.isPending}
+                                                    onClick={handleJobNumberSave}
+                                                >
+                                                    {updateJobNumber.isPending ? (
+                                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                                    ) : (
+                                                        <Save className="h-4 w-4" />
+                                                    )}
+                                                </Button>
+                                            </>
+                                        ) : canEditJobNumber ? (
+                                            <Button
+                                                size="icon"
+                                                variant="ghost"
+                                                onClick={() => setIsEditingJobNumber(true)}
+                                            >
+                                                <Edit className="h-4 w-4" />
+                                            </Button>
+                                        ) : null}
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {pickup.po_number && (
+                            <Card className="border border-border/60 bg-card/60">
+                                <CardContent className="pt-6">
+                                    <Label className="font-mono text-xs text-muted-foreground">
+                                        PO NUMBER
+                                    </Label>
+                                    <p className="mt-2 font-mono text-lg font-bold">
+                                        {pickup.po_number}
+                                    </p>
+                                </CardContent>
+                            </Card>
+                        )}
+
+                        {pickup.decline_reason && (
+                            <Card className="border border-destructive/30 bg-destructive/5">
+                                <CardContent className="pt-6">
+                                    <Label className="font-mono text-xs text-destructive">
+                                        DECLINE REASON
+                                    </Label>
+                                    <p className="mt-2 text-sm">{pickup.decline_reason}</p>
+                                </CardContent>
+                            </Card>
+                        )}
+
                         {/* Collector Details */}
                         <Card>
                             <CardHeader>
@@ -390,90 +501,16 @@ export default function SelfPickupDetailPage({ params }: { params: Promise<{ id:
                         )}
                     </div>
 
-                    {/* Sidebar: Job Number + PO Number + Status History */}
-                    <div className="space-y-6">
-                        {/* Job Number Card (mirrors orders detail) */}
-                        <Card className="border-2 border-primary/20 bg-primary/5">
-                            <CardContent className="pt-6">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex-1">
-                                        <Label className="font-mono text-xs text-muted-foreground">
-                                            PLATFORM JOB NUMBER
-                                        </Label>
-                                        {isEditingJobNumber && canEditJobNumber ? (
-                                            <Input
-                                                value={jobNumber}
-                                                onChange={(e) => setJobNumber(e.target.value)}
-                                                placeholder="JOB-XXXX"
-                                                className="mt-2 font-mono"
-                                            />
-                                        ) : (
-                                            <p className="mt-2 font-mono text-lg font-bold">
-                                                {jobNumber || "—"}
-                                            </p>
-                                        )}
-                                    </div>
-                                    <div className="flex items-center justify-center gap-2">
-                                        {isEditingJobNumber && canEditJobNumber ? (
-                                            <>
-                                                <Button
-                                                    size="icon"
-                                                    variant="ghost"
-                                                    onClick={() => setIsEditingJobNumber(false)}
-                                                >
-                                                    <X className="h-4 w-4" />
-                                                </Button>
-                                                <Button
-                                                    size="icon"
-                                                    disabled={updateJobNumber.isPending}
-                                                    onClick={handleJobNumberSave}
-                                                >
-                                                    {updateJobNumber.isPending ? (
-                                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                                    ) : (
-                                                        <Save className="h-4 w-4" />
-                                                    )}
-                                                </Button>
-                                            </>
-                                        ) : canEditJobNumber ? (
-                                            <Button
-                                                size="icon"
-                                                variant="ghost"
-                                                onClick={() => setIsEditingJobNumber(true)}
-                                            >
-                                                <Edit className="h-4 w-4" />
-                                            </Button>
-                                        ) : null}
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
-
-                        {pickup.po_number && (
-                            <Card className="border border-border/60 bg-card/60">
-                                <CardContent className="pt-6">
-                                    <Label className="font-mono text-xs text-muted-foreground">
-                                        PO NUMBER
-                                    </Label>
-                                    <p className="mt-2 font-mono text-lg font-bold">
-                                        {pickup.po_number}
-                                    </p>
-                                </CardContent>
-                            </Card>
-                        )}
-
-                        {pickup.decline_reason && (
-                            <Card className="border border-destructive/30 bg-destructive/5">
-                                <CardContent className="pt-6">
-                                    <Label className="font-mono text-xs text-destructive">
-                                        DECLINE REASON
-                                    </Label>
-                                    <p className="mt-2 text-sm">{pickup.decline_reason}</p>
-                                </CardContent>
-                            </Card>
-                        )}
-
-                        <Card className="sticky top-6">
+                    {/* Right: Status History — collapses to a compact rail on desktop so
+                        the main column widens (item 1). Below lg it stacks full-width.
+                        Job/PO/Decline moved into the main column above. */}
+                    <CollapsibleHistoryColumn
+                        collapsed={historyCollapsed}
+                        onToggle={() => setHistoryCollapsed((prev) => !prev)}
+                        railEntries={historyRailEntries}
+                        railTitle="Status History"
+                    >
+                        <Card>
                             <CardHeader>
                                 <CardTitle className="text-base">Status History</CardTitle>
                             </CardHeader>
@@ -518,7 +555,7 @@ export default function SelfPickupDetailPage({ params }: { params: Promise<{ id:
 
                         {/* Field-level edit history (Order Editing — Phase 4, read-only) */}
                         <SelfPickupChangeHistoryCard selfPickupId={id} />
-                    </div>
+                    </CollapsibleHistoryColumn>
                 </div>
             </div>
 

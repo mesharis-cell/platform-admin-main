@@ -649,21 +649,28 @@ export function AddCatalogLineItemModal({
                             services have different buy rates; each line's sell is
                             computed from its own rate-card buy and sent as
                             sell_unit_rate directly on create. BILLABLE lines only. */}
-                        <div className="flex items-start justify-between gap-3 pt-2">
+                        <div
+                            className={`flex items-start justify-between gap-3 pt-2 ${
+                                billingMode === "BILLABLE" ? "" : "opacity-60"
+                            }`}
+                        >
                             <div className="space-y-0.5">
                                 <Label className="text-sm">Override sell (margin %)</Label>
                                 <p className="text-[11px] text-muted-foreground leading-snug">
-                                    {overrideSellMargin
-                                        ? "Each selected billable line's sell = its rate-card buy × (1 + margin %)."
-                                        : "Leave off to seed each line's sell from the entity margin."}
+                                    {billingMode !== "BILLABLE"
+                                        ? "Sell override applies to billable lines only. Set Billing mode to BILLABLE to enable."
+                                        : overrideSellMargin
+                                          ? "Each selected billable line's sell = its rate-card buy × (1 + margin %)."
+                                          : "Leave off to seed each line's sell from the entity margin."}
                                 </p>
                             </div>
                             <Switch
-                                checked={overrideSellMargin}
+                                checked={overrideSellMargin && billingMode === "BILLABLE"}
+                                disabled={billingMode !== "BILLABLE"}
                                 onCheckedChange={setOverrideSellMargin}
                             />
                         </div>
-                        {overrideSellMargin && (
+                        {overrideSellMargin && billingMode === "BILLABLE" && (
                             <div className="flex items-center justify-between gap-3 pl-3 border-l-2 border-primary">
                                 <Label className="text-sm">Margin %</Label>
                                 <Input

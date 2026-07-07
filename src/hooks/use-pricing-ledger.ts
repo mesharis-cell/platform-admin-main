@@ -10,6 +10,7 @@ import type {
     PurposeType,
 } from "@/types/hybrid-pricing";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { invalidateLedgerRelatedQueries } from "@/hooks/use-ledger-invalidation";
 
 // Query key namespace for the ledger's role-preview fetch. Kept in sync with the
 // invalidation added to `invalidateLineItemRelatedQueries` (use-order-line-items.ts)
@@ -88,31 +89,6 @@ const markNoCostPath = (purposeType: PurposeType, entityId: string): string => {
     }
 };
 
-// Invalidate every query the ledger reads after a commercial mutation: the
-// line-items list (edit lens rows), both preview-role variants (footer + lenses),
-// and the entity's own detail/list queries.
-const invalidateLedgerQueries = (
-    queryClient: ReturnType<typeof useQueryClient>,
-    purposeType: PurposeType,
-    entityId: string
-) => {
-    queryClient.invalidateQueries({ queryKey: ["line-items", purposeType, entityId] });
-    queryClient.invalidateQueries({ queryKey: ["pricing-preview", purposeType, entityId] });
-    if (purposeType === "ORDER") {
-        queryClient.invalidateQueries({ queryKey: ["orders"] });
-    } else if (purposeType === "INBOUND_REQUEST") {
-        queryClient.invalidateQueries({ queryKey: ["inbound-requests"] });
-    } else if (purposeType === "SERVICE_REQUEST") {
-        queryClient.invalidateQueries({ queryKey: ["service-requests"] });
-    } else {
-        queryClient.invalidateQueries({ queryKey: ["self-pickups"] });
-        // SP detail query key is ["self-pickup", id] (selfPickupKeys.detail) — the
-        // page re-routes to the NO_COST card + status badge off this refetch after
-        // a ledger no-cost/bulk-margin. (Was ["self-pickup-detail"] — dead key.)
-        queryClient.invalidateQueries({ queryKey: ["self-pickup", entityId] });
-    }
-};
-
 /**
  * Bulk-margin stamp — `POST /operations/v1/line-item/bulk-margin`.
  *
@@ -143,7 +119,7 @@ export function useBulkMargin(purposeType: PurposeType, entityId: string) {
                 throwApiError(error);
             }
         },
-        onSuccess: () => invalidateLedgerQueries(queryClient, purposeType, entityId),
+        onSuccess: () => invalidateLedgerRelatedQueries(queryClient, purposeType, entityId),
     });
 }
 
@@ -166,6 +142,6 @@ export function useMarkNoCost(purposeType: PurposeType, entityId: string) {
                 throwApiError(error);
             }
         },
-        onSuccess: () => invalidateLedgerQueries(queryClient, purposeType, entityId),
+        onSuccess: () => invalidateLedgerRelatedQueries(queryClient, purposeType, entityId),
     });
 }
