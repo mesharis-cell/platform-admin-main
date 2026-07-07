@@ -30,6 +30,10 @@ import { OrderItemCard } from "@/components/orders/OrderItemCard";
 import { StatusHistoryTimeline } from "@/components/orders/StatusHistoryTimeline";
 import { EditOrderDetailsCard } from "@/components/orders/EditOrderDetailsCard";
 import { OrderChangeHistoryCard } from "@/components/orders/OrderChangeHistoryCard";
+import {
+    CollapsibleHistoryColumn,
+    type HistoryRailEntry,
+} from "@/components/shared/collapsible-history-column";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -76,6 +80,7 @@ import { toast } from "sonner";
 import { DateTimePicker } from "@/components/ui/datetime-picker";
 import { apiClient } from "@/lib/api/api-client";
 import { getOrderPrice, removeUnderScore } from "@/lib/utils/helper";
+import { cn } from "@/lib/utils";
 import { addDays, endOfDay, isAfter, isBefore, startOfDay, subDays } from "date-fns";
 import { useToken } from "@/lib/auth/use-token";
 import { hasPermission } from "@/lib/auth/permissions";
@@ -225,6 +230,28 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
 
     const { data: statusHistory, isLoading: statusHistoryLoading } = useAdminOrderStatusHistory(
         order?.data?.id ? order?.data?.id : ""
+    );
+
+    // History rail collapse state (item 1). Default collapsed on every load — NOT
+    // persisted. Drives both the compact rail and the grid template below so the
+    // main column widens when the rail is collapsed.
+    const [historyCollapsed, setHistoryCollapsed] = useState(true);
+    const historyRailEntries: HistoryRailEntry[] = (statusHistory?.data?.history || []).map(
+        (entry: any) => {
+            const cfg = STATUS_CONFIG[entry.status] || {
+                label: entry.status,
+                color: "bg-slate-500/10 text-slate-600 border-slate-500/20",
+            };
+            const currentStatus = statusHistory?.data?.current_status || order?.data?.order_status;
+            return {
+                id: entry.id,
+                label: cfg.label,
+                badgeClassName: cfg.color,
+                timestamp: entry.timestamp,
+                user: entry.updated_by_user?.name || "System",
+                isActive: entry.status === currentStatus,
+            };
+        }
     );
 
     const updateJobNumber = useUpdateJobNumber();
@@ -783,9 +810,14 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
             </div>
 
             <div className="container mx-auto px-6 py-8">
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div
+                    className={cn(
+                        "grid grid-cols-1 gap-6",
+                        historyCollapsed ? "lg:grid-cols-[minmax(0,1fr)_128px]" : "lg:grid-cols-3"
+                    )}
+                >
                     {/* Main Content */}
-                    <div className="lg:col-span-2 space-y-6">
+                    <div className={cn("space-y-6", historyCollapsed ? "" : "lg:col-span-2")}>
                         {pendingDecisionChangeRequests.length > 0 && (
                             <Card className="border-amber-500/30 bg-amber-500/5">
                                 <CardHeader>
@@ -1957,8 +1989,15 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                         )}
                     </div>
 
-                    {/* Right: Status History Timeline */}
-                    <div className="lg:col-span-1 space-y-6">
+                    {/* Right: Status History Timeline — collapses to a compact rail on
+                        desktop so the main column widens (item 1). Below lg it stacks
+                        full-width as before. */}
+                    <CollapsibleHistoryColumn
+                        collapsed={historyCollapsed}
+                        onToggle={() => setHistoryCollapsed((prev) => !prev)}
+                        railEntries={historyRailEntries}
+                        railTitle="History"
+                    >
                         <Card>
                             <CardHeader>
                                 <CardTitle className="font-mono text-sm flex items-center gap-2">
@@ -2030,7 +2069,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
 
                         {/* Order Editing (Phase 1) — descriptive-field edit log. */}
                         <OrderChangeHistoryCard orderId={order?.data?.id || null} />
-                    </div>
+                    </CollapsibleHistoryColumn>
                 </div>
             </div>
             <Dialog
