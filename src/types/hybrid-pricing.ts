@@ -99,6 +99,9 @@ export interface OrderLineItem {
     sellUnitRate?: number | null;
     sell_total?: number;
     addedBy: string;
+    // Resolved actor display name (API batched user-name join, added_by_name).
+    // Absent/null → fall back to addedBy (the raw user id).
+    addedByName?: string | null;
     addedAt: string;
     notes: string | null;
     billingMode?: LineItemBillingMode;

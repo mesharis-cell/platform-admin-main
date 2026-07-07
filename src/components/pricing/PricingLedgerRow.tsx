@@ -530,7 +530,9 @@ export function PricingLedgerRow({
                                         </button>
                                     </p>
                                 ) : null}
-                                {item.addedBy ? <p>Added by {item.addedBy}</p> : null}
+                                {item.addedByName || item.addedBy ? (
+                                    <p>Added by {item.addedByName || item.addedBy}</p>
+                                ) : null}
                                 {item.addedAt ? (
                                     <p>Added {new Date(item.addedAt).toLocaleString()}</p>
                                 ) : null}
