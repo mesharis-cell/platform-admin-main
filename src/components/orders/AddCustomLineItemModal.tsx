@@ -88,6 +88,10 @@ export function AddCustomLineItemModal({
     const [logisticsVisible, setLogisticsVisible] = useState(true);
     const quantityNum = Number(quantity || 0);
     const unitRateNum = Number(unitRate || 0);
+    // Sell overrides only apply to BILLABLE lines (server rejects a sell rate on
+    // NON_BILLABLE/COMPLIMENTARY with a 400). Gate the field + the payload so a
+    // non-billable line can never send one. Mirrors AddCatalogLineItemModal.
+    const isBillable = billingMode === "BILLABLE";
     const isTransportCategory = category === "TRANSPORT";
     const derivedTotal =
         Number.isFinite(quantityNum) && Number.isFinite(unitRateNum)
@@ -157,7 +161,10 @@ export function AddCustomLineItemModal({
                 notes: notes || undefined,
                 metadata,
                 logistics_visible: logisticsVisible,
-                ...(sellOverride !== undefined ? { sell_unit_rate: sellOverride } : {}),
+                // BILLABLE-only: never send a sell override for a non-billable line.
+                ...(sellOverride !== undefined && isBillable
+                    ? { sell_unit_rate: sellOverride }
+                    : {}),
             });
             toast.success("Custom line item added");
             onOpenChange(false);
@@ -317,12 +324,16 @@ export function AddCustomLineItemModal({
                             setSellUnitRate(String(roundMoney(unitRateNum * (1 + pct / 100))));
                         };
                         return (
-                            <div className="space-y-2 rounded-md border border-border p-4">
+                            <div
+                                className={`space-y-2 rounded-md border border-border p-4 ${
+                                    isBillable ? "" : "opacity-60"
+                                }`}
+                            >
                                 <div className="flex items-center justify-between gap-2">
                                     <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                                         Sell override (optional)
                                     </p>
-                                    {hasSell && (
+                                    {hasSell && isBillable && (
                                         <button
                                             type="button"
                                             className="text-[11px] text-muted-foreground hover:text-foreground underline"
@@ -351,8 +362,10 @@ export function AddCustomLineItemModal({
                                             type="number"
                                             step="0.01"
                                             min="0"
-                                            value={sellUnitRate}
-                                            placeholder="auto"
+                                            value={isBillable ? sellUnitRate : ""}
+                                            placeholder={isBillable ? "auto" : "—"}
+                                            disabled={!isBillable}
+                                            className={isBillable ? "" : "bg-muted"}
                                             onChange={(e) => setSellUnitRate(e.target.value)}
                                         />
                                     </div>
@@ -360,7 +373,7 @@ export function AddCustomLineItemModal({
                                         <Label className="text-[11px] text-muted-foreground">
                                             Margin %
                                         </Label>
-                                        {margin.isFee ? (
+                                        {margin.isFee && isBillable ? (
                                             <Input
                                                 value="Fee"
                                                 readOnly
@@ -370,17 +383,23 @@ export function AddCustomLineItemModal({
                                             <Input
                                                 type="number"
                                                 step="1"
-                                                value={marginValue}
-                                                placeholder={hasSell ? "—" : "auto"}
+                                                value={isBillable ? marginValue : ""}
+                                                placeholder={
+                                                    isBillable ? (hasSell ? "—" : "auto") : "—"
+                                                }
+                                                disabled={!isBillable}
+                                                className={isBillable ? "" : "bg-muted"}
                                                 onChange={(e) => onMargin(e.target.value)}
                                             />
                                         )}
                                     </div>
                                 </div>
                                 <p className="text-[11px] text-muted-foreground leading-snug">
-                                    {hasSell
-                                        ? "Sell override set — this line ignores blanket-margin math."
-                                        : "Blank sell = blanket-margin calculation. Set a sell or margin % to override."}
+                                    {!isBillable
+                                        ? "Sell override applies to billable lines only. A non-billable line carries no client sell."
+                                        : hasSell
+                                          ? "Sell override set — this line ignores blanket-margin math."
+                                          : "Blank sell = blanket-margin calculation. Set a sell or margin % to override."}
                                 </p>
                             </div>
                         );
