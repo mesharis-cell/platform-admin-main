@@ -159,6 +159,12 @@ export function PricingLedgerRow({
     const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const inFlightRef = useRef(false);
 
+    // Notes autosave indicator — derived purely from the existing update mutation
+    // lifecycle (no new data path). "saving" while the notes write is in-flight,
+    // a brief "saved" on success, then back to idle.
+    const [notesStatus, setNotesStatus] = useState<"idle" | "saving" | "saved">("idle");
+    const notesTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
     // Resync from the server row once no local edit is pending (post-save
     // reconciliation). While a field is dirty/in-flight we keep the draft.
     useEffect(() => {
@@ -175,6 +181,7 @@ export function PricingLedgerRow({
     useEffect(() => {
         return () => {
             if (timerRef.current) clearTimeout(timerRef.current);
+            if (notesTimerRef.current) clearTimeout(notesTimerRef.current);
         };
     }, []);
 
@@ -185,10 +192,19 @@ export function PricingLedgerRow({
         }
         const payload = pendingRef.current;
         if (Object.keys(payload).length === 0) return;
+        const hadNotes = "notes" in payload;
         pendingRef.current = {};
         inFlightRef.current = true;
+        if (hadNotes) {
+            if (notesTimerRef.current) clearTimeout(notesTimerRef.current);
+            setNotesStatus("saving");
+        }
         try {
             await onUpdate(payload);
+            if (hadNotes) {
+                setNotesStatus("saved");
+                notesTimerRef.current = setTimeout(() => setNotesStatus("idle"), 1500);
+            }
         } catch {
             // Rollback the touched fields to the server row on failure.
             if ("unitRate" in payload) setBuy(String(item.unitRate ?? 0));
@@ -199,7 +215,10 @@ export function PricingLedgerRow({
             if ("quantity" in payload) setQty(String(item.quantity ?? 1));
             if ("billingMode" in payload)
                 setBillingMode((item.billingMode || "BILLABLE") as LineItemBillingMode);
-            if ("notes" in payload) setNotes(item.notes || "");
+            if (hadNotes) {
+                setNotes(item.notes || "");
+                setNotesStatus("idle");
+            }
         } finally {
             inFlightRef.current = false;
         }
@@ -582,7 +601,18 @@ export function PricingLedgerRow({
                                     </div>
                                 </div>
                                 <div className="space-y-1">
-                                    <Label className="text-[11px]">Notes</Label>
+                                    <div className="flex items-center gap-2">
+                                        <Label className="text-[11px]">Notes</Label>
+                                        {notesStatus === "saving" ? (
+                                            <span className="text-[10px] text-muted-foreground">
+                                                Saving…
+                                            </span>
+                                        ) : notesStatus === "saved" ? (
+                                            <span className="text-[10px] text-emerald-600">
+                                                Saved ✓
+                                            </span>
+                                        ) : null}
+                                    </div>
                                     <Textarea
                                         value={notes}
                                         rows={2}
