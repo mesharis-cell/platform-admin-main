@@ -184,34 +184,24 @@ body {
 }
 
 /* === Pricing ledger policy stripes (D1) ================================
- * Left-edge 3px stripe + faint row tint flag a line's policy at a glance,
- * replacing the per-row status badges. Signal set:
- *   .line-row-override      — primary : billable sell manually overridden
- *   .line-row-free          — amber   : non-billable / complimentary / pass-through
- *   .line-row-client-hidden — indigo+amber : price hidden from the client
- *   .line-row-system        — purple  : SYSTEM auto-managed line (locked)
+ * Left-edge 3px stripe + faint row tint flag a line's policy at a glance.
+ * After the owner smoke-feedback pass the billing-mode signal moved onto the
+ * dedicated Mode column and the client-hidden signal onto the Client eye
+ * column, so only two stripes remain:
+ *   .line-row-override — primary : billable sell manually overridden
+ *   .line-row-system   — purple  : SYSTEM auto-managed line (locked)
  *
  * Table-safe: the stripe is an absolutely-positioned pseudo-element on the
  * row's first cell (box-shadow on <tr>/<td> is unreliable under
  * border-collapse: collapse), the tint is a plain row background (paints
- * fine when collapsed). Legacy aliases kept for any pre-existing callers:
- *   .line-row-no-margin        → amber        (== .line-row-free)
- *   .line-row-hidden-logistics → indigo+amber (== .line-row-client-hidden)
+ * fine when collapsed).
  * ====================================================================== */
 .line-row-override > td:first-child,
-.line-row-free > td:first-child,
-.line-row-client-hidden > td:first-child,
-.line-row-system > td:first-child,
-.line-row-no-margin > td:first-child,
-.line-row-hidden-logistics > td:first-child {
+.line-row-system > td:first-child {
     position: relative;
 }
 .line-row-override > td:first-child::before,
-.line-row-free > td:first-child::before,
-.line-row-client-hidden > td:first-child::before,
-.line-row-system > td:first-child::before,
-.line-row-no-margin > td:first-child::before,
-.line-row-hidden-logistics > td:first-child::before {
+.line-row-system > td:first-child::before {
     content: "";
     position: absolute;
     left: 0;
@@ -225,25 +215,6 @@ body {
 }
 .line-row-override > td:first-child::before {
     background: var(--primary);
-}
-
-.line-row-free,
-.line-row-no-margin {
-    background-color: rgba(217, 119, 6, 0.05);
-}
-.line-row-free > td:first-child::before,
-.line-row-no-margin > td:first-child::before {
-    background: #d97706; /* amber-600 */
-}
-
-.line-row-client-hidden,
-.line-row-hidden-logistics {
-    background-color: rgba(99, 102, 241, 0.05);
-}
-.line-row-client-hidden > td:first-child::before,
-.line-row-hidden-logistics > td:first-child::before {
-    width: 6px;
-    background: linear-gradient(to right, #d97706 0 3px, #6366f1 3px 6px); /* amber + indigo */
 }
 
 .line-row-system {

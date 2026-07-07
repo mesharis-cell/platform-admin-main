@@ -347,6 +347,9 @@ export function PricingLedger({
                                             <TableHead className="font-mono text-[10px] font-bold uppercase">
                                                 Line
                                             </TableHead>
+                                            <TableHead className="text-center font-mono text-[10px] font-bold uppercase">
+                                                Mode
+                                            </TableHead>
                                             <TableHead className="text-right font-mono text-[10px] font-bold uppercase">
                                                 Buy/u
                                             </TableHead>
@@ -373,7 +376,7 @@ export function PricingLedger({
                                             <Fragment key={group.key}>
                                                 <TableRow className="bg-muted/30 hover:bg-muted/30">
                                                     <TableCell
-                                                        colSpan={9}
+                                                        colSpan={10}
                                                         className="py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
                                                     >
                                                         {group.label}
@@ -402,7 +405,7 @@ export function PricingLedger({
                                         {adminPricing ? (
                                             <TableRow className="border-t border-border bg-muted/20 font-semibold hover:bg-muted/20">
                                                 <TableCell />
-                                                <TableCell colSpan={4} className="py-2">
+                                                <TableCell colSpan={5} className="py-2">
                                                     Subtotal — line sell
                                                 </TableCell>
                                                 <TableCell colSpan={2} />

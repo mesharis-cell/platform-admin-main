@@ -49,10 +49,29 @@ const deriveMargin = (
     return { display: "—", isFee: false, percent: null };
 };
 
-// Non-billable modes carry a tiny inline muted token beside the name (A2 style).
-const NON_BILLABLE_TOKEN: Partial<Record<LineItemBillingMode, string>> = {
-    NON_BILLABLE: "free",
-    COMPLIMENTARY: "comp",
+// Billing-mode display tokens — full labels + DISTINCT colours (owner smoke
+// feedback: kill the amber-on-amber fight between comp + non-billable). Billable
+// is the neutral norm; Complimentary reads as a client gift (emerald);
+// Non-billable is internal cost (slate).
+const MODE_META: Record<
+    LineItemBillingMode,
+    { label: string; text: string; token: string }
+> = {
+    BILLABLE: {
+        label: "Billable",
+        text: "text-foreground",
+        token: "text-muted-foreground",
+    },
+    NON_BILLABLE: {
+        label: "Non-billable",
+        text: "text-slate-600 dark:text-slate-300",
+        token: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
+    },
+    COMPLIMENTARY: {
+        label: "Complimentary",
+        text: "text-emerald-600 dark:text-emerald-400",
+        token: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400",
+    },
 };
 
 // D1 left-edge stripe classes (globals.css) — one calm signal per row. The
@@ -231,7 +250,10 @@ export function PricingLedgerRow({
     };
     const handleBillingMode = (value: LineItemBillingMode) => {
         setBillingMode(value);
-        queue({ billingMode: value });
+        // Discrete control — flush immediately rather than waiting on the debounce
+        // (no blur fires on a select).
+        pendingRef.current = { ...pendingRef.current, billingMode: value };
+        void flush();
     };
     const handleNotes = (value: string) => {
         setNotes(value);
@@ -262,7 +284,7 @@ export function PricingLedgerRow({
     const logisticsVisible = item.logisticsVisible !== false;
     // Amber wash for CUSTOM lines, but only when no stronger stripe is present.
     const wash = customWash && !stripe ? "bg-amber-50/30 dark:bg-amber-500/5" : "";
-    const nonBillableToken = NON_BILLABLE_TOKEN[billingMode];
+    const modeMeta = MODE_META[billingMode];
 
     return (
         <>
@@ -291,12 +313,43 @@ export function PricingLedgerRow({
                                 · auto-managed: {item.systemKey.replaceAll("_", " ")}
                             </span>
                         ) : null}
-                        {nonBillableToken ? (
-                            <span className="text-[10px] uppercase tracking-wide text-amber-700">
-                                {nonBillableToken}
-                            </span>
-                        ) : null}
                     </div>
+                </TableCell>
+
+                {/* Billing mode — editable in-table Select (ADMIN-only server-side).
+                    Read-only coloured token when the row can't be edited. */}
+                <TableCell className="w-36 py-1.5">
+                    {rowEditable ? (
+                        <Select
+                            value={billingMode}
+                            onValueChange={(v) => handleBillingMode(v as LineItemBillingMode)}
+                        >
+                            <SelectTrigger
+                                className={cn(
+                                    "h-7 border-transparent bg-transparent px-2 text-xs shadow-none hover:border-input focus:border-input",
+                                    modeMeta.text
+                                )}
+                            >
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="BILLABLE">Billable</SelectItem>
+                                <SelectItem value="NON_BILLABLE">Non-billable</SelectItem>
+                                <SelectItem value="COMPLIMENTARY">Complimentary</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    ) : billingMode === "BILLABLE" ? (
+                        <span className={cn("text-xs", modeMeta.text)}>{modeMeta.label}</span>
+                    ) : (
+                        <span
+                            className={cn(
+                                "inline-flex rounded px-1.5 py-0.5 text-[11px] font-medium",
+                                modeMeta.token
+                            )}
+                        >
+                            {modeMeta.label}
+                        </span>
+                    )}
                 </TableCell>
 
                 {/* Buy/u — reveal-on-focus */}
@@ -468,19 +521,13 @@ export function PricingLedgerRow({
             {expanded ? (
                 <TableRow className={cn("border-border/50 bg-muted/20 hover:bg-muted/20", stripe)}>
                     <TableCell />
-                    <TableCell colSpan={8} className="py-3">
+                    <TableCell colSpan={9} className="py-3">
                         {/* Read tokens (category + mode moved off the row, A2 style) */}
                         <div className="mb-3 flex flex-wrap gap-x-6 gap-y-1 text-[11px] text-muted-foreground">
                             <span>
                                 Category{" "}
                                 <span className="font-medium uppercase tracking-wide text-foreground">
                                     {item.category}
-                                </span>
-                            </span>
-                            <span>
-                                Mode{" "}
-                                <span className="font-medium uppercase tracking-wide text-foreground">
-                                    {billingMode}
                                 </span>
                             </span>
                             <span>
@@ -516,29 +563,6 @@ export function PricingLedgerRow({
                                             className="h-8"
                                         />
                                     </div>
-                                </div>
-                                <div className="space-y-1">
-                                    <Label className="text-[11px]">Billing mode</Label>
-                                    <Select
-                                        value={billingMode}
-                                        disabled={!rowEditable}
-                                        onValueChange={(v) =>
-                                            handleBillingMode(v as LineItemBillingMode)
-                                        }
-                                    >
-                                        <SelectTrigger className="h-8">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="BILLABLE">BILLABLE</SelectItem>
-                                            <SelectItem value="NON_BILLABLE">
-                                                NON_BILLABLE
-                                            </SelectItem>
-                                            <SelectItem value="COMPLIMENTARY">
-                                                COMPLIMENTARY
-                                            </SelectItem>
-                                        </SelectContent>
-                                    </Select>
                                 </div>
                                 <div className="space-y-1">
                                     <Label className="text-[11px]">Notes</Label>
