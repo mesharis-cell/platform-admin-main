@@ -98,6 +98,8 @@ const PRICING_EDITABLE_STATUSES = new Set([
 const POST_QUOTE_STATUSES = new Set(["QUOTED"]);
 
 const money = (n: number, currency: string) => `${Number(n || 0).toFixed(2)} ${currency}`;
+// Up to 2 decimals, trailing zeros trimmed (30% / 66.67%).
+const fmtPct = (pct: number) => `${Number((pct || 0).toFixed(2))}`;
 
 /**
  * PricingLedger — the single editable money table for all four billable entities
@@ -249,7 +251,7 @@ export function PricingLedger({
     };
     const handleToggleVisibility = async (
         itemId: string,
-        next: { clientPriceVisible?: boolean; logisticsVisible?: boolean }
+        next: { clientPriceVisible?: boolean; clientVisible?: boolean; logisticsVisible?: boolean }
     ) => {
         try {
             await patchVisibility.mutateAsync({ itemId, data: next });
@@ -336,20 +338,6 @@ export function PricingLedger({
                                         override
                                     </span>
                                     <span className="inline-flex items-center gap-1.5">
-                                        <span className="h-3 w-1 rounded-sm bg-[#d97706]" />
-                                        free / comp
-                                    </span>
-                                    <span className="inline-flex items-center gap-1.5">
-                                        <span
-                                            className="h-3 w-1.5 rounded-sm"
-                                            style={{
-                                                background:
-                                                    "linear-gradient(to right,#d97706 0 50%,#6366f1 50%)",
-                                            }}
-                                        />
-                                        client-hidden
-                                    </span>
-                                    <span className="inline-flex items-center gap-1.5">
                                         <span className="h-3 w-1 rounded-sm bg-[#9333ea]" />
                                         system
                                     </span>
@@ -358,22 +346,28 @@ export function PricingLedger({
                                     <TableHeader>
                                         <TableRow className="border-border/50 bg-muted/50">
                                             <TableHead className="w-8" />
-                                            <TableHead className="font-mono text-[10px] font-bold uppercase">
+                                            <TableHead className="text-center font-mono text-[10px] font-bold uppercase">
                                                 Line
                                             </TableHead>
-                                            <TableHead className="text-right font-mono text-[10px] font-bold uppercase">
+                                            <TableHead className="text-center font-mono text-[10px] font-bold uppercase">
+                                                Mode
+                                            </TableHead>
+                                            <TableHead className="text-center font-mono text-[10px] font-bold uppercase">
                                                 Buy/u
                                             </TableHead>
-                                            <TableHead className="text-right font-mono text-[10px] font-bold uppercase">
+                                            <TableHead className="text-center font-mono text-[10px] font-bold uppercase">
                                                 Sell/u
                                             </TableHead>
-                                            <TableHead className="text-right font-mono text-[10px] font-bold uppercase">
+                                            <TableHead className="text-center font-mono text-[10px] font-bold uppercase">
                                                 Margin
+                                            </TableHead>
+                                            <TableHead className="text-center font-mono text-[10px] font-bold uppercase">
+                                                Log
                                             </TableHead>
                                             <TableHead className="text-center font-mono text-[10px] font-bold uppercase">
                                                 Client
                                             </TableHead>
-                                            <TableHead className="text-right font-mono text-[10px] font-bold uppercase">
+                                            <TableHead className="text-center font-mono text-[10px] font-bold uppercase">
                                                 Total
                                             </TableHead>
                                             <TableHead className="w-20" />
@@ -384,7 +378,7 @@ export function PricingLedger({
                                             <Fragment key={group.key}>
                                                 <TableRow className="bg-muted/30 hover:bg-muted/30">
                                                     <TableCell
-                                                        colSpan={8}
+                                                        colSpan={10}
                                                         className="py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
                                                     >
                                                         {group.label}
@@ -413,10 +407,10 @@ export function PricingLedger({
                                         {adminPricing ? (
                                             <TableRow className="border-t border-border bg-muted/20 font-semibold hover:bg-muted/20">
                                                 <TableCell />
-                                                <TableCell colSpan={4} className="py-2">
+                                                <TableCell colSpan={5} className="py-2">
                                                     Subtotal — line sell
                                                 </TableCell>
-                                                <TableCell />
+                                                <TableCell colSpan={2} />
                                                 <TableCell className="py-2 text-right font-mono text-xs tabular-nums">
                                                     {money(sellTotal, resolvedCurrency)}
                                                 </TableCell>
@@ -498,14 +492,14 @@ export function PricingLedger({
                             </span>
                         </div>
                         <div className="flex justify-between text-muted-foreground">
-                            <span>Effective margin ({blendedPercent.toFixed(1)}%)</span>
+                            <span>Effective margin ({fmtPct(blendedPercent)}%)</span>
                             <span className="font-mono tabular-nums">
                                 +{money(marginAmount, resolvedCurrency)}
                             </span>
                         </div>
                         {vatPercent > 0 ? (
                             <div className="flex justify-between text-muted-foreground">
-                                <span>VAT ({vatPercent}%)</span>
+                                <span>VAT ({fmtPct(vatPercent)}%)</span>
                                 <span className="font-mono tabular-nums">
                                     {money(vatAmount, resolvedCurrency)}
                                 </span>
@@ -550,21 +544,21 @@ export function PricingLedger({
                                 <>
                                     <Button
                                         size="sm"
-                                        variant="outline"
+                                        variant="softPrimary"
                                         onClick={() => openAdd("catalog")}
                                     >
                                         <Plus className="mr-1 h-4 w-4" /> Catalog
                                     </Button>
                                     <Button
                                         size="sm"
-                                        variant="outline"
+                                        variant="softPrimary"
                                         onClick={() => openAdd("custom")}
                                     >
                                         <Plus className="mr-1 h-4 w-4" /> Custom
                                     </Button>
                                     <Button
                                         size="sm"
-                                        variant="outline"
+                                        variant="softPrimary"
                                         onClick={() => setBulkOpen(true)}
                                     >
                                         <Percent className="mr-1 h-4 w-4" /> Bulk margin…
@@ -572,8 +566,7 @@ export function PricingLedger({
                                     {canAdjust && noCostApplicable ? (
                                         <Button
                                             size="sm"
-                                            variant="outline"
-                                            className="text-slate-600"
+                                            variant="softPrimary"
                                             onClick={() => setNoCostOpen(true)}
                                         >
                                             <Ban className="mr-1 h-4 w-4" /> No cost

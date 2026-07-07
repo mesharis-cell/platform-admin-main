@@ -99,11 +99,20 @@ export interface OrderLineItem {
     sellUnitRate?: number | null;
     sell_total?: number;
     addedBy: string;
+    // Resolved actor display name (API batched user-name join, added_by_name).
+    // Absent/null → fall back to addedBy (the raw user id).
+    addedByName?: string | null;
     addedAt: string;
     notes: string | null;
     billingMode?: LineItemBillingMode;
     metadata?: TransportLineItemMetadata | Record<string, unknown> | null;
+    // Per-line PRICE visibility to the client (the individual line's sell figure).
+    // Default hidden. Surfaced as the "Show price to client" switch in the expand row.
     clientPriceVisible?: boolean;
+    // Whole-line CLIENT visibility (NEW, distinct from clientPriceVisible). When
+    // false, the server drops the entire line from CLIENT projections. NON_BILLABLE
+    // lines are forced client-hidden by the projection regardless of this flag.
+    clientVisible?: boolean;
     // When false, server strips this line from LOGISTICS projections + list.
     logisticsVisible?: boolean;
     canEditPricingFields?: boolean;
@@ -179,6 +188,8 @@ export interface PatchLineItemMetadataRequest {
 // fires this with one or both flags. Server requires at least one.
 export interface PatchLineItemVisibilityRequest {
     clientPriceVisible?: boolean;
+    // Whole-line CLIENT visibility (mirrors logisticsVisible; ADMIN-only server-side).
+    clientVisible?: boolean;
     logisticsVisible?: boolean;
 }
 

@@ -63,25 +63,31 @@ export function CollapsibleHistoryColumn({
     children,
 }: CollapsibleHistoryColumnProps) {
     return (
-        <div className="space-y-3">
-            {/* Sticky toggle — desktop only, stays visible while the column scrolls.
-                top-20 clears the pages' sticky top-0 header (~72px). */}
-            <div className="sticky top-20 z-20 hidden justify-end lg:flex">
-                <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    className="h-7 w-7 bg-card shadow-sm"
-                    onClick={onToggle}
-                    aria-label={collapsed ? "Expand history" : "Collapse history"}
-                    title={collapsed ? "Expand history" : "Collapse history"}
-                >
-                    {collapsed ? (
-                        <ChevronLeft className="h-4 w-4" />
-                    ) : (
-                        <ChevronRight className="h-4 w-4" />
-                    )}
-                </Button>
+        <div className="relative space-y-3">
+            {/* Edge-mounted toggle — desktop only. A small square button that
+                protrudes on the column's LEFT edge and stays vertically sticky so
+                it travels with the viewport as the column scrolls. Present in both
+                states (expand arrow when collapsed, collapse arrow when expanded).
+                The absolute wrapper spans the column height; the inner sticky node
+                pins the button at top-24 (clears the page's sticky header). */}
+            <div className="pointer-events-none absolute inset-y-0 -left-3 z-20 hidden lg:block">
+                <div className="sticky top-24">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="pointer-events-auto h-9 w-6 rounded-md bg-card shadow-md"
+                        onClick={onToggle}
+                        aria-label={collapsed ? "Expand history" : "Collapse history"}
+                        title={collapsed ? "Expand history" : "Collapse history"}
+                    >
+                        {collapsed ? (
+                            <ChevronLeft className="h-4 w-4" />
+                        ) : (
+                            <ChevronRight className="h-4 w-4" />
+                        )}
+                    </Button>
+                </div>
             </div>
 
             {/* Desktop + collapsed → compact rail. */}
