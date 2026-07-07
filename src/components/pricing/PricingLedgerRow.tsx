@@ -57,10 +57,7 @@ const deriveMargin = (
 // feedback: kill the amber-on-amber fight between comp + non-billable). Billable
 // is the neutral norm; Complimentary reads as a client gift (emerald);
 // Non-billable is internal cost (slate).
-const MODE_META: Record<
-    LineItemBillingMode,
-    { label: string; text: string; token: string }
-> = {
+const MODE_META: Record<LineItemBillingMode, { label: string; text: string; token: string }> = {
     BILLABLE: {
         label: "Billable",
         text: "text-foreground",
@@ -497,9 +494,7 @@ export function PricingLedgerRow({
                                     clientVisible ? "text-primary" : "text-muted-foreground/50"
                                 )}
                                 aria-label={
-                                    clientVisible
-                                        ? "Hide line from client"
-                                        : "Show line to client"
+                                    clientVisible ? "Hide line from client" : "Show line to client"
                                 }
                                 title={
                                     clientVisible
