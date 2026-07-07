@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -49,17 +48,36 @@ const deriveMargin = (
     return { display: "—", isFee: false, percent: null };
 };
 
-const MODE_CHIP: Record<LineItemBillingMode, { label: string; className: string }> = {
-    BILLABLE: {
-        label: "bill",
-        className: "bg-emerald-500/10 text-emerald-600 border-emerald-500/30",
-    },
-    NON_BILLABLE: {
-        label: "free",
-        className: "bg-slate-500/10 text-slate-600 border-slate-500/30",
-    },
-    COMPLIMENTARY: { label: "comp", className: "bg-sky-500/10 text-sky-600 border-sky-500/30" },
+// Non-billable modes carry a tiny inline muted token beside the name (A2 style).
+const NON_BILLABLE_TOKEN: Partial<Record<LineItemBillingMode, string>> = {
+    NON_BILLABLE: "free",
+    COMPLIMENTARY: "comp",
 };
+
+// D1 left-edge stripe classes (globals.css) — one calm signal per row, replacing
+// the old per-row status/mode/category badges. Precedence: system > free/comp >
+// client-hidden > override. Returns "" for a plain billable auto line.
+const stripeClassFor = (o: {
+    isSystem: boolean;
+    isBillable: boolean;
+    clientHidden: boolean;
+    isOverride: boolean;
+}): string => {
+    if (o.isSystem) return "line-row-system";
+    if (!o.isBillable) return "line-row-free";
+    if (o.clientHidden) return "line-row-client-hidden";
+    if (o.isOverride) return "line-row-override";
+    return "";
+};
+
+// Reveal-on-focus edit affordance: chromeless mono text at rest, input chrome
+// (border + bg + ring) only on hover/focus. Pure CSS state — no conditional
+// render, no extra state (fixes C2/C3). border-transparent keeps the 1px box so
+// the cell doesn't reflow when the border becomes visible on focus.
+const REVEAL_INPUT =
+    "h-7 px-2 text-right font-mono text-xs md:text-xs tabular-nums border-transparent bg-transparent shadow-none hover:border-input focus:border-input focus:bg-background";
+
+const IDLE_MONEY = "block text-right font-mono text-xs tabular-nums";
 
 const DEBOUNCE_MS = 650;
 
@@ -70,6 +88,9 @@ interface Props {
     editable: boolean;
     allowVisibility: boolean;
     currency: string;
+    // Faint amber wash for operator-added CUSTOM lines (A5). Suppressed when the
+    // row already carries a policy stripe (the stripe is the stronger signal).
+    customWash?: boolean;
     // Debounced PUT /line-item/:id via the caller's update hook. Rejects on error.
     onUpdate: (data: UpdateLineItemRequest) => Promise<unknown>;
     onVoid: () => void;
@@ -92,6 +113,7 @@ export function PricingLedgerRow({
     editable,
     allowVisibility,
     currency,
+    customWash,
     onUpdate,
     onVoid,
     onToggleVisibility,
@@ -230,12 +252,19 @@ export function PricingLedgerRow({
     const isBillable = billingMode === "BILLABLE";
     // "auto" when the stamped sell equals the seed-derived sell; "ovr" otherwise.
     const isAuto = !hasSell || Math.abs(effectiveSell - autoSell) < 0.005;
-    const modeChip = MODE_CHIP[billingMode];
     const lineTotal = Number(item.total ?? 0);
+
+    // --- left-edge policy stripe (replaces the old badges) ---
+    const clientHidden = !isSystem && item.clientPriceVisible === false;
+    const isOverride = isBillable && hasSell && !isAuto;
+    const stripe = stripeClassFor({ isSystem, isBillable, clientHidden, isOverride });
+    // Amber wash for CUSTOM lines, but only when no stronger stripe is present.
+    const wash = customWash && !stripe ? "bg-amber-50/30 dark:bg-amber-500/5" : "";
+    const nonBillableToken = NON_BILLABLE_TOKEN[billingMode];
 
     return (
         <>
-            <TableRow className="border-border/50 align-middle">
+            <TableRow className={cn("border-border/50 align-middle", stripe, wash)}>
                 <TableCell className="w-8 px-2">
                     <button
                         type="button"
@@ -251,72 +280,42 @@ export function PricingLedgerRow({
                     </button>
                 </TableCell>
 
-                <TableCell className="min-w-[220px]">
+                <TableCell className="min-w-[220px] py-1.5">
                     <div className="flex flex-wrap items-center gap-1.5">
+                        {isSystem ? <Lock className="h-3 w-3 shrink-0 text-purple-600" /> : null}
                         <span className="text-sm font-medium">{item.description}</span>
-                        <Badge variant="outline" className="text-[10px]">
-                            {item.category}
-                        </Badge>
-                        {isSystem ? (
-                            <Badge
-                                variant="outline"
-                                className="text-[10px] gap-1 border-purple-500/40 text-purple-600"
-                            >
-                                <Lock className="h-2.5 w-2.5" /> system
-                            </Badge>
-                        ) : !isBillable ? (
-                            <Badge
-                                variant="outline"
-                                className="text-[10px] border-slate-500/40 text-slate-600"
-                            >
-                                free
-                            </Badge>
-                        ) : isAuto ? (
-                            <Badge
-                                variant="outline"
-                                className="text-[10px] border-emerald-500/40 text-emerald-600"
-                            >
-                                auto
-                            </Badge>
-                        ) : (
-                            <Badge
-                                variant="outline"
-                                className="text-[10px] border-primary/50 text-primary"
-                            >
-                                ovr
-                            </Badge>
-                        )}
+                        {isSystem && item.systemKey ? (
+                            <span className="text-[10px] text-muted-foreground">
+                                · auto-managed: {item.systemKey.replaceAll("_", " ")}
+                            </span>
+                        ) : null}
+                        {nonBillableToken ? (
+                            <span className="text-[10px] uppercase tracking-wide text-amber-700">
+                                {nonBillableToken}
+                            </span>
+                        ) : null}
                     </div>
-                    {isSystem ? (
-                        <p className="mt-0.5 text-[11px] text-muted-foreground">
-                            {/* Provenance slot — future AUTO_FEE lines (PLAN §11) fill this. */}
-                            Auto-managed
-                            {item.systemKey ? `: ${item.systemKey.replaceAll("_", " ")}` : ""}
-                        </p>
-                    ) : null}
                 </TableCell>
 
-                {/* Buy/u */}
-                <TableCell className="w-28">
+                {/* Buy/u — reveal-on-focus */}
+                <TableCell className="w-28 py-1.5">
                     {rowEditable ? (
                         <Input
                             value={buy}
                             type="number"
                             min={0}
                             step="0.01"
-                            className="h-8 text-right font-mono"
+                            className={REVEAL_INPUT}
                             onChange={(e) => handleBuy(e.target.value)}
                             onBlur={flush}
                         />
                     ) : (
-                        <span className="block text-right font-mono text-xs">
-                            {buyNum.toFixed(2)}
-                        </span>
+                        <span className={IDLE_MONEY}>{buyNum.toFixed(2)}</span>
                     )}
                 </TableCell>
 
-                {/* Sell/u */}
-                <TableCell className="w-28">
+                {/* Sell/u — reveal-on-focus */}
+                <TableCell className="w-28 py-1.5">
                     {rowEditable && isBillable ? (
                         <Input
                             value={sell}
@@ -324,45 +323,38 @@ export function PricingLedgerRow({
                             min={0}
                             step="0.01"
                             placeholder="auto"
-                            className="h-8 text-right font-mono"
+                            className={REVEAL_INPUT}
                             onChange={(e) => handleSell(e.target.value)}
                             onBlur={flush}
                         />
                     ) : (
-                        <span className="block text-right font-mono text-xs">
+                        <span className={IDLE_MONEY}>
                             {isBillable ? effectiveSell.toFixed(2) : "0.00"}
                         </span>
                     )}
                 </TableCell>
 
-                {/* Margin% */}
-                <TableCell className="w-24">
+                {/* Margin% — reveal-on-focus */}
+                <TableCell className="w-24 py-1.5">
                     {rowEditable && isBillable && !margin.isFee ? (
                         <Input
                             value={marginValue}
                             type="number"
                             step="1"
                             placeholder={hasSell ? "—" : "auto"}
-                            className="h-8 text-right font-mono"
+                            className={REVEAL_INPUT}
                             onChange={(e) => handleMargin(e.target.value)}
                             onBlur={flush}
                         />
                     ) : (
-                        <span className="block text-right font-mono text-xs text-muted-foreground">
+                        <span className={cn(IDLE_MONEY, "text-muted-foreground")}>
                             {isBillable ? margin.display : "—"}
                         </span>
                     )}
                 </TableCell>
 
-                {/* Mode chip */}
-                <TableCell className="w-16 text-center">
-                    <Badge variant="outline" className={cn("text-[10px]", modeChip.className)}>
-                        {modeChip.label}
-                    </Badge>
-                </TableCell>
-
                 {/* Client visibility eye */}
-                <TableCell className="w-12 text-center">
+                <TableCell className="w-12 py-1.5 text-center">
                     {allowVisibility && !isSystem ? (
                         <button
                             type="button"
@@ -398,12 +390,12 @@ export function PricingLedgerRow({
                 </TableCell>
 
                 {/* Line total (sell side) */}
-                <TableCell className="w-28 text-right font-mono text-xs font-semibold">
+                <TableCell className="w-28 py-1.5 text-right font-mono text-xs font-semibold tabular-nums">
                     {lineTotal.toFixed(2)} {currency}
                 </TableCell>
 
                 {/* Row actions */}
-                <TableCell className="w-20">
+                <TableCell className="w-20 py-1.5">
                     <div className="flex items-center justify-end gap-0.5">
                         {rowEditable && isBillable && !isAuto ? (
                             <Button
@@ -434,9 +426,32 @@ export function PricingLedgerRow({
             </TableRow>
 
             {expanded ? (
-                <TableRow className="border-border/50 bg-muted/20 hover:bg-muted/20">
+                <TableRow className={cn("border-border/50 bg-muted/20 hover:bg-muted/20", stripe)}>
                     <TableCell />
-                    <TableCell colSpan={8} className="py-3">
+                    <TableCell colSpan={7} className="py-3">
+                        {/* Read tokens (category + mode moved off the row, A2 style) */}
+                        <div className="mb-3 flex flex-wrap gap-x-6 gap-y-1 text-[11px] text-muted-foreground">
+                            <span>
+                                Category{" "}
+                                <span className="font-medium uppercase tracking-wide text-foreground">
+                                    {item.category}
+                                </span>
+                            </span>
+                            <span>
+                                Mode{" "}
+                                <span className="font-medium uppercase tracking-wide text-foreground">
+                                    {billingMode}
+                                </span>
+                            </span>
+                            <span>
+                                Type{" "}
+                                <span className="font-medium uppercase tracking-wide text-foreground">
+                                    {item.lineItemType}
+                                </span>
+                                {item.serviceTypeId ? " · from catalog service" : ""}
+                            </span>
+                        </div>
+
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                             <div className="space-y-3">
                                 <div className="grid grid-cols-2 gap-3">
@@ -503,12 +518,18 @@ export function PricingLedgerRow({
                                 {perLineLocked && item.lockReason ? (
                                     <p className="text-amber-600">{item.lockReason}</p>
                                 ) : null}
-                                {/* Provenance — LIR/catalog/custom origin isn't distinctly
-                                    carried on the row today; surface what's available. */}
-                                <p>
-                                    Type: <span className="font-mono">{item.lineItemType}</span>
-                                    {item.serviceTypeId ? " · from catalog service" : ""}
-                                </p>
+                                {rowEditable && isBillable && !isAuto ? (
+                                    <p>
+                                        Override — sell stamped manually ·{" "}
+                                        <button
+                                            type="button"
+                                            onClick={handleReset}
+                                            className="text-primary hover:underline"
+                                        >
+                                            Reset to auto (seed {seedMarginPercent}%)
+                                        </button>
+                                    </p>
+                                ) : null}
                                 {item.addedBy ? <p>Added by {item.addedBy}</p> : null}
                                 {item.addedAt ? (
                                     <p>Added {new Date(item.addedAt).toLocaleString()}</p>
@@ -516,7 +537,7 @@ export function PricingLedgerRow({
                                 {item.metadata &&
                                 typeof item.metadata === "object" &&
                                 Object.keys(item.metadata).length > 0 ? (
-                                    <pre className="mt-2 rounded border border-border/60 bg-background/70 p-2 text-[11px] whitespace-pre-wrap break-all">
+                                    <pre className="mt-2 rounded-md bg-muted/60 px-2.5 py-2 font-mono text-[10.5px] leading-relaxed whitespace-pre-wrap break-all text-muted-foreground">
                                         {JSON.stringify(item.metadata, null, 2)}
                                     </pre>
                                 ) : null}
