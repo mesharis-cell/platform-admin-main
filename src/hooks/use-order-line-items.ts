@@ -14,37 +14,13 @@ import type {
     VoidLineItemRequest,
 } from "@/types/hybrid-pricing";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { inboundRequestKeys } from "@/hooks/use-inbound-requests";
+import { invalidateLedgerRelatedQueries } from "@/hooks/use-ledger-invalidation";
 
 export const lineItemsKeys = {
     list: (
         targetId: string,
         purposeType: "ORDER" | "INBOUND_REQUEST" | "SERVICE_REQUEST" | "SELF_PICKUP"
     ) => ["line-items", purposeType, targetId] as const,
-};
-
-const invalidateLineItemRelatedQueries = (
-    queryClient: ReturnType<typeof useQueryClient>,
-    targetId: string,
-    purposeType: "ORDER" | "INBOUND_REQUEST" | "SERVICE_REQUEST" | "SELF_PICKUP"
-) => {
-    queryClient.invalidateQueries({ queryKey: lineItemsKeys.list(targetId, purposeType) });
-    // Refresh the PricingLedger's role-preview (footer totals + client/logistics
-    // lenses) live after any line-item mutation. Prefix match covers both roles.
-    queryClient.invalidateQueries({ queryKey: ["pricing-preview", purposeType, targetId] });
-
-    if (purposeType === "ORDER") {
-        queryClient.invalidateQueries({ queryKey: ["orders"] });
-    } else if (purposeType === "INBOUND_REQUEST") {
-        queryClient.invalidateQueries({ queryKey: ["inbound-requests"] });
-        queryClient.invalidateQueries({ queryKey: inboundRequestKeys.detail(targetId) });
-    } else if (purposeType === "SERVICE_REQUEST") {
-        queryClient.invalidateQueries({ queryKey: ["service-requests"] });
-    } else {
-        // SELF_PICKUP
-        queryClient.invalidateQueries({ queryKey: ["self-pickups"] });
-        queryClient.invalidateQueries({ queryKey: ["self-pickup-detail", targetId] });
-    }
 };
 
 // List line items (works for both orders and inbound requests)
@@ -109,7 +85,7 @@ export function useCreateCatalogLineItem(
             }
         },
         onSuccess: () => {
-            invalidateLineItemRelatedQueries(queryClient, targetId, purposeType);
+            invalidateLedgerRelatedQueries(queryClient, purposeType, targetId);
         },
     });
 }
@@ -147,7 +123,7 @@ export function useCreateCustomLineItem(
             }
         },
         onSuccess: () => {
-            invalidateLineItemRelatedQueries(queryClient, targetId, purposeType);
+            invalidateLedgerRelatedQueries(queryClient, purposeType, targetId);
         },
     });
 }
@@ -171,7 +147,7 @@ export function useUpdateLineItem(
             }
         },
         onSuccess: () => {
-            invalidateLineItemRelatedQueries(queryClient, targetId, purposeType);
+            invalidateLedgerRelatedQueries(queryClient, purposeType, targetId);
         },
     });
 }
@@ -203,7 +179,7 @@ export function usePatchLineItemMetadata(
             }
         },
         onSuccess: () => {
-            invalidateLineItemRelatedQueries(queryClient, targetId, purposeType);
+            invalidateLedgerRelatedQueries(queryClient, purposeType, targetId);
         },
     });
 }
@@ -236,7 +212,7 @@ export function usePatchLineItemVisibility(
             }
         },
         onSuccess: () => {
-            invalidateLineItemRelatedQueries(queryClient, targetId, purposeType);
+            invalidateLedgerRelatedQueries(queryClient, purposeType, targetId);
         },
     });
 }
@@ -273,7 +249,7 @@ export function usePatchEntityLineItemsVisibility(
             }
         },
         onSuccess: () => {
-            invalidateLineItemRelatedQueries(queryClient, targetId, purposeType);
+            invalidateLedgerRelatedQueries(queryClient, purposeType, targetId);
         },
     });
 }
@@ -299,7 +275,7 @@ export function useVoidLineItem(
             }
         },
         onSuccess: () => {
-            invalidateLineItemRelatedQueries(queryClient, targetId, purposeType);
+            invalidateLedgerRelatedQueries(queryClient, purposeType, targetId);
         },
     });
 }
