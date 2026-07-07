@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -211,6 +211,15 @@ export function PricingLedgerRow({
         timerRef.current = setTimeout(flush, DEBOUNCE_MS);
     };
 
+    // Enter in any inline cell flushes the pending edit immediately (owner smoke
+    // feedback) — cancels the debounce, blurs, and writes now.
+    const handleEnter = (e: KeyboardEvent<HTMLInputElement>) => {
+        if (e.key !== "Enter") return;
+        e.preventDefault();
+        e.currentTarget.blur();
+        void flush();
+    };
+
     // --- linked Buy/Sell/Margin handlers (lifted) ---
     const handleBuy = (value: string) => {
         setBuy(value);
@@ -367,6 +376,7 @@ export function PricingLedgerRow({
                             className={REVEAL_INPUT}
                             onChange={(e) => handleBuy(e.target.value)}
                             onBlur={flush}
+                            onKeyDown={handleEnter}
                         />
                     ) : (
                         <span className={IDLE_MONEY}>{buyNum.toFixed(2)}</span>
@@ -385,6 +395,7 @@ export function PricingLedgerRow({
                             className={REVEAL_INPUT}
                             onChange={(e) => handleSell(e.target.value)}
                             onBlur={flush}
+                            onKeyDown={handleEnter}
                         />
                     ) : (
                         <span className={IDLE_MONEY}>
@@ -404,6 +415,7 @@ export function PricingLedgerRow({
                             className={REVEAL_INPUT}
                             onChange={(e) => handleMargin(e.target.value)}
                             onBlur={flush}
+                            onKeyDown={handleEnter}
                         />
                     ) : (
                         <span className={cn(IDLE_MONEY, "text-muted-foreground")}>
@@ -557,6 +569,7 @@ export function PricingLedgerRow({
                                             className="h-8"
                                             onChange={(e) => handleQty(e.target.value)}
                                             onBlur={flush}
+                                            onKeyDown={handleEnter}
                                         />
                                     </div>
                                     <div className="space-y-1">

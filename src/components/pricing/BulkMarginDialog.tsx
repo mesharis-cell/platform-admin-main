@@ -80,6 +80,12 @@ export function BulkMarginDialog({ open, onOpenChange, purposeType, entityId, on
                             value={percent}
                             placeholder="e.g. 25"
                             onChange={(e) => setPercent(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter" && !bulkMargin.isPending) {
+                                    e.preventDefault();
+                                    void submit();
+                                }
+                            }}
                         />
                     </div>
                     <div className="space-y-1">

@@ -192,7 +192,22 @@ export function AddCustomLineItemModal({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-lg">
+            <DialogContent
+                className="max-w-lg"
+                onKeyDown={(e) => {
+                    // Enter in any text input submits the form (owner smoke feedback).
+                    // Textareas keep their newline behaviour; Select triggers (buttons)
+                    // are unaffected.
+                    if (
+                        e.key === "Enter" &&
+                        (e.target as HTMLElement).tagName === "INPUT" &&
+                        !createLineItem.isPending
+                    ) {
+                        e.preventDefault();
+                        void handleAdd();
+                    }
+                }}
+            >
                 <DialogHeader>
                     <DialogTitle>Add Custom Line Item</DialogTitle>
                 </DialogHeader>
