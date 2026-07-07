@@ -12,6 +12,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { ChevronDown, ChevronRight, Eye, EyeOff, Lock, RotateCcw, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -54,18 +55,14 @@ const NON_BILLABLE_TOKEN: Partial<Record<LineItemBillingMode, string>> = {
     COMPLIMENTARY: "comp",
 };
 
-// D1 left-edge stripe classes (globals.css) — one calm signal per row, replacing
-// the old per-row status/mode/category badges. Precedence: system > free/comp >
-// client-hidden > override. Returns "" for a plain billable auto line.
-const stripeClassFor = (o: {
-    isSystem: boolean;
-    isBillable: boolean;
-    clientHidden: boolean;
-    isOverride: boolean;
-}): string => {
+// D1 left-edge stripe classes (globals.css) — one calm signal per row. The
+// billing-mode signal moved off the stripe onto the dedicated Mode column (owner
+// smoke feedback: kill the amber-on-amber fight); the client-hidden stripe was
+// removed (the Client eye column now carries whole-line visibility). Only two
+// stripes remain: SYSTEM (locked auto-managed) and override (manual sell).
+// Returns "" for a plain billable auto line.
+const stripeClassFor = (o: { isSystem: boolean; isOverride: boolean }): string => {
     if (o.isSystem) return "line-row-system";
-    if (!o.isBillable) return "line-row-free";
-    if (o.clientHidden) return "line-row-client-hidden";
     if (o.isOverride) return "line-row-override";
     return "";
 };
@@ -96,6 +93,7 @@ interface Props {
     onVoid: () => void;
     onToggleVisibility: (next: {
         clientPriceVisible?: boolean;
+        clientVisible?: boolean;
         logisticsVisible?: boolean;
     }) => void;
 }
@@ -255,9 +253,13 @@ export function PricingLedgerRow({
     const lineTotal = Number(item.total ?? 0);
 
     // --- left-edge policy stripe (replaces the old badges) ---
-    const clientHidden = !isSystem && item.clientPriceVisible === false;
     const isOverride = isBillable && hasSell && !isAuto;
-    const stripe = stripeClassFor({ isSystem, isBillable, clientHidden, isOverride });
+    const stripe = stripeClassFor({ isSystem, isOverride });
+    // NON_BILLABLE lines are internal cost — the projection never shows them to
+    // the client, so the Client eye is forced-off + disabled (no toggle).
+    const clientForcedOff = billingMode === "NON_BILLABLE";
+    const clientVisible = clientForcedOff ? false : item.clientVisible !== false;
+    const logisticsVisible = item.logisticsVisible !== false;
     // Amber wash for CUSTOM lines, but only when no stronger stripe is present.
     const wash = customWash && !stripe ? "bg-amber-50/30 dark:bg-amber-500/5" : "";
     const nonBillableToken = NON_BILLABLE_TOKEN[billingMode];
@@ -353,39 +355,77 @@ export function PricingLedgerRow({
                     )}
                 </TableCell>
 
-                {/* Client visibility eye */}
+                {/* Logistics visibility eye */}
                 <TableCell className="w-12 py-1.5 text-center">
                     {allowVisibility && !isSystem ? (
                         <button
                             type="button"
                             onClick={() =>
-                                onToggleVisibility({
-                                    clientPriceVisible: !item.clientPriceVisible,
-                                })
+                                onToggleVisibility({ logisticsVisible: !logisticsVisible })
                             }
                             className={cn(
                                 "inline-flex",
-                                item.clientPriceVisible
-                                    ? "text-primary"
-                                    : "text-muted-foreground/50"
+                                logisticsVisible ? "text-primary" : "text-muted-foreground/50"
                             )}
                             aria-label={
-                                item.clientPriceVisible
-                                    ? "Hide price from client"
-                                    : "Show price to client"
+                                logisticsVisible
+                                    ? "Hide line from logistics"
+                                    : "Show line to logistics"
                             }
                             title={
-                                item.clientPriceVisible
-                                    ? "Price visible to client"
-                                    : "Price hidden from client"
+                                logisticsVisible
+                                    ? "Visible to logistics — click to hide"
+                                    : "Hidden from logistics — click to show"
                             }
                         >
-                            {item.clientPriceVisible ? (
+                            {logisticsVisible ? (
                                 <Eye className="h-4 w-4" />
                             ) : (
                                 <EyeOff className="h-4 w-4" />
                             )}
                         </button>
+                    ) : null}
+                </TableCell>
+
+                {/* Client visibility eye (whole-line). NON_BILLABLE = forced off. */}
+                <TableCell className="w-12 py-1.5 text-center">
+                    {!isSystem ? (
+                        clientForcedOff ? (
+                            <span
+                                className="inline-flex cursor-not-allowed text-muted-foreground/30"
+                                title="Internal cost — never shown to client"
+                                aria-label="Internal cost — never shown to client"
+                            >
+                                <EyeOff className="h-4 w-4" />
+                            </span>
+                        ) : allowVisibility ? (
+                            <button
+                                type="button"
+                                onClick={() =>
+                                    onToggleVisibility({ clientVisible: !clientVisible })
+                                }
+                                className={cn(
+                                    "inline-flex",
+                                    clientVisible ? "text-primary" : "text-muted-foreground/50"
+                                )}
+                                aria-label={
+                                    clientVisible
+                                        ? "Hide line from client"
+                                        : "Show line to client"
+                                }
+                                title={
+                                    clientVisible
+                                        ? "Visible to client — click to hide"
+                                        : "Hidden from client — click to show"
+                                }
+                            >
+                                {clientVisible ? (
+                                    <Eye className="h-4 w-4" />
+                                ) : (
+                                    <EyeOff className="h-4 w-4" />
+                                )}
+                            </button>
+                        ) : null
                     ) : null}
                 </TableCell>
 
@@ -428,7 +468,7 @@ export function PricingLedgerRow({
             {expanded ? (
                 <TableRow className={cn("border-border/50 bg-muted/20 hover:bg-muted/20", stripe)}>
                     <TableCell />
-                    <TableCell colSpan={7} className="py-3">
+                    <TableCell colSpan={8} className="py-3">
                         {/* Read tokens (category + mode moved off the row, A2 style) */}
                         <div className="mb-3 flex flex-wrap gap-x-6 gap-y-1 text-[11px] text-muted-foreground">
                             <span>
@@ -512,6 +552,31 @@ export function PricingLedgerRow({
                                         onBlur={flush}
                                     />
                                 </div>
+                                {/* Per-line PRICE visibility to the client — the third
+                                    visibility control (separate from the whole-line Client
+                                    eye). Default off: the client sees the line but not its
+                                    individual sell figure unless this is on. Only meaningful
+                                    on a billable, client-visible line. */}
+                                {!isSystem && isBillable && !clientForcedOff ? (
+                                    <div className="flex items-start justify-between gap-3 rounded-md border border-border/60 px-3 py-2">
+                                        <div className="space-y-0.5">
+                                            <Label className="text-[11px]">
+                                                Show price to client
+                                            </Label>
+                                            <p className="text-[10.5px] leading-snug text-muted-foreground">
+                                                When on, this line&apos;s individual sell price
+                                                appears on the client&apos;s estimate.
+                                            </p>
+                                        </div>
+                                        <Switch
+                                            checked={item.clientPriceVisible === true}
+                                            disabled={!rowEditable}
+                                            onCheckedChange={(next) =>
+                                                onToggleVisibility({ clientPriceVisible: next })
+                                            }
+                                        />
+                                    </div>
+                                ) : null}
                             </div>
 
                             <div className="space-y-2 text-[11px] text-muted-foreground">

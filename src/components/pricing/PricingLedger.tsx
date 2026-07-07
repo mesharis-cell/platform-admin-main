@@ -249,7 +249,7 @@ export function PricingLedger({
     };
     const handleToggleVisibility = async (
         itemId: string,
-        next: { clientPriceVisible?: boolean; logisticsVisible?: boolean }
+        next: { clientPriceVisible?: boolean; clientVisible?: boolean; logisticsVisible?: boolean }
     ) => {
         try {
             await patchVisibility.mutateAsync({ itemId, data: next });
@@ -336,20 +336,6 @@ export function PricingLedger({
                                         override
                                     </span>
                                     <span className="inline-flex items-center gap-1.5">
-                                        <span className="h-3 w-1 rounded-sm bg-[#d97706]" />
-                                        free / comp
-                                    </span>
-                                    <span className="inline-flex items-center gap-1.5">
-                                        <span
-                                            className="h-3 w-1.5 rounded-sm"
-                                            style={{
-                                                background:
-                                                    "linear-gradient(to right,#d97706 0 50%,#6366f1 50%)",
-                                            }}
-                                        />
-                                        client-hidden
-                                    </span>
-                                    <span className="inline-flex items-center gap-1.5">
                                         <span className="h-3 w-1 rounded-sm bg-[#9333ea]" />
                                         system
                                     </span>
@@ -371,6 +357,9 @@ export function PricingLedger({
                                                 Margin
                                             </TableHead>
                                             <TableHead className="text-center font-mono text-[10px] font-bold uppercase">
+                                                Log
+                                            </TableHead>
+                                            <TableHead className="text-center font-mono text-[10px] font-bold uppercase">
                                                 Client
                                             </TableHead>
                                             <TableHead className="text-right font-mono text-[10px] font-bold uppercase">
@@ -384,7 +373,7 @@ export function PricingLedger({
                                             <Fragment key={group.key}>
                                                 <TableRow className="bg-muted/30 hover:bg-muted/30">
                                                     <TableCell
-                                                        colSpan={8}
+                                                        colSpan={9}
                                                         className="py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
                                                     >
                                                         {group.label}
@@ -416,7 +405,7 @@ export function PricingLedger({
                                                 <TableCell colSpan={4} className="py-2">
                                                     Subtotal — line sell
                                                 </TableCell>
-                                                <TableCell />
+                                                <TableCell colSpan={2} />
                                                 <TableCell className="py-2 text-right font-mono text-xs tabular-nums">
                                                     {money(sellTotal, resolvedCurrency)}
                                                 </TableCell>
