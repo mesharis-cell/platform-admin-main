@@ -50,10 +50,10 @@ export function ClientBreakdownView({ projection }: Props) {
                 <Table>
                     <TableHeader>
                         <TableRow className="border-border/50 bg-muted/50">
-                            <TableHead className="font-mono text-[10px] font-bold uppercase">
+                            <TableHead className="text-center font-mono text-[10px] font-bold uppercase">
                                 Line
                             </TableHead>
-                            <TableHead className="text-right font-mono text-[10px] font-bold uppercase">
+                            <TableHead className="text-center font-mono text-[10px] font-bold uppercase">
                                 Sell
                             </TableHead>
                         </TableRow>

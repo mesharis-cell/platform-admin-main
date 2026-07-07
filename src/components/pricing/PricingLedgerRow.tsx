@@ -32,8 +32,12 @@ const readSellOverride = (item: OrderLineItem): number | null => {
     return Number.isFinite(num) ? num : null;
 };
 
+// Percentage formatter — up to 2 decimals, trailing zeros trimmed (30% / 66.67%).
+const fmtPct = (pct: number): string => `${Number(pct.toFixed(2))}`;
+
 // margin% derived from buy + sell — returns a display token because buy=0 is a
-// legitimate "fee" line where margin% is undefined.
+// legitimate "fee" line where margin% is undefined. Percent carries 2-decimal
+// precision (trailing zeros trimmed on display).
 const deriveMargin = (
     buy: number,
     sell: number
@@ -42,8 +46,8 @@ const deriveMargin = (
         return { display: "—", isFee: false, percent: null };
     }
     if (buy > 0) {
-        const pct = Math.round(((sell - buy) / buy) * 100);
-        return { display: `${pct}%`, isFee: false, percent: pct };
+        const pct = Math.round(((sell - buy) / buy) * 10000) / 100;
+        return { display: `${fmtPct(pct)}%`, isFee: false, percent: pct };
     }
     if (sell > 0) return { display: "Fee", isFee: true, percent: null };
     return { display: "—", isFee: false, percent: null };

@@ -98,6 +98,8 @@ const PRICING_EDITABLE_STATUSES = new Set([
 const POST_QUOTE_STATUSES = new Set(["QUOTED"]);
 
 const money = (n: number, currency: string) => `${Number(n || 0).toFixed(2)} ${currency}`;
+// Up to 2 decimals, trailing zeros trimmed (30% / 66.67%).
+const fmtPct = (pct: number) => `${Number((pct || 0).toFixed(2))}`;
 
 /**
  * PricingLedger — the single editable money table for all four billable entities
@@ -344,19 +346,19 @@ export function PricingLedger({
                                     <TableHeader>
                                         <TableRow className="border-border/50 bg-muted/50">
                                             <TableHead className="w-8" />
-                                            <TableHead className="font-mono text-[10px] font-bold uppercase">
+                                            <TableHead className="text-center font-mono text-[10px] font-bold uppercase">
                                                 Line
                                             </TableHead>
                                             <TableHead className="text-center font-mono text-[10px] font-bold uppercase">
                                                 Mode
                                             </TableHead>
-                                            <TableHead className="text-right font-mono text-[10px] font-bold uppercase">
+                                            <TableHead className="text-center font-mono text-[10px] font-bold uppercase">
                                                 Buy/u
                                             </TableHead>
-                                            <TableHead className="text-right font-mono text-[10px] font-bold uppercase">
+                                            <TableHead className="text-center font-mono text-[10px] font-bold uppercase">
                                                 Sell/u
                                             </TableHead>
-                                            <TableHead className="text-right font-mono text-[10px] font-bold uppercase">
+                                            <TableHead className="text-center font-mono text-[10px] font-bold uppercase">
                                                 Margin
                                             </TableHead>
                                             <TableHead className="text-center font-mono text-[10px] font-bold uppercase">
@@ -365,7 +367,7 @@ export function PricingLedger({
                                             <TableHead className="text-center font-mono text-[10px] font-bold uppercase">
                                                 Client
                                             </TableHead>
-                                            <TableHead className="text-right font-mono text-[10px] font-bold uppercase">
+                                            <TableHead className="text-center font-mono text-[10px] font-bold uppercase">
                                                 Total
                                             </TableHead>
                                             <TableHead className="w-20" />
@@ -490,14 +492,14 @@ export function PricingLedger({
                             </span>
                         </div>
                         <div className="flex justify-between text-muted-foreground">
-                            <span>Effective margin ({blendedPercent.toFixed(1)}%)</span>
+                            <span>Effective margin ({fmtPct(blendedPercent)}%)</span>
                             <span className="font-mono tabular-nums">
                                 +{money(marginAmount, resolvedCurrency)}
                             </span>
                         </div>
                         {vatPercent > 0 ? (
                             <div className="flex justify-between text-muted-foreground">
-                                <span>VAT ({vatPercent}%)</span>
+                                <span>VAT ({fmtPct(vatPercent)}%)</span>
                                 <span className="font-mono tabular-nums">
                                     {money(vatAmount, resolvedCurrency)}
                                 </span>

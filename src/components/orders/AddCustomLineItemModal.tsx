@@ -47,8 +47,8 @@ const deriveMargin = (
         return { display: "—", isFee: false, percent: null };
     }
     if (buy > 0) {
-        const pct = Math.round(((sell - buy) / buy) * 100);
-        return { display: `${pct}%`, isFee: false, percent: pct };
+        const pct = Math.round(((sell - buy) / buy) * 10000) / 100;
+        return { display: `${Number(pct.toFixed(2))}%`, isFee: false, percent: pct };
     }
     if (sell > 0) return { display: "Fee", isFee: true, percent: null };
     return { display: "—", isFee: false, percent: null };
