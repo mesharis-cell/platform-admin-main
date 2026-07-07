@@ -544,21 +544,21 @@ export function PricingLedger({
                                 <>
                                     <Button
                                         size="sm"
-                                        variant="outline"
+                                        variant="softPrimary"
                                         onClick={() => openAdd("catalog")}
                                     >
                                         <Plus className="mr-1 h-4 w-4" /> Catalog
                                     </Button>
                                     <Button
                                         size="sm"
-                                        variant="outline"
+                                        variant="softPrimary"
                                         onClick={() => openAdd("custom")}
                                     >
                                         <Plus className="mr-1 h-4 w-4" /> Custom
                                     </Button>
                                     <Button
                                         size="sm"
-                                        variant="outline"
+                                        variant="softPrimary"
                                         onClick={() => setBulkOpen(true)}
                                     >
                                         <Percent className="mr-1 h-4 w-4" /> Bulk margin…
@@ -566,8 +566,7 @@ export function PricingLedger({
                                     {canAdjust && noCostApplicable ? (
                                         <Button
                                             size="sm"
-                                            variant="outline"
-                                            className="text-slate-600"
+                                            variant="softPrimary"
                                             onClick={() => setNoCostOpen(true)}
                                         >
                                             <Ban className="mr-1 h-4 w-4" /> No cost
