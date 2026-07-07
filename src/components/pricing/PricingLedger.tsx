@@ -1,10 +1,17 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
     AlertDialog,
@@ -158,6 +165,25 @@ export function PricingLedger({
         [rawItems]
     );
 
+    // Section grouping (A5) — pure render-time partition of the already-fetched
+    // lines, preserving each line's original order within its bucket. Catalog →
+    // Custom → Auto-calculated (SYSTEM). Empty buckets are dropped.
+    const groups = useMemo(() => {
+        const catalog: OrderLineItem[] = [];
+        const custom: OrderLineItem[] = [];
+        const system: OrderLineItem[] = [];
+        for (const it of activeItems) {
+            if (it.lineItemType === "SYSTEM") system.push(it);
+            else if (it.lineItemType === "CUSTOM") custom.push(it);
+            else catalog.push(it);
+        }
+        return [
+            { key: "CATALOG", label: "Catalog services", items: catalog, wash: false },
+            { key: "CUSTOM", label: "Custom charges", items: custom, wash: true },
+            { key: "SYSTEM", label: "Auto-calculated", items: system, wash: false },
+        ].filter((g) => g.items.length > 0);
+    }, [activeItems]);
+
     // Footer totals + seed margin come from the ADMIN projection (always fetched
     // alongside the CLIENT preview). null = entity not priced yet (degraded).
     const adminPricing: OrderPricing | null = clientPreview.data?.admin.pricing ?? null;
@@ -300,6 +326,34 @@ export function PricingLedger({
                             </p>
                         ) : (
                             <div className="overflow-x-auto rounded-md border border-border">
+                                {/* Stripe legend — teaches the left-edge colours */}
+                                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-border/50 bg-muted/20 px-3 py-1.5 text-[10px] text-muted-foreground">
+                                    <span className="inline-flex items-center gap-1.5">
+                                        <span
+                                            className="h-3 w-1 rounded-sm"
+                                            style={{ background: "var(--primary)" }}
+                                        />
+                                        override
+                                    </span>
+                                    <span className="inline-flex items-center gap-1.5">
+                                        <span className="h-3 w-1 rounded-sm bg-[#d97706]" />
+                                        free / comp
+                                    </span>
+                                    <span className="inline-flex items-center gap-1.5">
+                                        <span
+                                            className="h-3 w-1.5 rounded-sm"
+                                            style={{
+                                                background:
+                                                    "linear-gradient(to right,#d97706 0 50%,#6366f1 50%)",
+                                            }}
+                                        />
+                                        client-hidden
+                                    </span>
+                                    <span className="inline-flex items-center gap-1.5">
+                                        <span className="h-3 w-1 rounded-sm bg-[#9333ea]" />
+                                        system
+                                    </span>
+                                </div>
                                 <Table>
                                     <TableHeader>
                                         <TableRow className="border-border/50 bg-muted/50">
@@ -317,9 +371,6 @@ export function PricingLedger({
                                                 Margin
                                             </TableHead>
                                             <TableHead className="text-center font-mono text-[10px] font-bold uppercase">
-                                                Mode
-                                            </TableHead>
-                                            <TableHead className="text-center font-mono text-[10px] font-bold uppercase">
                                                 Client
                                             </TableHead>
                                             <TableHead className="text-right font-mono text-[10px] font-bold uppercase">
@@ -329,21 +380,49 @@ export function PricingLedger({
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {activeItems.map((item) => (
-                                            <PricingLedgerRow
-                                                key={item.id}
-                                                item={item}
-                                                seedMarginPercent={seedMarginPercent}
-                                                editable={ledgerEditable}
-                                                allowVisibility={ledgerEditable}
-                                                currency={resolvedCurrency}
-                                                onUpdate={handleUpdate(item.id)}
-                                                onVoid={() => handleVoid(item.id)}
-                                                onToggleVisibility={(next) =>
-                                                    handleToggleVisibility(item.id, next)
-                                                }
-                                            />
+                                        {groups.map((group) => (
+                                            <Fragment key={group.key}>
+                                                <TableRow className="bg-muted/30 hover:bg-muted/30">
+                                                    <TableCell
+                                                        colSpan={8}
+                                                        className="py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
+                                                    >
+                                                        {group.label}
+                                                    </TableCell>
+                                                </TableRow>
+                                                {group.items.map((item) => (
+                                                    <PricingLedgerRow
+                                                        key={item.id}
+                                                        item={item}
+                                                        seedMarginPercent={seedMarginPercent}
+                                                        editable={ledgerEditable}
+                                                        allowVisibility={ledgerEditable}
+                                                        currency={resolvedCurrency}
+                                                        customWash={group.wash}
+                                                        onUpdate={handleUpdate(item.id)}
+                                                        onVoid={() => handleVoid(item.id)}
+                                                        onToggleVisibility={(next) =>
+                                                            handleToggleVisibility(item.id, next)
+                                                        }
+                                                    />
+                                                ))}
+                                            </Fragment>
                                         ))}
+
+                                        {/* In-table subtotal — money stays in the Total column (A3) */}
+                                        {adminPricing ? (
+                                            <TableRow className="border-t border-border bg-muted/20 font-semibold hover:bg-muted/20">
+                                                <TableCell />
+                                                <TableCell colSpan={4} className="py-2">
+                                                    Subtotal — line sell
+                                                </TableCell>
+                                                <TableCell />
+                                                <TableCell className="py-2 text-right font-mono text-xs tabular-nums">
+                                                    {money(sellTotal, resolvedCurrency)}
+                                                </TableCell>
+                                                <TableCell />
+                                            </TableRow>
+                                        ) : null}
                                     </TableBody>
                                 </Table>
                             </div>
@@ -406,63 +485,36 @@ export function PricingLedger({
                 </Tabs>
             </div>
 
-            {/* Footer — actions + totals */}
-            <div className="space-y-3 border-t border-border px-5 py-4">
-                {/* Actions */}
-                {lens === "edit" && ledgerEditable ? (
-                    <div className="flex flex-wrap items-center gap-2">
-                        <Button size="sm" variant="outline" onClick={() => openAdd("catalog")}>
-                            <Plus className="mr-1 h-4 w-4" /> Catalog
-                        </Button>
-                        <Button size="sm" variant="outline" onClick={() => openAdd("custom")}>
-                            <Plus className="mr-1 h-4 w-4" /> Custom
-                        </Button>
-                        <Button size="sm" variant="outline" onClick={() => setBulkOpen(true)}>
-                            <Percent className="mr-1 h-4 w-4" /> Bulk margin…
-                        </Button>
-                        {canAdjust && noCostApplicable ? (
-                            <Button
-                                size="sm"
-                                variant="outline"
-                                className="text-slate-600"
-                                onClick={() => setNoCostOpen(true)}
-                            >
-                                <Ban className="mr-1 h-4 w-4" /> No cost
-                            </Button>
-                        ) : null}
-                    </div>
-                ) : null}
-
-                {/* Totals grid */}
+            {/* Footer — totals staircase (A4) + actions */}
+            <div className="space-y-4 border-t border-border px-5 py-4">
                 {adminPricing ? (
-                    <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm md:grid-cols-3">
-                        <div className="flex justify-between">
-                            <span className="text-muted-foreground">Buy Σ</span>
-                            <span className="font-mono">{money(buyTotal, resolvedCurrency)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                            <span className="text-muted-foreground">Sell Σ</span>
-                            <span className="font-mono">{money(sellTotal, resolvedCurrency)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                            <span className="text-muted-foreground">
-                                Margin ({blendedPercent.toFixed(1)}%)
+                    // Below-table staircase: muted derived rows → hairline → grand
+                    // total, all right-aligned under the money column.
+                    <div className="ml-auto max-w-xs space-y-1 text-sm">
+                        <div className="flex justify-between text-muted-foreground">
+                            <span>Buy Σ</span>
+                            <span className="font-mono tabular-nums">
+                                {money(buyTotal, resolvedCurrency)}
                             </span>
-                            <span className="font-mono">
-                                {money(marginAmount, resolvedCurrency)}
+                        </div>
+                        <div className="flex justify-between text-muted-foreground">
+                            <span>Effective margin ({blendedPercent.toFixed(1)}%)</span>
+                            <span className="font-mono tabular-nums">
+                                +{money(marginAmount, resolvedCurrency)}
                             </span>
                         </div>
                         {vatPercent > 0 ? (
-                            <div className="flex justify-between">
-                                <span className="text-muted-foreground">VAT ({vatPercent}%)</span>
-                                <span className="font-mono">
+                            <div className="flex justify-between text-muted-foreground">
+                                <span>VAT ({vatPercent}%)</span>
+                                <span className="font-mono tabular-nums">
                                     {money(vatAmount, resolvedCurrency)}
                                 </span>
                             </div>
                         ) : null}
-                        <div className="col-span-2 flex justify-between border-t border-border pt-1 md:col-span-3">
-                            <span className="font-semibold">Client total</span>
-                            <span className="font-mono font-semibold">
+                        <div className="my-1.5 border-t border-border" />
+                        <div className="flex items-baseline justify-between">
+                            <span className="font-semibold">Client total · incl VAT</span>
+                            <span className="font-mono text-base font-bold tabular-nums">
                                 {money(clientTotal, resolvedCurrency)}
                             </span>
                         </div>
@@ -490,12 +542,51 @@ export function PricingLedger({
                     </div>
                 )}
 
-                {/* Approve slot */}
-                {onApprove ? (
-                    <div className="flex justify-end pt-1">
-                        <Button onClick={onApprove} disabled={approveDisabled || approveBusy}>
-                            {approveBusy ? "Working…" : approveLabel}
-                        </Button>
+                {/* Actions + approve — handlers unchanged, only repositioned */}
+                {(lens === "edit" && ledgerEditable) || onApprove ? (
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                            {lens === "edit" && ledgerEditable ? (
+                                <>
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => openAdd("catalog")}
+                                    >
+                                        <Plus className="mr-1 h-4 w-4" /> Catalog
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => openAdd("custom")}
+                                    >
+                                        <Plus className="mr-1 h-4 w-4" /> Custom
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => setBulkOpen(true)}
+                                    >
+                                        <Percent className="mr-1 h-4 w-4" /> Bulk margin…
+                                    </Button>
+                                    {canAdjust && noCostApplicable ? (
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            className="text-slate-600"
+                                            onClick={() => setNoCostOpen(true)}
+                                        >
+                                            <Ban className="mr-1 h-4 w-4" /> No cost
+                                        </Button>
+                                    ) : null}
+                                </>
+                            ) : null}
+                        </div>
+                        {onApprove ? (
+                            <Button onClick={onApprove} disabled={approveDisabled || approveBusy}>
+                                {approveBusy ? "Working…" : approveLabel}
+                            </Button>
+                        ) : null}
                     </div>
                 ) : null}
             </div>
