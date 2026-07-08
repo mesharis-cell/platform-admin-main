@@ -21,6 +21,8 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
+import { Eye } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useCreateCustomLineItem } from "@/hooks/use-order-line-items";
 import type {
@@ -34,9 +36,16 @@ interface AddCustomLineItemModalProps {
     onOpenChange: (open: boolean) => void;
     targetId: string;
     purposeType?: "ORDER" | "INBOUND_REQUEST" | "SERVICE_REQUEST" | "SELF_PICKUP";
+    // Entity margin seed (prices.margin_percent → company default) — used to
+    // DISPLAY the derived sell/margin as real numbers (owner: never "auto").
+    seedMarginPercent?: number;
+    currency?: string;
 }
 
 const roundMoney = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
+
+// Trimmed percent for display: 12.5 → "12.5", 30 → "30".
+const fmtPct = (value: number) => String(Number(value.toFixed(2)));
 
 // margin% display token from buy + sell. buy=0 with sell>0 = "Fee".
 const deriveMargin = (
@@ -54,11 +63,31 @@ const deriveMargin = (
     return { display: "—", isFee: false, percent: null };
 };
 
+/**
+ * Add Custom Line Item — Layout A ("single pricing strip", owner pick) with the
+ * owner's row organization:
+ *   Row 1  Qty | Unit
+ *   Row 2  Buy / Unit | Buy Total
+ *   Row 3  Sell / Unit | Sell Total
+ *   Row 4  Margin % | Margin Amount | Line Total
+ *
+ * ALL inputs are linked bidirectionally: units are the canonical state and
+ * every other figure back-derives them — Buy Total ⇒ Buy/Unit (÷ qty), Sell
+ * Total / Line Total ⇒ Sell/Unit (÷ qty), Margin Amount ⇒ sell total = buy
+ * total + amount, Margin % ⇔ Sell/Unit. Editing any field recomputes the rest.
+ * Sell-side figures always SHOW their computed values (seeded from the entity
+ * margin) — never an "auto" placeholder. Until edited they are derived (muted,
+ * live-recomputing as Buy/Qty change); editing any sell-side figure stamps an
+ * override (amber marker + reset). Payload contract unchanged: derived mode
+ * omits sell_unit_rate; override sends it (BILLABLE only).
+ */
 export function AddCustomLineItemModal({
     open,
     onOpenChange,
     targetId,
     purposeType = "ORDER",
+    seedMarginPercent = 0,
+    currency = "AED",
 }: AddCustomLineItemModalProps) {
     const createLineItem = useCreateCustomLineItem(targetId, purposeType);
 
@@ -68,9 +97,10 @@ export function AddCustomLineItemModal({
     const [quantity, setQuantity] = useState("1");
     const [unit, setUnit] = useState("service");
     const [unitRate, setUnitRate] = useState("");
-    // Optional per-unit sell override. Blank = no override (blanket-margin
-    // math). A value is sent as sell_unit_rate on create.
-    const [sellUnitRate, setSellUnitRate] = useState("");
+    // Per-unit sell. null = DERIVED (seeded from the entity margin, recomputes
+    // live as Buy changes and is OMITTED from the payload — the server stamps
+    // the same seed-derived value). A string = OVERRIDDEN (sent on create).
+    const [sellOverride, setSellOverride] = useState<string | null>(null);
     const [notes, setNotes] = useState("");
     const [tripDirection, setTripDirection] = useState<
         "DELIVERY" | "PICKUP" | "ACCESS" | "TRANSFER"
@@ -83,20 +113,85 @@ export function AddCustomLineItemModal({
     const [manpower, setManpower] = useState("");
     const [transportNotes, setTransportNotes] = useState("");
     // Per-line logistics visibility. Off strips the line from the warehouse view.
-    // (apply_margin retired — a pass-through line is now just Sell = Buy via the
-    // sell override, and the engine is seed-only.)
     const [logisticsVisible, setLogisticsVisible] = useState(true);
+
     const quantityNum = Number(quantity || 0);
     const unitRateNum = Number(unitRate || 0);
     // Sell overrides only apply to BILLABLE lines (server rejects a sell rate on
-    // NON_BILLABLE/COMPLIMENTARY with a 400). Gate the field + the payload so a
+    // NON_BILLABLE/COMPLIMENTARY with a 400). Gate the fields + the payload so a
     // non-billable line can never send one. Mirrors AddCatalogLineItemModal.
     const isBillable = billingMode === "BILLABLE";
     const isTransportCategory = category === "TRANSPORT";
-    const derivedTotal =
+
+    // --- linked live computation (all rows recompute across inputs) ---
+    const isOverridden = sellOverride !== null;
+    const derivedSellUnit = roundMoney(unitRateNum * (1 + seedMarginPercent / 100));
+    const overrideNum = isOverridden ? Number(sellOverride) : NaN;
+    const effectiveSellUnit =
+        isOverridden && Number.isFinite(overrideNum) ? overrideNum : derivedSellUnit;
+    const margin = deriveMargin(unitRateNum, effectiveSellUnit);
+    const buyTotal =
         Number.isFinite(quantityNum) && Number.isFinite(unitRateNum)
-            ? quantityNum * unitRateNum
+            ? roundMoney(quantityNum * unitRateNum)
             : 0;
+    const sellTotal =
+        isBillable && Number.isFinite(quantityNum) && Number.isFinite(effectiveSellUnit)
+            ? roundMoney(quantityNum * effectiveSellUnit)
+            : 0;
+    const marginAmount = isBillable ? roundMoney(sellTotal - buyTotal) : 0;
+    // The line's total — what it adds to the client side. Non-billable and
+    // complimentary lines are never charged, so their line total is 0.
+    const lineTotal = isBillable ? sellTotal : 0;
+
+    // ── bidirectional linking (owner spec): editing ANY field recomputes the
+    // rest. Units are canonical state; totals/margin back-derive the units.
+    // While a derived field is being typed in, its raw text is kept as a draft
+    // so the live recompute doesn't clobber the cursor; blur drops the draft
+    // and the display snaps to the recomputed value.
+    const [drafts, setDrafts] = useState<Record<string, string>>({});
+    const setDraft = (key: string, value: string) => setDrafts((d) => ({ ...d, [key]: value }));
+    const clearDraft = (key: string) =>
+        setDrafts((d) => {
+            if (!(key in d)) return d;
+            const next = { ...d };
+            delete next[key];
+            return next;
+        });
+
+    // Editing Margin % is just another way to set the sell: sell = buy × (1+pct).
+    const handleMarginEdit = (value: string) => {
+        const t = value.trim();
+        if (t === "") {
+            setSellOverride(null);
+            return;
+        }
+        const pct = Number(t);
+        if (!Number.isFinite(pct) || !(unitRateNum > 0)) return;
+        setSellOverride(String(roundMoney(unitRateNum * (1 + pct / 100))));
+    };
+    const handleSellEdit = (value: string) => {
+        setSellOverride(value.trim() === "" ? null : value);
+    };
+    // Totals back-derive their per-unit rate (÷ qty). Buy Total drives Buy/Unit;
+    // Sell Total + Line Total drive the sell override; Margin Amount targets
+    // sell total = buy total + amount.
+    const handleBuyTotalEdit = (value: string) => {
+        const n = Number(value);
+        if (!Number.isFinite(n) || n < 0 || !(quantityNum > 0)) return;
+        setUnitRate(String(roundMoney(n / quantityNum)));
+    };
+    const handleSellTotalEdit = (value: string) => {
+        const n = Number(value);
+        if (!Number.isFinite(n) || n < 0 || !(quantityNum > 0)) return;
+        setSellOverride(String(roundMoney(n / quantityNum)));
+    };
+    const handleMarginAmountEdit = (value: string) => {
+        const n = Number(value);
+        if (!Number.isFinite(n) || !(quantityNum > 0)) return;
+        const targetSellTotal = buyTotal + n;
+        if (targetSellTotal < 0) return;
+        setSellOverride(String(roundMoney(targetSellTotal / quantityNum)));
+    };
 
     const handleAdd = async () => {
         if (!description.trim()) {
@@ -112,7 +207,7 @@ export function AddCustomLineItemModal({
             return;
         }
         if (!Number.isFinite(unitRateNum) || unitRateNum < 0) {
-            toast.error("Please enter a valid unit rate");
+            toast.error("Please enter a valid buy rate");
             return;
         }
 
@@ -138,16 +233,15 @@ export function AddCustomLineItemModal({
             };
         }
 
-        // Optional per-unit sell override. Blank = omit (blanket-margin math).
-        const sellTrimmed = sellUnitRate.trim();
-        let sellOverride: number | undefined;
-        if (sellTrimmed !== "") {
-            const sellNum = Number(sellTrimmed);
-            if (!Number.isFinite(sellNum) || sellNum < 0) {
+        // Derived mode omits sell_unit_rate — the server seed-stamps the same
+        // value from the entity margin. Overridden mode sends the typed rate.
+        let sellPayload: number | undefined;
+        if (isOverridden && isBillable) {
+            if (!Number.isFinite(overrideNum) || overrideNum < 0) {
                 toast.error("Please enter a valid sell rate");
                 return;
             }
-            sellOverride = sellNum;
+            sellPayload = roundMoney(overrideNum);
         }
 
         try {
@@ -162,9 +256,7 @@ export function AddCustomLineItemModal({
                 metadata,
                 logistics_visible: logisticsVisible,
                 // BILLABLE-only: never send a sell override for a non-billable line.
-                ...(sellOverride !== undefined && isBillable
-                    ? { sell_unit_rate: sellOverride }
-                    : {}),
+                ...(sellPayload !== undefined ? { sell_unit_rate: sellPayload } : {}),
             });
             toast.success("Custom line item added");
             onOpenChange(false);
@@ -174,7 +266,8 @@ export function AddCustomLineItemModal({
             setQuantity("1");
             setUnit("service");
             setUnitRate("");
-            setSellUnitRate("");
+            setSellOverride(null);
+            setDrafts({});
             setNotes("");
             setTripDirection("DELIVERY");
             setTruckPlate("");
@@ -225,200 +318,292 @@ export function AddCustomLineItemModal({
                         />
                     </div>
 
-                    <div>
-                        <Label>
-                            Category <span className="text-destructive">*</span>
-                        </Label>
-                        <Select
-                            value={category}
-                            onValueChange={(value) => setCategory(value as ServiceCategory)}
-                        >
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select category" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="ASSEMBLY">ASSEMBLY</SelectItem>
-                                <SelectItem value="EQUIPMENT">EQUIPMENT</SelectItem>
-                                <SelectItem value="HANDLING">HANDLING</SelectItem>
-                                <SelectItem value="RESKIN">RESKIN</SelectItem>
-                                <SelectItem value="TRANSPORT">TRANSPORT</SelectItem>
-                                <SelectItem value="OTHER">OTHER</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-
-                    <div>
-                        <Label>
-                            Billing Mode <span className="text-destructive">*</span>
-                        </Label>
-                        <Select
-                            value={billingMode}
-                            onValueChange={(value) => setBillingMode(value as LineItemBillingMode)}
-                        >
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select billing mode" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="BILLABLE">BILLABLE</SelectItem>
-                                <SelectItem value="NON_BILLABLE">NON-BILLABLE</SelectItem>
-                                <SelectItem value="COMPLIMENTARY">COMPLIMENTARY</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-2 gap-3">
                         <div>
                             <Label>
-                                Qty <span className="text-destructive">*</span>
+                                Category <span className="text-destructive">*</span>
                             </Label>
-                            <Input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                value={quantity}
-                                onChange={(e) => setQuantity(e.target.value)}
-                                placeholder="1"
-                            />
+                            <Select
+                                value={category}
+                                onValueChange={(value) => setCategory(value as ServiceCategory)}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select category" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="ASSEMBLY">ASSEMBLY</SelectItem>
+                                    <SelectItem value="EQUIPMENT">EQUIPMENT</SelectItem>
+                                    <SelectItem value="HANDLING">HANDLING</SelectItem>
+                                    <SelectItem value="RESKIN">RESKIN</SelectItem>
+                                    <SelectItem value="TRANSPORT">TRANSPORT</SelectItem>
+                                    <SelectItem value="OTHER">OTHER</SelectItem>
+                                </SelectContent>
+                            </Select>
                         </div>
                         <div>
                             <Label>
-                                Unit <span className="text-destructive">*</span>
+                                Billing Mode <span className="text-destructive">*</span>
                             </Label>
-                            <Input
-                                value={unit}
-                                onChange={(e) => setUnit(e.target.value)}
-                                placeholder="service"
-                                maxLength={20}
-                            />
-                        </div>
-                        <div>
-                            <Label>
-                                Unit Rate (AED) <span className="text-destructive">*</span>
-                            </Label>
-                            <Input
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                value={unitRate}
-                                onChange={(e) => setUnitRate(e.target.value)}
-                                placeholder="200.00"
-                            />
+                            <Select
+                                value={billingMode}
+                                onValueChange={(value) =>
+                                    setBillingMode(value as LineItemBillingMode)
+                                }
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select billing mode" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="BILLABLE">BILLABLE</SelectItem>
+                                    <SelectItem value="NON_BILLABLE">NON-BILLABLE</SelectItem>
+                                    <SelectItem value="COMPLIMENTARY">COMPLIMENTARY</SelectItem>
+                                </SelectContent>
+                            </Select>
                         </div>
                     </div>
 
-                    <div>
-                        <Label>Derived Total (AED)</Label>
-                        <Input value={derivedTotal.toFixed(2)} readOnly className="bg-muted" />
-                        <p className="text-xs text-muted-foreground mt-1">
-                            Buy total = qty × unit rate. The client sell seeds from the entity
-                            margin (or your Sell override below).
+                    {/* ── Pricing — one card, every figure visible + live-linked ── */}
+                    <div className="space-y-3 rounded-md border border-primary/30 p-4">
+                        <div className="flex items-center justify-between gap-2">
+                            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                Pricing
+                            </p>
+                            {isOverridden && isBillable ? (
+                                <button
+                                    type="button"
+                                    className="text-[11px] text-muted-foreground underline hover:text-foreground"
+                                    onClick={() => setSellOverride(null)}
+                                >
+                                    Reset to entity margin ({fmtPct(seedMarginPercent)}%)
+                                </button>
+                            ) : null}
+                        </div>
+
+                        {/* Row 1 — Qty | Unit */}
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <Label>
+                                    Qty <span className="text-destructive">*</span>
+                                </Label>
+                                <Input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    value={quantity}
+                                    onChange={(e) => setQuantity(e.target.value)}
+                                    placeholder="1"
+                                />
+                            </div>
+                            <div>
+                                <Label>
+                                    Unit <span className="text-destructive">*</span>
+                                </Label>
+                                <Input
+                                    value={unit}
+                                    onChange={(e) => setUnit(e.target.value)}
+                                    placeholder="service"
+                                    maxLength={20}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Row 2 — Buy / Unit | Buy Total */}
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <Label>
+                                    Buy / Unit ({currency}){" "}
+                                    <span className="text-destructive">*</span>
+                                </Label>
+                                <Input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={unitRate}
+                                    onChange={(e) => setUnitRate(e.target.value)}
+                                    placeholder="200.00"
+                                />
+                            </div>
+                            <div>
+                                <Label>Buy Total ({currency})</Label>
+                                <Input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={drafts.buyTotal ?? buyTotal.toFixed(2)}
+                                    className="text-right font-mono tabular-nums"
+                                    onChange={(e) => {
+                                        setDraft("buyTotal", e.target.value);
+                                        handleBuyTotalEdit(e.target.value);
+                                    }}
+                                    onBlur={() => clearDraft("buyTotal")}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Row 3 — Sell / Unit | Sell Total */}
+                        <div className={cn("grid grid-cols-2 gap-3", !isBillable && "opacity-60")}>
+                            <div>
+                                <Label>
+                                    Sell / Unit ({currency})
+                                    {isOverridden && isBillable ? (
+                                        <span className="ml-1 text-[10px] font-medium text-amber-600">
+                                            overridden
+                                        </span>
+                                    ) : null}
+                                </Label>
+                                <Input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={
+                                        isBillable
+                                            ? isOverridden
+                                                ? (sellOverride ?? "")
+                                                : derivedSellUnit.toFixed(2)
+                                            : "0.00"
+                                    }
+                                    disabled={!isBillable}
+                                    className={cn(
+                                        "text-right font-mono tabular-nums",
+                                        !isBillable && "bg-muted",
+                                        isBillable && !isOverridden && "text-muted-foreground",
+                                        isBillable &&
+                                            isOverridden &&
+                                            "border-amber-400/70 focus-visible:ring-amber-400/40"
+                                    )}
+                                    onChange={(e) => handleSellEdit(e.target.value)}
+                                />
+                            </div>
+                            <div>
+                                <Label>Sell Total ({currency})</Label>
+                                <Input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={
+                                        isBillable
+                                            ? (drafts.sellTotal ?? sellTotal.toFixed(2))
+                                            : "0.00"
+                                    }
+                                    disabled={!isBillable}
+                                    className={cn(
+                                        "text-right font-mono tabular-nums",
+                                        !isBillable && "bg-muted",
+                                        isBillable && !isOverridden && "text-muted-foreground"
+                                    )}
+                                    onChange={(e) => {
+                                        setDraft("sellTotal", e.target.value);
+                                        handleSellTotalEdit(e.target.value);
+                                    }}
+                                    onBlur={() => clearDraft("sellTotal")}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Row 4 — Margin % | Margin Amount | Line Total */}
+                        <div className={cn("grid grid-cols-3 gap-3", !isBillable && "opacity-60")}>
+                            <div>
+                                <Label>
+                                    Margin %
+                                    {isOverridden && isBillable ? (
+                                        <span className="ml-1 text-[10px] font-medium text-amber-600">
+                                            overridden
+                                        </span>
+                                    ) : null}
+                                </Label>
+                                {margin.isFee && isBillable ? (
+                                    <Input
+                                        value="Fee"
+                                        readOnly
+                                        tabIndex={-1}
+                                        className="bg-muted text-center"
+                                    />
+                                ) : (
+                                    <Input
+                                        type="number"
+                                        step="1"
+                                        value={
+                                            drafts.marginPct ??
+                                            (isBillable && margin.percent != null
+                                                ? String(margin.percent)
+                                                : "")
+                                        }
+                                        placeholder={isBillable ? "" : "—"}
+                                        disabled={!isBillable || !(unitRateNum > 0)}
+                                        className={cn(
+                                            "text-right font-mono tabular-nums",
+                                            (!isBillable || !(unitRateNum > 0)) && "bg-muted",
+                                            isBillable && !isOverridden && "text-muted-foreground",
+                                            isBillable &&
+                                                isOverridden &&
+                                                "border-amber-400/70 focus-visible:ring-amber-400/40"
+                                        )}
+                                        onChange={(e) => {
+                                            setDraft("marginPct", e.target.value);
+                                            handleMarginEdit(e.target.value);
+                                        }}
+                                        onBlur={() => clearDraft("marginPct")}
+                                    />
+                                )}
+                            </div>
+                            <div>
+                                <Label>Margin Amount ({currency})</Label>
+                                <Input
+                                    type={isBillable ? "number" : "text"}
+                                    step="0.01"
+                                    value={
+                                        isBillable
+                                            ? (drafts.marginAmount ?? marginAmount.toFixed(2))
+                                            : "—"
+                                    }
+                                    disabled={!isBillable}
+                                    className={cn(
+                                        "text-right font-mono tabular-nums",
+                                        !isBillable && "bg-muted",
+                                        isBillable && !isOverridden && "text-muted-foreground"
+                                    )}
+                                    onChange={(e) => {
+                                        setDraft("marginAmount", e.target.value);
+                                        handleMarginAmountEdit(e.target.value);
+                                    }}
+                                    onBlur={() => clearDraft("marginAmount")}
+                                />
+                            </div>
+                            <div>
+                                <Label>Line Total ({currency})</Label>
+                                <Input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={
+                                        isBillable
+                                            ? (drafts.lineTotal ?? lineTotal.toFixed(2))
+                                            : "0.00"
+                                    }
+                                    disabled={!isBillable}
+                                    className={cn(
+                                        "text-right font-mono text-base font-semibold tabular-nums",
+                                        !isBillable && "bg-muted"
+                                    )}
+                                    onChange={(e) => {
+                                        setDraft("lineTotal", e.target.value);
+                                        handleSellTotalEdit(e.target.value);
+                                    }}
+                                    onBlur={() => clearDraft("lineTotal")}
+                                />
+                            </div>
+                        </div>
+
+                        <p className="text-[11px] leading-snug text-muted-foreground">
+                            {!isBillable
+                                ? billingMode === "COMPLIMENTARY"
+                                    ? "Complimentary — shown to the client as complimentary; charged 0.00."
+                                    : "Non-billable — internal cost only; never shown or charged to the client."
+                                : isOverridden
+                                  ? "Sell overridden for this line — it no longer follows the entity margin."
+                                  : `Every figure is linked — edit any and the rest recompute. Sell seeds from the entity margin (${fmtPct(seedMarginPercent)}%); editing any sell-side figure overrides this line.`}
                         </p>
                     </div>
-
-                    {/* Optional per-unit sell override. Buy above (Unit Rate) is
-                        the cost. Enter a Sell (or Margin %) to override the
-                        blanket-margin math for this line; leave blank for auto.
-                          • edit Margin % → Sell = Buy × (1 + margin%/100)
-                          • edit Sell     → Margin % re-derives
-                        Buy = 0 shows "Fee" (margin % undefined). */}
-                    {(() => {
-                        const sellTrimmed = sellUnitRate.trim();
-                        const hasSell = sellTrimmed !== "";
-                        const sellNum = hasSell ? Number(sellTrimmed) : NaN;
-                        const margin = deriveMargin(unitRateNum, hasSell ? sellNum : unitRateNum);
-                        const marginValue =
-                            hasSell && margin.percent != null ? String(margin.percent) : "";
-                        const onMargin = (value: string) => {
-                            const t = value.trim();
-                            if (t === "") {
-                                setSellUnitRate("");
-                                return;
-                            }
-                            const pct = Number(t);
-                            if (!Number.isFinite(pct) || !(unitRateNum > 0)) return;
-                            setSellUnitRate(String(roundMoney(unitRateNum * (1 + pct / 100))));
-                        };
-                        return (
-                            <div
-                                className={`space-y-2 rounded-md border border-border p-4 ${
-                                    isBillable ? "" : "opacity-60"
-                                }`}
-                            >
-                                <div className="flex items-center justify-between gap-2">
-                                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                                        Sell override (optional)
-                                    </p>
-                                    {hasSell && isBillable && (
-                                        <button
-                                            type="button"
-                                            className="text-[11px] text-muted-foreground hover:text-foreground underline"
-                                            onClick={() => setSellUnitRate("")}
-                                        >
-                                            Reset to auto
-                                        </button>
-                                    )}
-                                </div>
-                                <div className="grid grid-cols-3 gap-3">
-                                    <div>
-                                        <Label className="text-[11px] text-muted-foreground">
-                                            Buy (AED)
-                                        </Label>
-                                        <Input
-                                            value={unitRate || "0"}
-                                            readOnly
-                                            className="bg-muted"
-                                        />
-                                    </div>
-                                    <div>
-                                        <Label className="text-[11px] text-muted-foreground">
-                                            Sell (AED)
-                                        </Label>
-                                        <Input
-                                            type="number"
-                                            step="0.01"
-                                            min="0"
-                                            value={isBillable ? sellUnitRate : ""}
-                                            placeholder={isBillable ? "auto" : "—"}
-                                            disabled={!isBillable}
-                                            className={isBillable ? "" : "bg-muted"}
-                                            onChange={(e) => setSellUnitRate(e.target.value)}
-                                        />
-                                    </div>
-                                    <div>
-                                        <Label className="text-[11px] text-muted-foreground">
-                                            Margin %
-                                        </Label>
-                                        {margin.isFee && isBillable ? (
-                                            <Input
-                                                value="Fee"
-                                                readOnly
-                                                className="bg-muted text-center"
-                                            />
-                                        ) : (
-                                            <Input
-                                                type="number"
-                                                step="1"
-                                                value={isBillable ? marginValue : ""}
-                                                placeholder={
-                                                    isBillable ? (hasSell ? "—" : "auto") : "—"
-                                                }
-                                                disabled={!isBillable}
-                                                className={isBillable ? "" : "bg-muted"}
-                                                onChange={(e) => onMargin(e.target.value)}
-                                            />
-                                        )}
-                                    </div>
-                                </div>
-                                <p className="text-[11px] text-muted-foreground leading-snug">
-                                    {!isBillable
-                                        ? "Sell override applies to billable lines only. A non-billable line carries no client sell."
-                                        : hasSell
-                                          ? "Sell override set — this line ignores blanket-margin math."
-                                          : "Blank sell = blanket-margin calculation. Set a sell or margin % to override."}
-                                </p>
-                            </div>
-                        );
-                    })()}
 
                     {isTransportCategory && (
                         <div className="space-y-4 rounded-md border border-border p-4">
@@ -529,33 +714,15 @@ export function AddCustomLineItemModal({
                         />
                     </div>
 
-                    {/* Per-line logistics visibility. Off strips this line from the
-                        warehouse view entirely. (For a pass-through fee, set Sell =
-                        Buy in the sell override above.) */}
-                    <div className="space-y-3 rounded-md border border-border p-4">
-                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                            Line Policy
-                        </p>
-                        <div className="flex items-start justify-between gap-3">
-                            <div className="space-y-0.5">
-                                <Label className="text-sm">Visible to Logistics</Label>
-                                <p className="text-[11px] text-muted-foreground leading-snug">
-                                    When off, this line is stripped from the warehouse view
-                                    entirely.
-                                </p>
-                            </div>
-                            <Switch
-                                checked={logisticsVisible}
-                                onCheckedChange={setLogisticsVisible}
-                            />
-                        </div>
-                    </div>
-
-                    <div className="bg-primary/10 border border-primary/20 rounded-md p-3">
-                        <p className="text-xs text-primary">
-                            ℹ️ Unit Rate is the buy cost. Sell seeds from the entity margin unless
-                            you set a Sell override above.
-                        </p>
+                    {/* One-line visibility toggle (replaces the old Line Policy card).
+                        Off strips this line from the warehouse view entirely. */}
+                    <div className="flex items-center gap-3 rounded-md border border-border px-3 py-2">
+                        <Eye className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        <Label className="text-sm">Visible to logistics</Label>
+                        <span className="ml-auto mr-2 text-[11px] text-muted-foreground">
+                            off = hidden from the warehouse view
+                        </span>
+                        <Switch checked={logisticsVisible} onCheckedChange={setLogisticsVisible} />
                     </div>
                 </div>
 

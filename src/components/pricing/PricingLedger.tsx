@@ -687,6 +687,8 @@ export function PricingLedger({
                 onOpenChange={setAddCustomOpen}
                 targetId={entityId}
                 purposeType={purposeType}
+                seedMarginPercent={seedMarginPercent}
+                currency={resolvedCurrency}
             />
             <BulkMarginDialog
                 open={bulkOpen}

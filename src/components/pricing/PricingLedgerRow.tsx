@@ -306,7 +306,9 @@ export function PricingLedgerRow({
     const autoSell = roundMoney(buyNum * (1 + seedMarginPercent / 100));
     const effectiveSell = hasSell ? sellNum : autoSell;
     const margin = deriveMargin(buyNum, effectiveSell);
-    const marginValue = hasSell && margin.percent != null ? String(margin.percent) : "";
+    // Always show the computed % — even when the sell is seed-derived (owner:
+    // values are always visible, never an "auto" placeholder).
+    const marginValue = margin.percent != null ? String(margin.percent) : "";
     const isBillable = billingMode === "BILLABLE";
     // "auto" when the stamped sell equals the seed-derived sell; "ovr" otherwise.
     const isAuto = !hasSell || Math.abs(effectiveSell - autoSell) < 0.005;
@@ -431,16 +433,17 @@ export function PricingLedgerRow({
                     </div>
                 </TableCell>
 
-                {/* Sell/u — reveal-on-focus */}
+                {/* Sell / Unit — reveal-on-focus. Always shows the number (owner:
+                    no "auto" placeholder) — seed-derived value displayed muted
+                    until an explicit override makes it authoritative. */}
                 <TableCell className="w-28 py-1.5">
                     {rowEditable && isBillable ? (
                         <Input
-                            value={sell}
+                            value={hasSell ? sell : autoSell.toFixed(2)}
                             type="number"
                             min={0}
                             step="0.01"
-                            placeholder="auto"
-                            className={REVEAL_INPUT}
+                            className={cn(REVEAL_INPUT, isAuto && "text-muted-foreground")}
                             onChange={(e) => handleSell(e.target.value)}
                             onBlur={flush}
                             onKeyDown={handleEnter}
@@ -459,8 +462,8 @@ export function PricingLedgerRow({
                             value={marginValue}
                             type="number"
                             step="1"
-                            placeholder={hasSell ? "—" : "auto"}
-                            className={REVEAL_INPUT}
+                            placeholder="—"
+                            className={cn(REVEAL_INPUT, isAuto && "text-muted-foreground")}
                             onChange={(e) => handleMargin(e.target.value)}
                             onBlur={flush}
                             onKeyDown={handleEnter}
@@ -566,7 +569,7 @@ export function PricingLedgerRow({
                                 size="icon"
                                 className="h-7 w-7"
                                 onClick={handleReset}
-                                title="Reset to auto (seed margin)"
+                                title={`Reset to entity margin (${seedMarginPercent}%)`}
                             >
                                 <RotateCcw className="h-3.5 w-3.5" />
                             </Button>
@@ -696,7 +699,7 @@ export function PricingLedgerRow({
                                             onClick={handleReset}
                                             className="text-primary hover:underline"
                                         >
-                                            Reset to auto (seed {seedMarginPercent}%)
+                                            Reset to entity margin ({seedMarginPercent}%)
                                         </button>
                                     </p>
                                 ) : null}
