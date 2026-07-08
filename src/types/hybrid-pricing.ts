@@ -118,6 +118,13 @@ export interface OrderLineItem {
     canEditPricingFields?: boolean;
     canEditMetadataFields?: boolean;
     lockReason?: string | null;
+    // Provenance (R3): true when this line was created from an APPROVED logistics
+    // line-item-request. The API surfaces it as `lir_origin` + `line_item_request_id`
+    // (mapped snake→camel by the list hook). LOGISTICS may not edit unit_rate on
+    // such a line server-side; ADMIN stays editable but the ledger shows a small
+    // provenance hint on the unit-price cell for consistency.
+    lirOrigin?: boolean;
+    lineItemRequestId?: string | null;
     isVoided: boolean;
     voidedAt: string | null;
     voidedBy: string | null;

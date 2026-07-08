@@ -14,7 +14,16 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { TableCell, TableRow } from "@/components/ui/table";
-import { ChevronDown, ChevronRight, Eye, EyeOff, Lock, RotateCcw, Trash2 } from "lucide-react";
+import {
+    ChevronDown,
+    ChevronRight,
+    Eye,
+    EyeOff,
+    Link2,
+    Lock,
+    RotateCcw,
+    Trash2,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import type {
     LineItemBillingMode,
@@ -302,6 +311,8 @@ export function PricingLedgerRow({
     // "auto" when the stamped sell equals the seed-derived sell; "ovr" otherwise.
     const isAuto = !hasSell || Math.abs(effectiveSell - autoSell) < 0.005;
     const lineTotal = Number(item.total ?? 0);
+    // Provenance (R3): line created from an approved logistics line-item request.
+    const isLirOrigin = item.lirOrigin === true;
 
     // --- left-edge policy stripe (replaces the old badges) ---
     const isOverride = isBillable && hasSell && !isAuto;
@@ -381,22 +392,35 @@ export function PricingLedgerRow({
                     )}
                 </TableCell>
 
-                {/* Buy/u — reveal-on-focus */}
+                {/* Buy / Unit — reveal-on-focus. LIR-origin lines carry a small
+                    provenance hint (R3): the rate came from an approved logistics
+                    request. ADMIN stays editable; LOGISTICS is locked server-side. */}
                 <TableCell className="w-28 py-1.5">
-                    {rowEditable ? (
-                        <Input
-                            value={buy}
-                            type="number"
-                            min={0}
-                            step="0.01"
-                            className={REVEAL_INPUT}
-                            onChange={(e) => handleBuy(e.target.value)}
-                            onBlur={flush}
-                            onKeyDown={handleEnter}
-                        />
-                    ) : (
-                        <span className={IDLE_MONEY}>{buyNum.toFixed(2)}</span>
-                    )}
+                    <div className="flex items-center justify-end gap-1">
+                        {isLirOrigin ? (
+                            <span
+                                className="shrink-0 text-muted-foreground/60"
+                                title="Unit price set by an approved logistics request. You can still edit it as admin."
+                                aria-label="Unit price from an approved logistics request"
+                            >
+                                <Link2 className="h-3 w-3" />
+                            </span>
+                        ) : null}
+                        {rowEditable ? (
+                            <Input
+                                value={buy}
+                                type="number"
+                                min={0}
+                                step="0.01"
+                                className={REVEAL_INPUT}
+                                onChange={(e) => handleBuy(e.target.value)}
+                                onBlur={flush}
+                                onKeyDown={handleEnter}
+                            />
+                        ) : (
+                            <span className={IDLE_MONEY}>{buyNum.toFixed(2)}</span>
+                        )}
+                    </div>
                 </TableCell>
 
                 {/* Sell/u — reveal-on-focus */}
@@ -659,6 +683,12 @@ export function PricingLedgerRow({
                                         >
                                             Reset to auto (seed {seedMarginPercent}%)
                                         </button>
+                                    </p>
+                                ) : null}
+                                {isLirOrigin ? (
+                                    <p className="flex items-center gap-1.5 text-foreground/80">
+                                        <Link2 className="h-3 w-3 shrink-0" />
+                                        Unit price set by an approved logistics request
                                     </p>
                                 ) : null}
                                 {item.addedByName || item.addedBy ? (
