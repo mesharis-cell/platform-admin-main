@@ -202,6 +202,33 @@ export function PricingLedger({
     const vatAmount = Number(adminPricing?.vat?.amount ?? totals.vat_amount ?? 0);
     const clientTotal = Number(totals.sell_total_with_vat ?? totals.total ?? sellTotal + vatAmount);
 
+    // Lens-aware footer-staircase sources (owner decision 2026-07-08). The
+    // below-table grand-total staircase must reflect the ACTIVE lens's server
+    // projection — otherwise the client / logistics preview lenses leak the
+    // admin buy + margin figures into a role-scoped view. edit → admin totals
+    // (above); client → the CLIENT projection (sell + VAT only); logistics →
+    // the LOGISTICS projection (buy total only). Both preview pricings are read
+    // with the same fallbacks Client/LogisticsBreakdownView use.
+    const clientPreviewTotals = clientPreview.data?.preview.pricing?.totals || {};
+    const clientPreviewSubtotal = Number(
+        clientPreviewTotals.subtotal ?? clientPreviewTotals.sell_total ?? 0
+    );
+    const clientPreviewVatPercent = Number(
+        clientPreview.data?.preview.pricing?.vat?.percent ?? clientPreviewTotals.vat_percent ?? 0
+    );
+    const clientPreviewVatAmount = Number(
+        clientPreview.data?.preview.pricing?.vat?.amount ?? clientPreviewTotals.vat_amount ?? 0
+    );
+    const clientPreviewTotal = Number(
+        clientPreviewTotals.total ??
+            clientPreviewTotals.sell_total_with_vat ??
+            clientPreviewSubtotal + clientPreviewVatAmount
+    );
+    const logisticsPreviewTotals = logisticsPreview.data?.preview.pricing?.totals || {};
+    const logisticsPreviewTotal = Number(
+        logisticsPreviewTotals.buy_total ?? logisticsPreviewTotals.total ?? 0
+    );
+
     // Advisory warnings — informational, never blocking.
     const warnings = useMemo(() => {
         const out: string[] = [];
@@ -350,19 +377,22 @@ export function PricingLedger({
                                                 Line
                                             </TableHead>
                                             <TableHead className="text-center font-mono text-[10px] font-bold uppercase">
-                                                Mode
+                                                Billing
                                             </TableHead>
                                             <TableHead className="text-center font-mono text-[10px] font-bold uppercase">
-                                                Buy/u
+                                                Buy / Unit
                                             </TableHead>
                                             <TableHead className="text-center font-mono text-[10px] font-bold uppercase">
-                                                Sell/u
+                                                Sell / Unit
                                             </TableHead>
                                             <TableHead className="text-center font-mono text-[10px] font-bold uppercase">
-                                                Margin
+                                                Margin %
                                             </TableHead>
                                             <TableHead className="text-center font-mono text-[10px] font-bold uppercase">
-                                                Log
+                                                Margin Amount
+                                            </TableHead>
+                                            <TableHead className="text-center font-mono text-[10px] font-bold uppercase">
+                                                Logistics
                                             </TableHead>
                                             <TableHead className="text-center font-mono text-[10px] font-bold uppercase">
                                                 Client
@@ -378,7 +408,7 @@ export function PricingLedger({
                                             <Fragment key={group.key}>
                                                 <TableRow className="bg-muted/30 hover:bg-muted/30">
                                                     <TableCell
-                                                        colSpan={10}
+                                                        colSpan={11}
                                                         className="py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
                                                     >
                                                         {group.label}
@@ -407,7 +437,7 @@ export function PricingLedger({
                                         {adminPricing ? (
                                             <TableRow className="border-t border-border bg-muted/20 font-semibold hover:bg-muted/20">
                                                 <TableCell />
-                                                <TableCell colSpan={5} className="py-2">
+                                                <TableCell colSpan={6} className="py-2">
                                                     Subtotal — line sell
                                                 </TableCell>
                                                 <TableCell colSpan={2} />
@@ -483,36 +513,78 @@ export function PricingLedger({
             <div className="space-y-4 border-t border-border px-5 py-4">
                 {adminPricing ? (
                     // Below-table staircase: muted derived rows → hairline → grand
-                    // total, all right-aligned under the money column.
-                    <div className="ml-auto max-w-xs space-y-1 text-sm">
-                        <div className="flex justify-between text-muted-foreground">
-                            <span>Buy Σ</span>
-                            <span className="font-mono tabular-nums">
-                                {money(buyTotal, resolvedCurrency)}
-                            </span>
-                        </div>
-                        <div className="flex justify-between text-muted-foreground">
-                            <span>Effective margin ({fmtPct(blendedPercent)}%)</span>
-                            <span className="font-mono tabular-nums">
-                                +{money(marginAmount, resolvedCurrency)}
-                            </span>
-                        </div>
-                        {vatPercent > 0 ? (
-                            <div className="flex justify-between text-muted-foreground">
-                                <span>VAT ({fmtPct(vatPercent)}%)</span>
-                                <span className="font-mono tabular-nums">
-                                    {money(vatAmount, resolvedCurrency)}
+                    // total, all right-aligned under the money column. LENS-AWARE
+                    // (owner 2026-07-08) — the staircase reflects the ACTIVE lens's
+                    // server projection so the client / logistics preview lenses
+                    // never leak the admin buy + margin figures.
+                    lens === "logistics" ? (
+                        // LOGISTICS lens — buy total only, no sell / margin / VAT.
+                        <div className="ml-auto max-w-xs space-y-1 text-sm">
+                            <div className="flex items-baseline justify-between">
+                                <span className="font-semibold">Total</span>
+                                <span className="font-mono text-base font-bold tabular-nums">
+                                    {money(logisticsPreviewTotal, resolvedCurrency)}
                                 </span>
                             </div>
-                        ) : null}
-                        <div className="my-1.5 border-t border-border" />
-                        <div className="flex items-baseline justify-between">
-                            <span className="font-semibold">Client total · incl VAT</span>
-                            <span className="font-mono text-base font-bold tabular-nums">
-                                {money(clientTotal, resolvedCurrency)}
-                            </span>
                         </div>
-                    </div>
+                    ) : lens === "client" ? (
+                        // CLIENT lens — sell + VAT only, no buy / margin.
+                        <div className="ml-auto max-w-xs space-y-1 text-sm">
+                            <div className="flex justify-between text-muted-foreground">
+                                <span>Subtotal</span>
+                                <span className="font-mono tabular-nums">
+                                    {money(clientPreviewSubtotal, resolvedCurrency)}
+                                </span>
+                            </div>
+                            {clientPreviewVatPercent > 0 ? (
+                                <div className="flex justify-between text-muted-foreground">
+                                    <span>VAT ({fmtPct(clientPreviewVatPercent)}%)</span>
+                                    <span className="font-mono tabular-nums">
+                                        {money(clientPreviewVatAmount, resolvedCurrency)}
+                                    </span>
+                                </div>
+                            ) : null}
+                            <div className="my-1.5 border-t border-border" />
+                            <div className="flex items-baseline justify-between">
+                                <span className="font-semibold">Client total · incl VAT</span>
+                                <span className="font-mono text-base font-bold tabular-nums">
+                                    {money(clientPreviewTotal, resolvedCurrency)}
+                                </span>
+                            </div>
+                        </div>
+                    ) : (
+                        // EDIT lens — full admin staircase (buy → margin → VAT →
+                        // client total).
+                        <div className="ml-auto max-w-xs space-y-1 text-sm">
+                            <div className="flex justify-between text-muted-foreground">
+                                <span>Buy Total</span>
+                                <span className="font-mono tabular-nums">
+                                    {money(buyTotal, resolvedCurrency)}
+                                </span>
+                            </div>
+                            <div className="flex justify-between text-muted-foreground">
+                                <span>Effective margin ({fmtPct(blendedPercent)}%)</span>
+                                <span className="font-mono tabular-nums">
+                                    +{money(marginAmount, resolvedCurrency)}
+                                </span>
+                            </div>
+                            {vatPercent > 0 ? (
+                                <div className="flex justify-between text-muted-foreground">
+                                    <span>VAT ({fmtPct(vatPercent)}%)</span>
+                                    <span className="font-mono tabular-nums">
+                                        {money(vatAmount, resolvedCurrency)}
+                                    </span>
+                                </div>
+                            ) : null}
+                            <div className="my-1.5 border-t border-border" />
+                            <div className="flex items-baseline justify-between">
+                                <span className="font-semibold">Client total · incl VAT</span>
+                                <span className="font-mono text-base font-bold tabular-nums">
+                                    {money(clientTotal, resolvedCurrency)}
+                                </span>
+                            </div>
+                        </div>
+                    )
                 ) : (
                     // Degraded — no prices row yet.
                     <div className="flex flex-col items-start gap-2 rounded-md border border-dashed border-border bg-muted/20 p-4">

@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { Children, type ReactNode } from "react";
 import { ChevronLeft, ChevronRight, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -54,6 +54,13 @@ interface CollapsibleHistoryColumnProps {
  * The collapse state is intentionally NOT persisted: it resets to collapsed on
  * every load. State lives in the page (it also drives the grid template), so
  * this component is a controlled presentational wrapper.
+ *
+ * **Sticky containment (owner feedback R1):** the edge-mounted chevron is bounded
+ * to the HISTORY CARD, not the full column. The first child is treated as the
+ * primary history card and is the only element inside the sticky's relative
+ * context; any sibling cards (e.g. the field-level change-history card) render
+ * OUTSIDE it. So the chevron travels only while the history card is in view and
+ * stops at that card's bottom edge — it no longer trails down past the siblings.
  */
 export function CollapsibleHistoryColumn({
     collapsed,
@@ -62,43 +69,60 @@ export function CollapsibleHistoryColumn({
     railTitle = "History",
     children,
 }: CollapsibleHistoryColumnProps) {
+    // Split the primary history card (first child) from any sibling cards so the
+    // sticky toggle's containing block hugs only the primary card (R1).
+    const [primary, ...siblings] = Children.toArray(children);
+
     return (
-        <div className="relative space-y-3">
-            {/* Edge-mounted toggle — desktop only. A small square button that
-                protrudes on the column's LEFT edge and stays vertically sticky so
-                it travels with the viewport as the column scrolls. Present in both
-                states (expand arrow when collapsed, collapse arrow when expanded).
-                The absolute wrapper spans the column height; the inner sticky node
-                pins the button at top-24 (clears the page's sticky header). */}
-            <div className="pointer-events-none absolute inset-y-0 -left-3 z-20 hidden lg:block">
-                <div className="sticky top-24">
-                    <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        className="pointer-events-auto h-9 w-6 rounded-md bg-card shadow-md"
-                        onClick={onToggle}
-                        aria-label={collapsed ? "Expand history" : "Collapse history"}
-                        title={collapsed ? "Expand history" : "Collapse history"}
-                    >
-                        {collapsed ? (
-                            <ChevronLeft className="h-4 w-4" />
-                        ) : (
-                            <ChevronRight className="h-4 w-4" />
-                        )}
-                    </Button>
+        <div className="space-y-6">
+            {/* Sticky region — its height is exactly the rail (collapsed) or the
+                primary history card (expanded), so the absolute inset-y-0 wrapper
+                that anchors the chevron is bounded to the card and the sticky node
+                stops at the card's end rather than the full column's end. */}
+            <div className="relative">
+                {/* Edge-mounted toggle — desktop only. A small square button that
+                    protrudes on the LEFT edge and stays vertically sticky so it
+                    travels with the viewport WITHIN the card's bounds. Present in
+                    both states (expand arrow when collapsed, collapse when
+                    expanded). The inner sticky node pins at top-24 (clears the
+                    page's sticky header). */}
+                <div className="pointer-events-none absolute inset-y-0 -left-3 z-20 hidden lg:block">
+                    <div className="sticky top-24">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            className="pointer-events-auto h-9 w-6 rounded-md bg-card shadow-md"
+                            onClick={onToggle}
+                            aria-label={collapsed ? "Expand history" : "Collapse history"}
+                            title={collapsed ? "Expand history" : "Collapse history"}
+                        >
+                            {collapsed ? (
+                                <ChevronLeft className="h-4 w-4" />
+                            ) : (
+                                <ChevronRight className="h-4 w-4" />
+                            )}
+                        </Button>
+                    </div>
                 </div>
+
+                {/* Desktop + collapsed → compact rail. */}
+                {collapsed && (
+                    <div className="hidden lg:block">
+                        <CompactRail entries={railEntries} title={railTitle} />
+                    </div>
+                )}
+
+                {/* Primary history card: desktop shows it only when expanded;
+                    mobile always shows it. */}
+                <div className={cn(collapsed ? "lg:hidden" : "block")}>{primary}</div>
             </div>
 
-            {/* Desktop + collapsed → compact rail. */}
-            {collapsed && (
-                <div className="hidden lg:block">
-                    <CompactRail entries={railEntries} title={railTitle} />
-                </div>
-            )}
-
-            {/* Full content: desktop shows it only when expanded; mobile always shows it. */}
-            <div className={cn("space-y-6", collapsed ? "lg:hidden" : "block")}>{children}</div>
+            {/* Sibling cards live OUTSIDE the sticky region so the chevron stops at
+                the primary card's end. Same desktop/mobile visibility rules. */}
+            {siblings.length > 0 ? (
+                <div className={cn("space-y-6", collapsed ? "lg:hidden" : "block")}>{siblings}</div>
+            ) : null}
         </div>
     );
 }

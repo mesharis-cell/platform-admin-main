@@ -193,7 +193,7 @@ export function AddCustomLineItemModal({
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent
-                className="max-w-lg"
+                className="flex max-h-[85vh] max-w-lg flex-col gap-0 p-0"
                 onKeyDown={(e) => {
                     // Enter in any text input submits the form (owner smoke feedback).
                     // Textareas keep their newline behaviour; Select triggers (buttons)
@@ -208,11 +208,11 @@ export function AddCustomLineItemModal({
                     }
                 }}
             >
-                <DialogHeader>
+                <DialogHeader className="shrink-0 border-b border-border px-6 pb-4 pt-6">
                     <DialogTitle>Add Custom Line Item</DialogTitle>
                 </DialogHeader>
 
-                <div className="space-y-4">
+                <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
                     <div>
                         <Label>
                             Description <span className="text-destructive">*</span>
@@ -559,7 +559,7 @@ export function AddCustomLineItemModal({
                     </div>
                 </div>
 
-                <DialogFooter>
+                <DialogFooter className="shrink-0 border-t border-border px-6 py-4">
                     <Button
                         variant="outline"
                         onClick={() => onOpenChange(false)}
