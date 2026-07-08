@@ -254,12 +254,12 @@ export function AddCatalogLineItemModal({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="w-[95vw] max-w-6xl h-[90vh] sm:h-auto sm:max-h-[90vh] flex flex-col">
-                <DialogHeader>
+            <DialogContent className="flex h-[90vh] w-[95vw] max-w-6xl flex-col sm:h-auto sm:max-h-[85vh]">
+                <DialogHeader className="shrink-0">
                     <DialogTitle>Add Catalog Services</DialogTitle>
                 </DialogHeader>
 
-                <div className="space-y-4 overflow-y-auto pr-1">
+                <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                         <div className="space-y-1 md:col-span-2">
                             <Label className="text-xs">Search services</Label>
@@ -686,7 +686,7 @@ export function AddCatalogLineItemModal({
                     </div>
                 </div>
 
-                <DialogFooter>
+                <DialogFooter className="shrink-0 border-t border-border pt-4">
                     <Button
                         type="button"
                         variant="outline"
