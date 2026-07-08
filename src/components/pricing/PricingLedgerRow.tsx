@@ -310,7 +310,15 @@ export function PricingLedgerRow({
     const isBillable = billingMode === "BILLABLE";
     // "auto" when the stamped sell equals the seed-derived sell; "ovr" otherwise.
     const isAuto = !hasSell || Math.abs(effectiveSell - autoSell) < 0.005;
-    const lineTotal = Number(item.total ?? 0);
+    // Quantity (live) drives the two derived money columns below (R10/R11).
+    const qtyNum = Math.max(1, Math.floor(Number(qty) || 1));
+    // R11: the row Total column is the SELL total (qty × effective sell/unit),
+    // display-derived so it tracks live edits. Non-billable lines sell for 0.
+    // effectiveSell already falls back to the seed-margin sell when no explicit
+    // override is stamped, so a numeric total is always available.
+    const sellTotalLine = isBillable ? roundMoney(effectiveSell * qtyNum) : 0;
+    // R10: line-level margin amount (sell − buy, times qty) as a money figure.
+    const marginAmountLine = isBillable ? roundMoney((effectiveSell - buyNum) * qtyNum) : 0;
     // Provenance (R3): line created from an approved logistics line-item request.
     const isLirOrigin = item.lirOrigin === true;
 
@@ -444,7 +452,7 @@ export function PricingLedgerRow({
                     )}
                 </TableCell>
 
-                {/* Margin% — reveal-on-focus */}
+                {/* Margin % — reveal-on-focus */}
                 <TableCell className="w-24 py-1.5">
                     {rowEditable && isBillable && !margin.isFee ? (
                         <Input
@@ -462,6 +470,13 @@ export function PricingLedgerRow({
                             {isBillable ? margin.display : "—"}
                         </span>
                     )}
+                </TableCell>
+
+                {/* Margin Amount (R10) — derived money, read-only. */}
+                <TableCell className="w-28 py-1.5">
+                    <span className={cn(IDLE_MONEY, "text-muted-foreground")}>
+                        {isBillable ? marginAmountLine.toFixed(2) : "—"}
+                    </span>
                 </TableCell>
 
                 {/* Logistics visibility eye */}
@@ -536,9 +551,9 @@ export function PricingLedgerRow({
                     ) : null}
                 </TableCell>
 
-                {/* Line total (sell side) */}
+                {/* Total (R11) — the SELL total for the line (qty × sell/unit). */}
                 <TableCell className="w-28 py-1.5 text-right font-mono text-xs font-semibold tabular-nums">
-                    {lineTotal.toFixed(2)} {currency}
+                    {sellTotalLine.toFixed(2)} {currency}
                 </TableCell>
 
                 {/* Row actions */}
@@ -575,7 +590,7 @@ export function PricingLedgerRow({
             {expanded ? (
                 <TableRow className={cn("border-border/50 bg-muted/20 hover:bg-muted/20", stripe)}>
                     <TableCell />
-                    <TableCell colSpan={9} className="py-3">
+                    <TableCell colSpan={10} className="py-3">
                         {/* Read tokens (category + mode moved off the row, A2 style) */}
                         <div className="mb-3 flex flex-wrap gap-x-6 gap-y-1 text-[11px] text-muted-foreground">
                             <span>

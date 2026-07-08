@@ -350,19 +350,22 @@ export function PricingLedger({
                                                 Line
                                             </TableHead>
                                             <TableHead className="text-center font-mono text-[10px] font-bold uppercase">
-                                                Mode
+                                                Billing
                                             </TableHead>
                                             <TableHead className="text-center font-mono text-[10px] font-bold uppercase">
-                                                Buy/u
+                                                Buy / Unit
                                             </TableHead>
                                             <TableHead className="text-center font-mono text-[10px] font-bold uppercase">
-                                                Sell/u
+                                                Sell / Unit
                                             </TableHead>
                                             <TableHead className="text-center font-mono text-[10px] font-bold uppercase">
-                                                Margin
+                                                Margin %
                                             </TableHead>
                                             <TableHead className="text-center font-mono text-[10px] font-bold uppercase">
-                                                Log
+                                                Margin Amount
+                                            </TableHead>
+                                            <TableHead className="text-center font-mono text-[10px] font-bold uppercase">
+                                                Logistics
                                             </TableHead>
                                             <TableHead className="text-center font-mono text-[10px] font-bold uppercase">
                                                 Client
@@ -378,7 +381,7 @@ export function PricingLedger({
                                             <Fragment key={group.key}>
                                                 <TableRow className="bg-muted/30 hover:bg-muted/30">
                                                     <TableCell
-                                                        colSpan={10}
+                                                        colSpan={11}
                                                         className="py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
                                                     >
                                                         {group.label}
@@ -407,7 +410,7 @@ export function PricingLedger({
                                         {adminPricing ? (
                                             <TableRow className="border-t border-border bg-muted/20 font-semibold hover:bg-muted/20">
                                                 <TableCell />
-                                                <TableCell colSpan={5} className="py-2">
+                                                <TableCell colSpan={6} className="py-2">
                                                     Subtotal — line sell
                                                 </TableCell>
                                                 <TableCell colSpan={2} />
@@ -486,7 +489,7 @@ export function PricingLedger({
                     // total, all right-aligned under the money column.
                     <div className="ml-auto max-w-xs space-y-1 text-sm">
                         <div className="flex justify-between text-muted-foreground">
-                            <span>Buy Σ</span>
+                            <span>Buy Total</span>
                             <span className="font-mono tabular-nums">
                                 {money(buyTotal, resolvedCurrency)}
                             </span>
