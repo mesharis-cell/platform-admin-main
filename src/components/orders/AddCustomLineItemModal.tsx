@@ -71,10 +71,15 @@ const deriveMargin = (
  *   Row 3  Sell / Unit | Sell Total
  *   Row 4  Margin % | Margin Amount | Line Total
  *
- * Everything recomputes live across inputs. Sell / Unit and Margin % always
- * SHOW their computed values (seeded from the entity margin) — never an "auto"
- * placeholder. Until edited they are derived (muted, live-recomputing as Buy or
- * Qty change); editing either one stamps an override (amber marker + reset).
+ * ALL inputs are linked bidirectionally: units are the canonical state and
+ * every other figure back-derives them — Buy Total ⇒ Buy/Unit (÷ qty), Sell
+ * Total / Line Total ⇒ Sell/Unit (÷ qty), Margin Amount ⇒ sell total = buy
+ * total + amount, Margin % ⇔ Sell/Unit. Editing any field recomputes the rest.
+ * Sell-side figures always SHOW their computed values (seeded from the entity
+ * margin) — never an "auto" placeholder. Until edited they are derived (muted,
+ * live-recomputing as Buy/Qty change); editing any sell-side figure stamps an
+ * override (amber marker + reset). Payload contract unchanged: derived mode
+ * omits sell_unit_rate; override sends it (BILLABLE only).
  */
 export function AddCustomLineItemModal({
     open,
@@ -138,6 +143,21 @@ export function AddCustomLineItemModal({
     // complimentary lines are never charged, so their line total is 0.
     const lineTotal = isBillable ? sellTotal : 0;
 
+    // ── bidirectional linking (owner spec): editing ANY field recomputes the
+    // rest. Units are canonical state; totals/margin back-derive the units.
+    // While a derived field is being typed in, its raw text is kept as a draft
+    // so the live recompute doesn't clobber the cursor; blur drops the draft
+    // and the display snaps to the recomputed value.
+    const [drafts, setDrafts] = useState<Record<string, string>>({});
+    const setDraft = (key: string, value: string) => setDrafts((d) => ({ ...d, [key]: value }));
+    const clearDraft = (key: string) =>
+        setDrafts((d) => {
+            if (!(key in d)) return d;
+            const next = { ...d };
+            delete next[key];
+            return next;
+        });
+
     // Editing Margin % is just another way to set the sell: sell = buy × (1+pct).
     const handleMarginEdit = (value: string) => {
         const t = value.trim();
@@ -151,6 +171,26 @@ export function AddCustomLineItemModal({
     };
     const handleSellEdit = (value: string) => {
         setSellOverride(value.trim() === "" ? null : value);
+    };
+    // Totals back-derive their per-unit rate (÷ qty). Buy Total drives Buy/Unit;
+    // Sell Total + Line Total drive the sell override; Margin Amount targets
+    // sell total = buy total + amount.
+    const handleBuyTotalEdit = (value: string) => {
+        const n = Number(value);
+        if (!Number.isFinite(n) || n < 0 || !(quantityNum > 0)) return;
+        setUnitRate(String(roundMoney(n / quantityNum)));
+    };
+    const handleSellTotalEdit = (value: string) => {
+        const n = Number(value);
+        if (!Number.isFinite(n) || n < 0 || !(quantityNum > 0)) return;
+        setSellOverride(String(roundMoney(n / quantityNum)));
+    };
+    const handleMarginAmountEdit = (value: string) => {
+        const n = Number(value);
+        if (!Number.isFinite(n) || !(quantityNum > 0)) return;
+        const targetSellTotal = buyTotal + n;
+        if (targetSellTotal < 0) return;
+        setSellOverride(String(roundMoney(targetSellTotal / quantityNum)));
     };
 
     const handleAdd = async () => {
@@ -227,6 +267,7 @@ export function AddCustomLineItemModal({
             setUnit("service");
             setUnitRate("");
             setSellOverride(null);
+            setDrafts({});
             setNotes("");
             setTripDirection("DELIVERY");
             setTruckPlate("");
@@ -385,10 +426,16 @@ export function AddCustomLineItemModal({
                             <div>
                                 <Label>Buy Total ({currency})</Label>
                                 <Input
-                                    value={buyTotal.toFixed(2)}
-                                    readOnly
-                                    tabIndex={-1}
-                                    className="bg-muted text-right font-mono tabular-nums"
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={drafts.buyTotal ?? buyTotal.toFixed(2)}
+                                    className="text-right font-mono tabular-nums"
+                                    onChange={(e) => {
+                                        setDraft("buyTotal", e.target.value);
+                                        handleBuyTotalEdit(e.target.value);
+                                    }}
+                                    onBlur={() => clearDraft("buyTotal")}
                                 />
                             </div>
                         </div>
@@ -430,10 +477,25 @@ export function AddCustomLineItemModal({
                             <div>
                                 <Label>Sell Total ({currency})</Label>
                                 <Input
-                                    value={sellTotal.toFixed(2)}
-                                    readOnly
-                                    tabIndex={-1}
-                                    className="bg-muted text-right font-mono tabular-nums"
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={
+                                        isBillable
+                                            ? (drafts.sellTotal ?? sellTotal.toFixed(2))
+                                            : "0.00"
+                                    }
+                                    disabled={!isBillable}
+                                    className={cn(
+                                        "text-right font-mono tabular-nums",
+                                        !isBillable && "bg-muted",
+                                        isBillable && !isOverridden && "text-muted-foreground"
+                                    )}
+                                    onChange={(e) => {
+                                        setDraft("sellTotal", e.target.value);
+                                        handleSellTotalEdit(e.target.value);
+                                    }}
+                                    onBlur={() => clearDraft("sellTotal")}
                                 />
                             </div>
                         </div>
@@ -461,9 +523,10 @@ export function AddCustomLineItemModal({
                                         type="number"
                                         step="1"
                                         value={
-                                            isBillable && margin.percent != null
+                                            drafts.marginPct ??
+                                            (isBillable && margin.percent != null
                                                 ? String(margin.percent)
-                                                : ""
+                                                : "")
                                         }
                                         placeholder={isBillable ? "" : "—"}
                                         disabled={!isBillable || !(unitRateNum > 0)}
@@ -475,24 +538,59 @@ export function AddCustomLineItemModal({
                                                 isOverridden &&
                                                 "border-amber-400/70 focus-visible:ring-amber-400/40"
                                         )}
-                                        onChange={(e) => handleMarginEdit(e.target.value)}
+                                        onChange={(e) => {
+                                            setDraft("marginPct", e.target.value);
+                                            handleMarginEdit(e.target.value);
+                                        }}
+                                        onBlur={() => clearDraft("marginPct")}
                                     />
                                 )}
                             </div>
                             <div>
                                 <Label>Margin Amount ({currency})</Label>
                                 <Input
-                                    value={isBillable ? marginAmount.toFixed(2) : "—"}
-                                    readOnly
-                                    tabIndex={-1}
-                                    className="bg-muted text-right font-mono tabular-nums"
+                                    type={isBillable ? "number" : "text"}
+                                    step="0.01"
+                                    value={
+                                        isBillable
+                                            ? (drafts.marginAmount ?? marginAmount.toFixed(2))
+                                            : "—"
+                                    }
+                                    disabled={!isBillable}
+                                    className={cn(
+                                        "text-right font-mono tabular-nums",
+                                        !isBillable && "bg-muted",
+                                        isBillable && !isOverridden && "text-muted-foreground"
+                                    )}
+                                    onChange={(e) => {
+                                        setDraft("marginAmount", e.target.value);
+                                        handleMarginAmountEdit(e.target.value);
+                                    }}
+                                    onBlur={() => clearDraft("marginAmount")}
                                 />
                             </div>
                             <div>
                                 <Label>Line Total ({currency})</Label>
-                                <div className="flex h-9 items-center justify-end rounded-md border border-border bg-muted px-3 font-mono text-base font-semibold tabular-nums">
-                                    {lineTotal.toFixed(2)}
-                                </div>
+                                <Input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={
+                                        isBillable
+                                            ? (drafts.lineTotal ?? lineTotal.toFixed(2))
+                                            : "0.00"
+                                    }
+                                    disabled={!isBillable}
+                                    className={cn(
+                                        "text-right font-mono text-base font-semibold tabular-nums",
+                                        !isBillable && "bg-muted"
+                                    )}
+                                    onChange={(e) => {
+                                        setDraft("lineTotal", e.target.value);
+                                        handleSellTotalEdit(e.target.value);
+                                    }}
+                                    onBlur={() => clearDraft("lineTotal")}
+                                />
                             </div>
                         </div>
 
@@ -503,7 +601,7 @@ export function AddCustomLineItemModal({
                                     : "Non-billable — internal cost only; never shown or charged to the client."
                                 : isOverridden
                                   ? "Sell overridden for this line — it no longer follows the entity margin."
-                                  : `Sell seeds from the entity margin (${fmtPct(seedMarginPercent)}%) and recomputes as Buy changes. Edit Sell / Unit or Margin % to override this line.`}
+                                  : `Every figure is linked — edit any and the rest recompute. Sell seeds from the entity margin (${fmtPct(seedMarginPercent)}%); editing any sell-side figure overrides this line.`}
                         </p>
                     </div>
 
