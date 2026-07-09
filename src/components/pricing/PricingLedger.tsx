@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useMemo, useRef, useState } from "react";
+import { Fragment, type KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,7 +21,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { AlertTriangle, Ban, Info, Percent, Plus, RefreshCw } from "lucide-react";
+import { AlertTriangle, ArrowRight, Ban, Info, Percent, Plus, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 import { AddCatalogLineItemModal } from "@/components/orders/AddCatalogLineItemModal";
@@ -157,6 +157,10 @@ export function PricingLedger({
     // resolves "revert" instantly with no dialog, so callers are status-agnostic.
     const [amendOpen, setAmendOpen] = useState(false);
     const amendResolverRef = useRef<((choice: "revert" | "quiet" | null) => void) | null>(null);
+    // G3 (ORDER): the Proposal-B dialog is select-then-confirm — the operator
+    // picks an outcome card first (no default), then Confirm resolves it. This
+    // holds the pending selection; null = nothing picked yet (Confirm disabled).
+    const [amendChoice, setAmendChoice] = useState<"revert" | "quiet" | null>(null);
     // Quiet flag handed to the child dialogs/modals when the pre-flight resolves
     // "Update quietly" (add + bulk-margin own their own mutation internally).
     const [addQuiet, setAddQuiet] = useState(false);
@@ -177,6 +181,8 @@ export function PricingLedger({
         if (amendResolverRef.current) return Promise.resolve(null);
         return new Promise((resolve) => {
             amendResolverRef.current = resolve;
+            // No default selection (G3) — the operator must pick a card.
+            setAmendChoice(null);
             setAmendOpen(true);
         });
     };
@@ -185,6 +191,36 @@ export function PricingLedger({
         const resolve = amendResolverRef.current;
         amendResolverRef.current = null;
         resolve?.(choice);
+    };
+
+    // G3 keyboard support (ORDER option-card dialog): arrows move the selection
+    // between the two cards (no default), Enter confirms the current pick, Esc is
+    // handled by Radix onOpenChange → settleAmend(null). Attached to the card
+    // group, which is focused when the dialog opens.
+    const amendGroupRef = useRef<HTMLDivElement | null>(null);
+    useEffect(() => {
+        if (!amendOpen || !isOrder) return;
+        const t = setTimeout(() => amendGroupRef.current?.focus(), 0);
+        return () => clearTimeout(t);
+    }, [amendOpen, isOrder]);
+    const AMEND_ORDER = ["revert", "quiet"] as const;
+    const handleAmendKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+        if (e.key === "ArrowDown" || e.key === "ArrowRight") {
+            e.preventDefault();
+            setAmendChoice((cur) => {
+                const i = cur ? AMEND_ORDER.indexOf(cur) : -1;
+                return AMEND_ORDER[Math.min(AMEND_ORDER.length - 1, i + 1)];
+            });
+        } else if (e.key === "ArrowUp" || e.key === "ArrowLeft") {
+            e.preventDefault();
+            setAmendChoice((cur) => {
+                const i = cur ? AMEND_ORDER.indexOf(cur) : AMEND_ORDER.length;
+                return AMEND_ORDER[Math.max(0, i - 1)];
+            });
+        } else if (e.key === "Enter") {
+            e.preventDefault();
+            if (amendChoice) settleAmend(amendChoice);
+        }
     };
 
     // Edit-lens rows: existing list hook (camelCase, auto-invalidated by every
@@ -346,11 +382,13 @@ export function PricingLedger({
     const handleToggleVisibility = async (
         itemId: string,
         next: { clientPriceVisible?: boolean; clientVisible?: boolean; logisticsVisible?: boolean }
-    ) => {
+    ): Promise<boolean> => {
         try {
             await patchVisibility.mutateAsync({ itemId, data: next });
+            return true;
         } catch (error: any) {
             toast.error(error.message || "Failed to update visibility");
+            return false;
         }
     };
 
@@ -727,17 +765,117 @@ export function PricingLedger({
                 ) : null}
             </div>
 
-            {/* F1 / F7 — shared quote-amend confirm. Fires on EVERY pricing
+            {/* F1 / F7 / G3 — shared quote-amend confirm. Fires on EVERY pricing
                 mutation of a QUOTED entity (inline cell / mode change / void /
-                bulk-margin / add). ORDER shows three actions (Continue = pull
-                back · Update quietly = amend in place · Cancel); other entities
-                show the two-action pull-back confirm (no quiet path). */}
+                bulk-margin / add). ORDER shows the Proposal-B option cards
+                (select-then-confirm: pull back · update quietly); other entities
+                keep the simple two-action pull-back confirm (no quiet path). */}
             <AlertDialog open={amendOpen} onOpenChange={(open) => !open && settleAmend(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>This quote has already been sent</AlertDialogTitle>
-                        <AlertDialogDescription>{amendDescription}</AlertDialogDescription>
+                        {isOrder ? (
+                            <AlertDialogDescription>
+                                Choose how to apply your change:
+                            </AlertDialogDescription>
+                        ) : (
+                            <AlertDialogDescription>{amendDescription}</AlertDialogDescription>
+                        )}
                     </AlertDialogHeader>
+
+                    {isOrder ? (
+                        <div
+                            ref={amendGroupRef}
+                            role="radiogroup"
+                            aria-label="How to apply your change"
+                            tabIndex={-1}
+                            onKeyDown={handleAmendKeyDown}
+                            className="flex flex-col gap-2.5 outline-none"
+                        >
+                            {/* Card 1 — pull back for re-approval */}
+                            <div
+                                role="radio"
+                                aria-checked={amendChoice === "revert"}
+                                onClick={() => setAmendChoice("revert")}
+                                className={cn(
+                                    "flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors",
+                                    amendChoice === "revert"
+                                        ? "border-primary ring-1 ring-primary"
+                                        : "border-border hover:border-muted-foreground/40"
+                                )}
+                            >
+                                <span
+                                    className={cn(
+                                        "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border",
+                                        amendChoice === "revert"
+                                            ? "border-primary"
+                                            : "border-muted-foreground/50"
+                                    )}
+                                >
+                                    {amendChoice === "revert" ? (
+                                        <span className="h-2 w-2 rounded-full bg-primary" />
+                                    ) : null}
+                                </span>
+                                <div className="min-w-0 space-y-1.5">
+                                    <p className="text-sm font-semibold">Send for re-approval</p>
+                                    <div className="flex flex-wrap items-center gap-1.5">
+                                        <span className="inline-flex rounded border border-amber-500/30 bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-amber-700">
+                                            Quoted
+                                        </span>
+                                        <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                                        <span className="inline-flex rounded border border-indigo-500/30 bg-indigo-500/15 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-indigo-700">
+                                            Pending approval
+                                        </span>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">
+                                        Client notified · their estimate download pauses until you
+                                        re-approve.
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Card 2 — update quietly */}
+                            <div
+                                role="radio"
+                                aria-checked={amendChoice === "quiet"}
+                                onClick={() => setAmendChoice("quiet")}
+                                className={cn(
+                                    "flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors",
+                                    amendChoice === "quiet"
+                                        ? "border-primary ring-1 ring-primary"
+                                        : "border-border hover:border-muted-foreground/40"
+                                )}
+                            >
+                                <span
+                                    className={cn(
+                                        "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border",
+                                        amendChoice === "quiet"
+                                            ? "border-primary"
+                                            : "border-muted-foreground/50"
+                                    )}
+                                >
+                                    {amendChoice === "quiet" ? (
+                                        <span className="h-2 w-2 rounded-full bg-primary" />
+                                    ) : null}
+                                </span>
+                                <div className="min-w-0 space-y-1.5">
+                                    <p className="text-sm font-semibold">Update quietly</p>
+                                    <div className="flex flex-wrap items-center gap-1.5">
+                                        <span className="inline-flex rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                                            Quoted · unchanged
+                                        </span>
+                                        <span className="inline-flex rounded border border-emerald-500/30 bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-emerald-700">
+                                            PDF refreshed
+                                        </span>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">
+                                        Amends the sent quote in place. No status change, no email.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    ) : null}
+
                     <AlertDialogFooter className="sm:justify-between">
                         <button
                             type="button"
@@ -747,12 +885,16 @@ export function PricingLedger({
                             Cancel
                         </button>
                         <div className="flex flex-wrap items-center justify-end gap-2">
-                            <Button onClick={() => settleAmend("revert")}>Continue</Button>
                             {isOrder ? (
-                                <Button variant="softPrimary" onClick={() => settleAmend("quiet")}>
-                                    Update quietly
+                                <Button
+                                    disabled={amendChoice === null}
+                                    onClick={() => amendChoice && settleAmend(amendChoice)}
+                                >
+                                    Confirm
                                 </Button>
-                            ) : null}
+                            ) : (
+                                <Button onClick={() => settleAmend("revert")}>Continue</Button>
+                            )}
                         </div>
                     </AlertDialogFooter>
                 </AlertDialogContent>
