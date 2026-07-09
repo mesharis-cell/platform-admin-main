@@ -14,16 +14,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { TableCell, TableRow } from "@/components/ui/table";
-import {
-    ChevronDown,
-    ChevronRight,
-    Eye,
-    EyeOff,
-    Link2,
-    Lock,
-    RotateCcw,
-    Trash2,
-} from "lucide-react";
+import { ChevronDown, ChevronRight, Eye, EyeOff, Link2, RotateCcw, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type {
     LineItemBillingMode,
@@ -96,14 +87,20 @@ const stripeClassFor = (o: { isSystem: boolean; isOverride: boolean }): string =
     return "";
 };
 
-// Reveal-on-focus edit affordance: chromeless mono text at rest, input chrome
-// (border + bg + ring) only on hover/focus. Pure CSS state — no conditional
-// render, no extra state (fixes C2/C3). border-transparent keeps the 1px box so
-// the cell doesn't reflow when the border becomes visible on focus.
+// Inline-edit affordance (G7): a persistent dashed 1px UNDERLINE at rest so the
+// cell reads as editable, upgrading to a solid input border + ring on
+// hover/focus. The other three sides stay 1px transparent so the box never
+// reflows when the border becomes visible. Read-only spans get no underline
+// (IDLE_MONEY) — absence of the underline is the not-editable signal. Centered
+// (G6) to match the centered column headers/cells.
 const REVEAL_INPUT =
-    "h-7 px-2 text-right font-mono text-xs md:text-xs tabular-nums border-transparent bg-transparent shadow-none hover:border-input focus:border-input focus:bg-background";
+    "h-7 px-2 text-center font-mono text-xs md:text-xs tabular-nums border border-transparent border-dashed border-b-muted-foreground/40 bg-transparent shadow-none hover:border-solid hover:border-input focus:border-solid focus:border-input focus:bg-background";
 
-const IDLE_MONEY = "block text-right font-mono text-xs tabular-nums";
+// Same dashed-underline affordance for the in-table billing-mode Select trigger.
+const REVEAL_SELECT =
+    "h-7 justify-center border border-transparent border-dashed border-b-muted-foreground/40 bg-transparent px-2 text-xs shadow-none hover:border-solid hover:border-input focus:border-solid focus:border-input";
+
+const IDLE_MONEY = "block text-center font-mono text-xs tabular-nums";
 
 const DEBOUNCE_MS = 650;
 
@@ -114,17 +111,16 @@ interface Props {
     editable: boolean;
     allowVisibility: boolean;
     currency: string;
-    // Faint amber wash for operator-added CUSTOM lines (A5). Suppressed when the
-    // row already carries a policy stripe (the stripe is the stronger signal).
-    customWash?: boolean;
     // Debounced PUT /line-item/:id via the caller's update hook. Rejects on error.
     onUpdate: (data: UpdateLineItemRequest) => Promise<unknown>;
     onVoid: () => void;
+    // Resolves true on success, false on a caught+toasted failure (G5 lets the
+    // folded Save roll a price-toggle draft back on a rejected PATCH).
     onToggleVisibility: (next: {
         clientPriceVisible?: boolean;
         clientVisible?: boolean;
         logisticsVisible?: boolean;
-    }) => void;
+    }) => Promise<boolean> | void;
 }
 
 /**
@@ -140,16 +136,24 @@ export function PricingLedgerRow({
     editable,
     allowVisibility,
     currency,
-    customWash,
     onUpdate,
     onVoid,
     onToggleVisibility,
 }: Props) {
     const isSystem = item.lineItemType === "SYSTEM";
+    // CATALOG lines take their unit (buy) price from the rate card — it's
+    // read-only in the ledger even on an otherwise-editable row (G9). CUSTOM
+    // lines keep the editable buy input.
+    const isCatalog = item.lineItemType === "CATALOG";
     const perLineLocked = item.canEditPricingFields === false;
     const rowEditable = editable && !isSystem && !perLineLocked;
+    // G8: post-acceptance client-visibility lock (ORDER only; the API sends
+    // can_edit_client_visibility=false when financial_status is locked). Absent
+    // → treat as editable. Disables the client eye + the folded price toggle.
+    const clientVisibilityLocked = item.canEditClientVisibility === false;
 
     const [expanded, setExpanded] = useState(false);
+    // Main-table cells (debounced autosave via pendingRef/flush).
     const [buy, setBuy] = useState(String(item.unitRate ?? 0));
     const [sell, setSell] = useState(() => {
         const o = readSellOverride(item);
@@ -159,20 +163,29 @@ export function PricingLedgerRow({
     const [billingMode, setBillingMode] = useState<LineItemBillingMode>(
         (item.billingMode || "BILLABLE") as LineItemBillingMode
     );
+    // Folded-section DRAFTS (G5) — no autosave; committed only via the Save
+    // button. unit + notes go in one PUT; the price toggle via PATCH visibility.
     const [notes, setNotes] = useState(item.notes || "");
+    const [unitDraft, setUnitDraft] = useState(item.unit || "");
+    const [priceVisibleDraft, setPriceVisibleDraft] = useState(item.clientPriceVisible === true);
 
     const pendingRef = useRef<UpdateLineItemRequest>({});
     const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const inFlightRef = useRef(false);
 
-    // Notes autosave indicator — derived purely from the existing update mutation
-    // lifecycle (no new data path). "saving" while the notes write is in-flight,
-    // a brief "saved" on success, then back to idle.
-    const [notesStatus, setNotesStatus] = useState<"idle" | "saving" | "saved">("idle");
-    const notesTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    // Which folded drafts the user has touched since the last sync — guards the
+    // resync effect from clobbering an in-progress edit on an unrelated refetch
+    // (e.g. editing a main-table cell triggers a refetch while notes is dirty).
+    const foldedTouchedRef = useRef({ unit: false, notes: false, priceVisible: false });
+
+    // Folded Save feedback — reuses the Saving…/Saved ✓ pattern (G5).
+    const [foldedSaveStatus, setFoldedSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+    const foldedSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // Resync from the server row once no local edit is pending (post-save
-    // reconciliation). While a field is dirty/in-flight we keep the draft.
+    // reconciliation). Main cells resync whenever no debounced write is pending;
+    // folded drafts resync only when the user hasn't touched them (else we'd wipe
+    // an unsaved Save-draft on an unrelated refetch).
     useEffect(() => {
         if (inFlightRef.current || Object.keys(pendingRef.current).length > 0) return;
         setBuy(String(item.unitRate ?? 0));
@@ -180,14 +193,26 @@ export function PricingLedgerRow({
         setSell(o != null ? String(o) : "");
         setQty(String(item.quantity ?? 1));
         setBillingMode((item.billingMode || "BILLABLE") as LineItemBillingMode);
-        setNotes(item.notes || "");
+        if (!foldedTouchedRef.current.notes) setNotes(item.notes || "");
+        if (!foldedTouchedRef.current.unit) setUnitDraft(item.unit || "");
+        if (!foldedTouchedRef.current.priceVisible)
+            setPriceVisibleDraft(item.clientPriceVisible === true);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [item.updatedAt, item.unitRate, item.sellUnitRate, item.sell_unit_rate, item.quantity]);
+    }, [
+        item.updatedAt,
+        item.unitRate,
+        item.sellUnitRate,
+        item.sell_unit_rate,
+        item.quantity,
+        item.unit,
+        item.notes,
+        item.clientPriceVisible,
+    ]);
 
     useEffect(() => {
         return () => {
             if (timerRef.current) clearTimeout(timerRef.current);
-            if (notesTimerRef.current) clearTimeout(notesTimerRef.current);
+            if (foldedSaveTimerRef.current) clearTimeout(foldedSaveTimerRef.current);
         };
     }, []);
 
@@ -198,21 +223,12 @@ export function PricingLedgerRow({
         }
         const payload = pendingRef.current;
         if (Object.keys(payload).length === 0) return;
-        const hadNotes = "notes" in payload;
         pendingRef.current = {};
         inFlightRef.current = true;
-        if (hadNotes) {
-            if (notesTimerRef.current) clearTimeout(notesTimerRef.current);
-            setNotesStatus("saving");
-        }
         try {
             await onUpdate(payload);
-            if (hadNotes) {
-                setNotesStatus("saved");
-                notesTimerRef.current = setTimeout(() => setNotesStatus("idle"), 1500);
-            }
         } catch {
-            // Rollback the touched fields to the server row on failure.
+            // Rollback the touched main-table fields to the server row on failure.
             if ("unitRate" in payload) setBuy(String(item.unitRate ?? 0));
             if ("sellUnitRate" in payload) {
                 const o = readSellOverride(item);
@@ -221,10 +237,6 @@ export function PricingLedgerRow({
             if ("quantity" in payload) setQty(String(item.quantity ?? 1));
             if ("billingMode" in payload)
                 setBillingMode((item.billingMode || "BILLABLE") as LineItemBillingMode);
-            if (hadNotes) {
-                setNotes(item.notes || "");
-                setNotesStatus("idle");
-            }
         } finally {
             inFlightRef.current = false;
         }
@@ -293,9 +305,72 @@ export function PricingLedgerRow({
         pendingRef.current = { ...pendingRef.current, billingMode: value };
         void flush();
     };
-    const handleNotes = (value: string) => {
+    // --- folded-section drafts (G5) — local only, committed via Save ---
+    const handleNotesDraft = (value: string) => {
         setNotes(value);
-        queue({ notes: value });
+        foldedTouchedRef.current.notes = true;
+    };
+    const handleUnitDraft = (value: string) => {
+        setUnitDraft(value);
+        foldedTouchedRef.current.unit = true;
+    };
+    const handlePriceVisibleDraft = (value: boolean) => {
+        setPriceVisibleDraft(value);
+        foldedTouchedRef.current.priceVisible = true;
+    };
+
+    // Per-field dirtiness (Save button gate). Compared against the server row.
+    const notesDirty = notes !== (item.notes || "");
+    const unitDirty = unitDraft !== (item.unit || "");
+    const priceVisibleDirty = priceVisibleDraft !== (item.clientPriceVisible === true);
+    const foldedDirty = notesDirty || unitDirty || priceVisibleDirty;
+
+    const resetFoldedDrafts = () => {
+        setNotes(item.notes || "");
+        setUnitDraft(item.unit || "");
+        setPriceVisibleDraft(item.clientPriceVisible === true);
+        foldedTouchedRef.current = { unit: false, notes: false, priceVisible: false };
+    };
+
+    // G5 explicit Save: unit/notes → one PUT (unit is a pricing field, so on a
+    // QUOTED order the confirm gate fires via onUpdate exactly like a cell edit);
+    // a changed price toggle → the visibility PATCH (REBUILD_ONLY server-side, no
+    // gate). PUT first, then PATCH — if the PUT fails (incl. amend-cancel) nothing
+    // else runs and all drafts roll back; if only the PATCH fails, the price draft
+    // rolls back while the committed unit/notes stay.
+    const handleFoldedSave = async () => {
+        if (!foldedDirty || foldedSaveStatus === "saving") return;
+        if (foldedSaveTimerRef.current) clearTimeout(foldedSaveTimerRef.current);
+        setFoldedSaveStatus("saving");
+        try {
+            const putPayload: UpdateLineItemRequest = {};
+            if (unitDirty) putPayload.unit = unitDraft;
+            if (notesDirty) putPayload.notes = notes;
+            if (Object.keys(putPayload).length > 0) {
+                await onUpdate(putPayload);
+                foldedTouchedRef.current.unit = false;
+                foldedTouchedRef.current.notes = false;
+            }
+            if (priceVisibleDirty) {
+                const ok = await onToggleVisibility({ clientPriceVisible: priceVisibleDraft });
+                if (ok === false) {
+                    // PATCH rejected (toasted by the parent) — roll the price draft
+                    // back; the unit/notes PUT already committed.
+                    setPriceVisibleDraft(item.clientPriceVisible === true);
+                    foldedTouchedRef.current.priceVisible = false;
+                    setFoldedSaveStatus("idle");
+                    return;
+                }
+                foldedTouchedRef.current.priceVisible = false;
+            }
+            setFoldedSaveStatus("saved");
+            foldedSaveTimerRef.current = setTimeout(() => setFoldedSaveStatus("idle"), 1500);
+        } catch {
+            // PUT failed (or the QUOTED confirm was cancelled) — roll every draft
+            // back to the server row; the price toggle was never attempted.
+            resetFoldedDrafts();
+            setFoldedSaveStatus("idle");
+        }
     };
 
     // --- derived display state ---
@@ -332,13 +407,11 @@ export function PricingLedgerRow({
     const clientForcedOff = billingMode === "NON_BILLABLE";
     const clientVisible = clientForcedOff ? false : item.clientVisible !== false;
     const logisticsVisible = item.logisticsVisible !== false;
-    // Amber wash for CUSTOM lines, but only when no stronger stripe is present.
-    const wash = customWash && !stripe ? "bg-amber-50/30 dark:bg-amber-500/5" : "";
     const modeMeta = MODE_META[billingMode];
 
     return (
         <>
-            <TableRow className={cn("border-border/50 align-middle", stripe, wash)}>
+            <TableRow className={cn("border-border/50 align-middle", stripe)}>
                 <TableCell className="w-8 px-2">
                     <button
                         type="button"
@@ -356,7 +429,6 @@ export function PricingLedgerRow({
 
                 <TableCell className="min-w-[220px] py-1.5">
                     <div className="flex flex-wrap items-center gap-1.5">
-                        {isSystem ? <Lock className="h-3 w-3 shrink-0 text-purple-600" /> : null}
                         <span className="text-sm font-medium">{item.description}</span>
                         {isSystem && item.systemKey ? (
                             <span className="text-[10px] text-muted-foreground">
@@ -368,18 +440,13 @@ export function PricingLedgerRow({
 
                 {/* Billing mode — editable in-table Select (ADMIN-only server-side).
                     Read-only coloured token when the row can't be edited. */}
-                <TableCell className="w-36 py-1.5">
+                <TableCell className="w-36 py-1.5 text-center">
                     {rowEditable ? (
                         <Select
                             value={billingMode}
                             onValueChange={(v) => handleBillingMode(v as LineItemBillingMode)}
                         >
-                            <SelectTrigger
-                                className={cn(
-                                    "h-7 border-transparent bg-transparent px-2 text-xs shadow-none hover:border-input focus:border-input",
-                                    modeMeta.text
-                                )}
-                            >
+                            <SelectTrigger className={cn(REVEAL_SELECT, modeMeta.text)}>
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -402,40 +469,51 @@ export function PricingLedgerRow({
                     )}
                 </TableCell>
 
-                {/* Buy / Unit — reveal-on-focus. LIR-origin lines carry a small
-                    provenance hint (R3): the rate came from an approved logistics
-                    request. ADMIN stays editable; LOGISTICS is locked server-side. */}
+                {/* Qty — inline-editable in the main table (G4), debounced like
+                    the other pricing cells. Read-only value when the row is
+                    locked/SYSTEM (no dashed underline). */}
+                <TableCell className="w-20 py-1.5">
+                    {rowEditable ? (
+                        <Input
+                            value={qty}
+                            type="number"
+                            min={1}
+                            step={1}
+                            className={REVEAL_INPUT}
+                            onChange={(e) => handleQty(e.target.value)}
+                            onBlur={flush}
+                            onKeyDown={handleEnter}
+                        />
+                    ) : (
+                        <span className={IDLE_MONEY}>{qtyNum}</span>
+                    )}
+                </TableCell>
+
+                {/* Buy / Unit — reveal-on-focus for CUSTOM lines. CATALOG lines
+                    take their unit price from the rate card, so it's read-only
+                    (IDLE_MONEY span, no dashed underline = not-editable per G7)
+                    even on an otherwise-editable row. ADMIN stays editable on
+                    CUSTOM; LOGISTICS is locked server-side. */}
                 <TableCell className="w-28 py-1.5">
-                    <div className="flex items-center justify-end gap-1">
-                        {isLirOrigin ? (
-                            <span
-                                className="shrink-0 text-muted-foreground/60"
-                                title="Unit price set by an approved logistics request. You can still edit it as admin."
-                                aria-label="Unit price from an approved logistics request"
-                            >
-                                <Link2 className="h-3 w-3" />
-                            </span>
-                        ) : null}
-                        {rowEditable ? (
-                            <Input
-                                value={buy}
-                                type="number"
-                                min={0}
-                                step="0.01"
-                                className={REVEAL_INPUT}
-                                onChange={(e) => handleBuy(e.target.value)}
-                                onBlur={flush}
-                                onKeyDown={handleEnter}
-                            />
-                        ) : (
-                            <span className={IDLE_MONEY}>{buyNum.toFixed(2)}</span>
-                        )}
-                    </div>
+                    {rowEditable && !isCatalog ? (
+                        <Input
+                            value={buy}
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            className={REVEAL_INPUT}
+                            onChange={(e) => handleBuy(e.target.value)}
+                            onBlur={flush}
+                            onKeyDown={handleEnter}
+                        />
+                    ) : (
+                        <span className={IDLE_MONEY}>{buyNum.toFixed(2)}</span>
+                    )}
                 </TableCell>
 
                 {/* Sell / Unit — reveal-on-focus. Always shows the number (owner:
-                    no "auto" placeholder) — seed-derived value displayed muted
-                    until an explicit override makes it authoritative. */}
+                    no "auto" placeholder) — the seed-derived value renders in
+                    normal foreground (G6) until an explicit override is stamped. */}
                 <TableCell className="w-28 py-1.5">
                     {rowEditable && isBillable ? (
                         <Input
@@ -443,7 +521,7 @@ export function PricingLedgerRow({
                             type="number"
                             min={0}
                             step="0.01"
-                            className={cn(REVEAL_INPUT, isAuto && "text-muted-foreground")}
+                            className={REVEAL_INPUT}
                             onChange={(e) => handleSell(e.target.value)}
                             onBlur={flush}
                             onKeyDown={handleEnter}
@@ -463,21 +541,19 @@ export function PricingLedgerRow({
                             type="number"
                             step="1"
                             placeholder="—"
-                            className={cn(REVEAL_INPUT, isAuto && "text-muted-foreground")}
+                            className={REVEAL_INPUT}
                             onChange={(e) => handleMargin(e.target.value)}
                             onBlur={flush}
                             onKeyDown={handleEnter}
                         />
                     ) : (
-                        <span className={cn(IDLE_MONEY, "text-muted-foreground")}>
-                            {isBillable ? margin.display : "—"}
-                        </span>
+                        <span className={IDLE_MONEY}>{isBillable ? margin.display : "—"}</span>
                     )}
                 </TableCell>
 
                 {/* Margin Amount (R10) — derived money, read-only. */}
                 <TableCell className="w-28 py-1.5">
-                    <span className={cn(IDLE_MONEY, "text-muted-foreground")}>
+                    <span className={IDLE_MONEY}>
                         {isBillable ? marginAmountLine.toFixed(2) : "—"}
                     </span>
                 </TableCell>
@@ -514,7 +590,8 @@ export function PricingLedgerRow({
                     ) : null}
                 </TableCell>
 
-                {/* Client visibility eye (whole-line). NON_BILLABLE = forced off. */}
+                {/* Client visibility eye (whole-line). NON_BILLABLE = forced off;
+                    post-acceptance lock (G8) shows current state disabled. */}
                 <TableCell className="w-12 py-1.5 text-center">
                     {!isSystem ? (
                         clientForcedOff ? (
@@ -524,6 +601,18 @@ export function PricingLedgerRow({
                                 aria-label="Internal cost — never shown to client"
                             >
                                 <EyeOff className="h-4 w-4" />
+                            </span>
+                        ) : clientVisibilityLocked ? (
+                            <span
+                                className="inline-flex cursor-not-allowed text-muted-foreground/40"
+                                title="Locked after quote acceptance"
+                                aria-label="Client visibility locked after quote acceptance"
+                            >
+                                {clientVisible ? (
+                                    <Eye className="h-4 w-4" />
+                                ) : (
+                                    <EyeOff className="h-4 w-4" />
+                                )}
                             </span>
                         ) : allowVisibility ? (
                             <button
@@ -555,7 +644,7 @@ export function PricingLedgerRow({
                 </TableCell>
 
                 {/* Total (R11) — the SELL total for the line (qty × sell/unit). */}
-                <TableCell className="w-28 py-1.5 text-right font-mono text-xs font-semibold tabular-nums">
+                <TableCell className="w-28 py-1.5 text-center font-mono text-xs font-semibold tabular-nums">
                     {sellTotalLine.toFixed(2)} {currency}
                 </TableCell>
 
@@ -593,7 +682,7 @@ export function PricingLedgerRow({
             {expanded ? (
                 <TableRow className={cn("border-border/50 bg-muted/20 hover:bg-muted/20", stripe)}>
                     <TableCell />
-                    <TableCell colSpan={10} className="py-3">
+                    <TableCell colSpan={11} className="py-3">
                         {/* Read tokens (category + mode moved off the row, A2 style) */}
                         <div className="mb-3 flex flex-wrap gap-x-6 gap-y-1 text-[11px] text-muted-foreground">
                             <span>
@@ -613,60 +702,46 @@ export function PricingLedgerRow({
 
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                             <div className="space-y-3">
+                                {/* Unit is a pricing field (edited here as a draft, G5).
+                                    Quantity now lives in the main table (G4). */}
                                 <div className="grid grid-cols-2 gap-3">
-                                    <div className="space-y-1">
-                                        <Label className="text-[11px]">Quantity</Label>
-                                        <Input
-                                            value={qty}
-                                            type="number"
-                                            min={1}
-                                            step={1}
-                                            disabled={!rowEditable}
-                                            className="h-8"
-                                            onChange={(e) => handleQty(e.target.value)}
-                                            onBlur={flush}
-                                            onKeyDown={handleEnter}
-                                        />
-                                    </div>
                                     <div className="space-y-1">
                                         <Label className="text-[11px]">Unit</Label>
                                         <Input
-                                            value={item.unit || "unit"}
-                                            disabled
+                                            value={unitDraft}
+                                            placeholder="unit"
+                                            disabled={!rowEditable}
                                             className="h-8"
+                                            onChange={(e) => handleUnitDraft(e.target.value)}
                                         />
                                     </div>
                                 </div>
                                 <div className="space-y-1">
-                                    <div className="flex items-center gap-2">
-                                        <Label className="text-[11px]">Notes</Label>
-                                        {notesStatus === "saving" ? (
-                                            <span className="text-[10px] text-muted-foreground">
-                                                Saving…
-                                            </span>
-                                        ) : notesStatus === "saved" ? (
-                                            <span className="text-[10px] text-emerald-600">
-                                                Saved ✓
-                                            </span>
-                                        ) : null}
-                                    </div>
+                                    <Label className="text-[11px]">Notes</Label>
                                     <Textarea
                                         value={notes}
                                         rows={2}
                                         disabled={
                                             !rowEditable && item.canEditMetadataFields === false
                                         }
-                                        onChange={(e) => handleNotes(e.target.value)}
-                                        onBlur={flush}
+                                        onChange={(e) => handleNotesDraft(e.target.value)}
                                     />
                                 </div>
                                 {/* Per-line PRICE visibility to the client — the third
                                     visibility control (separate from the whole-line Client
                                     eye). Default off: the client sees the line but not its
                                     individual sell figure unless this is on. Only meaningful
-                                    on a billable, client-visible line. */}
+                                    on a billable, client-visible line. Draft (G5) + locked
+                                    after quote acceptance (G8). */}
                                 {!isSystem && isBillable && !clientForcedOff ? (
-                                    <div className="flex items-start justify-between gap-3 rounded-md border border-border/60 px-3 py-2">
+                                    <div
+                                        className="flex items-start justify-between gap-3 rounded-md border border-border/60 px-3 py-2"
+                                        title={
+                                            clientVisibilityLocked
+                                                ? "Locked after quote acceptance"
+                                                : undefined
+                                        }
+                                    >
                                         <div className="space-y-0.5">
                                             <Label className="text-[11px]">
                                                 Show price to client
@@ -677,12 +752,39 @@ export function PricingLedgerRow({
                                             </p>
                                         </div>
                                         <Switch
-                                            checked={item.clientPriceVisible === true}
-                                            disabled={!rowEditable}
-                                            onCheckedChange={(next) =>
-                                                onToggleVisibility({ clientPriceVisible: next })
-                                            }
+                                            checked={priceVisibleDraft}
+                                            disabled={!rowEditable || clientVisibilityLocked}
+                                            onCheckedChange={handlePriceVisibleDraft}
                                         />
+                                    </div>
+                                ) : null}
+                                {/* Explicit Save for the folded drafts (G5) — disabled
+                                    until dirty. Shown whenever any folded field is
+                                    editable (rowEditable, or notes-only post-lock). */}
+                                {rowEditable || item.canEditMetadataFields !== false ? (
+                                    <div className="flex items-center gap-2 pt-1">
+                                        <Button
+                                            type="button"
+                                            size="sm"
+                                            variant="outline"
+                                            disabled={!foldedDirty || foldedSaveStatus === "saving"}
+                                            onClick={() => void handleFoldedSave()}
+                                        >
+                                            Save
+                                        </Button>
+                                        {foldedSaveStatus === "saving" ? (
+                                            <span className="text-[10px] text-muted-foreground">
+                                                Saving…
+                                            </span>
+                                        ) : foldedSaveStatus === "saved" ? (
+                                            <span className="text-[10px] text-emerald-600">
+                                                Saved ✓
+                                            </span>
+                                        ) : foldedDirty ? (
+                                            <span className="text-[10px] text-muted-foreground">
+                                                Unsaved changes
+                                            </span>
+                                        ) : null}
                                     </div>
                                 ) : null}
                             </div>
