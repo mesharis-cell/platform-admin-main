@@ -117,6 +117,14 @@ export interface OrderLineItem {
     logisticsVisible?: boolean;
     canEditPricingFields?: boolean;
     canEditMetadataFields?: boolean;
+    // Post-acceptance client-visibility lock (G2/G8). The API surfaces this as
+    // `can_edit_client_visibility` (mapped snake→camel by the list hook). It is
+    // `false` only on an ORDER whose financial_status is locked (QUOTE_ACCEPTED /
+    // PENDING_INVOICE / INVOICED / PAID); `true` everywhere else, including all
+    // non-ORDER entities. When false the admin ledger disables the client eye +
+    // the folded "show price to client" toggle (server also 400s the change).
+    // Absent → treat as editable (true).
+    canEditClientVisibility?: boolean;
     lockReason?: string | null;
     // Provenance (R3): true when this line was created from an APPROVED logistics
     // line-item-request. The API surfaces it as `lir_origin` + `line_item_request_id`
