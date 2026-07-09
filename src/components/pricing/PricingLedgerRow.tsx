@@ -14,16 +14,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { TableCell, TableRow } from "@/components/ui/table";
-import {
-    ChevronDown,
-    ChevronRight,
-    Eye,
-    EyeOff,
-    Link2,
-    Lock,
-    RotateCcw,
-    Trash2,
-} from "lucide-react";
+import { ChevronDown, ChevronRight, Eye, EyeOff, Link2, RotateCcw, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type {
     LineItemBillingMode,
@@ -150,6 +141,10 @@ export function PricingLedgerRow({
     onToggleVisibility,
 }: Props) {
     const isSystem = item.lineItemType === "SYSTEM";
+    // CATALOG lines take their unit (buy) price from the rate card — it's
+    // read-only in the ledger even on an otherwise-editable row (G9). CUSTOM
+    // lines keep the editable buy input.
+    const isCatalog = item.lineItemType === "CATALOG";
     const perLineLocked = item.canEditPricingFields === false;
     const rowEditable = editable && !isSystem && !perLineLocked;
     // G8: post-acceptance client-visibility lock (ORDER only; the API sends
@@ -434,7 +429,6 @@ export function PricingLedgerRow({
 
                 <TableCell className="min-w-[220px] py-1.5">
                     <div className="flex flex-wrap items-center gap-1.5">
-                        {isSystem ? <Lock className="h-3 w-3 shrink-0 text-purple-600" /> : null}
                         <span className="text-sm font-medium">{item.description}</span>
                         {isSystem && item.systemKey ? (
                             <span className="text-[10px] text-muted-foreground">
@@ -495,35 +489,26 @@ export function PricingLedgerRow({
                     )}
                 </TableCell>
 
-                {/* Buy / Unit — reveal-on-focus. LIR-origin lines carry a small
-                    provenance hint (R3): the rate came from an approved logistics
-                    request. ADMIN stays editable; LOGISTICS is locked server-side. */}
+                {/* Buy / Unit — reveal-on-focus for CUSTOM lines. CATALOG lines
+                    take their unit price from the rate card, so it's read-only
+                    (IDLE_MONEY span, no dashed underline = not-editable per G7)
+                    even on an otherwise-editable row. ADMIN stays editable on
+                    CUSTOM; LOGISTICS is locked server-side. */}
                 <TableCell className="w-28 py-1.5">
-                    <div className="flex items-center justify-center gap-1">
-                        {isLirOrigin ? (
-                            <span
-                                className="shrink-0 text-muted-foreground/60"
-                                title="Unit price set by an approved logistics request. You can still edit it as admin."
-                                aria-label="Unit price from an approved logistics request"
-                            >
-                                <Link2 className="h-3 w-3" />
-                            </span>
-                        ) : null}
-                        {rowEditable ? (
-                            <Input
-                                value={buy}
-                                type="number"
-                                min={0}
-                                step="0.01"
-                                className={REVEAL_INPUT}
-                                onChange={(e) => handleBuy(e.target.value)}
-                                onBlur={flush}
-                                onKeyDown={handleEnter}
-                            />
-                        ) : (
-                            <span className={IDLE_MONEY}>{buyNum.toFixed(2)}</span>
-                        )}
-                    </div>
+                    {rowEditable && !isCatalog ? (
+                        <Input
+                            value={buy}
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            className={REVEAL_INPUT}
+                            onChange={(e) => handleBuy(e.target.value)}
+                            onBlur={flush}
+                            onKeyDown={handleEnter}
+                        />
+                    ) : (
+                        <span className={IDLE_MONEY}>{buyNum.toFixed(2)}</span>
+                    )}
                 </TableCell>
 
                 {/* Sell / Unit — reveal-on-focus. Always shows the number (owner:
