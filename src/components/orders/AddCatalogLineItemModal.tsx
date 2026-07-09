@@ -35,6 +35,10 @@ interface AddCatalogLineItemModalProps {
     targetId?: string;
     orderId?: string;
     purposeType?: "ORDER" | "INBOUND_REQUEST" | "SERVICE_REQUEST" | "SELF_PICKUP";
+    // F7 quiet-amend (ADMIN + ORDER only): the caller resolved a "Update
+    // quietly" choice before opening this modal. When true, each created line
+    // amends the sent quote in place (no pull-back / QUOTE_REVISED).
+    quietAmend?: boolean;
 }
 
 type ServiceRow = {
@@ -67,6 +71,7 @@ export function AddCatalogLineItemModal({
     targetId,
     orderId,
     purposeType = "ORDER",
+    quietAmend,
 }: AddCatalogLineItemModalProps) {
     const resolvedTargetId = targetId || orderId || "";
     const createLineItem = useCreateCatalogLineItem(resolvedTargetId, purposeType);
@@ -242,6 +247,7 @@ export function AddCatalogLineItemModal({
                     notes: notes.trim() || undefined,
                     ...(overrideLogisticsVisible ? { logistics_visible: logisticsVisible } : {}),
                     ...(sellUnitRate !== undefined ? { sell_unit_rate: sellUnitRate } : {}),
+                    ...(quietAmend ? { quiet_amend: true } : {}),
                 });
             }
 

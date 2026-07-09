@@ -40,6 +40,10 @@ interface AddCustomLineItemModalProps {
     // DISPLAY the derived sell/margin as real numbers (owner: never "auto").
     seedMarginPercent?: number;
     currency?: string;
+    // F7 quiet-amend (ADMIN + ORDER only): the caller resolved a "Update
+    // quietly" choice before opening this modal. When true, the created line
+    // amends the sent quote in place (no pull-back / QUOTE_REVISED).
+    quietAmend?: boolean;
 }
 
 const roundMoney = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
@@ -88,6 +92,7 @@ export function AddCustomLineItemModal({
     purposeType = "ORDER",
     seedMarginPercent = 0,
     currency = "AED",
+    quietAmend,
 }: AddCustomLineItemModalProps) {
     const createLineItem = useCreateCustomLineItem(targetId, purposeType);
 
@@ -257,6 +262,7 @@ export function AddCustomLineItemModal({
                 logistics_visible: logisticsVisible,
                 // BILLABLE-only: never send a sell override for a non-billable line.
                 ...(sellPayload !== undefined ? { sell_unit_rate: sellPayload } : {}),
+                ...(quietAmend ? { quiet_amend: true } : {}),
             });
             toast.success("Custom line item added");
             onOpenChange(false);

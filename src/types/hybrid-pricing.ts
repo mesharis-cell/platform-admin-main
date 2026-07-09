@@ -149,6 +149,12 @@ export interface CreateCatalogLineItemRequest {
     // catalog-create since Phase 1 — kills the old create-then-PUT loop. Omit =
     // no override (server seed-derives from prices.margin_percent).
     sell_unit_rate?: number | null;
+    // F7 quiet-amend (ADMIN + ORDER only): when true, adding this line to a
+    // QUOTED order amends the sent quote in place (rebuild + regenerate the
+    // cost estimate) WITHOUT the status pull-back / QUOTE_REVISED / re-review
+    // notification. Omit = normal behaviour (pull the quote back). The API
+    // enforces ADMIN + ORDER; anything else 403s.
+    quiet_amend?: boolean;
 }
 
 export interface CreateCustomLineItemRequest {
@@ -168,6 +174,8 @@ export interface CreateCustomLineItemRequest {
     logistics_visible?: boolean;
     // Per-unit sell override (ADMIN-only). Omit = no override; null = clear.
     sell_unit_rate?: number | null;
+    // F7 quiet-amend (ADMIN + ORDER only) — see CreateCatalogLineItemRequest.
+    quiet_amend?: boolean;
 }
 
 export interface UpdateLineItemRequest {
@@ -184,6 +192,10 @@ export interface UpdateLineItemRequest {
     // OMITTED = untouched (no change). Never send `undefined` — the API schema
     // is .strict() and undefined would still emit a sell_unit_rate key.
     sellUnitRate?: number | null;
+    // F7 quiet-amend (ADMIN + ORDER only). Mapped to quiet_amend by the update
+    // hook (mapCamelToSnake). Only send `true`; omit otherwise. Amends a sent
+    // quote in place (rebuild + regen estimate) without the pull-back/QUOTE_REVISED.
+    quietAmend?: boolean;
 }
 
 export interface PatchLineItemMetadataRequest {
@@ -213,6 +225,8 @@ export interface PatchEntityLineItemVisibilityRequest {
 
 export interface VoidLineItemRequest {
     void_reason: string;
+    // F7 quiet-amend (ADMIN + ORDER only) — see CreateCatalogLineItemRequest.
+    quiet_amend?: boolean;
 }
 
 export interface LineItemRequest {

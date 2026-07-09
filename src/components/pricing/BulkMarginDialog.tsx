@@ -22,6 +22,10 @@ interface Props {
     onOpenChange: (open: boolean) => void;
     purposeType: PurposeType;
     entityId: string;
+    // F7 quiet-amend (ADMIN + ORDER only): the caller resolved a "Update
+    // quietly" choice before opening this dialog. When true, the bulk-margin
+    // stamp amends the sent quote in place (no pull-back / QUOTE_REVISED).
+    quietAmend?: boolean;
     onDone?: () => void;
 }
 
@@ -30,7 +34,14 @@ interface Props {
  * non-SYSTEM line as an explicit per-line sell (does NOT change the entity's
  * margin seed). 0% = pass-through (sell = buy).
  */
-export function BulkMarginDialog({ open, onOpenChange, purposeType, entityId, onDone }: Props) {
+export function BulkMarginDialog({
+    open,
+    onOpenChange,
+    purposeType,
+    entityId,
+    quietAmend,
+    onDone,
+}: Props) {
     const [percent, setPercent] = useState("");
     const [reason, setReason] = useState("");
     const bulkMargin = useBulkMargin(purposeType, entityId);
@@ -46,6 +57,7 @@ export function BulkMarginDialog({ open, onOpenChange, purposeType, entityId, on
             await bulkMargin.mutateAsync({
                 marginPercent: pct,
                 reason: reason.trim() || undefined,
+                quietAmend,
             });
             toast.success(`Applied ${pct}% margin to all billable lines`);
             setPercent("");
