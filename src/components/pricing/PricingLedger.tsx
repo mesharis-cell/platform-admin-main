@@ -164,6 +164,17 @@ export function PricingLedger({
 
     const requestAmend = (): Promise<"revert" | "quiet" | null> => {
         if (!isPostQuote) return Promise.resolve("revert");
+        // Concurrency guard: a confirm dialog may already be pending, its
+        // resolver held by the ONE shared ref. The classic collision is the
+        // row's 650ms debounced flush firing BEHIND an already-open void / add
+        // / bulk dialog (the Radix modal overlay traps focus + pointer but does
+        // NOT cancel an already-scheduled setTimeout). Overwriting the ref here
+        // would strand the first action's promise forever and let the wrong
+        // mutation commit. Instead resolve the newcomer as cancelled (null)
+        // immediately, WITHOUT touching dialog state: its caller takes the
+        // cancel path — the inline row's catch rolls the field back to the
+        // server value — while the already-open dialog proceeds normally.
+        if (amendResolverRef.current) return Promise.resolve(null);
         return new Promise((resolve) => {
             amendResolverRef.current = resolve;
             setAmendOpen(true);
