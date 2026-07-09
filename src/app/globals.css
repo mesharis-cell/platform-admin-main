@@ -210,16 +210,12 @@ body {
     width: 3px;
 }
 
-.line-row-override {
-    background-color: color-mix(in oklch, var(--primary) 6%, transparent);
-}
+/* G6: the full-row background tint was removed (owner: kill all row washes) —
+ * only the left-edge ::before stripe remains as the calm per-row signal. */
 .line-row-override > td:first-child::before {
     background: var(--primary);
 }
 
-.line-row-system {
-    background-color: rgba(147, 51, 234, 0.05);
-}
 .line-row-system > td:first-child::before {
     background: #9333ea; /* purple-600 */
 }
