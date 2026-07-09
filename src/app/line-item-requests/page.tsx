@@ -13,7 +13,6 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import {
     Table,
@@ -52,7 +51,6 @@ type DraftMap = Record<
         // server seed-derives sell from the entity margin. Only applies to
         // BILLABLE lines (API rejects a sell override on non-billable).
         sellRate: string;
-        clientPriceVisible: boolean;
         notes: string;
         adminNote: string;
         billingMode: LineItemBillingMode;
@@ -70,7 +68,6 @@ const toDraft = (request: any) => ({
     // Empty by default — leaving it blank means "seed-derived sell" (the API's
     // own default when sell_unit_rate is absent/null).
     sellRate: "",
-    clientPriceVisible: false,
     notes: request.notes || "",
     adminNote: "",
     billingMode: "BILLABLE" as LineItemBillingMode,
@@ -228,7 +225,9 @@ export default function LineItemRequestsPage() {
                     adminNote: draft.adminNote.trim() || undefined,
                     billingMode: draft.billingMode,
                     ...(sellUnitRate !== undefined ? { sellUnitRate } : {}),
-                    clientPriceVisible: isBillable ? draft.clientPriceVisible : false,
+                    // F6: clientPriceVisible is no longer sent from the LIR approval
+                    // card — the API defaults it to false; price visibility is
+                    // controlled on the entity page ledger only.
                 },
             });
             toast.success("Line item request approved");
@@ -703,35 +702,11 @@ export default function LineItemRequestsPage() {
                                                                         </div>
                                                                     </div>
 
-                                                                    {/* Client price visibility — whether this
-                                                                        individual line's price shows on
-                                                                        client-facing views. Only meaningful for
-                                                                        BILLABLE lines. */}
-                                                                    {draft.billingMode ===
-                                                                        "BILLABLE" && (
-                                                                        <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                                                                            <Checkbox
-                                                                                checked={
-                                                                                    draft.clientPriceVisible
-                                                                                }
-                                                                                disabled={
-                                                                                    !isRequested
-                                                                                }
-                                                                                onCheckedChange={(
-                                                                                    checked
-                                                                                ) =>
-                                                                                    setDraftValue(
-                                                                                        request,
-                                                                                        "clientPriceVisible",
-                                                                                        checked ===
-                                                                                            true
-                                                                                    )
-                                                                                }
-                                                                            />
-                                                                            Show this line&apos;s
-                                                                            price to the client
-                                                                        </label>
-                                                                    )}
+                                                                    {/* F6: per-line client price-visibility control
+                                                                        removed here — the line's price visibility is
+                                                                        controlled only on the entity page ledger.
+                                                                        Newly-approved lines default to price-hidden
+                                                                        (API clientPriceVisible=false). */}
                                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                                                         <div className="space-y-1">
                                                                             <Label className="text-[10px] font-mono uppercase tracking-wide text-muted-foreground">

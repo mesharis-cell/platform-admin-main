@@ -103,9 +103,13 @@ export function useBulkMargin(purposeType: PurposeType, entityId: string) {
         mutationFn: async ({
             marginPercent,
             reason,
+            quietAmend,
         }: {
             marginPercent: number;
             reason?: string;
+            // F7 quiet-amend (ADMIN + ORDER only): amend a sent quote in place
+            // without the pull-back / QUOTE_REVISED. Only send `true`.
+            quietAmend?: boolean;
         }) => {
             try {
                 const response = await apiClient.post(`/operations/v1/line-item/bulk-margin`, {
@@ -113,6 +117,7 @@ export function useBulkMargin(purposeType: PurposeType, entityId: string) {
                     entity_id: entityId,
                     margin_percent: marginPercent,
                     ...(reason ? { reason } : {}),
+                    ...(quietAmend ? { quiet_amend: true } : {}),
                 });
                 return response.data.data;
             } catch (error) {

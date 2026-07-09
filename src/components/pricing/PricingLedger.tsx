@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,8 +15,6 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
     AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
     AlertDialogContent,
     AlertDialogDescription,
     AlertDialogFooter,
@@ -139,13 +137,55 @@ export function PricingLedger({
     const [addCustomOpen, setAddCustomOpen] = useState(false);
     const [bulkOpen, setBulkOpen] = useState(false);
     const [noCostOpen, setNoCostOpen] = useState(false);
-    // QUOTED pull-back confirm gates add actions only (decision 7).
-    const [pendingAdd, setPendingAdd] = useState<"catalog" | "custom" | null>(null);
 
     const isNoCost = pricingMode === "NO_COST";
     const isPostQuote = POST_QUOTE_STATUSES.has(entityStatus);
     const statusEditable = PRICING_EDITABLE_STATUSES.has(entityStatus);
     const ledgerEditable = canAdjust && statusEditable && !isNoCost;
+    const isOrder = purposeType === "ORDER";
+
+    // ── F1 / F7 — shared quote-amend gate ───────────────────────────────────
+    // On a QUOTED entity EVERY pricing mutation (inline cell / mode change /
+    // void / bulk-margin / add catalog+custom) routes through requestAmend(),
+    // which surfaces one confirmation dialog and resolves the operator's choice:
+    //   "revert" → proceed normally (server pulls the quote back to re-approval)
+    //   "quiet"  → proceed with quiet_amend (ORDER-only; amend the sent quote in
+    //              place — rebuild + regen estimate, no pull-back / re-notify)
+    //   null     → abandon (inline edits roll back to the server value)
+    // ORDER shows all three actions; other entities keep the old two-action
+    // pull-back confirm (no quiet path). When not post-quote, requestAmend
+    // resolves "revert" instantly with no dialog, so callers are status-agnostic.
+    const [amendOpen, setAmendOpen] = useState(false);
+    const amendResolverRef = useRef<((choice: "revert" | "quiet" | null) => void) | null>(null);
+    // Quiet flag handed to the child dialogs/modals when the pre-flight resolves
+    // "Update quietly" (add + bulk-margin own their own mutation internally).
+    const [addQuiet, setAddQuiet] = useState(false);
+    const [bulkQuiet, setBulkQuiet] = useState(false);
+
+    const requestAmend = (): Promise<"revert" | "quiet" | null> => {
+        if (!isPostQuote) return Promise.resolve("revert");
+        // Concurrency guard: a confirm dialog may already be pending, its
+        // resolver held by the ONE shared ref. The classic collision is the
+        // row's 650ms debounced flush firing BEHIND an already-open void / add
+        // / bulk dialog (the Radix modal overlay traps focus + pointer but does
+        // NOT cancel an already-scheduled setTimeout). Overwriting the ref here
+        // would strand the first action's promise forever and let the wrong
+        // mutation commit. Instead resolve the newcomer as cancelled (null)
+        // immediately, WITHOUT touching dialog state: its caller takes the
+        // cancel path — the inline row's catch rolls the field back to the
+        // server value — while the already-open dialog proceeds normally.
+        if (amendResolverRef.current) return Promise.resolve(null);
+        return new Promise((resolve) => {
+            amendResolverRef.current = resolve;
+            setAmendOpen(true);
+        });
+    };
+    const settleAmend = (choice: "revert" | "quiet" | null) => {
+        setAmendOpen(false);
+        const resolve = amendResolverRef.current;
+        amendResolverRef.current = null;
+        resolve?.(choice);
+    };
 
     // Edit-lens rows: existing list hook (camelCase, auto-invalidated by every
     // mutation). Preview lenses + footer totals: the role-preview endpoint.
@@ -246,30 +286,57 @@ export function PricingLedger({
         return out;
     }, [activeItems]);
 
-    const openAdd = (type: "catalog" | "custom") => {
-        if (isPostQuote) {
-            setPendingAdd(type);
-            return;
-        }
+    // Add + bulk-margin gate at OPEN time (pre-flight, mirrors the prior add
+    // confirm): resolve the choice, stash the quiet flag for the child, open it.
+    const openAdd = async (type: "catalog" | "custom") => {
+        const choice = await requestAmend();
+        if (choice === null) return;
+        setAddQuiet(choice === "quiet");
         if (type === "catalog") setAddCatalogOpen(true);
         else setAddCustomOpen(true);
     };
-    const confirmPendingAdd = () => {
-        if (pendingAdd === "catalog") setAddCatalogOpen(true);
-        else if (pendingAdd === "custom") setAddCustomOpen(true);
-        setPendingAdd(null);
+    const openBulk = async () => {
+        const choice = await requestAmend();
+        if (choice === null) return;
+        setBulkQuiet(choice === "quiet");
+        setBulkOpen(true);
     };
 
+    // Inline cell / mode-change writes gate at FLUSH time (ORDER only — other
+    // entities keep the un-intercepted behaviour). Only PRICING fields trigger
+    // the server pull-back, so a notes-only edit skips the confirm entirely
+    // (mirrors the API: a metadata/notes update never reverts a sent quote). On
+    // cancel we REJECT so the row's own catch rolls the touched field(s) back.
     const handleUpdate =
         (itemId: string) =>
         async (data: Parameters<typeof updateLineItem.mutateAsync>[0]["data"]) => {
+            const touchesPricing = (
+                ["quantity", "unit", "unitRate", "sellUnitRate", "billingMode"] as const
+            ).some((k) => k in data);
+            if (isOrder && touchesPricing) {
+                const choice = await requestAmend();
+                if (choice === null) throw new Error("Quote amendment cancelled");
+                return updateLineItem.mutateAsync({
+                    itemId,
+                    data: choice === "quiet" ? { ...data, quietAmend: true } : data,
+                });
+            }
             return updateLineItem.mutateAsync({ itemId, data });
         };
     const handleVoid = async (itemId: string) => {
+        let quiet = false;
+        if (isOrder) {
+            const choice = await requestAmend();
+            if (choice === null) return;
+            quiet = choice === "quiet";
+        }
         try {
             await voidLineItem.mutateAsync({
                 itemId,
-                data: { void_reason: "Removed via pricing ledger" },
+                data: {
+                    void_reason: "Removed via pricing ledger",
+                    ...(quiet ? { quiet_amend: true } : {}),
+                },
             });
             toast.success("Line removed");
         } catch (error: any) {
@@ -291,6 +358,10 @@ export function PricingLedger({
         purposeType === "ORDER"
             ? "This quote has been sent. Editing a line pulls the order back to admin re-approval, marks the quote as being revised, and notifies the client — their estimate download pauses until you re-approve."
             : "This quote has been sent. Editing a line will revise it and re-notify the recipient.";
+    // Shared amend-dialog body. ORDER also explains the "Update quietly" path.
+    const amendDescription = isOrder
+        ? "Continue pulls the order back to admin re-approval, marks the quote as being revised, and notifies the client — their estimate download pauses until you re-approve. Update quietly amends the sent quote in place instead: the client's cost estimate is refreshed with the corrected figures, but the quote isn't pulled back and they aren't re-notified."
+        : postQuoteCopy;
 
     return (
         <div className="rounded-lg border border-border bg-card">
@@ -617,21 +688,21 @@ export function PricingLedger({
                                     <Button
                                         size="sm"
                                         variant="softPrimary"
-                                        onClick={() => openAdd("catalog")}
+                                        onClick={() => void openAdd("catalog")}
                                     >
                                         <Plus className="mr-1 h-4 w-4" /> Catalog
                                     </Button>
                                     <Button
                                         size="sm"
                                         variant="softPrimary"
-                                        onClick={() => openAdd("custom")}
+                                        onClick={() => void openAdd("custom")}
                                     >
                                         <Plus className="mr-1 h-4 w-4" /> Custom
                                     </Button>
                                     <Button
                                         size="sm"
                                         variant="softPrimary"
-                                        onClick={() => setBulkOpen(true)}
+                                        onClick={() => void openBulk()}
                                     >
                                         <Percent className="mr-1 h-4 w-4" /> Bulk margin…
                                     </Button>
@@ -656,21 +727,33 @@ export function PricingLedger({
                 ) : null}
             </div>
 
-            {/* QUOTED pull-back confirm (add actions only) */}
-            <AlertDialog
-                open={pendingAdd !== null}
-                onOpenChange={(open) => !open && setPendingAdd(null)}
-            >
+            {/* F1 / F7 — shared quote-amend confirm. Fires on EVERY pricing
+                mutation of a QUOTED entity (inline cell / mode change / void /
+                bulk-margin / add). ORDER shows three actions (Continue = pull
+                back · Update quietly = amend in place · Cancel); other entities
+                show the two-action pull-back confirm (no quiet path). */}
+            <AlertDialog open={amendOpen} onOpenChange={(open) => !open && settleAmend(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Pull back the sent quote?</AlertDialogTitle>
-                        <AlertDialogDescription>{postQuoteCopy}</AlertDialogDescription>
+                        <AlertDialogTitle>This quote has already been sent</AlertDialogTitle>
+                        <AlertDialogDescription>{amendDescription}</AlertDialogDescription>
                     </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={confirmPendingAdd}>
-                            Continue &amp; add line
-                        </AlertDialogAction>
+                    <AlertDialogFooter className="sm:justify-between">
+                        <button
+                            type="button"
+                            onClick={() => settleAmend(null)}
+                            className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                        >
+                            Cancel
+                        </button>
+                        <div className="flex flex-wrap items-center justify-end gap-2">
+                            <Button onClick={() => settleAmend("revert")}>Continue</Button>
+                            {isOrder ? (
+                                <Button variant="softPrimary" onClick={() => settleAmend("quiet")}>
+                                    Update quietly
+                                </Button>
+                            ) : null}
+                        </div>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
@@ -681,6 +764,7 @@ export function PricingLedger({
                 onOpenChange={setAddCatalogOpen}
                 targetId={entityId}
                 purposeType={purposeType}
+                quietAmend={addQuiet}
             />
             <AddCustomLineItemModal
                 open={addCustomOpen}
@@ -689,12 +773,14 @@ export function PricingLedger({
                 purposeType={purposeType}
                 seedMarginPercent={seedMarginPercent}
                 currency={resolvedCurrency}
+                quietAmend={addQuiet}
             />
             <BulkMarginDialog
                 open={bulkOpen}
                 onOpenChange={setBulkOpen}
                 purposeType={purposeType}
                 entityId={entityId}
+                quietAmend={bulkQuiet}
             />
             <NoCostDialog
                 open={noCostOpen}
