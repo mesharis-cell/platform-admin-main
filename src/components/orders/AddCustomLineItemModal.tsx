@@ -286,7 +286,7 @@ export function AddCustomLineItemModal({
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent
-                className="flex max-h-[85vh] max-w-lg flex-col gap-0 p-0"
+                className="flex max-h-[90vh] max-w-2xl flex-col gap-0 p-0"
                 onKeyDown={(e) => {
                     // Enter in any text input submits the form (owner smoke feedback).
                     // Textareas keep their newline behaviour; Select triggers (buttons)
@@ -466,7 +466,6 @@ export function AddCustomLineItemModal({
                                     className={cn(
                                         "text-right font-mono tabular-nums",
                                         !isBillable && "bg-muted",
-                                        isBillable && !isOverridden && "text-muted-foreground",
                                         isBillable &&
                                             isOverridden &&
                                             "border-amber-400/70 focus-visible:ring-amber-400/40"
@@ -488,8 +487,7 @@ export function AddCustomLineItemModal({
                                     disabled={!isBillable}
                                     className={cn(
                                         "text-right font-mono tabular-nums",
-                                        !isBillable && "bg-muted",
-                                        isBillable && !isOverridden && "text-muted-foreground"
+                                        !isBillable && "bg-muted"
                                     )}
                                     onChange={(e) => {
                                         setDraft("sellTotal", e.target.value);
@@ -533,7 +531,6 @@ export function AddCustomLineItemModal({
                                         className={cn(
                                             "text-right font-mono tabular-nums",
                                             (!isBillable || !(unitRateNum > 0)) && "bg-muted",
-                                            isBillable && !isOverridden && "text-muted-foreground",
                                             isBillable &&
                                                 isOverridden &&
                                                 "border-amber-400/70 focus-visible:ring-amber-400/40"
@@ -559,8 +556,7 @@ export function AddCustomLineItemModal({
                                     disabled={!isBillable}
                                     className={cn(
                                         "text-right font-mono tabular-nums",
-                                        !isBillable && "bg-muted",
-                                        isBillable && !isOverridden && "text-muted-foreground"
+                                        !isBillable && "bg-muted"
                                     )}
                                     onChange={(e) => {
                                         setDraft("marginAmount", e.target.value);
@@ -594,15 +590,20 @@ export function AddCustomLineItemModal({
                             </div>
                         </div>
 
-                        <p className="text-[11px] leading-snug text-muted-foreground">
-                            {!isBillable
-                                ? billingMode === "COMPLIMENTARY"
+                        {/* F4: the "Every figure is linked…" footnote was removed.
+                            Only the non-billable / overridden context lines remain. */}
+                        {!isBillable ? (
+                            <p className="text-[11px] leading-snug text-muted-foreground">
+                                {billingMode === "COMPLIMENTARY"
                                     ? "Complimentary — shown to the client as complimentary; charged 0.00."
-                                    : "Non-billable — internal cost only; never shown or charged to the client."
-                                : isOverridden
-                                  ? "Sell overridden for this line — it no longer follows the entity margin."
-                                  : `Every figure is linked — edit any and the rest recompute. Sell seeds from the entity margin (${fmtPct(seedMarginPercent)}%); editing any sell-side figure overrides this line.`}
-                        </p>
+                                    : "Non-billable — internal cost only; never shown or charged to the client."}
+                            </p>
+                        ) : isOverridden ? (
+                            <p className="text-[11px] leading-snug text-muted-foreground">
+                                Sell overridden for this line — it no longer follows the entity
+                                margin.
+                            </p>
+                        ) : null}
                     </div>
 
                     {isTransportCategory && (
@@ -704,6 +705,18 @@ export function AddCustomLineItemModal({
                         </div>
                     )}
 
+                    {/* F5: logistics-visibility toggle sits ABOVE Notes so it's always
+                        visible without scrolling. Off strips this line from the
+                        warehouse view entirely. */}
+                    <div className="flex items-center gap-3 rounded-md border border-border px-3 py-2">
+                        <Eye className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        <Label className="text-sm">Visible to logistics</Label>
+                        <span className="ml-auto mr-2 text-[11px] text-muted-foreground">
+                            off = hidden from the warehouse view
+                        </span>
+                        <Switch checked={logisticsVisible} onCheckedChange={setLogisticsVisible} />
+                    </div>
+
                     <div>
                         <Label>Notes (Optional)</Label>
                         <Textarea
@@ -712,17 +725,6 @@ export function AddCustomLineItemModal({
                             placeholder="Internal notes..."
                             rows={2}
                         />
-                    </div>
-
-                    {/* One-line visibility toggle (replaces the old Line Policy card).
-                        Off strips this line from the warehouse view entirely. */}
-                    <div className="flex items-center gap-3 rounded-md border border-border px-3 py-2">
-                        <Eye className="h-4 w-4 shrink-0 text-muted-foreground" />
-                        <Label className="text-sm">Visible to logistics</Label>
-                        <span className="ml-auto mr-2 text-[11px] text-muted-foreground">
-                            off = hidden from the warehouse view
-                        </span>
-                        <Switch checked={logisticsVisible} onCheckedChange={setLogisticsVisible} />
                     </div>
                 </div>
 
