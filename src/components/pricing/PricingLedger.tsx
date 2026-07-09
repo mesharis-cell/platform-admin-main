@@ -256,9 +256,9 @@ export function PricingLedger({
             else catalog.push(it);
         }
         return [
-            { key: "CATALOG", label: "Catalog services", items: catalog, wash: false },
-            { key: "CUSTOM", label: "Custom charges", items: custom, wash: true },
-            { key: "SYSTEM", label: "Auto-calculated", items: system, wash: false },
+            { key: "CATALOG", label: "Catalog services", items: catalog },
+            { key: "CUSTOM", label: "Custom charges", items: custom },
+            { key: "SYSTEM", label: "Auto-calculated", items: system },
         ].filter((g) => g.items.length > 0);
     }, [activeItems]);
 
@@ -396,10 +396,9 @@ export function PricingLedger({
         purposeType === "ORDER"
             ? "This quote has been sent. Editing a line pulls the order back to admin re-approval, marks the quote as being revised, and notifies the client — their estimate download pauses until you re-approve."
             : "This quote has been sent. Editing a line will revise it and re-notify the recipient.";
-    // Shared amend-dialog body. ORDER also explains the "Update quietly" path.
-    const amendDescription = isOrder
-        ? "Continue pulls the order back to admin re-approval, marks the quote as being revised, and notifies the client — their estimate download pauses until you re-approve. Update quietly amends the sent quote in place instead: the client's cost estimate is refreshed with the corrected figures, but the quote isn't pulled back and they aren't re-notified."
-        : postQuoteCopy;
+    // Non-ORDER amend-dialog body (2-action pull-back confirm). ORDER uses the
+    // Proposal-B option-card layout below instead of a prose description.
+    const amendDescription = postQuoteCopy;
 
     return (
         <div className="rounded-lg border border-border bg-card">
@@ -482,31 +481,34 @@ export function PricingLedger({
                                     <TableHeader>
                                         <TableRow className="border-border/50 bg-muted/50">
                                             <TableHead className="w-8" />
-                                            <TableHead className="text-center font-mono text-[10px] font-bold uppercase">
+                                            <TableHead className="text-left font-mono text-xs font-bold uppercase">
                                                 Line
                                             </TableHead>
-                                            <TableHead className="text-center font-mono text-[10px] font-bold uppercase">
+                                            <TableHead className="text-center font-mono text-xs font-bold uppercase">
                                                 Billing
                                             </TableHead>
-                                            <TableHead className="text-center font-mono text-[10px] font-bold uppercase">
+                                            <TableHead className="text-center font-mono text-xs font-bold uppercase">
+                                                Qty
+                                            </TableHead>
+                                            <TableHead className="text-center font-mono text-xs font-bold uppercase">
                                                 Buy / Unit
                                             </TableHead>
-                                            <TableHead className="text-center font-mono text-[10px] font-bold uppercase">
+                                            <TableHead className="text-center font-mono text-xs font-bold uppercase">
                                                 Sell / Unit
                                             </TableHead>
-                                            <TableHead className="text-center font-mono text-[10px] font-bold uppercase">
+                                            <TableHead className="text-center font-mono text-xs font-bold uppercase">
                                                 Margin %
                                             </TableHead>
-                                            <TableHead className="text-center font-mono text-[10px] font-bold uppercase">
+                                            <TableHead className="text-center font-mono text-xs font-bold uppercase">
                                                 Margin Amount
                                             </TableHead>
-                                            <TableHead className="text-center font-mono text-[10px] font-bold uppercase">
-                                                Logistics
+                                            <TableHead className="text-center font-mono text-xs font-bold uppercase">
+                                                Visible to logistics
                                             </TableHead>
-                                            <TableHead className="text-center font-mono text-[10px] font-bold uppercase">
-                                                Client
+                                            <TableHead className="text-center font-mono text-xs font-bold uppercase">
+                                                Visible to client
                                             </TableHead>
-                                            <TableHead className="text-center font-mono text-[10px] font-bold uppercase">
+                                            <TableHead className="text-center font-mono text-xs font-bold uppercase">
                                                 Total
                                             </TableHead>
                                             <TableHead className="w-20" />
@@ -517,7 +519,7 @@ export function PricingLedger({
                                             <Fragment key={group.key}>
                                                 <TableRow className="bg-muted/30 hover:bg-muted/30">
                                                     <TableCell
-                                                        colSpan={11}
+                                                        colSpan={12}
                                                         className="py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
                                                     >
                                                         {group.label}
@@ -531,7 +533,6 @@ export function PricingLedger({
                                                         editable={ledgerEditable}
                                                         allowVisibility={ledgerEditable}
                                                         currency={resolvedCurrency}
-                                                        customWash={group.wash}
                                                         onUpdate={handleUpdate(item.id)}
                                                         onVoid={() => handleVoid(item.id)}
                                                         onToggleVisibility={(next) =>
@@ -546,11 +547,11 @@ export function PricingLedger({
                                         {adminPricing ? (
                                             <TableRow className="border-t border-border bg-muted/20 font-semibold hover:bg-muted/20">
                                                 <TableCell />
-                                                <TableCell colSpan={6} className="py-2">
+                                                <TableCell colSpan={7} className="py-2">
                                                     Subtotal — line sell
                                                 </TableCell>
                                                 <TableCell colSpan={2} />
-                                                <TableCell className="py-2 text-right font-mono text-xs tabular-nums">
+                                                <TableCell className="py-2 text-center font-mono text-xs tabular-nums">
                                                     {money(sellTotal, resolvedCurrency)}
                                                 </TableCell>
                                                 <TableCell />
