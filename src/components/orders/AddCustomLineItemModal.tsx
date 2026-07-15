@@ -134,6 +134,10 @@ const clearSmartValue = (s: SmartState, f: "buy" | "sell"): SmartState =>
 const clearSmartMargin = (s: SmartState, seed: number): SmartState =>
     recomputeSmart({ ...s, margin: seed, marginTouched: false });
 
+// Click-to-pin: make `f` the derived (auto) field — an emergent anchor, no mode.
+const pinSmartDerived = (s: SmartState, f: SmartField): SmartState =>
+    recomputeSmart({ ...s, rec: [...s.rec.filter((x) => x !== f), f] as SmartField[] });
+
 // Submit contract: does the sell carry an explicit value the server must STORE
 // (vs. one the server re-stamps from the seed margin)?
 //   • sell is HELD (derived ≠ sell)             → SEND (explicit / backward-derived)
@@ -317,16 +321,38 @@ export function AddCustomLineItemModal({
     const SMART_LABEL: Record<SmartField, string> = { buy: "Buy", sell: "Sell", margin: "Margin" };
     const fieldMarker = (field: SmartField) => {
         if (!isBillable) return null;
-        if (derivedField !== field) return null;
-        return (
-            <span
-                className="ml-1 inline-flex items-center gap-0.5 rounded border border-primary/40 bg-primary/10 px-1 py-0.5 align-middle text-[9px] font-semibold uppercase tracking-wide text-primary"
-                title={`${SMART_LABEL[field]} recalculates automatically`}
-            >
-                <RefreshCw className="h-2.5 w-2.5" />
-                auto
-            </span>
-        );
+        const isDerived = derivedField === field;
+        const hasVal =
+            field === "buy"
+                ? smart.buy != null
+                : field === "sell"
+                  ? smart.sell != null
+                  : smart.margin != null && !marginDash && !marginIsFee;
+        if (isDerived) {
+            return (
+                <span
+                    className="ml-1 inline-flex items-center gap-0.5 rounded border border-primary/40 bg-primary/10 px-1 py-0.5 align-middle text-[9px] font-semibold uppercase tracking-wide text-primary"
+                    title={`${SMART_LABEL[field]} recalculates automatically`}
+                >
+                    <RefreshCw className="h-2.5 w-2.5" />
+                    auto
+                </span>
+            );
+        }
+        // Held field with a value → offer to make IT the auto field (pin).
+        if (hasVal) {
+            return (
+                <button
+                    type="button"
+                    onClick={() => commitSmart((s) => pinSmartDerived(s, field))}
+                    title={`Make ${SMART_LABEL[field]} the auto field`}
+                    className="ml-1 inline-flex items-center rounded border border-transparent px-0.5 align-middle text-muted-foreground transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
+                >
+                    <RefreshCw className="h-3 w-3" />
+                </button>
+            );
+        }
+        return null;
     };
     // Derived cells read "computed but still yours to take over": dimmed fill +
     // dashed underline that goes solid on hover/focus (the editable-cell language).
@@ -527,7 +553,9 @@ export function AddCustomLineItemModal({
                                 <span>
                                     The <span className="font-medium text-foreground">dimmed</span>{" "}
                                     field is the one that recalculates — set the two you know, it
-                                    solves the third.
+                                    solves the third. Click a held field&rsquo;s{" "}
+                                    <RefreshCw className="inline h-2.5 w-2.5" /> to move
+                                    &ldquo;auto&rdquo; there.
                                 </span>
                             </div>
                         ) : null}
