@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
     Dialog,
     DialogContent,
@@ -21,7 +21,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
-import { Eye } from "lucide-react";
+import { Eye, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useCreateCustomLineItem } from "@/hooks/use-order-line-items";
@@ -36,8 +36,10 @@ interface AddCustomLineItemModalProps {
     onOpenChange: (open: boolean) => void;
     targetId: string;
     purposeType?: "ORDER" | "INBOUND_REQUEST" | "SERVICE_REQUEST" | "SELF_PICKUP";
-    // Entity margin seed (prices.margin_percent → company default) — used to
-    // DISPLAY the derived sell/margin as real numbers (owner: never "auto").
+    // Entity margin seed (prices.margin_percent → company default). In Model D it
+    // is treated as an already-set second input (see the recency engine below):
+    // it pre-fills margin as a ghost so a sell-first entry derives the buy
+    // backward, and a buy-first entry derives the sell.
     seedMarginPercent?: number;
     currency?: string;
     // F7 quiet-amend (ADMIN + ORDER only): the caller resolved a "Update
@@ -51,39 +53,119 @@ const roundMoney = (value: number) => Math.round((value + Number.EPSILON) * 100)
 // Trimmed percent for display: 12.5 → "12.5", 30 → "30".
 const fmtPct = (value: number) => String(Number(value.toFixed(2)));
 
-// margin% display token from buy + sell. buy=0 with sell>0 = "Fee".
-const deriveMargin = (
-    buy: number,
-    sell: number
-): { display: string; isFee: boolean; percent: number | null } => {
-    if (!Number.isFinite(buy) || !Number.isFinite(sell)) {
-        return { display: "—", isFee: false, percent: null };
+// Lenient numeric parse (strips currency/space noise); NaN when unparseable.
+const parseNum = (raw: string): number => {
+    const n = parseFloat(String(raw).replace(/[^0-9.-]/g, ""));
+    return Number.isFinite(n) ? n : NaN;
+};
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Model D — "Smart" (last-two-win) backward compute.
+ *
+ * The three linked figures are Buy/Unit, Sell/Unit and Margin %, bound by
+ *   sell = buy × (1 + margin ÷ 100).
+ * Only TWO can be independent at once; the third is *derived*. A recency queue
+ * `rec = [freshest, mid, DERIVED]` remembers which two the user set most
+ * recently — those are HELD, and the stalest (`rec[2]`) recomputes on every
+ * edit. Editing a field moves it to freshest → the now-stalest recomputes.
+ *
+ * The margin SEED (prices.margin_percent) counts as already-set at empty, so:
+ *   • empty     → Buy is the derived field (auto ↻)
+ *   • sell 375  → rec=[sell,margin,buy] → Buy derives backward to 300
+ *   • buy 300   → rec=[buy,margin,sell] → Sell derives to 375
+ * Clearing a value marks it unknown WITHOUT reordering recency (a clear is not a
+ * "set"); the derived field recomputes when its inputs return.
+ *
+ * This REPLACES the previous Layout-A "buy is the silent anchor" model, where
+ * buy could never be derived and a sell edit only ever moved the margin.
+ * ──────────────────────────────────────────────────────────────────────────── */
+type SmartField = "buy" | "sell" | "margin";
+
+interface SmartState {
+    buy: number | null; // null = unknown/empty (blocked at submit)
+    sell: number | null;
+    margin: number | null; // null only in the buy=0 "Fee" case
+    marginTouched: boolean; // false = still the seed ghost
+    rec: SmartField[]; // [freshest, mid, DERIVED]
+}
+
+const freshSmart = (seed: number): SmartState => ({
+    buy: null,
+    sell: null,
+    margin: seed,
+    marginTouched: false,
+    // Seed margin is pre-set, so buy is the derived (auto) field from empty.
+    rec: ["margin", "sell", "buy"],
+});
+
+const bumpRec = (rec: SmartField[], f: SmartField): SmartField[] =>
+    [f, ...rec.filter((x) => x !== f)] as SmartField[];
+
+// Recompute the stalest (derived) field from the other two.
+const recomputeSmart = (s: SmartState): SmartState => {
+    const derived = s.rec[2];
+    const next: SmartState = { ...s };
+    if (derived === "sell") {
+        if (s.buy != null && s.margin != null) next.sell = roundMoney(s.buy * (1 + s.margin / 100));
+    } else if (derived === "buy") {
+        if (s.sell != null && s.margin != null)
+            next.buy = roundMoney(s.sell / (1 + s.margin / 100));
+    } else {
+        // margin — measured from buy + sell; buy=0 with a sell is a "Fee" (null).
+        if (s.buy != null && s.sell != null)
+            next.margin = s.buy > 0 ? roundMoney(((s.sell - s.buy) / s.buy) * 100) : null;
     }
-    if (buy > 0) {
-        const pct = Math.round(((sell - buy) / buy) * 10000) / 100;
-        return { display: `${Number(pct.toFixed(2))}%`, isFee: false, percent: pct };
+    return next;
+};
+
+// Set a field the user typed: it becomes freshest, the new stalest recomputes.
+const setSmartField = (s: SmartState, f: SmartField, value: number): SmartState => {
+    const next: SmartState = { ...s, [f]: value };
+    if (f === "margin") next.marginTouched = true;
+    next.rec = bumpRec(s.rec, f);
+    return recomputeSmart(next);
+};
+
+// Clear a value → unknown, WITHOUT reordering recency (clearing ≠ setting).
+const clearSmartValue = (s: SmartState, f: "buy" | "sell"): SmartState =>
+    recomputeSmart({ ...s, [f]: null });
+
+// Clear margin → the seed ghost returns; buy/sell untouched; derived re-derives.
+const clearSmartMargin = (s: SmartState, seed: number): SmartState =>
+    recomputeSmart({ ...s, margin: seed, marginTouched: false });
+
+// Submit contract: does the sell carry an explicit value the server must STORE
+// (vs. one the server re-stamps from the seed margin)?
+//   • sell is HELD (derived ≠ sell)             → SEND (explicit / backward-derived)
+//   • sell is DERIVED at a NON-seed margin       → SEND (server can't reproduce it)
+//   • sell is DERIVED at the seed margin          → OMIT (server stamps the same value)
+// Mirrors the API custom-create stamp: BILLABLE + no sell → sell = buy×(1+seed/100).
+const sellIsSent = (s: SmartState, seed: number): boolean => {
+    if (s.rec[2] === "sell") {
+        const atSeed = s.margin != null && Math.abs(s.margin - seed) < 0.005;
+        return s.sell != null && !atSeed;
     }
-    if (sell > 0) return { display: "Fee", isFee: true, percent: null };
-    return { display: "—", isFee: false, percent: null };
+    return s.sell != null;
 };
 
 /**
- * Add Custom Line Item — Layout A ("single pricing strip", owner pick) with the
- * owner's row organization:
+ * Add Custom Line Item — Model D "Smart" pricing.
  *   Row 1  Qty | Unit
  *   Row 2  Buy / Unit | Buy Total
  *   Row 3  Sell / Unit | Sell Total
  *   Row 4  Margin % | Margin Amount | Line Total
  *
- * ALL inputs are linked bidirectionally: units are the canonical state and
- * every other figure back-derives them — Buy Total ⇒ Buy/Unit (÷ qty), Sell
- * Total / Line Total ⇒ Sell/Unit (÷ qty), Margin Amount ⇒ sell total = buy
- * total + amount, Margin % ⇔ Sell/Unit. Editing any field recomputes the rest.
- * Sell-side figures always SHOW their computed values (seeded from the entity
- * margin) — never an "auto" placeholder. Until edited they are derived (muted,
- * live-recomputing as Buy/Qty change); editing any sell-side figure stamps an
- * override (amber marker + reset). Payload contract unchanged: derived mode
- * omits sell_unit_rate; override sends it (BILLABLE only).
+ * Buy/Sell/Margin inter-derive via the recency engine above; totals and
+ * margin-amount are just alternative inputs that back-derive their per-unit
+ * figure through qty (Buy Total ⇒ Buy/Unit, Sell/Line Total ⇒ Sell/Unit, Margin
+ * Amount ⇒ sell total = buy total + amount). The DERIVED field is always dimmed
+ * and tagged "auto ↻"; the two held fields carry a "↻" pin to move "auto" there.
+ *
+ * ADMIN-only surface (admin repo, ADMIN role — middleware-enforced), so raw
+ * buy/sell/margin is not a client-visibility leak. Payload contract is
+ * unchanged from Layout A: a derived sell that equals the seed-margin result is
+ * OMITTED (server re-stamps); a held / non-seed-derived sell is SENT as
+ * sell_unit_rate (BILLABLE only). quiet-amend / create plumbing untouched.
  */
 export function AddCustomLineItemModal({
     open,
@@ -101,11 +183,6 @@ export function AddCustomLineItemModal({
     const [billingMode, setBillingMode] = useState<LineItemBillingMode>("BILLABLE");
     const [quantity, setQuantity] = useState("1");
     const [unit, setUnit] = useState("service");
-    const [unitRate, setUnitRate] = useState("");
-    // Per-unit sell. null = DERIVED (seeded from the entity margin, recomputes
-    // live as Buy changes and is OMITTED from the payload — the server stamps
-    // the same seed-derived value). A string = OVERRIDDEN (sent on create).
-    const [sellOverride, setSellOverride] = useState<string | null>(null);
     const [notes, setNotes] = useState("");
     const [tripDirection, setTripDirection] = useState<
         "DELIVERY" | "PICKUP" | "ACCESS" | "TRANSFER"
@@ -120,39 +197,12 @@ export function AddCustomLineItemModal({
     // Per-line logistics visibility. Off strips the line from the warehouse view.
     const [logisticsVisible, setLogisticsVisible] = useState(true);
 
-    const quantityNum = Number(quantity || 0);
-    const unitRateNum = Number(unitRate || 0);
-    // Sell overrides only apply to BILLABLE lines (server rejects a sell rate on
-    // NON_BILLABLE/COMPLIMENTARY with a 400). Gate the fields + the payload so a
-    // non-billable line can never send one. Mirrors AddCatalogLineItemModal.
-    const isBillable = billingMode === "BILLABLE";
-    const isTransportCategory = category === "TRANSPORT";
-
-    // --- linked live computation (all rows recompute across inputs) ---
-    const isOverridden = sellOverride !== null;
-    const derivedSellUnit = roundMoney(unitRateNum * (1 + seedMarginPercent / 100));
-    const overrideNum = isOverridden ? Number(sellOverride) : NaN;
-    const effectiveSellUnit =
-        isOverridden && Number.isFinite(overrideNum) ? overrideNum : derivedSellUnit;
-    const margin = deriveMargin(unitRateNum, effectiveSellUnit);
-    const buyTotal =
-        Number.isFinite(quantityNum) && Number.isFinite(unitRateNum)
-            ? roundMoney(quantityNum * unitRateNum)
-            : 0;
-    const sellTotal =
-        isBillable && Number.isFinite(quantityNum) && Number.isFinite(effectiveSellUnit)
-            ? roundMoney(quantityNum * effectiveSellUnit)
-            : 0;
-    const marginAmount = isBillable ? roundMoney(sellTotal - buyTotal) : 0;
-    // The line's total — what it adds to the client side. Non-billable and
-    // complimentary lines are never charged, so their line total is 0.
-    const lineTotal = isBillable ? sellTotal : 0;
-
-    // ── bidirectional linking (owner spec): editing ANY field recomputes the
-    // rest. Units are canonical state; totals/margin back-derive the units.
-    // While a derived field is being typed in, its raw text is kept as a draft
-    // so the live recompute doesn't clobber the cursor; blur drops the draft
-    // and the display snaps to the recomputed value.
+    // ── Model D compute state ──
+    const [smart, setSmart] = useState<SmartState>(() => freshSmart(seedMarginPercent));
+    const [pricingTouched, setPricingTouched] = useState(false);
+    // While a field is being typed, its raw text is kept as a draft so the live
+    // recompute of the OTHER fields doesn't clobber the caret. Blur drops the
+    // draft and the display snaps to the recomputed / formatted value.
     const [drafts, setDrafts] = useState<Record<string, string>>({});
     const setDraft = (key: string, value: string) => setDrafts((d) => ({ ...d, [key]: value }));
     const clearDraft = (key: string) =>
@@ -163,40 +213,125 @@ export function AddCustomLineItemModal({
             return next;
         });
 
-    // Editing Margin % is just another way to set the sell: sell = buy × (1+pct).
-    const handleMarginEdit = (value: string) => {
-        const t = value.trim();
-        if (t === "") {
-            setSellOverride(null);
-            return;
+    // Fresh empty modal on every open — margin re-seeded from the (now-loaded)
+    // entity seed. `seedRef` reads the latest seed without re-seeding mid-entry.
+    const seedRef = useRef(seedMarginPercent);
+    seedRef.current = seedMarginPercent;
+    useEffect(() => {
+        if (!open) return;
+        setSmart(freshSmart(seedRef.current));
+        setDrafts({});
+        setPricingTouched(false);
+    }, [open]);
+
+    const quantityNum = Number(quantity || 0);
+    const qtyNum = Number.isFinite(quantityNum) && quantityNum > 0 ? quantityNum : 0;
+    // Sell overrides only apply to BILLABLE lines (server rejects a sell rate on
+    // NON_BILLABLE/COMPLIMENTARY with a 400). Gate the fields + the payload so a
+    // non-billable line can never send one. Mirrors AddCatalogLineItemModal.
+    const isBillable = billingMode === "BILLABLE";
+    const isTransportCategory = category === "TRANSPORT";
+    const derivedField = smart.rec[2];
+
+    // ── edit routing: every pricing input funnels into the recency engine ──
+    const commitSmart = (mutator: (s: SmartState) => SmartState) => {
+        setPricingTouched(true);
+        setSmart(mutator);
+    };
+    // The per-unit sell implied by a sell-family field (sell / totals / margin amt).
+    const sellUnitFrom = (field: string, raw: string): number | null => {
+        const v = parseNum(raw);
+        if (!Number.isFinite(v)) return null;
+        if (field === "sell") return v;
+        if (field === "sellTotal" || field === "lineTotal")
+            return qtyNum > 0 ? roundMoney(v / qtyNum) : null;
+        if (field === "marginAmount") {
+            if (smart.buy == null || qtyNum <= 0) return null;
+            return roundMoney(smart.buy + v / qtyNum);
         }
-        const pct = Number(t);
-        if (!Number.isFinite(pct) || !(unitRateNum > 0)) return;
-        setSellOverride(String(roundMoney(unitRateNum * (1 + pct / 100))));
+        return null;
     };
-    const handleSellEdit = (value: string) => {
-        setSellOverride(value.trim() === "" ? null : value);
+    const routeBuy = (field: "buy" | "buyTotal", raw: string) => {
+        if (raw.trim() === "") return commitSmart((s) => clearSmartValue(s, "buy"));
+        const n = parseNum(raw);
+        const perUnit = field === "buy" ? n : qtyNum > 0 ? roundMoney(n / qtyNum) : NaN;
+        if (!Number.isFinite(perUnit) || perUnit < 0) return;
+        commitSmart((s) => setSmartField(s, "buy", roundMoney(perUnit)));
     };
-    // Totals back-derive their per-unit rate (÷ qty). Buy Total drives Buy/Unit;
-    // Sell Total + Line Total drive the sell override; Margin Amount targets
-    // sell total = buy total + amount.
-    const handleBuyTotalEdit = (value: string) => {
-        const n = Number(value);
-        if (!Number.isFinite(n) || n < 0 || !(quantityNum > 0)) return;
-        setUnitRate(String(roundMoney(n / quantityNum)));
+    const routeSell = (field: "sell" | "sellTotal" | "lineTotal" | "marginAmount", raw: string) => {
+        if (raw.trim() === "") return commitSmart((s) => clearSmartValue(s, "sell"));
+        const perUnit = sellUnitFrom(field, raw);
+        if (perUnit == null || !Number.isFinite(perUnit) || perUnit < 0) return;
+        commitSmart((s) => setSmartField(s, "sell", roundMoney(perUnit)));
     };
-    const handleSellTotalEdit = (value: string) => {
-        const n = Number(value);
-        if (!Number.isFinite(n) || n < 0 || !(quantityNum > 0)) return;
-        setSellOverride(String(roundMoney(n / quantityNum)));
+    const routeMargin = (raw: string) => {
+        if (raw.trim() === "") return commitSmart((s) => clearSmartMargin(s, seedRef.current));
+        const m = parseNum(raw);
+        if (!Number.isFinite(m)) return;
+        commitSmart((s) => setSmartField(s, "margin", roundMoney(m)));
     };
-    const handleMarginAmountEdit = (value: string) => {
-        const n = Number(value);
-        if (!Number.isFinite(n) || !(quantityNum > 0)) return;
-        const targetSellTotal = buyTotal + n;
-        if (targetSellTotal < 0) return;
-        setSellOverride(String(roundMoney(targetSellTotal / quantityNum)));
+
+    // ── display derivation (mirrors the recency state onto the field cells) ──
+    const buyStr = smart.buy != null ? smart.buy.toFixed(2) : "";
+    const buyIsDerived = isBillable && derivedField === "buy" && smart.buy != null;
+    const buyRequiredHint = smart.buy == null && pricingTouched;
+
+    const sellStr = !isBillable ? "0.00" : smart.sell != null ? smart.sell.toFixed(2) : "";
+    const sellIsDerived = isBillable && derivedField === "sell" && smart.sell != null;
+
+    const sellSent = sellIsSent(smart, seedMarginPercent);
+
+    // Margin cell: measured from buy+sell when both known; "—" while unverifiable
+    // (sell held, buy unknown); the seed ghost otherwise; "Fee" when buy=0.
+    let marginStr = "";
+    let marginIsFee = false;
+    let marginGhost = false;
+    let marginDash = false;
+    if (!isBillable) {
+        marginDash = true;
+    } else if (smart.buy != null && smart.sell != null) {
+        if (smart.buy > 0)
+            marginStr = fmtPct(roundMoney(((smart.sell - smart.buy) / smart.buy) * 100));
+        else marginIsFee = true;
+    } else if (smart.buy == null && smart.sell != null && sellSent) {
+        marginDash = true;
+    } else if (smart.margin == null) {
+        marginDash = true;
+    } else {
+        marginStr = fmtPct(roundMoney(smart.margin));
+        marginGhost = !smart.marginTouched;
+    }
+    const marginIsDerived = isBillable && derivedField === "margin" && !marginDash && !marginIsFee;
+
+    // Totals (derived displays / alternative inputs).
+    const buyTotal = smart.buy != null ? roundMoney(smart.buy * qtyNum) : null;
+    const sellTotal =
+        isBillable && smart.sell != null ? roundMoney(smart.sell * qtyNum) : isBillable ? null : 0;
+    const marginAmount =
+        isBillable && smart.buy != null && smart.sell != null
+            ? roundMoney((smart.sell - smart.buy) * qtyNum)
+            : null;
+    const lineTotal = isBillable ? sellTotal : 0;
+
+    // ── the always-visible derived marker ("auto ↻") + click-to-pin affordance ──
+    const SMART_LABEL: Record<SmartField, string> = { buy: "Buy", sell: "Sell", margin: "Margin" };
+    const fieldMarker = (field: SmartField) => {
+        if (!isBillable) return null;
+        if (derivedField !== field) return null;
+        return (
+            <span
+                className="ml-1 inline-flex items-center gap-0.5 rounded border border-primary/40 bg-primary/10 px-1 py-0.5 align-middle text-[9px] font-semibold uppercase tracking-wide text-primary"
+                title={`${SMART_LABEL[field]} recalculates automatically`}
+            >
+                <RefreshCw className="h-2.5 w-2.5" />
+                auto
+            </span>
+        );
     };
+    // Derived cells read "computed but still yours to take over": dimmed fill +
+    // dashed underline that goes solid on hover/focus (the editable-cell language).
+    const derivedCell =
+        "bg-muted/60 text-muted-foreground border-dashed hover:border-solid focus-visible:border-solid";
 
     const handleAdd = async () => {
         if (!description.trim()) {
@@ -211,10 +346,13 @@ export function AddCustomLineItemModal({
             toast.error("Please enter a valid quantity");
             return;
         }
-        if (!Number.isFinite(unitRateNum) || unitRateNum < 0) {
-            toast.error("Please enter a valid buy rate");
+        // Model D: buy is REQUIRED — an empty/unknown buy blocks the POST (it is
+        // the auto field until you supply the two you know).
+        if (smart.buy == null || !Number.isFinite(smart.buy) || smart.buy < 0) {
+            toast.error("Buy unit rate is required");
             return;
         }
+        const buyRate = roundMoney(smart.buy);
 
         let metadata: TransportLineItemMetadata | undefined;
         if (isTransportCategory) {
@@ -238,15 +376,16 @@ export function AddCustomLineItemModal({
             };
         }
 
-        // Derived mode omits sell_unit_rate — the server seed-stamps the same
-        // value from the entity margin. Overridden mode sends the typed rate.
+        // Sell payload: SEND when the sell is held / non-seed-derived; OMIT when
+        // it is the seed-margin derive (server re-stamps the identical value).
+        // BILLABLE-only: never send a sell override for a non-billable line.
         let sellPayload: number | undefined;
-        if (isOverridden && isBillable) {
-            if (!Number.isFinite(overrideNum) || overrideNum < 0) {
+        if (isBillable && sellSent && smart.sell != null) {
+            if (!Number.isFinite(smart.sell) || smart.sell < 0) {
                 toast.error("Please enter a valid sell rate");
                 return;
             }
-            sellPayload = roundMoney(overrideNum);
+            sellPayload = roundMoney(smart.sell);
         }
 
         try {
@@ -256,11 +395,10 @@ export function AddCustomLineItemModal({
                 billing_mode: billingMode,
                 quantity: quantityNum,
                 unit: unit.trim(),
-                unit_rate: unitRateNum,
+                unit_rate: buyRate,
                 notes: notes || undefined,
                 metadata,
                 logistics_visible: logisticsVisible,
-                // BILLABLE-only: never send a sell override for a non-billable line.
                 ...(sellPayload !== undefined ? { sell_unit_rate: sellPayload } : {}),
                 ...(quietAmend ? { quiet_amend: true } : {}),
             });
@@ -271,9 +409,9 @@ export function AddCustomLineItemModal({
             setBillingMode("BILLABLE");
             setQuantity("1");
             setUnit("service");
-            setUnitRate("");
-            setSellOverride(null);
+            setSmart(freshSmart(seedRef.current));
             setDrafts({});
+            setPricingTouched(false);
             setNotes("");
             setTripDirection("DELIVERY");
             setTruckPlate("");
@@ -368,22 +506,31 @@ export function AddCustomLineItemModal({
                         </div>
                     </div>
 
-                    {/* ── Pricing — one card, every figure visible + live-linked ── */}
+                    {/* ── Pricing — Model D smart compute; every figure visible + linked ── */}
                     <div className="space-y-3 rounded-md border border-primary/30 p-4">
                         <div className="flex items-center justify-between gap-2">
                             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                                 Pricing
                             </p>
-                            {isOverridden && isBillable ? (
-                                <button
-                                    type="button"
-                                    className="text-[11px] text-muted-foreground underline hover:text-foreground"
-                                    onClick={() => setSellOverride(null)}
-                                >
-                                    Reset to entity margin ({fmtPct(seedMarginPercent)}%)
-                                </button>
-                            ) : null}
+                            <span className="rounded border border-primary/30 bg-primary/5 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+                                Entity seed {fmtPct(seedMarginPercent)}%
+                            </span>
                         </div>
+
+                        {/* Model D explainer — what the dimmed "auto" field means. */}
+                        {isBillable ? (
+                            <div className="flex items-start gap-2 text-[11px] leading-snug text-muted-foreground">
+                                <span className="mt-0.5 inline-flex shrink-0 items-center gap-0.5 rounded border border-primary/40 bg-primary/10 px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-primary">
+                                    <RefreshCw className="h-2.5 w-2.5" />
+                                    Smart
+                                </span>
+                                <span>
+                                    The <span className="font-medium text-foreground">dimmed</span>{" "}
+                                    field is the one that recalculates — set the two you know, it
+                                    solves the third.
+                                </span>
+                            </div>
+                        ) : null}
 
                         {/* Row 1 — Qty | Unit */}
                         <div className="grid grid-cols-2 gap-3">
@@ -419,15 +566,29 @@ export function AddCustomLineItemModal({
                                 <Label>
                                     Buy / Unit ({currency}){" "}
                                     <span className="text-destructive">*</span>
+                                    {fieldMarker("buy")}
                                 </Label>
                                 <Input
                                     type="number"
                                     step="0.01"
                                     min="0"
-                                    value={unitRate}
-                                    onChange={(e) => setUnitRate(e.target.value)}
+                                    value={drafts.buy ?? buyStr}
                                     placeholder="200.00"
+                                    className={cn(
+                                        "text-right font-mono tabular-nums",
+                                        buyIsDerived && derivedCell
+                                    )}
+                                    onChange={(e) => {
+                                        setDraft("buy", e.target.value);
+                                        routeBuy("buy", e.target.value);
+                                    }}
+                                    onBlur={() => clearDraft("buy")}
                                 />
+                                {buyRequiredHint ? (
+                                    <p className="mt-1 text-[10px] font-medium text-destructive">
+                                        Required at submit
+                                    </p>
+                                ) : null}
                             </div>
                             <div>
                                 <Label>Buy Total ({currency})</Label>
@@ -435,11 +596,15 @@ export function AddCustomLineItemModal({
                                     type="number"
                                     step="0.01"
                                     min="0"
-                                    value={drafts.buyTotal ?? buyTotal.toFixed(2)}
+                                    value={
+                                        drafts.buyTotal ??
+                                        (buyTotal != null ? buyTotal.toFixed(2) : "")
+                                    }
+                                    placeholder="—"
                                     className="text-right font-mono tabular-nums"
                                     onChange={(e) => {
                                         setDraft("buyTotal", e.target.value);
-                                        handleBuyTotalEdit(e.target.value);
+                                        routeBuy("buyTotal", e.target.value);
                                     }}
                                     onBlur={() => clearDraft("buyTotal")}
                                 />
@@ -450,33 +615,25 @@ export function AddCustomLineItemModal({
                         <div className={cn("grid grid-cols-2 gap-3", !isBillable && "opacity-60")}>
                             <div>
                                 <Label>
-                                    Sell / Unit ({currency})
-                                    {isOverridden && isBillable ? (
-                                        <span className="ml-1 text-[10px] font-medium text-amber-600">
-                                            overridden
-                                        </span>
-                                    ) : null}
+                                    Sell / Unit ({currency}){fieldMarker("sell")}
                                 </Label>
                                 <Input
                                     type="number"
                                     step="0.01"
                                     min="0"
-                                    value={
-                                        isBillable
-                                            ? isOverridden
-                                                ? (sellOverride ?? "")
-                                                : derivedSellUnit.toFixed(2)
-                                            : "0.00"
-                                    }
+                                    value={!isBillable ? "0.00" : (drafts.sell ?? sellStr)}
+                                    placeholder="0.00"
                                     disabled={!isBillable}
                                     className={cn(
                                         "text-right font-mono tabular-nums",
                                         !isBillable && "bg-muted",
-                                        isBillable &&
-                                            isOverridden &&
-                                            "border-amber-400/70 focus-visible:ring-amber-400/40"
+                                        sellIsDerived && derivedCell
                                     )}
-                                    onChange={(e) => handleSellEdit(e.target.value)}
+                                    onChange={(e) => {
+                                        setDraft("sell", e.target.value);
+                                        routeSell("sell", e.target.value);
+                                    }}
+                                    onBlur={() => clearDraft("sell")}
                                 />
                             </div>
                             <div>
@@ -486,10 +643,12 @@ export function AddCustomLineItemModal({
                                     step="0.01"
                                     min="0"
                                     value={
-                                        isBillable
-                                            ? (drafts.sellTotal ?? sellTotal.toFixed(2))
-                                            : "0.00"
+                                        !isBillable
+                                            ? "0.00"
+                                            : (drafts.sellTotal ??
+                                              (sellTotal != null ? sellTotal.toFixed(2) : ""))
                                     }
+                                    placeholder="—"
                                     disabled={!isBillable}
                                     className={cn(
                                         "text-right font-mono tabular-nums",
@@ -497,7 +656,7 @@ export function AddCustomLineItemModal({
                                     )}
                                     onChange={(e) => {
                                         setDraft("sellTotal", e.target.value);
-                                        handleSellTotalEdit(e.target.value);
+                                        routeSell("sellTotal", e.target.value);
                                     }}
                                     onBlur={() => clearDraft("sellTotal")}
                                 />
@@ -507,15 +666,8 @@ export function AddCustomLineItemModal({
                         {/* Row 4 — Margin % | Margin Amount | Line Total */}
                         <div className={cn("grid grid-cols-3 gap-3", !isBillable && "opacity-60")}>
                             <div>
-                                <Label>
-                                    Margin %
-                                    {isOverridden && isBillable ? (
-                                        <span className="ml-1 text-[10px] font-medium text-amber-600">
-                                            overridden
-                                        </span>
-                                    ) : null}
-                                </Label>
-                                {margin.isFee && isBillable ? (
+                                <Label>Margin %{fieldMarker("margin")}</Label>
+                                {marginIsFee && isBillable ? (
                                     <Input
                                         value="Fee"
                                         readOnly
@@ -527,25 +679,27 @@ export function AddCustomLineItemModal({
                                         type="number"
                                         step="1"
                                         value={
-                                            drafts.marginPct ??
-                                            (isBillable && margin.percent != null
-                                                ? String(margin.percent)
-                                                : "")
+                                            !isBillable
+                                                ? ""
+                                                : (drafts.margin ?? (marginDash ? "" : marginStr))
                                         }
-                                        placeholder={isBillable ? "" : "—"}
-                                        disabled={!isBillable || !(unitRateNum > 0)}
+                                        placeholder={
+                                            isBillable && !marginDash
+                                                ? `${fmtPct(seedMarginPercent)}`
+                                                : "—"
+                                        }
+                                        disabled={!isBillable}
                                         className={cn(
                                             "text-right font-mono tabular-nums",
-                                            (!isBillable || !(unitRateNum > 0)) && "bg-muted",
-                                            isBillable &&
-                                                isOverridden &&
-                                                "border-amber-400/70 focus-visible:ring-amber-400/40"
+                                            !isBillable && "bg-muted",
+                                            marginGhost && "italic text-muted-foreground",
+                                            marginIsDerived && derivedCell
                                         )}
                                         onChange={(e) => {
-                                            setDraft("marginPct", e.target.value);
-                                            handleMarginEdit(e.target.value);
+                                            setDraft("margin", e.target.value);
+                                            routeMargin(e.target.value);
                                         }}
-                                        onBlur={() => clearDraft("marginPct")}
+                                        onBlur={() => clearDraft("margin")}
                                     />
                                 )}
                             </div>
@@ -555,10 +709,12 @@ export function AddCustomLineItemModal({
                                     type={isBillable ? "number" : "text"}
                                     step="0.01"
                                     value={
-                                        isBillable
-                                            ? (drafts.marginAmount ?? marginAmount.toFixed(2))
-                                            : "—"
+                                        !isBillable
+                                            ? "—"
+                                            : (drafts.marginAmount ??
+                                              (marginAmount != null ? marginAmount.toFixed(2) : ""))
                                     }
+                                    placeholder="—"
                                     disabled={!isBillable}
                                     className={cn(
                                         "text-right font-mono tabular-nums",
@@ -566,7 +722,7 @@ export function AddCustomLineItemModal({
                                     )}
                                     onChange={(e) => {
                                         setDraft("marginAmount", e.target.value);
-                                        handleMarginAmountEdit(e.target.value);
+                                        routeSell("marginAmount", e.target.value);
                                     }}
                                     onBlur={() => clearDraft("marginAmount")}
                                 />
@@ -578,10 +734,12 @@ export function AddCustomLineItemModal({
                                     step="0.01"
                                     min="0"
                                     value={
-                                        isBillable
-                                            ? (drafts.lineTotal ?? lineTotal.toFixed(2))
-                                            : "0.00"
+                                        !isBillable
+                                            ? "0.00"
+                                            : (drafts.lineTotal ??
+                                              (lineTotal != null ? lineTotal.toFixed(2) : ""))
                                     }
+                                    placeholder="—"
                                     disabled={!isBillable}
                                     className={cn(
                                         "text-right font-mono text-base font-semibold tabular-nums",
@@ -589,27 +747,37 @@ export function AddCustomLineItemModal({
                                     )}
                                     onChange={(e) => {
                                         setDraft("lineTotal", e.target.value);
-                                        handleSellTotalEdit(e.target.value);
+                                        routeSell("lineTotal", e.target.value);
                                     }}
                                     onBlur={() => clearDraft("lineTotal")}
                                 />
                             </div>
                         </div>
 
-                        {/* F4: the "Every figure is linked…" footnote was removed.
-                            Only the non-billable / overridden context lines remain. */}
+                        {/* Context line — reflects the omit-vs-send submit behaviour. */}
                         {!isBillable ? (
                             <p className="text-[11px] leading-snug text-muted-foreground">
                                 {billingMode === "COMPLIMENTARY"
                                     ? "Complimentary — shown to the client as complimentary; charged 0.00."
                                     : "Non-billable — internal cost only; never shown or charged to the client."}
                             </p>
-                        ) : isOverridden ? (
+                        ) : smart.buy == null ? (
                             <p className="text-[11px] leading-snug text-muted-foreground">
-                                Sell overridden for this line — it no longer follows the entity
-                                margin.
+                                Buy is the <span className="font-medium text-primary">auto</span>{" "}
+                                field — enter the Sell and Margin you know and it fills in backward.
+                                Buy is required to add the line.
                             </p>
-                        ) : null}
+                        ) : sellSent ? (
+                            <p className="text-[11px] leading-snug text-muted-foreground">
+                                Sell is set explicitly — it will be sent as this line&rsquo;s sell
+                                price.
+                            </p>
+                        ) : (
+                            <p className="text-[11px] leading-snug text-muted-foreground">
+                                Sell follows the entity margin (auto) — the server stamps it;
+                                nothing extra is sent.
+                            </p>
+                        )}
                     </div>
 
                     {isTransportCategory && (
