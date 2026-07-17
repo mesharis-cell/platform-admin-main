@@ -507,7 +507,7 @@ export function AddCustomLineItemModal({
         // override. Buy is omitted for CATALOG (rate-carded / G9).
         if (isEdit && editItem) {
             const data: UpdateLineItemRequest = {};
-            if (quantityNum !== Number(editItem.quantity ?? 0)) data.quantity = quantityNum;
+            if (quantityNum !== Number(editItem.quantity ?? 1)) data.quantity = quantityNum;
             if (unit.trim() !== (editItem.unit || "")) data.unit = unit.trim();
             if (!isCatalogEdit && buyRate !== Number(editItem.unitRate ?? 0)) {
                 data.unitRate = buyRate;
