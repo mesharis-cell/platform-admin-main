@@ -326,7 +326,12 @@ export function AddCustomLineItemModal({
     }, [open, editItem?.id]);
 
     const quantityNum = Number(quantity || 0);
-    const qtyNum = Number.isFinite(quantityNum) && quantityNum > 0 ? quantityNum : 0;
+    // LOW-1: quantities are whole units in this app — the old inline edit floored
+    // qty and the read-only ledger row floors it for its per-line Total. Floor here
+    // too so the modal's preview totals, the payload, and the row Total all agree
+    // on an integer qty (a fractional PUT with step="0.01" disagreed with the
+    // floored row Total).
+    const qtyNum = Number.isFinite(quantityNum) && quantityNum > 0 ? Math.floor(quantityNum) : 0;
     // Sell overrides only apply to BILLABLE lines (server rejects a sell rate on
     // NON_BILLABLE/COMPLIMENTARY with a 400). Gate the fields + the payload so a
     // non-billable line can never send one. Mirrors AddCatalogLineItemModal.
@@ -478,7 +483,7 @@ export function AddCustomLineItemModal({
             toast.error("Please enter a unit");
             return;
         }
-        if (!Number.isFinite(quantityNum) || quantityNum <= 0) {
+        if (qtyNum <= 0) {
             toast.error("Please enter a valid quantity");
             return;
         }
@@ -507,7 +512,7 @@ export function AddCustomLineItemModal({
         // override. Buy is omitted for CATALOG (rate-carded / G9).
         if (isEdit && editItem) {
             const data: UpdateLineItemRequest = {};
-            if (quantityNum !== Number(editItem.quantity ?? 1)) data.quantity = quantityNum;
+            if (qtyNum !== Math.floor(Number(editItem.quantity ?? 1))) data.quantity = qtyNum;
             if (unit.trim() !== (editItem.unit || "")) data.unit = unit.trim();
             if (!isCatalogEdit && buyRate !== Number(editItem.unitRate ?? 0)) {
                 data.unitRate = buyRate;
@@ -583,7 +588,7 @@ export function AddCustomLineItemModal({
                 description: description.trim(),
                 category,
                 billing_mode: billingMode,
-                quantity: quantityNum,
+                quantity: qtyNum,
                 unit: unit.trim(),
                 unit_rate: buyRate,
                 notes: notes || undefined,
@@ -752,9 +757,18 @@ export function AddCustomLineItemModal({
                                 <Input
                                     type="number"
                                     min="0"
-                                    step="0.01"
+                                    step="1"
                                     value={quantity}
-                                    onChange={(e) => setQuantity(e.target.value)}
+                                    onChange={(e) => {
+                                        // LOW-1: whole units only — floor on change so
+                                        // the field can never hold a fractional qty
+                                        // (keeps add/edit and the ledger row Total in
+                                        // agreement). Empty is preserved for typing.
+                                        const raw = e.target.value;
+                                        if (raw === "") return setQuantity("");
+                                        const n = Math.floor(Number(raw));
+                                        if (Number.isFinite(n) && n >= 0) setQuantity(String(n));
+                                    }}
                                     placeholder="1"
                                 />
                             </div>
