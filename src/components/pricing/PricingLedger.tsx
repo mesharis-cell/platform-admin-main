@@ -35,7 +35,6 @@ import { PricingLedgerRow } from "@/components/pricing/PricingLedgerRow";
 import {
     useListLineItems,
     usePatchLineItemVisibility,
-    useUpdateLineItem,
     useVoidLineItem,
 } from "@/hooks/use-order-line-items";
 import { usePricingPreview } from "@/hooks/use-pricing-ledger";
@@ -137,6 +136,11 @@ export function PricingLedger({
     const [addCustomOpen, setAddCustomOpen] = useState(false);
     const [bulkOpen, setBulkOpen] = useState(false);
     const [noCostOpen, setNoCostOpen] = useState(false);
+    // Pen → line-edit modal. Editing is done in the unified Add/Edit modal, never
+    // inline. editQuiet carries the QUOTED amend choice resolved BEFORE opening.
+    const [editItem, setEditItem] = useState<OrderLineItem | null>(null);
+    const [editOpen, setEditOpen] = useState(false);
+    const [editQuiet, setEditQuiet] = useState(false);
 
     const isNoCost = pricingMode === "NO_COST";
     const isPostQuote = POST_QUOTE_STATUSES.has(entityStatus);
@@ -234,7 +238,6 @@ export function PricingLedger({
         lens === "logistics"
     );
 
-    const updateLineItem = useUpdateLineItem(entityId, purposeType);
     const voidLineItem = useVoidLineItem(entityId, purposeType);
     const patchVisibility = usePatchLineItemVisibility(entityId, purposeType);
 
@@ -338,27 +341,18 @@ export function PricingLedger({
         setBulkOpen(true);
     };
 
-    // Inline cell / mode-change writes gate at FLUSH time (ORDER only — other
-    // entities keep the un-intercepted behaviour). Only PRICING fields trigger
-    // the server pull-back, so a notes-only edit skips the confirm entirely
-    // (mirrors the API: a metadata/notes update never reverts a sent quote). On
-    // cancel we REJECT so the row's own catch rolls the touched field(s) back.
-    const handleUpdate =
-        (itemId: string) =>
-        async (data: Parameters<typeof updateLineItem.mutateAsync>[0]["data"]) => {
-            const touchesPricing = (
-                ["quantity", "unit", "unitRate", "sellUnitRate", "billingMode"] as const
-            ).some((k) => k in data);
-            if (isOrder && touchesPricing) {
-                const choice = await requestAmend();
-                if (choice === null) throw new Error("Quote amendment cancelled");
-                return updateLineItem.mutateAsync({
-                    itemId,
-                    data: choice === "quiet" ? { ...data, quietAmend: true } : data,
-                });
-            }
-            return updateLineItem.mutateAsync({ itemId, data });
-        };
+    // Pen → line-edit modal. Gate at OPEN time (mirrors add/bulk): resolve the
+    // QUOTED amend choice FIRST; cancel → modal never opens. The chosen mode is
+    // carried into the modal and only ACTED ON at Save (closing without saving =
+    // no revert, no amend). When not post-quote, requestAmend resolves "revert"
+    // instantly with no dialog.
+    const openEdit = async (item: OrderLineItem) => {
+        const choice = await requestAmend();
+        if (choice === null) return;
+        setEditQuiet(choice === "quiet");
+        setEditItem(item);
+        setEditOpen(true);
+    };
     const handleVoid = async (itemId: string) => {
         let quiet = false;
         if (isOrder) {
@@ -533,7 +527,7 @@ export function PricingLedger({
                                                         editable={ledgerEditable}
                                                         allowVisibility={ledgerEditable}
                                                         currency={resolvedCurrency}
-                                                        onUpdate={handleUpdate(item.id)}
+                                                        onEdit={() => void openEdit(item)}
                                                         onVoid={() => handleVoid(item.id)}
                                                         onToggleVisibility={(next) =>
                                                             handleToggleVisibility(item.id, next)
@@ -917,6 +911,18 @@ export function PricingLedger({
                 seedMarginPercent={seedMarginPercent}
                 currency={resolvedCurrency}
                 quietAmend={addQuiet}
+            />
+            {/* Pen → line edit (both CATALOG + CUSTOM). The QUOTED amend gate has
+                already run in openEdit; editQuiet carries the choice into the PUT. */}
+            <AddCustomLineItemModal
+                open={editOpen}
+                onOpenChange={setEditOpen}
+                targetId={entityId}
+                purposeType={purposeType}
+                seedMarginPercent={seedMarginPercent}
+                currency={resolvedCurrency}
+                quietAmend={editQuiet}
+                editItem={editItem}
             />
             <BulkMarginDialog
                 open={bulkOpen}
