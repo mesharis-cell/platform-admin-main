@@ -127,8 +127,18 @@ const setSmartField = (s: SmartState, f: SmartField, value: number): SmartState 
 };
 
 // Clear a value → unknown, WITHOUT reordering recency (clearing ≠ setting).
-const clearSmartValue = (s: SmartState, f: "buy" | "sell"): SmartState =>
-    recomputeSmart({ ...s, [f]: null });
+// Reviewer FIX (Model D clear-Sell WYSIWYG bug): clearing a HELD sell while buy
+// is present re-pins sell as the DERIVED field so it recomputes from the CURRENT
+// margin — display (margin + recomputed sell) and the omit-vs-send decision then
+// read from one source and always agree. Without this the cleared sell blanks,
+// some other field stays derived, and a stale non-seed margin could show while
+// submit omits sell (server stamps the seed) → shown margin ≠ stored margin.
+const clearSmartValue = (s: SmartState, f: "buy" | "sell"): SmartState => {
+    if (f === "sell" && s.buy != null) {
+        return pinSmartDerived({ ...s, sell: null }, "sell");
+    }
+    return recomputeSmart({ ...s, [f]: null });
+};
 
 // Clear margin → the seed ghost returns; buy/sell untouched; derived re-derives.
 const clearSmartMargin = (s: SmartState, seed: number): SmartState =>
@@ -146,8 +156,15 @@ const pinSmartDerived = (s: SmartState, f: SmartField): SmartState =>
 // Mirrors the API custom-create stamp: BILLABLE + no sell → sell = buy×(1+seed/100).
 const sellIsSent = (s: SmartState, seed: number): boolean => {
     if (s.rec[2] === "sell") {
-        const atSeed = s.margin != null && Math.abs(s.margin - seed) < 0.005;
-        return s.sell != null && !atSeed;
+        // Sell is the derived field. OMIT only when the value the server would
+        // stamp from the SEED margin equals the value we're showing — a pure
+        // VALUE compare (LOW-1) so shown-sell always == stored-sell regardless of
+        // buy magnitude (a margin within rounding of the seed but a different
+        // 2-decimal sell must still be SENT).
+        if (s.sell == null || s.buy == null || s.margin == null) return s.sell != null;
+        const shownSell = roundMoney(s.buy * (1 + s.margin / 100));
+        const seedSell = roundMoney(s.buy * (1 + seed / 100));
+        return shownSell !== seedSell;
     }
     return s.sell != null;
 };
@@ -215,6 +232,18 @@ export function AddCustomLineItemModal({
             const next = { ...d };
             delete next[key];
             return next;
+        });
+    // LOW-2: block submit (incl. Enter) when a pricing field's VISIBLE draft is
+    // invalid — otherwise the last valid value still in `smart` would be
+    // submitted while the field shows garbage. An empty draft is a legitimate
+    // "clear" (already routed), so only a non-empty unparseable/negative draft
+    // blocks.
+    const hasInvalidPricingDraft = (): boolean =>
+        Object.values(drafts).some((raw) => {
+            const t = String(raw).trim();
+            if (t === "") return false;
+            const n = parseNum(raw);
+            return !Number.isFinite(n) || n < 0;
         });
 
     // Fresh empty modal on every open — margin re-seeded from the (now-loaded)
@@ -303,7 +332,10 @@ export function AddCustomLineItemModal({
         marginDash = true;
     } else {
         marginStr = fmtPct(roundMoney(smart.margin));
-        marginGhost = !smart.marginTouched;
+        // Ghost (italic seed placeholder) ONLY when it truly is the untouched
+        // seed value — a stale non-seed margin must not masquerade as the seed
+        // ghost (cosmetic fix, pairs with the clear-Sell WYSIWYG fix above).
+        marginGhost = !smart.marginTouched && Math.abs(smart.margin - seedMarginPercent) < 0.005;
     }
     const marginIsDerived = isBillable && derivedField === "margin" && !marginDash && !marginIsFee;
 
@@ -372,10 +404,19 @@ export function AddCustomLineItemModal({
             toast.error("Please enter a valid quantity");
             return;
         }
-        // Model D: buy is REQUIRED — an empty/unknown buy blocks the POST (it is
-        // the auto field until you supply the two you know).
-        if (smart.buy == null || !Number.isFinite(smart.buy) || smart.buy < 0) {
+        if (hasInvalidPricingDraft()) {
+            toast.error("Enter a valid number in the highlighted pricing field");
+            return;
+        }
+        // Model D: buy is REQUIRED — an empty/unknown buy blocks submit (it is the
+        // auto field until you supply the two you know). A negative derived buy
+        // (e.g. an impossible margin) is INVALID, not merely missing.
+        if (smart.buy == null) {
             toast.error("Buy unit rate is required");
+            return;
+        }
+        if (!Number.isFinite(smart.buy) || smart.buy < 0) {
+            toast.error("Buy unit rate is invalid");
             return;
         }
         const buyRate = roundMoney(smart.buy);
