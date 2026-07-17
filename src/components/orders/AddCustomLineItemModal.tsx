@@ -125,10 +125,29 @@ const recomputeSmart = (s: SmartState): SmartState => {
 };
 
 // Set a field the user typed: it becomes freshest, the new stalest recomputes.
-const setSmartField = (s: SmartState, f: SmartField, value: number): SmartState => {
+// `lockBuyOutOfDerived` (CATALOG edit): Buy is rate-carded and must NEVER become
+// the derived/auto field. We enforce that on the recency queue BEFORE recompute —
+// if bumping the edited field stales Buy into the derived slot, the OTHER of
+// {sell, margin} (the one NOT just edited) is made derived instead. Because the
+// pin is applied ahead of recomputeSmart, Buy keeps its rate-card value and
+// recomputeSmart never fabricates a fictional buy from sell ÷ (1 + margin). This
+// replaces the old post-hoc `applyPinnedBuy`, which ran AFTER recompute had
+// already overwritten buy → the corrupted-buy / dropped-edit HIGH bug. No-op for
+// CUSTOM lines (flag false), where a derived buy is legitimate Model D.
+const setSmartField = (
+    s: SmartState,
+    f: SmartField,
+    value: number,
+    lockBuyOutOfDerived = false
+): SmartState => {
     const next: SmartState = { ...s, [f]: value };
     if (f === "margin") next.marginTouched = true;
-    next.rec = bumpRec(s.rec, f);
+    let rec = bumpRec(s.rec, f);
+    if (lockBuyOutOfDerived && rec[2] === "buy") {
+        const other: SmartField = f === "sell" ? "margin" : "sell";
+        rec = [...rec.filter((x) => x !== other), other] as SmartField[];
+    }
+    next.rec = rec;
     return recomputeSmart(next);
 };
 
@@ -320,15 +339,6 @@ export function AddCustomLineItemModal({
         setPricingTouched(true);
         setSmart(mutator);
     };
-    // CATALOG edit: Buy is rate-carded (read-only) and must NEVER become the
-    // derived/auto field. After a sell/margin edit the recency engine may stale
-    // buy into rec[2]; force the OTHER of {sell, margin} (the one not just edited)
-    // to be derived instead, keeping buy permanently held.
-    const applyPinnedBuy = (s: SmartState, justEdited: SmartField): SmartState => {
-        if (!isCatalogEdit || s.rec[2] !== "buy") return s;
-        const other: SmartField = justEdited === "sell" ? "margin" : "sell";
-        return pinSmartDerived(s, other);
-    };
     // The per-unit sell implied by a sell-family field (sell / totals / margin amt).
     const sellUnitFrom = (field: string, raw: string): number | null => {
         const v = parseNum(raw);
@@ -353,16 +363,20 @@ export function AddCustomLineItemModal({
         if (raw.trim() === "") return commitSmart((s) => clearSmartValue(s, "sell"));
         const perUnit = sellUnitFrom(field, raw);
         if (perUnit == null || !Number.isFinite(perUnit) || perUnit < 0) return;
-        commitSmart((s) => applyPinnedBuy(setSmartField(s, "sell", roundMoney(perUnit)), "sell"));
+        // isCatalogEdit → lock buy out of the derived slot before recompute, so a
+        // sell edit recomputes MARGIN from the LOCKED buy (buy never drifts).
+        commitSmart((s) => setSmartField(s, "sell", roundMoney(perUnit), isCatalogEdit));
     };
     const routeMargin = (raw: string) => {
-        if (raw.trim() === "")
-            return commitSmart((s) =>
-                applyPinnedBuy(clearSmartMargin(s, seedRef.current), "margin")
-            );
+        // Clearing margin returns the seed ghost and recomputes the CURRENT derived
+        // field (never buy on a catalog line — the setSmartField lock keeps buy held
+        // on every prior edit), so no fictional buy can appear here.
+        if (raw.trim() === "") return commitSmart((s) => clearSmartMargin(s, seedRef.current));
         const m = parseNum(raw);
         if (!Number.isFinite(m)) return;
-        commitSmart((s) => applyPinnedBuy(setSmartField(s, "margin", roundMoney(m)), "margin"));
+        // isCatalogEdit → lock buy out of the derived slot before recompute, so a
+        // margin edit recomputes SELL from the LOCKED buy (300 × 1.40 = 420).
+        commitSmart((s) => setSmartField(s, "margin", roundMoney(m), isCatalogEdit));
     };
 
     // ── display derivation (mirrors the recency state onto the field cells) ──
