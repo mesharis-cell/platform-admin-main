@@ -21,14 +21,16 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
-import { Eye, RefreshCw } from "lucide-react";
+import { Eye, Lock, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { useCreateCustomLineItem } from "@/hooks/use-order-line-items";
+import { useCreateCustomLineItem, useUpdateLineItem } from "@/hooks/use-order-line-items";
 import type {
     LineItemBillingMode,
+    OrderLineItem,
     ServiceCategory,
     TransportLineItemMetadata,
+    UpdateLineItemRequest,
 } from "@/types/hybrid-pricing";
 
 interface AddCustomLineItemModalProps {
@@ -43,9 +45,13 @@ interface AddCustomLineItemModalProps {
     seedMarginPercent?: number;
     currency?: string;
     // F7 quiet-amend (ADMIN + ORDER only): the caller resolved a "Update
-    // quietly" choice before opening this modal. When true, the created line
-    // amends the sent quote in place (no pull-back / QUOTE_REVISED).
+    // quietly" choice before opening this modal. When true, the created/edited
+    // line amends the sent quote in place (no pull-back / QUOTE_REVISED).
     quietAmend?: boolean;
+    // EDIT mode: when a line is supplied the modal pre-fills from it and SAVES
+    // via PUT instead of POST. CATALOG lines lock Buy (rate-carded, G9); CUSTOM
+    // lines keep full Model D. Omit / null = ADD mode (POST a new custom line).
+    editItem?: OrderLineItem | null;
 }
 
 const roundMoney = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
@@ -169,6 +175,20 @@ const sellIsSent = (s: SmartState, seed: number): boolean => {
     return s.sell != null;
 };
 
+// EDIT-mode seed: build the Model D state from an existing line. Buy is held; an
+// EXPLICIT stored sell (sell_unit_rate) is held too (margin derives); a NULL sell
+// leaves sell as the seed-derived auto field. For a CATALOG line buy stays held
+// (buy-pinned) via the routing wrappers below.
+const seedSmartFromItem = (item: OrderLineItem, seed: number): SmartState => {
+    const buy = Number(item.unitRate ?? 0);
+    const sellRaw = item.sellUnitRate ?? item.sell_unit_rate ?? null;
+    let s = setSmartField(freshSmart(seed), "buy", roundMoney(buy));
+    if (sellRaw != null && Number.isFinite(Number(sellRaw))) {
+        s = setSmartField(s, "sell", roundMoney(Number(sellRaw)));
+    }
+    return s;
+};
+
 /**
  * Add Custom Line Item — Model D "Smart" pricing.
  *   Row 1  Qty | Unit
@@ -196,8 +216,21 @@ export function AddCustomLineItemModal({
     seedMarginPercent = 0,
     currency = "AED",
     quietAmend,
+    editItem,
 }: AddCustomLineItemModalProps) {
     const createLineItem = useCreateCustomLineItem(targetId, purposeType);
+    const updateLineItem = useUpdateLineItem(targetId, purposeType);
+
+    // ── mode ──
+    const isEdit = !!editItem;
+    // CATALOG lines take Buy from the rate card — read-only + buy-pinned in Model
+    // D (buy can never become the auto/derived field). CUSTOM lines are full
+    // Model D. (Catalog ADD stays in AddCatalogLineItemModal; this is edit-only.)
+    const isCatalogEdit = isEdit && editItem?.lineItemType === "CATALOG";
+    // G8/G2: the per-line client-price toggle is locked once an ORDER's quote is
+    // accepted (financial_status locked). Absent → editable.
+    const canEditClientVis = editItem?.canEditClientVisibility !== false;
+    const isPending = isEdit ? updateLineItem.isPending : createLineItem.isPending;
 
     const [description, setDescription] = useState("");
     const [category, setCategory] = useState<ServiceCategory>("OTHER");
@@ -205,6 +238,9 @@ export function AddCustomLineItemModal({
     const [quantity, setQuantity] = useState("1");
     const [unit, setUnit] = useState("service");
     const [notes, setNotes] = useState("");
+    // EDIT-only: per-line "show price to client" (its old home was the row's
+    // folded section, removed in the modal-edit refactor). PUT accepts it directly.
+    const [clientPriceVisible, setClientPriceVisible] = useState(false);
     const [tripDirection, setTripDirection] = useState<
         "DELIVERY" | "PICKUP" | "ACCESS" | "TRANSFER"
     >("DELIVERY");
@@ -246,16 +282,29 @@ export function AddCustomLineItemModal({
             return !Number.isFinite(n) || n < 0;
         });
 
-    // Fresh empty modal on every open — margin re-seeded from the (now-loaded)
-    // entity seed. `seedRef` reads the latest seed without re-seeding mid-entry.
+    // Fresh empty modal on every open (ADD), or pre-filled from the line (EDIT).
+    // `seedRef` reads the latest seed without re-seeding mid-entry.
     const seedRef = useRef(seedMarginPercent);
     seedRef.current = seedMarginPercent;
     useEffect(() => {
         if (!open) return;
-        setSmart(freshSmart(seedRef.current));
+        if (isEdit && editItem) {
+            setDescription(editItem.description || "");
+            setCategory((editItem.category || "OTHER") as ServiceCategory);
+            setBillingMode((editItem.billingMode || "BILLABLE") as LineItemBillingMode);
+            setQuantity(String(editItem.quantity ?? 1));
+            setUnit(editItem.unit || "");
+            setNotes(editItem.notes || "");
+            setLogisticsVisible(editItem.logisticsVisible !== false);
+            setClientPriceVisible(editItem.clientPriceVisible === true);
+            setSmart(seedSmartFromItem(editItem, seedRef.current));
+        } else {
+            setSmart(freshSmart(seedRef.current));
+        }
         setDrafts({});
         setPricingTouched(false);
-    }, [open]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [open, editItem?.id]);
 
     const quantityNum = Number(quantity || 0);
     const qtyNum = Number.isFinite(quantityNum) && quantityNum > 0 ? quantityNum : 0;
@@ -270,6 +319,15 @@ export function AddCustomLineItemModal({
     const commitSmart = (mutator: (s: SmartState) => SmartState) => {
         setPricingTouched(true);
         setSmart(mutator);
+    };
+    // CATALOG edit: Buy is rate-carded (read-only) and must NEVER become the
+    // derived/auto field. After a sell/margin edit the recency engine may stale
+    // buy into rec[2]; force the OTHER of {sell, margin} (the one not just edited)
+    // to be derived instead, keeping buy permanently held.
+    const applyPinnedBuy = (s: SmartState, justEdited: SmartField): SmartState => {
+        if (!isCatalogEdit || s.rec[2] !== "buy") return s;
+        const other: SmartField = justEdited === "sell" ? "margin" : "sell";
+        return pinSmartDerived(s, other);
     };
     // The per-unit sell implied by a sell-family field (sell / totals / margin amt).
     const sellUnitFrom = (field: string, raw: string): number | null => {
@@ -295,13 +353,16 @@ export function AddCustomLineItemModal({
         if (raw.trim() === "") return commitSmart((s) => clearSmartValue(s, "sell"));
         const perUnit = sellUnitFrom(field, raw);
         if (perUnit == null || !Number.isFinite(perUnit) || perUnit < 0) return;
-        commitSmart((s) => setSmartField(s, "sell", roundMoney(perUnit)));
+        commitSmart((s) => applyPinnedBuy(setSmartField(s, "sell", roundMoney(perUnit)), "sell"));
     };
     const routeMargin = (raw: string) => {
-        if (raw.trim() === "") return commitSmart((s) => clearSmartMargin(s, seedRef.current));
+        if (raw.trim() === "")
+            return commitSmart((s) =>
+                applyPinnedBuy(clearSmartMargin(s, seedRef.current), "margin")
+            );
         const m = parseNum(raw);
         if (!Number.isFinite(m)) return;
-        commitSmart((s) => setSmartField(s, "margin", roundMoney(m)));
+        commitSmart((s) => applyPinnedBuy(setSmartField(s, "margin", roundMoney(m)), "margin"));
     };
 
     // ── display derivation (mirrors the recency state onto the field cells) ──
@@ -353,6 +414,9 @@ export function AddCustomLineItemModal({
     const SMART_LABEL: Record<SmartField, string> = { buy: "Buy", sell: "Sell", margin: "Margin" };
     const fieldMarker = (field: SmartField) => {
         if (!isBillable) return null;
+        // CATALOG edit: Buy is rate-carded + buy-pinned — it never becomes the
+        // auto field, so it carries no "auto" tag and offers no pin.
+        if (field === "buy" && isCatalogEdit) return null;
         const isDerived = derivedField === field;
         const hasVal =
             field === "buy"
@@ -391,7 +455,7 @@ export function AddCustomLineItemModal({
     const derivedCell =
         "bg-muted/60 text-muted-foreground border-dashed hover:border-solid focus-visible:border-solid";
 
-    const handleAdd = async () => {
+    const handleSubmit = async () => {
         if (!description.trim()) {
             toast.error("Please enter a description");
             return;
@@ -420,6 +484,51 @@ export function AddCustomLineItemModal({
             return;
         }
         const buyRate = roundMoney(smart.buy);
+
+        // ── EDIT mode: PUT only the CHANGED fields ──────────────────────────────
+        // description/category/metadata are NOT accepted by the update endpoint
+        // (read-only display in edit). Sell follows the FIXED Model D rule but,
+        // unlike create, "auto" must SEND null (clear a prior override) rather
+        // than OMIT — omit means "no change" on PUT, which would strand an old
+        // override. Buy is omitted for CATALOG (rate-carded / G9).
+        if (isEdit && editItem) {
+            const data: UpdateLineItemRequest = {};
+            if (quantityNum !== Number(editItem.quantity ?? 0)) data.quantity = quantityNum;
+            if (unit.trim() !== (editItem.unit || "")) data.unit = unit.trim();
+            if (!isCatalogEdit && buyRate !== Number(editItem.unitRate ?? 0)) {
+                data.unitRate = buyRate;
+            }
+            if (billingMode !== (editItem.billingMode || "BILLABLE"))
+                data.billingMode = billingMode;
+            if (notes !== (editItem.notes || "")) data.notes = notes;
+            if (logisticsVisible !== (editItem.logisticsVisible !== false)) {
+                data.logisticsVisible = logisticsVisible;
+            }
+            if (canEditClientVis && clientPriceVisible !== (editItem.clientPriceVisible === true)) {
+                data.clientPriceVisible = clientPriceVisible;
+            }
+            // Target sell: explicit number when held/non-seed; null (clear → server
+            // re-derives the seed) when auto; null on a non-billable line.
+            const targetSell =
+                isBillable && sellSent && smart.sell != null ? roundMoney(smart.sell) : null;
+            const currentSell = editItem.sellUnitRate ?? editItem.sell_unit_rate ?? null;
+            const currentSellNum = currentSell != null ? Number(currentSell) : null;
+            if (targetSell !== currentSellNum) data.sellUnitRate = targetSell;
+            if (Object.keys(data).length === 0) {
+                toast.info("No changes to save");
+                onOpenChange(false);
+                return;
+            }
+            if (quietAmend) data.quietAmend = true;
+            try {
+                await updateLineItem.mutateAsync({ itemId: editItem.id, data });
+                toast.success("Line updated");
+                onOpenChange(false);
+            } catch (error: any) {
+                toast.error(error.message || "Failed to update line item");
+            }
+            return;
+        }
 
         let metadata: TransportLineItemMetadata | undefined;
         if (isTransportCategory) {
@@ -505,52 +614,71 @@ export function AddCustomLineItemModal({
                     if (
                         e.key === "Enter" &&
                         (e.target as HTMLElement).tagName === "INPUT" &&
-                        !createLineItem.isPending
+                        !isPending
                     ) {
                         e.preventDefault();
-                        void handleAdd();
+                        void handleSubmit();
                     }
                 }}
             >
                 <DialogHeader className="shrink-0 border-b border-border px-6 pb-4 pt-6">
-                    <DialogTitle>Add Custom Line Item</DialogTitle>
+                    <DialogTitle>
+                        {isEdit
+                            ? isCatalogEdit
+                                ? "Edit catalog line"
+                                : "Edit custom line"
+                            : "Add Custom Line Item"}
+                    </DialogTitle>
                 </DialogHeader>
 
                 <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
-                    <div>
-                        <Label>
-                            Description <span className="text-destructive">*</span>
-                        </Label>
-                        <Input
-                            value={description}
-                            onChange={(e) => setDescription(e.target.value)}
-                            placeholder="e.g., Rush Design Fee, Special Packaging"
-                            maxLength={200}
-                        />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
+                    {isEdit ? (
+                        // EDIT: description + category are not accepted by the update
+                        // endpoint — show them read-only.
+                        <div className="rounded-md border border-border bg-muted/30 px-3 py-2">
+                            <p className="text-sm font-medium">{description || "—"}</p>
+                            <p className="mt-0.5 text-[11px] uppercase tracking-wide text-muted-foreground">
+                                {category} · {isCatalogEdit ? "Catalog" : "Custom"} line
+                            </p>
+                        </div>
+                    ) : (
                         <div>
                             <Label>
-                                Category <span className="text-destructive">*</span>
+                                Description <span className="text-destructive">*</span>
                             </Label>
-                            <Select
-                                value={category}
-                                onValueChange={(value) => setCategory(value as ServiceCategory)}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select category" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="ASSEMBLY">ASSEMBLY</SelectItem>
-                                    <SelectItem value="EQUIPMENT">EQUIPMENT</SelectItem>
-                                    <SelectItem value="HANDLING">HANDLING</SelectItem>
-                                    <SelectItem value="RESKIN">RESKIN</SelectItem>
-                                    <SelectItem value="TRANSPORT">TRANSPORT</SelectItem>
-                                    <SelectItem value="OTHER">OTHER</SelectItem>
-                                </SelectContent>
-                            </Select>
+                            <Input
+                                value={description}
+                                onChange={(e) => setDescription(e.target.value)}
+                                placeholder="e.g., Rush Design Fee, Special Packaging"
+                                maxLength={200}
+                            />
                         </div>
+                    )}
+
+                    <div className="grid grid-cols-2 gap-3">
+                        {!isEdit ? (
+                            <div>
+                                <Label>
+                                    Category <span className="text-destructive">*</span>
+                                </Label>
+                                <Select
+                                    value={category}
+                                    onValueChange={(value) => setCategory(value as ServiceCategory)}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select category" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="ASSEMBLY">ASSEMBLY</SelectItem>
+                                        <SelectItem value="EQUIPMENT">EQUIPMENT</SelectItem>
+                                        <SelectItem value="HANDLING">HANDLING</SelectItem>
+                                        <SelectItem value="RESKIN">RESKIN</SelectItem>
+                                        <SelectItem value="TRANSPORT">TRANSPORT</SelectItem>
+                                        <SelectItem value="OTHER">OTHER</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        ) : null}
                         <div>
                             <Label>
                                 Billing Mode <span className="text-destructive">*</span>
@@ -635,7 +763,17 @@ export function AddCustomLineItemModal({
                                 <Label>
                                     Buy / Unit ({currency}){" "}
                                     <span className="text-destructive">*</span>
-                                    {fieldMarker("buy")}
+                                    {isCatalogEdit ? (
+                                        <span
+                                            className="ml-1 inline-flex items-center gap-0.5 rounded border border-border bg-muted px-1 py-0.5 align-middle text-[9px] font-medium uppercase tracking-wide text-muted-foreground"
+                                            title="Buy comes from the service rate card and can't be changed here"
+                                        >
+                                            <Lock className="h-2.5 w-2.5" />
+                                            rate card
+                                        </span>
+                                    ) : (
+                                        fieldMarker("buy")
+                                    )}
                                 </Label>
                                 <Input
                                     type="number"
@@ -643,8 +781,10 @@ export function AddCustomLineItemModal({
                                     min="0"
                                     value={drafts.buy ?? buyStr}
                                     placeholder="200.00"
+                                    disabled={isCatalogEdit}
                                     className={cn(
                                         "text-right font-mono tabular-nums",
+                                        isCatalogEdit && "bg-muted",
                                         buyIsDerived && derivedCell
                                     )}
                                     onChange={(e) => {
@@ -670,7 +810,11 @@ export function AddCustomLineItemModal({
                                         (buyTotal != null ? buyTotal.toFixed(2) : "")
                                     }
                                     placeholder="—"
-                                    className="text-right font-mono tabular-nums"
+                                    disabled={isCatalogEdit}
+                                    className={cn(
+                                        "text-right font-mono tabular-nums",
+                                        isCatalogEdit && "bg-muted"
+                                    )}
                                     onChange={(e) => {
                                         setDraft("buyTotal", e.target.value);
                                         routeBuy("buyTotal", e.target.value);
@@ -849,7 +993,7 @@ export function AddCustomLineItemModal({
                         )}
                     </div>
 
-                    {isTransportCategory && (
+                    {isTransportCategory && !isEdit && (
                         <div className="space-y-4 rounded-md border border-border p-4">
                             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                                 Transport Metadata
@@ -960,6 +1104,31 @@ export function AddCustomLineItemModal({
                         <Switch checked={logisticsVisible} onCheckedChange={setLogisticsVisible} />
                     </div>
 
+                    {/* EDIT-only: per-line "show price to client" — its old home was the
+                        row's folded section (removed). Only meaningful on a billable
+                        line; locked (G8) once the ORDER quote is accepted. */}
+                    {isEdit && isBillable ? (
+                        <div
+                            className="flex items-start gap-3 rounded-md border border-border px-3 py-2"
+                            title={canEditClientVis ? undefined : "Locked after quote acceptance"}
+                        >
+                            <Eye className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                            <div className="space-y-0.5">
+                                <Label className="text-sm">Show price to client</Label>
+                                <p className="text-[11px] leading-snug text-muted-foreground">
+                                    When on, this line&rsquo;s individual sell price appears on the
+                                    client&rsquo;s estimate.
+                                </p>
+                            </div>
+                            <Switch
+                                className="ml-auto"
+                                checked={clientPriceVisible}
+                                disabled={!canEditClientVis}
+                                onCheckedChange={setClientPriceVisible}
+                            />
+                        </div>
+                    ) : null}
+
                     <div>
                         <Label>Notes (Optional)</Label>
                         <Textarea
@@ -975,12 +1144,18 @@ export function AddCustomLineItemModal({
                     <Button
                         variant="outline"
                         onClick={() => onOpenChange(false)}
-                        disabled={createLineItem.isPending}
+                        disabled={isPending}
                     >
                         Cancel
                     </Button>
-                    <Button onClick={handleAdd} disabled={createLineItem.isPending}>
-                        {createLineItem.isPending ? "Adding..." : "Add Custom Item"}
+                    <Button onClick={handleSubmit} disabled={isPending}>
+                        {isEdit
+                            ? isPending
+                                ? "Saving..."
+                                : "Save changes"
+                            : isPending
+                              ? "Adding..."
+                              : "Add Custom Item"}
                     </Button>
                 </DialogFooter>
             </DialogContent>
