@@ -525,7 +525,7 @@ export function PricingLedger({
                                                         item={item}
                                                         seedMarginPercent={seedMarginPercent}
                                                         editable={ledgerEditable}
-                                                        allowVisibility={ledgerEditable}
+                                                        allowVisibility={canAdjust && !isNoCost}
                                                         currency={resolvedCurrency}
                                                         onEdit={() => void openEdit(item)}
                                                         onVoid={() => handleVoid(item.id)}
