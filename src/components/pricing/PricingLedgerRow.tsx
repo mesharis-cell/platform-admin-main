@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { ChevronDown, ChevronRight, Eye, EyeOff, Link2, Pencil, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -84,6 +85,12 @@ interface Props {
     editable: boolean;
     allowVisibility: boolean;
     currency: string;
+    // Multi-select (bulk actions). `selectable` mirrors the row's own edit gate
+    // (editable && !SYSTEM && !locked) — resolved by the parent so SYSTEM/locked
+    // rows show no checkbox. `selected` + `onSelectChange` drive the selection.
+    selectable: boolean;
+    selected: boolean;
+    onSelectChange: (checked: boolean) => void;
     // Pen click → the parent runs the QUOTED amend gate (if any) then opens the
     // edit modal. No inline editing happens on the row itself.
     onEdit: () => void;
@@ -110,6 +117,9 @@ export function PricingLedgerRow({
     editable,
     allowVisibility,
     currency,
+    selectable,
+    selected,
+    onSelectChange,
     onEdit,
     onVoid,
     onToggleVisibility,
@@ -157,6 +167,17 @@ export function PricingLedgerRow({
     return (
         <>
             <TableRow className={cn("border-border/50 align-middle", stripe)}>
+                {/* Multi-select checkbox — only on selectable (editable, non-SYSTEM,
+                    non-locked) rows; a spacer keeps column alignment otherwise. */}
+                <TableCell className="w-8 px-2">
+                    {selectable ? (
+                        <Checkbox
+                            checked={selected}
+                            onCheckedChange={(v) => onSelectChange(v === true)}
+                            aria-label={selected ? "Deselect line" : "Select line"}
+                        />
+                    ) : null}
+                </TableCell>
                 <TableCell className="w-8 px-2">
                     <button
                         type="button"
@@ -353,6 +374,7 @@ export function PricingLedgerRow({
 
             {expanded ? (
                 <TableRow className={cn("border-border/50 bg-muted/20 hover:bg-muted/20", stripe)}>
+                    <TableCell />
                     <TableCell />
                     <TableCell colSpan={11} className="py-3">
                         {/* Read-only detail (A2 style). All editing is via the pen. */}
