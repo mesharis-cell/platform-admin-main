@@ -237,6 +237,68 @@ export interface VoidLineItemRequest {
     quiet_amend?: boolean;
 }
 
+// ============================================================
+// Ledger bulk actions (multi-select) — POST /operations/v1/line-item/bulk
+// ============================================================
+// One action applied across a checkbox multi-selection of ledger rows. The
+// server resolves `entity_id` by purpose_type + validates every id belongs to
+// that entity/platform (all-or-nothing). ADMIN-only. On a QUOTED ORDER the whole
+// bulk op routes through the amend gate ONCE (quiet_amend carries the choice).
+export type BulkLineItemAction = "VOID" | "SET_VISIBILITY" | "SET_BILLING_MODE";
+
+export interface BulkLineItemActionRequest {
+    purpose_type: PurposeType;
+    entity_id: string;
+    line_item_ids: string[];
+    action: BulkLineItemAction;
+    // action = VOID (server enforces min 10 chars)
+    void_reason?: string;
+    // action = SET_VISIBILITY (at least one flag required)
+    client_visible?: boolean;
+    client_price_visible?: boolean;
+    logistics_visible?: boolean;
+    // action = SET_BILLING_MODE
+    billing_mode?: LineItemBillingMode;
+    // F7 quiet-amend (ADMIN + ORDER only): amend a sent quote in place.
+    quiet_amend?: boolean;
+}
+
+export interface BulkLineItemActionResponse {
+    purpose_type: PurposeType;
+    entity_id: string;
+    action: BulkLineItemAction;
+    updated_count: number;
+    line_item_ids: string[];
+}
+
+// ============================================================
+// Add % line from a selection — POST /operations/v1/line-item/percentage-line
+// ============================================================
+// Creates ONE plain CUSTOM line whose amount is a percent of the SUMMED buy or
+// sell total of the selected source lines. The base sum is computed
+// SERVER-authoritatively from `source_line_item_ids` (client-sent sums are never
+// trusted). The created line is a one-time snapshot — NOT linked to the sources.
+export interface CreatePercentageLineRequest {
+    purpose_type: PurposeType;
+    entity_id: string;
+    source_line_item_ids: string[];
+    base: "SELL" | "BUY";
+    // > 0, ≤ 100000
+    percent: number;
+    description: string;
+    category?: ServiceCategory;
+    billing_mode?: LineItemBillingMode;
+    // BUY base only — optional admin sell override (BILLABLE-only). Omit → the
+    // server stamps sell from the entity margin seed.
+    sell_unit_rate?: number;
+    client_price_visible?: boolean;
+    logistics_visible?: boolean;
+    client_visible?: boolean;
+    notes?: string;
+    // F7 quiet-amend (ADMIN + ORDER only).
+    quiet_amend?: boolean;
+}
+
 export interface LineItemRequest {
     id: string;
     lineItemRequestId: string;
