@@ -287,9 +287,9 @@ export interface CreatePercentageLineRequest {
     percent: number;
     description: string;
     category?: ServiceCategory;
-    billing_mode?: LineItemBillingMode;
-    // BUY base only — optional admin sell override (BILLABLE-only). Omit → the
-    // server stamps sell from the entity margin seed.
+    // The percentage line is always a pure-margin client charge (buy 0, all sell,
+    // BILLABLE) — there is no billing-mode input. Optional admin SELL override
+    // replaces the computed percent × base sell (e.g. for a clean round number).
     sell_unit_rate?: number;
     client_price_visible?: boolean;
     logistics_visible?: boolean;
