@@ -19,12 +19,11 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
-import { Eye } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useCreatePercentageLine } from "@/hooks/use-pricing-ledger";
-import type { LineItemBillingMode, PurposeType, ServiceCategory } from "@/types/hybrid-pricing";
+import type { PurposeType, ServiceCategory } from "@/types/hybrid-pricing";
 
 interface AddPercentageLineModalProps {
     open: boolean;
@@ -38,8 +37,6 @@ interface AddPercentageLineModalProps {
     // ledger's current data). Authoritative amount comes back on the created line.
     summedBuy: number;
     summedSell: number;
-    // Entity margin seed — drives the BUY-base default sell (buy × (1 + seed%)).
-    seedMarginPercent: number;
     currency: string;
     // F7 quiet-amend (ADMIN + ORDER only): resolved by the caller's amend gate
     // BEFORE opening. When true the created line amends the sent quote in place.
@@ -49,24 +46,22 @@ interface AddPercentageLineModalProps {
 }
 
 const roundMoney = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
-const fmtPct = (value: number) => String(Number(value.toFixed(2)));
 const parseNum = (raw: string): number => {
     const n = parseFloat(String(raw).replace(/[^0-9.-]/g, ""));
     return Number.isFinite(n) ? n : NaN;
 };
 
 /**
- * Add % line — a leaner sibling of AddCustomLineItemModal. Shows the SUMMED buy
- * + sell of the current selection, lets the admin pick ONE base (Sell sum or Buy
- * sum) + a percent, and live-previews the resulting CUSTOM line:
- *   • base SELL → sell = percent% × summedSell, buy = 0 (a full-margin client
- *     surcharge; forced BILLABLE).
- *   • base BUY  → buy = percent% × summedBuy; sell defaults to the entity margin
- *     seed but is admin-adjustable (BILLABLE only).
- * The created line is a plain snapshot — NOT linked to the source lines.
+ * Add % line — a sibling of AddCustomLineItemModal (same width + section rhythm).
+ * The line is a PURE-MARGIN client charge: buy is always 0, the whole line is
+ * client SELL (100% margin). Pick a base subtotal (the selection's Buy sum or
+ * Sell sum) + a percent, and that becomes the client SELL. An optional Sell
+ * override replaces the computed number (for a clean round figure). The exact
+ * base is recomputed SERVER-side from the selected lines; the created line is a
+ * plain snapshot, NOT linked to the sources.
  *
  * ADMIN-only surface (admin repo, ADMIN role — middleware-enforced), so raw
- * buy/sell/margin is not a client-visibility leak.
+ * buy/sell is not a client-visibility leak.
  */
 export function AddPercentageLineModal({
     open,
@@ -76,7 +71,6 @@ export function AddPercentageLineModal({
     sourceLineItemIds,
     summedBuy,
     summedSell,
-    seedMarginPercent,
     currency,
     quietAmend,
     onSuccess,
@@ -87,12 +81,10 @@ export function AddPercentageLineModal({
     const [percent, setPercent] = useState("");
     const [description, setDescription] = useState("");
     const [category, setCategory] = useState<ServiceCategory>("OTHER");
-    const [billingMode, setBillingMode] = useState<LineItemBillingMode>("BILLABLE");
     const [notes, setNotes] = useState("");
-    const [clientPriceVisible, setClientPriceVisible] = useState(false);
+    const [clientVisible, setClientVisible] = useState(true);
     const [logisticsVisible, setLogisticsVisible] = useState(true);
-    // BUY base only — optional admin sell override. Empty draft = untouched (omit
-    // → server stamps sell from the entity margin seed).
+    // Optional admin SELL override — a clean round number in place of percent × base.
     const [sellOverride, setSellOverride] = useState("");
 
     // Fresh form on every open.
@@ -102,54 +94,26 @@ export function AddPercentageLineModal({
         setPercent("");
         setDescription("");
         setCategory("OTHER");
-        setBillingMode("BILLABLE");
         setNotes("");
-        setClientPriceVisible(false);
+        setClientVisible(true);
         setLogisticsVisible(true);
         setSellOverride("");
     }, [open]);
 
-    // SELL base is a pure client surcharge → forced BILLABLE (the API 400s a
-    // non-billable SELL-base line). Reflect that in the selector.
     const isSellBase = base === "SELL";
-    const effectiveBilling: LineItemBillingMode = isSellBase ? "BILLABLE" : billingMode;
-    const isBillable = effectiveBilling === "BILLABLE";
+    const baseSum = isSellBase ? summedSell : summedBuy;
 
     const pctNum = parseNum(percent);
     const pctValid = Number.isFinite(pctNum) && pctNum > 0 && pctNum <= 100000;
-    const baseSum = isSellBase ? summedSell : summedBuy;
 
-    // Live preview of the resulting line (buy / sell / margin).
-    const preview = useMemo(() => {
-        if (!pctValid) return null;
-        if (isSellBase) {
-            // sell = percent% × summedSell, buy = 0 → a full-margin surcharge.
-            const sell = roundMoney((pctNum / 100) * summedSell);
-            return { buy: 0, sell, marginDisplay: "Fee" };
-        }
-        // BUY base — buy = percent% × summedBuy; sell = override or seed-derived.
-        const buy = roundMoney((pctNum / 100) * summedBuy);
-        if (!isBillable) {
-            return { buy, sell: 0, marginDisplay: "—" };
-        }
+    // The resulting client SELL (buy is always 0). Override wins over percent × base.
+    const resultSell = useMemo(() => {
         const overrideNum = parseNum(sellOverride);
         const hasOverride = sellOverride.trim() !== "" && Number.isFinite(overrideNum);
-        const sell = hasOverride
-            ? roundMoney(overrideNum)
-            : roundMoney(buy * (1 + seedMarginPercent / 100));
-        const marginDisplay =
-            buy > 0 ? `${fmtPct(roundMoney(((sell - buy) / buy) * 100))}%` : "Fee";
-        return { buy, sell, marginDisplay };
-    }, [
-        pctValid,
-        isSellBase,
-        pctNum,
-        summedSell,
-        summedBuy,
-        isBillable,
-        sellOverride,
-        seedMarginPercent,
-    ]);
+        if (hasOverride) return roundMoney(overrideNum);
+        if (!pctValid) return null;
+        return roundMoney((pctNum / 100) * baseSum);
+    }, [sellOverride, pctValid, pctNum, baseSum]);
 
     const handleSubmit = async () => {
         if (sourceLineItemIds.length === 0) {
@@ -164,10 +128,8 @@ export function AddPercentageLineModal({
             toast.error("Enter a percent greater than 0");
             return;
         }
-        // BUY base + billable + admin-adjusted sell → send the override; otherwise
-        // omit (server stamps from the entity margin seed).
         let sellPayload: number | undefined;
-        if (!isSellBase && isBillable && sellOverride.trim() !== "") {
+        if (sellOverride.trim() !== "") {
             const overrideNum = parseNum(sellOverride);
             if (!Number.isFinite(overrideNum) || overrideNum < 0) {
                 toast.error("Enter a valid sell override");
@@ -182,10 +144,8 @@ export function AddPercentageLineModal({
                 percent: pctNum,
                 description: description.trim(),
                 category,
-                billing_mode: effectiveBilling,
-                client_price_visible: clientPriceVisible,
+                client_visible: clientVisible,
                 logistics_visible: logisticsVisible,
-                client_visible: true,
                 ...(notes.trim() ? { notes: notes.trim() } : {}),
                 ...(sellPayload !== undefined ? { sell_unit_rate: sellPayload } : {}),
                 ...(quietAmend ? { quiet_amend: true } : {}),
@@ -203,7 +163,7 @@ export function AddPercentageLineModal({
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent
-                className="flex max-h-[90vh] max-w-lg flex-col gap-0 p-0"
+                className="flex max-h-[90vh] max-w-2xl flex-col gap-0 p-0"
                 onKeyDown={(e) => {
                     if (
                         e.key === "Enter" &&
@@ -220,53 +180,6 @@ export function AddPercentageLineModal({
                 </DialogHeader>
 
                 <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
-                    {/* Selection summary — the two summed bases. */}
-                    <div className="grid grid-cols-2 gap-3">
-                        <button
-                            type="button"
-                            onClick={() => setBase("BUY")}
-                            className={cn(
-                                "rounded-md border p-3 text-left transition-colors",
-                                base === "BUY"
-                                    ? "border-primary ring-1 ring-primary"
-                                    : "border-border hover:border-muted-foreground/40"
-                            )}
-                        >
-                            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                Buy sum
-                            </p>
-                            <p className="mt-0.5 font-mono text-sm font-semibold tabular-nums">
-                                {summedBuy.toFixed(2)} {currency}
-                            </p>
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setBase("SELL")}
-                            className={cn(
-                                "rounded-md border p-3 text-left transition-colors",
-                                base === "SELL"
-                                    ? "border-primary ring-1 ring-primary"
-                                    : "border-border hover:border-muted-foreground/40"
-                            )}
-                        >
-                            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                Sell sum
-                            </p>
-                            <p className="mt-0.5 font-mono text-sm font-semibold tabular-nums">
-                                {summedSell.toFixed(2)} {currency}
-                            </p>
-                        </button>
-                    </div>
-                    <p className="text-[11px] leading-snug text-muted-foreground">
-                        {sourceLineItemIds.length} line
-                        {sourceLineItemIds.length === 1 ? "" : "s"} selected. The new line takes a
-                        percent of the{" "}
-                        <span className="font-medium text-foreground">
-                            {isSellBase ? "Sell" : "Buy"} sum
-                        </span>
-                        . The exact amount is recomputed on the server from the selected lines.
-                    </p>
-
                     <div>
                         <Label>
                             Description <span className="text-destructive">*</span>
@@ -279,158 +192,172 @@ export function AddPercentageLineModal({
                         />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3">
-                        <div>
-                            <Label>Category</Label>
-                            <Select
-                                value={category}
-                                onValueChange={(value) => setCategory(value as ServiceCategory)}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select category" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="ASSEMBLY">ASSEMBLY</SelectItem>
-                                    <SelectItem value="EQUIPMENT">EQUIPMENT</SelectItem>
-                                    <SelectItem value="HANDLING">HANDLING</SelectItem>
-                                    <SelectItem value="RESKIN">RESKIN</SelectItem>
-                                    <SelectItem value="TRANSPORT">TRANSPORT</SelectItem>
-                                    <SelectItem value="OTHER">OTHER</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div>
-                            <Label>Billing Mode</Label>
-                            <Select
-                                value={effectiveBilling}
-                                onValueChange={(value) =>
-                                    setBillingMode(value as LineItemBillingMode)
-                                }
-                                disabled={isSellBase}
-                            >
-                                <SelectTrigger className={cn(isSellBase && "bg-muted")}>
-                                    <SelectValue placeholder="Select billing mode" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="BILLABLE">BILLABLE</SelectItem>
-                                    <SelectItem value="NON_BILLABLE">NON-BILLABLE</SelectItem>
-                                    <SelectItem value="COMPLIMENTARY">COMPLIMENTARY</SelectItem>
-                                </SelectContent>
-                            </Select>
-                            {isSellBase ? (
-                                <p className="mt-1 text-[10px] text-muted-foreground">
-                                    A sell-base surcharge is always billable.
-                                </p>
-                            ) : null}
-                        </div>
+                    <div>
+                        <Label>Category</Label>
+                        <Select
+                            value={category}
+                            onValueChange={(value) => setCategory(value as ServiceCategory)}
+                        >
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select category" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="ASSEMBLY">ASSEMBLY</SelectItem>
+                                <SelectItem value="EQUIPMENT">EQUIPMENT</SelectItem>
+                                <SelectItem value="HANDLING">HANDLING</SelectItem>
+                                <SelectItem value="RESKIN">RESKIN</SelectItem>
+                                <SelectItem value="TRANSPORT">TRANSPORT</SelectItem>
+                                <SelectItem value="OTHER">OTHER</SelectItem>
+                            </SelectContent>
+                        </Select>
                     </div>
 
-                    {/* Percent + live preview. */}
+                    {/* Charge basis — pick a subtotal, take a percent of it. */}
                     <div className="space-y-3 rounded-md border border-primary/30 p-4">
-                        <div className="flex items-center justify-between gap-2">
-                            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                Percent of {isSellBase ? "Sell" : "Buy"} sum
-                            </p>
-                            <span className="rounded border border-primary/30 bg-primary/5 px-1.5 py-0.5 text-[10px] font-medium text-primary">
-                                Base {baseSum.toFixed(2)} {currency}
-                            </span>
-                        </div>
-                        <div>
-                            <Label>
-                                Percent (%) <span className="text-destructive">*</span>
-                            </Label>
-                            <Input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                value={percent}
-                                placeholder="e.g. 10"
-                                onChange={(e) => setPercent(e.target.value)}
-                                className="text-right font-mono tabular-nums"
-                            />
-                        </div>
+                        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                            Charge basis · {sourceLineItemIds.length} line
+                            {sourceLineItemIds.length === 1 ? "" : "s"} selected
+                        </p>
 
-                        {/* Preview of the resulting line. */}
-                        <div className="grid grid-cols-3 gap-3 rounded-md bg-muted/40 p-3 text-center">
-                            <div>
+                        {/* Base selector — both subtotals shown so the choice is informed. */}
+                        <div className="grid grid-cols-2 gap-3">
+                            <button
+                                type="button"
+                                onClick={() => setBase("BUY")}
+                                className={cn(
+                                    "rounded-md border p-3 text-left transition-colors",
+                                    base === "BUY"
+                                        ? "border-primary ring-1 ring-primary"
+                                        : "border-border hover:border-muted-foreground/40"
+                                )}
+                            >
                                 <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                    Buy / Unit
-                                </p>
-                                <p className="mt-0.5 font-mono text-sm tabular-nums">
-                                    {preview ? preview.buy.toFixed(2) : "—"}
-                                </p>
-                            </div>
-                            <div>
-                                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                    Sell / Unit
+                                    Buy subtotal
                                 </p>
                                 <p className="mt-0.5 font-mono text-sm font-semibold tabular-nums">
-                                    {preview ? preview.sell.toFixed(2) : "—"}
+                                    {summedBuy.toFixed(2)} {currency}
                                 </p>
-                            </div>
-                            <div>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setBase("SELL")}
+                                className={cn(
+                                    "rounded-md border p-3 text-left transition-colors",
+                                    base === "SELL"
+                                        ? "border-primary ring-1 ring-primary"
+                                        : "border-border hover:border-muted-foreground/40"
+                                )}
+                            >
                                 <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                    Margin
+                                    Sell subtotal
                                 </p>
-                                <p className="mt-0.5 font-mono text-sm tabular-nums">
-                                    {preview ? preview.marginDisplay : "—"}
+                                <p className="mt-0.5 font-mono text-sm font-semibold tabular-nums">
+                                    {summedSell.toFixed(2)} {currency}
                                 </p>
-                            </div>
+                            </button>
                         </div>
 
-                        {/* BUY base — optional sell override (BILLABLE only). */}
-                        {!isSellBase && isBillable ? (
+                        <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <Label>Sell / Unit override ({currency})</Label>
+                                <Label>
+                                    Percent (%) <span className="text-destructive">*</span>
+                                </Label>
+                                <Input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    value={percent}
+                                    placeholder="e.g. 10"
+                                    onChange={(e) => setPercent(e.target.value)}
+                                    className="text-right font-mono tabular-nums"
+                                />
+                            </div>
+                            <div>
+                                <Label>Sell override ({currency})</Label>
                                 <Input
                                     type="number"
                                     min="0"
                                     step="0.01"
                                     value={sellOverride}
-                                    placeholder={`auto — entity margin ${fmtPct(seedMarginPercent)}%`}
+                                    placeholder="optional — clean number"
                                     onChange={(e) => setSellOverride(e.target.value)}
                                     className="text-right font-mono tabular-nums"
                                 />
-                                <p className="mt-1 text-[10px] leading-snug text-muted-foreground">
-                                    Leave blank to follow the entity margin (
-                                    {fmtPct(seedMarginPercent)}%).
-                                </p>
                             </div>
-                        ) : null}
-
-                        <p className="text-[11px] leading-snug text-muted-foreground">
-                            {isSellBase
-                                ? "Full-margin client surcharge — buy is 0; the whole amount is margin."
-                                : "Buy-based cost line — sell follows the entity margin unless you override it above."}
-                        </p>
-                    </div>
-
-                    {/* Visibility toggles. */}
-                    <div className="flex items-center gap-3 rounded-md border border-border px-3 py-2">
-                        <Eye className="h-4 w-4 shrink-0 text-muted-foreground" />
-                        <Label className="text-sm">Visible to logistics</Label>
-                        <span className="ml-auto mr-2 text-[11px] text-muted-foreground">
-                            off = hidden from the warehouse view
-                        </span>
-                        <Switch checked={logisticsVisible} onCheckedChange={setLogisticsVisible} />
-                    </div>
-                    {isBillable ? (
-                        <div className="flex items-start gap-3 rounded-md border border-border px-3 py-2">
-                            <Eye className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-                            <div className="space-y-0.5">
-                                <Label className="text-sm">Show price to client</Label>
-                                <p className="text-[11px] leading-snug text-muted-foreground">
-                                    When on, this line&rsquo;s individual sell price appears on the
-                                    client&rsquo;s estimate.
-                                </p>
-                            </div>
-                            <Switch
-                                className="ml-auto"
-                                checked={clientPriceVisible}
-                                onCheckedChange={setClientPriceVisible}
-                            />
                         </div>
-                    ) : null}
+
+                        {/* Resulting client SELL — the headline number. Buy is always 0. */}
+                        <div className="flex items-end justify-between rounded-md bg-muted/40 px-4 py-3">
+                            <div>
+                                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                    Client charge (Sell)
+                                </p>
+                                <p className="mt-0.5 font-mono text-xl font-bold tabular-nums">
+                                    {resultSell != null ? resultSell.toFixed(2) : "—"}{" "}
+                                    <span className="text-sm font-medium text-muted-foreground">
+                                        {currency}
+                                    </span>
+                                </p>
+                            </div>
+                            <p className="text-[11px] text-muted-foreground">
+                                Buy 0.00 · 100% margin
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Visibility — same labeled eye affordance as the ledger table. */}
+                    <div className="flex items-center gap-3 rounded-md border border-border px-3 py-2">
+                        <Label className="text-sm">Visible to client</Label>
+                        <button
+                            type="button"
+                            onClick={() => setClientVisible((v) => !v)}
+                            className={cn(
+                                "ml-auto inline-flex",
+                                clientVisible ? "text-primary" : "text-muted-foreground/50"
+                            )}
+                            aria-label={
+                                clientVisible ? "Hide line from client" : "Show line to client"
+                            }
+                            title={
+                                clientVisible
+                                    ? "Visible to client — click to hide"
+                                    : "Hidden from client — click to show"
+                            }
+                        >
+                            {clientVisible ? (
+                                <Eye className="h-4 w-4" />
+                            ) : (
+                                <EyeOff className="h-4 w-4" />
+                            )}
+                        </button>
+                    </div>
+                    <div className="flex items-center gap-3 rounded-md border border-border px-3 py-2">
+                        <Label className="text-sm">Visible to logistics</Label>
+                        <button
+                            type="button"
+                            onClick={() => setLogisticsVisible((v) => !v)}
+                            className={cn(
+                                "ml-auto inline-flex",
+                                logisticsVisible ? "text-primary" : "text-muted-foreground/50"
+                            )}
+                            aria-label={
+                                logisticsVisible
+                                    ? "Hide line from logistics"
+                                    : "Show line to logistics"
+                            }
+                            title={
+                                logisticsVisible
+                                    ? "Visible to logistics — click to hide"
+                                    : "Hidden from logistics — click to show"
+                            }
+                        >
+                            {logisticsVisible ? (
+                                <Eye className="h-4 w-4" />
+                            ) : (
+                                <EyeOff className="h-4 w-4" />
+                            )}
+                        </button>
+                    </div>
 
                     <div>
                         <Label>Notes (Optional)</Label>
