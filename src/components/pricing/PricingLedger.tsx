@@ -502,9 +502,17 @@ export function PricingLedger({
     // runs one transaction + one rebuild; the amend gate is never fired per line.
     // `runBulk` funnels all three actions through that one gate + call + success
     // flow (clear selection, success toast). No-op on an empty selection.
+    //
+    // `keepSelection` holds the selection after a successful call. Only the
+    // visibility toggles use it: they live in a dropdown that deliberately stays
+    // open so BOTH eyes can be flipped in one pass, and clearing the selection
+    // after the first flip would make the second one a silent no-op (runBulk
+    // returns early on an empty selection) while the bar itself went idle
+    // underneath the open menu. Void + billing stay one-shot and still clear.
     const runBulk = async (
         params: Omit<Parameters<typeof bulkAction.mutateAsync>[0], "quiet_amend" | "line_item_ids">,
-        successMessage: string
+        successMessage: string,
+        keepSelection = false
     ) => {
         const ids = Array.from(selectedIds);
         if (ids.length === 0) return;
@@ -518,7 +526,7 @@ export function PricingLedger({
             });
             const changed = Number(result?.updated_count ?? ids.length);
             toast.success(`${successMessage} (${changed} line${changed === 1 ? "" : "s"})`);
-            clearSelection();
+            if (!keepSelection) clearSelection();
         } catch (error: any) {
             toast.error(error.message || "Bulk action failed");
         }
@@ -535,7 +543,7 @@ export function PricingLedger({
     const handleBulkVisibility = (
         flags: { client_visible?: boolean; logistics_visible?: boolean },
         label: string
-    ) => runBulk({ action: "SET_VISIBILITY", ...flags }, label);
+    ) => runBulk({ action: "SET_VISIBILITY", ...flags }, label, true);
     const handleBulkBilling = (mode: LineItemBillingMode) =>
         runBulk({ action: "SET_BILLING_MODE", billing_mode: mode }, `Billing set to ${mode}`);
 
