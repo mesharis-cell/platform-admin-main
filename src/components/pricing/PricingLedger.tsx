@@ -168,10 +168,11 @@ export function PricingLedger({
     const [pctQuiet, setPctQuiet] = useState(false);
     // Multi-select (bulk actions) — the set of selected line-item ids.
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-    // Bulk visibility eye-toggles — the SAME labeled eye affordance the table row
-    // uses (not a dropdown). Each click flips the indicator AND applies that state
-    // across the whole selection. Default "visible" (eye open) to match a fresh
-    // ledger's default; the click sets, it doesn't read an aggregate.
+    // Bulk visibility eye-toggles — rendered as two rows INSIDE the "Visibility"
+    // dropdown, each carrying the same eye affordance the table row uses. Each
+    // click flips the indicator AND applies that state across the whole
+    // selection. Default "visible" (eye open) to match a fresh ledger's default;
+    // the click sets, it doesn't read an aggregate.
     const [bulkClientVisible, setBulkClientVisible] = useState(true);
     const [bulkLogisticsVisible, setBulkLogisticsVisible] = useState(true);
     // Pen → line-edit modal. Editing is done in the unified Add/Edit modal, never
@@ -501,9 +502,17 @@ export function PricingLedger({
     // runs one transaction + one rebuild; the amend gate is never fired per line.
     // `runBulk` funnels all three actions through that one gate + call + success
     // flow (clear selection, success toast). No-op on an empty selection.
+    //
+    // `keepSelection` holds the selection after a successful call. Only the
+    // visibility toggles use it: they live in a dropdown that deliberately stays
+    // open so BOTH eyes can be flipped in one pass, and clearing the selection
+    // after the first flip would make the second one a silent no-op (runBulk
+    // returns early on an empty selection) while the bar itself went idle
+    // underneath the open menu. Void + billing stay one-shot and still clear.
     const runBulk = async (
         params: Omit<Parameters<typeof bulkAction.mutateAsync>[0], "quiet_amend" | "line_item_ids">,
-        successMessage: string
+        successMessage: string,
+        keepSelection = false
     ) => {
         const ids = Array.from(selectedIds);
         if (ids.length === 0) return;
@@ -517,7 +526,7 @@ export function PricingLedger({
             });
             const changed = Number(result?.updated_count ?? ids.length);
             toast.success(`${successMessage} (${changed} line${changed === 1 ? "" : "s"})`);
-            clearSelection();
+            if (!keepSelection) clearSelection();
         } catch (error: any) {
             toast.error(error.message || "Bulk action failed");
         }
@@ -534,7 +543,7 @@ export function PricingLedger({
     const handleBulkVisibility = (
         flags: { client_visible?: boolean; logistics_visible?: boolean },
         label: string
-    ) => runBulk({ action: "SET_VISIBILITY", ...flags }, label);
+    ) => runBulk({ action: "SET_VISIBILITY", ...flags }, label, true);
     const handleBulkBilling = (mode: LineItemBillingMode) =>
         runBulk({ action: "SET_BILLING_MODE", billing_mode: mode }, `Billing set to ${mode}`);
 
@@ -620,102 +629,122 @@ export function PricingLedger({
                             </p>
                         ) : (
                             <>
-                                {/* Bulk-action bar — appears when ≥1 row is selected.
-                                    Each action fires the shared amend gate ONCE for the
+                                {/* Bulk-action bar — the actions apply to the current
+                                    selection. Each fires the shared amend gate ONCE for the
                                     whole selection (runBulk), then calls the single bulk
-                                    endpoint. Add-% opens the popup instead. */}
-                                {ledgerEditable && selectedCount > 0 ? (
-                                    <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-primary/40 bg-primary/5 px-3 py-2">
+                                    endpoint. Add-% opens the popup instead.
+
+                                    LAYOUT: the bar is ALWAYS mounted while the ledger is
+                                    editable and merely made `invisible` (NOT `hidden`) at
+                                    zero selection, so it keeps occupying its box and
+                                    selecting the first row causes ZERO layout shift. The
+                                    children render identically in both states, so the
+                                    reserved height is exactly the populated height;
+                                    `visibility:hidden` also drops it from hit-testing and
+                                    the tab order, so the idle bar is inert. */}
+                                {ledgerEditable ? (
+                                    <div
+                                        data-testid="bulk-action-bar"
+                                        aria-hidden={selectedCount === 0}
+                                        className={cn(
+                                            "mb-3 flex min-h-[50px] flex-wrap items-center gap-2 rounded-md border border-primary/40 bg-primary/5 px-3 py-2",
+                                            selectedCount === 0 && "invisible"
+                                        )}
+                                    >
                                         <span className="text-xs font-semibold">
                                             {selectedCount} selected
                                         </span>
                                         <div className="ml-auto flex flex-wrap items-center gap-2">
-                                            {/* Visibility — labeled eye toggles, the SAME
-                                                affordance as the table row eyes (not a
-                                                dropdown). Each click flips the indicator and
-                                                applies that state across the selection. */}
-                                            <div className="flex items-center gap-1 rounded-md border border-border px-2 py-1">
-                                                <span className="text-[11px] font-medium text-muted-foreground">
-                                                    Client
-                                                </span>
-                                                <button
-                                                    type="button"
-                                                    disabled={bulkAction.isPending}
-                                                    onClick={() => {
-                                                        const next = !bulkClientVisible;
-                                                        setBulkClientVisible(next);
-                                                        void handleBulkVisibility(
-                                                            { client_visible: next },
-                                                            next
-                                                                ? "Shown to client"
-                                                                : "Hidden from client"
-                                                        );
-                                                    }}
-                                                    className={cn(
-                                                        "inline-flex disabled:opacity-50",
-                                                        bulkClientVisible
-                                                            ? "text-primary"
-                                                            : "text-muted-foreground/50"
-                                                    )}
-                                                    aria-label={
-                                                        bulkClientVisible
-                                                            ? "Hide selected lines from client"
-                                                            : "Show selected lines to client"
-                                                    }
-                                                    title={
-                                                        bulkClientVisible
-                                                            ? "Visible to client — click to hide"
-                                                            : "Hidden from client — click to show"
-                                                    }
-                                                >
-                                                    {bulkClientVisible ? (
-                                                        <Eye className="h-4 w-4" />
-                                                    ) : (
-                                                        <EyeOff className="h-4 w-4" />
-                                                    )}
-                                                </button>
-                                            </div>
-                                            <div className="flex items-center gap-1 rounded-md border border-border px-2 py-1">
-                                                <span className="text-[11px] font-medium text-muted-foreground">
-                                                    Logistics
-                                                </span>
-                                                <button
-                                                    type="button"
-                                                    disabled={bulkAction.isPending}
-                                                    onClick={() => {
-                                                        const next = !bulkLogisticsVisible;
-                                                        setBulkLogisticsVisible(next);
-                                                        void handleBulkVisibility(
-                                                            { logistics_visible: next },
-                                                            next
-                                                                ? "Shown to logistics"
-                                                                : "Hidden from logistics"
-                                                        );
-                                                    }}
-                                                    className={cn(
-                                                        "inline-flex disabled:opacity-50",
-                                                        bulkLogisticsVisible
-                                                            ? "text-primary"
-                                                            : "text-muted-foreground/50"
-                                                    )}
-                                                    aria-label={
-                                                        bulkLogisticsVisible
-                                                            ? "Hide selected lines from logistics"
-                                                            : "Show selected lines to logistics"
-                                                    }
-                                                    title={
-                                                        bulkLogisticsVisible
-                                                            ? "Visible to logistics — click to hide"
-                                                            : "Hidden from logistics — click to show"
-                                                    }
-                                                >
-                                                    {bulkLogisticsVisible ? (
-                                                        <Eye className="h-4 w-4" />
-                                                    ) : (
-                                                        <EyeOff className="h-4 w-4" />
-                                                    )}
-                                                </button>
-                                            </div>
+                                            {/* Visibility — ONE dropdown holding the two eye
+                                                toggles. Each row flips its own indicator and
+                                                applies that state across the selection; the
+                                                menu stays OPEN on select (onSelect
+                                                preventDefault) so both toggles can be worked
+                                                without re-opening. */}
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        disabled={bulkAction.isPending}
+                                                    >
+                                                        Visibility
+                                                        <ChevronDown className="ml-1 h-3.5 w-3.5" />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end" className="w-56">
+                                                    <DropdownMenuItem
+                                                        data-testid="bulk-visibility-client"
+                                                        disabled={bulkAction.isPending}
+                                                        // Keep the menu open so the admin can
+                                                        // flip both toggles in one pass.
+                                                        onSelect={(e) => {
+                                                            e.preventDefault();
+                                                            const next = !bulkClientVisible;
+                                                            setBulkClientVisible(next);
+                                                            void handleBulkVisibility(
+                                                                { client_visible: next },
+                                                                next
+                                                                    ? "Shown to client"
+                                                                    : "Hidden from client"
+                                                            );
+                                                        }}
+                                                        className="justify-between gap-3"
+                                                        aria-label={
+                                                            bulkClientVisible
+                                                                ? "Hide selected lines from client"
+                                                                : "Show selected lines to client"
+                                                        }
+                                                    >
+                                                        <span>Visible to client</span>
+                                                        {bulkClientVisible ? (
+                                                            <Eye
+                                                                data-testid="bulk-visibility-client-on"
+                                                                className="h-4 w-4 text-primary"
+                                                            />
+                                                        ) : (
+                                                            <EyeOff
+                                                                data-testid="bulk-visibility-client-off"
+                                                                className="h-4 w-4 text-muted-foreground/50"
+                                                            />
+                                                        )}
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem
+                                                        data-testid="bulk-visibility-logistics"
+                                                        disabled={bulkAction.isPending}
+                                                        onSelect={(e) => {
+                                                            e.preventDefault();
+                                                            const next = !bulkLogisticsVisible;
+                                                            setBulkLogisticsVisible(next);
+                                                            void handleBulkVisibility(
+                                                                { logistics_visible: next },
+                                                                next
+                                                                    ? "Shown to logistics"
+                                                                    : "Hidden from logistics"
+                                                            );
+                                                        }}
+                                                        className="justify-between gap-3"
+                                                        aria-label={
+                                                            bulkLogisticsVisible
+                                                                ? "Hide selected lines from logistics"
+                                                                : "Show selected lines to logistics"
+                                                        }
+                                                    >
+                                                        <span>Visible to logistics</span>
+                                                        {bulkLogisticsVisible ? (
+                                                            <Eye
+                                                                data-testid="bulk-visibility-logistics-on"
+                                                                className="h-4 w-4 text-primary"
+                                                            />
+                                                        ) : (
+                                                            <EyeOff
+                                                                data-testid="bulk-visibility-logistics-off"
+                                                                className="h-4 w-4 text-muted-foreground/50"
+                                                            />
+                                                        )}
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
 
                                             {/* Billing mode */}
                                             <DropdownMenu>
@@ -786,7 +815,10 @@ export function PricingLedger({
                                         </div>
                                     </div>
                                 ) : null}
-                                <div className="overflow-x-auto rounded-md border border-border">
+                                <div
+                                    data-testid="ledger-table-container"
+                                    className="overflow-x-auto rounded-md border border-border"
+                                >
                                     {/* Stripe legend — teaches the left-edge colours */}
                                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-border/50 bg-muted/20 px-3 py-1.5 text-[10px] text-muted-foreground">
                                         <span className="inline-flex items-center gap-1.5">
