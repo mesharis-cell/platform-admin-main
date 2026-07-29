@@ -26,8 +26,6 @@ import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -170,6 +168,12 @@ export function PricingLedger({
     const [pctQuiet, setPctQuiet] = useState(false);
     // Multi-select (bulk actions) — the set of selected line-item ids.
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    // Bulk visibility eye-toggles — the SAME labeled eye affordance the table row
+    // uses (not a dropdown). Each click flips the indicator AND applies that state
+    // across the whole selection. Default "visible" (eye open) to match a fresh
+    // ledger's default; the click sets, it doesn't read an aggregate.
+    const [bulkClientVisible, setBulkClientVisible] = useState(true);
+    const [bulkLogisticsVisible, setBulkLogisticsVisible] = useState(true);
     // Pen → line-edit modal. Editing is done in the unified Add/Edit modal, never
     // inline. editQuiet carries the QUOTED amend choice resolved BEFORE opening.
     const [editItem, setEditItem] = useState<OrderLineItem | null>(null);
@@ -523,8 +527,12 @@ export function PricingLedger({
             { action: "VOID", void_reason: "Removed via pricing ledger bulk action" },
             "Lines removed"
         );
+    // The bulk endpoint's SET_VISIBILITY schema is .strict() snake_case
+    // (client_visible / client_price_visible / logistics_visible). Send snake_case
+    // keys verbatim — a camelCase key ("logisticsVisible") is rejected as an
+    // unrecognized key by the strict Zod schema.
     const handleBulkVisibility = (
-        flags: { clientVisible?: boolean; logisticsVisible?: boolean },
+        flags: { client_visible?: boolean; logistics_visible?: boolean },
         label: string
     ) => runBulk({ action: "SET_VISIBILITY", ...flags }, label);
     const handleBulkBilling = (mode: LineItemBillingMode) =>
@@ -622,68 +630,92 @@ export function PricingLedger({
                                             {selectedCount} selected
                                         </span>
                                         <div className="ml-auto flex flex-wrap items-center gap-2">
-                                            {/* Visibility */}
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button
-                                                        size="sm"
-                                                        variant="outline"
-                                                        disabled={bulkAction.isPending}
-                                                    >
-                                                        <Eye className="mr-1 h-4 w-4" /> Visibility
-                                                        <ChevronDown className="ml-1 h-3.5 w-3.5" />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end">
-                                                    <DropdownMenuLabel>Client</DropdownMenuLabel>
-                                                    <DropdownMenuItem
-                                                        onClick={() =>
-                                                            void handleBulkVisibility(
-                                                                { clientVisible: true },
-                                                                "Shown to client"
-                                                            )
-                                                        }
-                                                    >
-                                                        <Eye className="mr-2 h-4 w-4" /> Show to
-                                                        client
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem
-                                                        onClick={() =>
-                                                            void handleBulkVisibility(
-                                                                { clientVisible: false },
-                                                                "Hidden from client"
-                                                            )
-                                                        }
-                                                    >
-                                                        <EyeOff className="mr-2 h-4 w-4" /> Hide
-                                                        from client
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuSeparator />
-                                                    <DropdownMenuLabel>Logistics</DropdownMenuLabel>
-                                                    <DropdownMenuItem
-                                                        onClick={() =>
-                                                            void handleBulkVisibility(
-                                                                { logisticsVisible: true },
-                                                                "Shown to logistics"
-                                                            )
-                                                        }
-                                                    >
-                                                        <Eye className="mr-2 h-4 w-4" /> Show to
-                                                        logistics
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem
-                                                        onClick={() =>
-                                                            void handleBulkVisibility(
-                                                                { logisticsVisible: false },
-                                                                "Hidden from logistics"
-                                                            )
-                                                        }
-                                                    >
-                                                        <EyeOff className="mr-2 h-4 w-4" /> Hide
-                                                        from logistics
-                                                    </DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
+                                            {/* Visibility — labeled eye toggles, the SAME
+                                                affordance as the table row eyes (not a
+                                                dropdown). Each click flips the indicator and
+                                                applies that state across the selection. */}
+                                            <div className="flex items-center gap-1 rounded-md border border-border px-2 py-1">
+                                                <span className="text-[11px] font-medium text-muted-foreground">
+                                                    Client
+                                                </span>
+                                                <button
+                                                    type="button"
+                                                    disabled={bulkAction.isPending}
+                                                    onClick={() => {
+                                                        const next = !bulkClientVisible;
+                                                        setBulkClientVisible(next);
+                                                        void handleBulkVisibility(
+                                                            { client_visible: next },
+                                                            next
+                                                                ? "Shown to client"
+                                                                : "Hidden from client"
+                                                        );
+                                                    }}
+                                                    className={cn(
+                                                        "inline-flex disabled:opacity-50",
+                                                        bulkClientVisible
+                                                            ? "text-primary"
+                                                            : "text-muted-foreground/50"
+                                                    )}
+                                                    aria-label={
+                                                        bulkClientVisible
+                                                            ? "Hide selected lines from client"
+                                                            : "Show selected lines to client"
+                                                    }
+                                                    title={
+                                                        bulkClientVisible
+                                                            ? "Visible to client — click to hide"
+                                                            : "Hidden from client — click to show"
+                                                    }
+                                                >
+                                                    {bulkClientVisible ? (
+                                                        <Eye className="h-4 w-4" />
+                                                    ) : (
+                                                        <EyeOff className="h-4 w-4" />
+                                                    )}
+                                                </button>
+                                            </div>
+                                            <div className="flex items-center gap-1 rounded-md border border-border px-2 py-1">
+                                                <span className="text-[11px] font-medium text-muted-foreground">
+                                                    Logistics
+                                                </span>
+                                                <button
+                                                    type="button"
+                                                    disabled={bulkAction.isPending}
+                                                    onClick={() => {
+                                                        const next = !bulkLogisticsVisible;
+                                                        setBulkLogisticsVisible(next);
+                                                        void handleBulkVisibility(
+                                                            { logistics_visible: next },
+                                                            next
+                                                                ? "Shown to logistics"
+                                                                : "Hidden from logistics"
+                                                        );
+                                                    }}
+                                                    className={cn(
+                                                        "inline-flex disabled:opacity-50",
+                                                        bulkLogisticsVisible
+                                                            ? "text-primary"
+                                                            : "text-muted-foreground/50"
+                                                    )}
+                                                    aria-label={
+                                                        bulkLogisticsVisible
+                                                            ? "Hide selected lines from logistics"
+                                                            : "Show selected lines to logistics"
+                                                    }
+                                                    title={
+                                                        bulkLogisticsVisible
+                                                            ? "Visible to logistics — click to hide"
+                                                            : "Hidden from logistics — click to show"
+                                                    }
+                                                >
+                                                    {bulkLogisticsVisible ? (
+                                                        <Eye className="h-4 w-4" />
+                                                    ) : (
+                                                        <EyeOff className="h-4 w-4" />
+                                                    )}
+                                                </button>
+                                            </div>
 
                                             {/* Billing mode */}
                                             <DropdownMenu>
@@ -1270,7 +1302,6 @@ export function PricingLedger({
                 sourceLineItemIds={Array.from(selectedIds)}
                 summedBuy={selectionSums.buy}
                 summedSell={selectionSums.sell}
-                seedMarginPercent={seedMarginPercent}
                 currency={resolvedCurrency}
                 quietAmend={pctQuiet}
                 onSuccess={clearSelection}
