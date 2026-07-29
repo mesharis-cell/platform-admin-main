@@ -19,6 +19,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { DescriptionSuggestInput } from "@/components/pricing/DescriptionSuggestInput";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Eye, Lock, RefreshCw } from "lucide-react";
@@ -665,9 +666,9 @@ export function AddCustomLineItemModal({
                             <Label>
                                 Description <span className="text-destructive">*</span>
                             </Label>
-                            <Input
+                            <DescriptionSuggestInput
                                 value={description}
-                                onChange={(e) => setDescription(e.target.value)}
+                                onChange={setDescription}
                                 placeholder="e.g., Rush Design Fee, Special Packaging"
                                 maxLength={200}
                             />

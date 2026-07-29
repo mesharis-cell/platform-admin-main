@@ -19,6 +19,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { DescriptionSuggestInput } from "@/components/pricing/DescriptionSuggestInput";
 import { Eye, EyeOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -184,9 +185,9 @@ export function AddPercentageLineModal({
                         <Label>
                             Description <span className="text-destructive">*</span>
                         </Label>
-                        <Input
+                        <DescriptionSuggestInput
                             value={description}
-                            onChange={(e) => setDescription(e.target.value)}
+                            onChange={setDescription}
                             placeholder="e.g., Service fee, Management surcharge"
                             maxLength={200}
                         />
