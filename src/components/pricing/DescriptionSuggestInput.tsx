@@ -22,8 +22,10 @@ interface DescriptionSuggestInputProps {
  * field. It is a plain text input (its value flows to the payload exactly like
  * `<Input>` did) with a filtered dropdown of preset descriptions:
  *
- *   • dropdown shows presets matching the current text (case-insensitive
- *     substring); on focus with empty text it shows the full preset list.
+ *   • the dropdown opens on an explicit CLICK on the input (or ArrowDown) —
+ *     NEVER on focus, so the modals' autofocus does not pop it open on mount.
+ *   • once open it shows presets matching the current text (case-insensitive
+ *     substring); with empty text that is the full preset list.
  *   • clicking / Enter on a suggestion fills the input with that text, closes the
  *     dropdown, and keeps focus — the text stays freely editable.
  *   • free text is never restricted: anything the admin types is the value.
@@ -126,7 +128,13 @@ export function DescriptionSuggestInput({
                     setOpen(true);
                     setActiveIndex(-1);
                 }}
-                onFocus={() => setOpen(true)}
+                // Open on an explicit CLICK only — NOT on focus. The Add Custom /
+                // Add % modals autofocus this field on open, and opening the list
+                // from focus made the dropdown appear the instant the modal did.
+                // `onClick` fires after mousedown/mouseup so text selection and
+                // caret placement are untouched; keyboard users still get the list
+                // via ArrowDown, and typing keeps filtering it.
+                onClick={() => setOpen(true)}
                 onBlur={closeList}
                 onKeyDown={handleKeyDown}
             />
