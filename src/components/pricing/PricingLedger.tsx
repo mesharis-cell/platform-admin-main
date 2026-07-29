@@ -621,12 +621,28 @@ export function PricingLedger({
                             </p>
                         ) : (
                             <>
-                                {/* Bulk-action bar — appears when ≥1 row is selected.
-                                    Each action fires the shared amend gate ONCE for the
+                                {/* Bulk-action bar — the actions apply to the current
+                                    selection. Each fires the shared amend gate ONCE for the
                                     whole selection (runBulk), then calls the single bulk
-                                    endpoint. Add-% opens the popup instead. */}
-                                {ledgerEditable && selectedCount > 0 ? (
-                                    <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-primary/40 bg-primary/5 px-3 py-2">
+                                    endpoint. Add-% opens the popup instead.
+
+                                    LAYOUT: the bar is ALWAYS mounted while the ledger is
+                                    editable and merely made `invisible` (NOT `hidden`) at
+                                    zero selection, so it keeps occupying its box and
+                                    selecting the first row causes ZERO layout shift. The
+                                    children render identically in both states, so the
+                                    reserved height is exactly the populated height;
+                                    `visibility:hidden` also drops it from hit-testing and
+                                    the tab order, so the idle bar is inert. */}
+                                {ledgerEditable ? (
+                                    <div
+                                        data-testid="bulk-action-bar"
+                                        aria-hidden={selectedCount === 0}
+                                        className={cn(
+                                            "mb-3 flex min-h-[50px] flex-wrap items-center gap-2 rounded-md border border-primary/40 bg-primary/5 px-3 py-2",
+                                            selectedCount === 0 && "invisible"
+                                        )}
+                                    >
                                         <span className="text-xs font-semibold">
                                             {selectedCount} selected
                                         </span>
@@ -791,7 +807,10 @@ export function PricingLedger({
                                         </div>
                                     </div>
                                 ) : null}
-                                <div className="overflow-x-auto rounded-md border border-border">
+                                <div
+                                    data-testid="ledger-table-container"
+                                    className="overflow-x-auto rounded-md border border-border"
+                                >
                                     {/* Stripe legend — teaches the left-edge colours */}
                                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-border/50 bg-muted/20 px-3 py-1.5 text-[10px] text-muted-foreground">
                                         <span className="inline-flex items-center gap-1.5">
