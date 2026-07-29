@@ -4,6 +4,7 @@ import { Fragment, type KeyboardEvent, useEffect, useMemo, useRef, useState } fr
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
     Table,
     TableBody,
@@ -21,11 +22,32 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { AlertTriangle, ArrowRight, Ban, Info, Percent, Plus, RefreshCw } from "lucide-react";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+    AlertTriangle,
+    ArrowRight,
+    Ban,
+    ChevronDown,
+    Eye,
+    EyeOff,
+    Info,
+    Percent,
+    Plus,
+    RefreshCw,
+    Trash2,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 import { AddCatalogLineItemModal } from "@/components/orders/AddCatalogLineItemModal";
 import { AddCustomLineItemModal } from "@/components/orders/AddCustomLineItemModal";
+import { AddPercentageLineModal } from "@/components/pricing/AddPercentageLineModal";
 import { ClientBreakdownView } from "@/components/pricing/ClientBreakdownView";
 import { LogisticsBreakdownView } from "@/components/pricing/LogisticsBreakdownView";
 import { BulkMarginDialog } from "@/components/pricing/BulkMarginDialog";
@@ -37,11 +59,16 @@ import {
     usePatchLineItemVisibility,
     useVoidLineItem,
 } from "@/hooks/use-order-line-items";
-import { usePricingPreview } from "@/hooks/use-pricing-ledger";
+import { useBulkLineItemAction, usePricingPreview } from "@/hooks/use-pricing-ledger";
 import { usePlatform } from "@/lib/hooks/use-platform";
 import { useToken } from "@/lib/auth/use-token";
 import { hasPermission } from "@/lib/auth/permissions";
-import type { OrderLineItem, OrderPricing, PurposeType } from "@/types/hybrid-pricing";
+import type {
+    LineItemBillingMode,
+    OrderLineItem,
+    OrderPricing,
+    PurposeType,
+} from "@/types/hybrid-pricing";
 
 export interface PricingLedgerProps {
     purposeType: PurposeType;
@@ -95,6 +122,7 @@ const PRICING_EDITABLE_STATUSES = new Set([
 const POST_QUOTE_STATUSES = new Set(["QUOTED"]);
 
 const money = (n: number, currency: string) => `${Number(n || 0).toFixed(2)} ${currency}`;
+const roundMoney = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
 // Up to 2 decimals, trailing zeros trimmed (30% / 66.67%).
 const fmtPct = (pct: number) => `${Number((pct || 0).toFixed(2))}`;
 
@@ -136,6 +164,12 @@ export function PricingLedger({
     const [addCustomOpen, setAddCustomOpen] = useState(false);
     const [bulkOpen, setBulkOpen] = useState(false);
     const [noCostOpen, setNoCostOpen] = useState(false);
+    // Add-% line popup (from a multi-selection). pctQuiet carries the QUOTED
+    // amend choice resolved BEFORE opening (mirrors addQuiet).
+    const [pctOpen, setPctOpen] = useState(false);
+    const [pctQuiet, setPctQuiet] = useState(false);
+    // Multi-select (bulk actions) — the set of selected line-item ids.
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     // Pen → line-edit modal. Editing is done in the unified Add/Edit modal, never
     // inline. editQuiet carries the QUOTED amend choice resolved BEFORE opening.
     const [editItem, setEditItem] = useState<OrderLineItem | null>(null);
@@ -240,6 +274,7 @@ export function PricingLedger({
 
     const voidLineItem = useVoidLineItem(entityId, purposeType);
     const patchVisibility = usePatchLineItemVisibility(entityId, purposeType);
+    const bulkAction = useBulkLineItemAction(purposeType, entityId);
 
     const activeItems: OrderLineItem[] = useMemo(
         () => (rawItems || []).filter((i: OrderLineItem) => !i.isVoided),
@@ -272,6 +307,75 @@ export function PricingLedger({
     const seedMarginPercent = Number(
         adminPricing?.margin_policy?.percent ?? adminPricing?.margin?.percent ?? 0
     );
+
+    // ── Multi-select (bulk actions) ─────────────────────────────────────────
+    // Selectable rows mirror PricingLedgerRow's own edit gate exactly: the
+    // ledger must be editable AND the row must not be SYSTEM or per-line locked.
+    // SYSTEM/locked rows never get a checkbox (matches the task + the row's
+    // rowEditable). When the ledger isn't editable, nothing is selectable.
+    const isSelectable = (item: OrderLineItem): boolean =>
+        ledgerEditable && item.lineItemType !== "SYSTEM" && item.canEditPricingFields !== false;
+    const selectableIds = useMemo(
+        () => activeItems.filter(isSelectable).map((i) => i.id),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [activeItems, ledgerEditable]
+    );
+    const selectableIdSet = useMemo(() => new Set(selectableIds), [selectableIds]);
+    // Reconcile the selection against the live selectable set — a mutation may
+    // void/lock a selected line, or a status change may lock the whole ledger.
+    // Prune any id that's no longer selectable so the bar + sums never act on a
+    // stale id (the server would reject it anyway; this keeps the UI honest).
+    useEffect(() => {
+        setSelectedIds((prev) => {
+            let changed = false;
+            const next = new Set<string>();
+            for (const id of prev) {
+                if (selectableIdSet.has(id)) next.add(id);
+                else changed = true;
+            }
+            return changed ? next : prev;
+        });
+    }, [selectableIdSet]);
+
+    const selectedCount = selectedIds.size;
+    const allSelected = selectableIds.length > 0 && selectedCount === selectableIds.length;
+    const someSelected = selectedCount > 0 && !allSelected;
+    const clearSelection = () => setSelectedIds(new Set());
+    const toggleSelectOne = (id: string, checked: boolean) =>
+        setSelectedIds((prev) => {
+            const next = new Set(prev);
+            if (checked) next.add(id);
+            else next.delete(id);
+            return next;
+        });
+    const toggleSelectAll = (checked: boolean) =>
+        setSelectedIds(checked ? new Set(selectableIds) : new Set());
+
+    // Selection sums — CLIENT-SIDE preview only (the server recomputes the base
+    // authoritatively from the selected ids). Mirrors the per-line math in
+    // PricingLedgerRow so the popup preview ties out to the ledger:
+    //   • buy total  = Σ Number(line.total)             (== engine buy_total)
+    //   • sell total = Σ (billable ? effectiveSell×qty : 0), effectiveSell =
+    //                  sell override ?? buy × (1 + seed%).
+    const selectionSums = useMemo(() => {
+        let buy = 0;
+        let sell = 0;
+        for (const item of activeItems) {
+            if (!selectedIds.has(item.id)) continue;
+            buy += roundMoney(Number(item.total ?? 0));
+            const billingMode = (item.billingMode || "BILLABLE") as LineItemBillingMode;
+            if (billingMode !== "BILLABLE") continue;
+            const buyUnit = Number(item.unitRate ?? 0);
+            const qty = Math.max(1, Math.floor(Number(item.quantity ?? 1) || 1));
+            const rawSell = item.sellUnitRate ?? item.sell_unit_rate ?? null;
+            const effectiveSell =
+                rawSell != null && Number.isFinite(Number(rawSell))
+                    ? Number(rawSell)
+                    : roundMoney(buyUnit * (1 + seedMarginPercent / 100));
+            sell += roundMoney(effectiveSell * qty);
+        }
+        return { buy: roundMoney(buy), sell: roundMoney(sell) };
+    }, [activeItems, selectedIds, seedMarginPercent]);
 
     const buyTotal = Number(totals.buy_total ?? 0);
     const sellTotal = Number(totals.sell_total ?? 0);
@@ -386,6 +490,57 @@ export function PricingLedger({
         }
     };
 
+    // ── Bulk actions (multi-select) ─────────────────────────────────────────
+    // EVERY bulk op fires the shared amend gate ONCE for the whole selection
+    // (requestAmend resolves instantly to "revert" off a QUOTED entity), then
+    // calls the single bulk endpoint with the resolved quiet flag. The server
+    // runs one transaction + one rebuild; the amend gate is never fired per line.
+    // `runBulk` funnels all three actions through that one gate + call + success
+    // flow (clear selection, success toast). No-op on an empty selection.
+    const runBulk = async (
+        params: Omit<Parameters<typeof bulkAction.mutateAsync>[0], "quiet_amend" | "line_item_ids">,
+        successMessage: string
+    ) => {
+        const ids = Array.from(selectedIds);
+        if (ids.length === 0) return;
+        const choice = await requestAmend();
+        if (choice === null) return;
+        try {
+            const result = await bulkAction.mutateAsync({
+                ...params,
+                line_item_ids: ids,
+                ...(choice === "quiet" ? { quiet_amend: true } : {}),
+            });
+            const changed = Number(result?.updated_count ?? ids.length);
+            toast.success(`${successMessage} (${changed} line${changed === 1 ? "" : "s"})`);
+            clearSelection();
+        } catch (error: any) {
+            toast.error(error.message || "Bulk action failed");
+        }
+    };
+    const handleBulkVoid = () =>
+        runBulk(
+            { action: "VOID", void_reason: "Removed via pricing ledger bulk action" },
+            "Lines removed"
+        );
+    const handleBulkVisibility = (
+        flags: { clientVisible?: boolean; logisticsVisible?: boolean },
+        label: string
+    ) => runBulk({ action: "SET_VISIBILITY", ...flags }, label);
+    const handleBulkBilling = (mode: LineItemBillingMode) =>
+        runBulk({ action: "SET_BILLING_MODE", billing_mode: mode }, `Billing set to ${mode}`);
+
+    // Add-% line — gate at OPEN time (mirrors openAdd): resolve the QUOTED amend
+    // choice, stash the quiet flag for the modal, open it. The modal's own create
+    // routes through the normal single-create amend path with that flag.
+    const openAddPercent = async () => {
+        if (selectedIds.size === 0) return;
+        const choice = await requestAmend();
+        if (choice === null) return;
+        setPctQuiet(choice === "quiet");
+        setPctOpen(true);
+    };
+
     const postQuoteCopy =
         purposeType === "ORDER"
             ? "This quote has been sent. Editing a line pulls the order back to admin re-approval, marks the quote as being revised, and notifies the client — their estimate download pauses until you re-approve."
@@ -456,104 +611,280 @@ export function PricingLedger({
                                 No line items yet.
                             </p>
                         ) : (
-                            <div className="overflow-x-auto rounded-md border border-border">
-                                {/* Stripe legend — teaches the left-edge colours */}
-                                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-border/50 bg-muted/20 px-3 py-1.5 text-[10px] text-muted-foreground">
-                                    <span className="inline-flex items-center gap-1.5">
-                                        <span
-                                            className="h-3 w-1 rounded-sm"
-                                            style={{ background: "var(--primary)" }}
-                                        />
-                                        override
-                                    </span>
-                                    <span className="inline-flex items-center gap-1.5">
-                                        <span className="h-3 w-1 rounded-sm bg-[#9333ea]" />
-                                        system
-                                    </span>
-                                </div>
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow className="border-border/50 bg-muted/50">
-                                            <TableHead className="w-8" />
-                                            <TableHead className="text-left font-mono text-xs font-bold uppercase">
-                                                Line
-                                            </TableHead>
-                                            <TableHead className="text-center font-mono text-xs font-bold uppercase">
-                                                Billing
-                                            </TableHead>
-                                            <TableHead className="text-center font-mono text-xs font-bold uppercase">
-                                                Qty
-                                            </TableHead>
-                                            <TableHead className="text-center font-mono text-xs font-bold uppercase">
-                                                Buy / Unit
-                                            </TableHead>
-                                            <TableHead className="text-center font-mono text-xs font-bold uppercase">
-                                                Sell / Unit
-                                            </TableHead>
-                                            <TableHead className="text-center font-mono text-xs font-bold uppercase">
-                                                Margin %
-                                            </TableHead>
-                                            <TableHead className="text-center font-mono text-xs font-bold uppercase">
-                                                Margin Amount
-                                            </TableHead>
-                                            <TableHead className="text-center font-mono text-xs font-bold uppercase">
-                                                Visible to logistics
-                                            </TableHead>
-                                            <TableHead className="text-center font-mono text-xs font-bold uppercase">
-                                                Visible to client
-                                            </TableHead>
-                                            <TableHead className="text-center font-mono text-xs font-bold uppercase">
-                                                Total
-                                            </TableHead>
-                                            <TableHead className="w-20" />
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {groups.map((group) => (
-                                            <Fragment key={group.key}>
-                                                <TableRow className="bg-muted/30 hover:bg-muted/30">
-                                                    <TableCell
-                                                        colSpan={12}
-                                                        className="py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
+                            <>
+                                {/* Bulk-action bar — appears when ≥1 row is selected.
+                                    Each action fires the shared amend gate ONCE for the
+                                    whole selection (runBulk), then calls the single bulk
+                                    endpoint. Add-% opens the popup instead. */}
+                                {ledgerEditable && selectedCount > 0 ? (
+                                    <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-primary/40 bg-primary/5 px-3 py-2">
+                                        <span className="text-xs font-semibold">
+                                            {selectedCount} selected
+                                        </span>
+                                        <div className="ml-auto flex flex-wrap items-center gap-2">
+                                            {/* Visibility */}
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        disabled={bulkAction.isPending}
                                                     >
-                                                        {group.label}
-                                                    </TableCell>
-                                                </TableRow>
-                                                {group.items.map((item) => (
-                                                    <PricingLedgerRow
-                                                        key={item.id}
-                                                        item={item}
-                                                        seedMarginPercent={seedMarginPercent}
-                                                        editable={ledgerEditable}
-                                                        allowVisibility={canAdjust && !isNoCost}
-                                                        currency={resolvedCurrency}
-                                                        onEdit={() => void openEdit(item)}
-                                                        onVoid={() => handleVoid(item.id)}
-                                                        onToggleVisibility={(next) =>
-                                                            handleToggleVisibility(item.id, next)
+                                                        <Eye className="mr-1 h-4 w-4" /> Visibility
+                                                        <ChevronDown className="ml-1 h-3.5 w-3.5" />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    <DropdownMenuLabel>Client</DropdownMenuLabel>
+                                                    <DropdownMenuItem
+                                                        onClick={() =>
+                                                            void handleBulkVisibility(
+                                                                { clientVisible: true },
+                                                                "Shown to client"
+                                                            )
                                                         }
-                                                    />
-                                                ))}
-                                            </Fragment>
-                                        ))}
+                                                    >
+                                                        <Eye className="mr-2 h-4 w-4" /> Show to
+                                                        client
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem
+                                                        onClick={() =>
+                                                            void handleBulkVisibility(
+                                                                { clientVisible: false },
+                                                                "Hidden from client"
+                                                            )
+                                                        }
+                                                    >
+                                                        <EyeOff className="mr-2 h-4 w-4" /> Hide
+                                                        from client
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuSeparator />
+                                                    <DropdownMenuLabel>Logistics</DropdownMenuLabel>
+                                                    <DropdownMenuItem
+                                                        onClick={() =>
+                                                            void handleBulkVisibility(
+                                                                { logisticsVisible: true },
+                                                                "Shown to logistics"
+                                                            )
+                                                        }
+                                                    >
+                                                        <Eye className="mr-2 h-4 w-4" /> Show to
+                                                        logistics
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem
+                                                        onClick={() =>
+                                                            void handleBulkVisibility(
+                                                                { logisticsVisible: false },
+                                                                "Hidden from logistics"
+                                                            )
+                                                        }
+                                                    >
+                                                        <EyeOff className="mr-2 h-4 w-4" /> Hide
+                                                        from logistics
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
 
-                                        {/* In-table subtotal — money stays in the Total column (A3) */}
-                                        {adminPricing ? (
-                                            <TableRow className="border-t border-border bg-muted/20 font-semibold hover:bg-muted/20">
-                                                <TableCell />
-                                                <TableCell colSpan={7} className="py-2">
-                                                    Subtotal — line sell
-                                                </TableCell>
-                                                <TableCell colSpan={2} />
-                                                <TableCell className="py-2 text-center font-mono text-xs tabular-nums">
-                                                    {money(sellTotal, resolvedCurrency)}
-                                                </TableCell>
-                                                <TableCell />
+                                            {/* Billing mode */}
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        disabled={bulkAction.isPending}
+                                                    >
+                                                        Billing
+                                                        <ChevronDown className="ml-1 h-3.5 w-3.5" />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    <DropdownMenuItem
+                                                        onClick={() =>
+                                                            void handleBulkBilling("BILLABLE")
+                                                        }
+                                                    >
+                                                        Billable
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem
+                                                        onClick={() =>
+                                                            void handleBulkBilling("NON_BILLABLE")
+                                                        }
+                                                    >
+                                                        Non-billable
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem
+                                                        onClick={() =>
+                                                            void handleBulkBilling("COMPLIMENTARY")
+                                                        }
+                                                    >
+                                                        Complimentary
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+
+                                            {/* Add % line */}
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={() => void openAddPercent()}
+                                                disabled={bulkAction.isPending}
+                                            >
+                                                <Percent className="mr-1 h-4 w-4" /> Add % line
+                                            </Button>
+
+                                            {/* Delete (bulk void) */}
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                className="text-destructive hover:text-destructive"
+                                                onClick={() => void handleBulkVoid()}
+                                                disabled={bulkAction.isPending}
+                                            >
+                                                <Trash2 className="mr-1 h-4 w-4" /> Delete
+                                            </Button>
+
+                                            <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                onClick={clearSelection}
+                                                disabled={bulkAction.isPending}
+                                            >
+                                                Clear
+                                            </Button>
+                                        </div>
+                                    </div>
+                                ) : null}
+                                <div className="overflow-x-auto rounded-md border border-border">
+                                    {/* Stripe legend — teaches the left-edge colours */}
+                                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-border/50 bg-muted/20 px-3 py-1.5 text-[10px] text-muted-foreground">
+                                        <span className="inline-flex items-center gap-1.5">
+                                            <span
+                                                className="h-3 w-1 rounded-sm"
+                                                style={{ background: "var(--primary)" }}
+                                            />
+                                            override
+                                        </span>
+                                        <span className="inline-flex items-center gap-1.5">
+                                            <span className="h-3 w-1 rounded-sm bg-[#9333ea]" />
+                                            system
+                                        </span>
+                                    </div>
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow className="border-border/50 bg-muted/50">
+                                                {/* Select-all — only when the ledger is
+                                                editable (checkboxes exist). */}
+                                                <TableHead className="w-8 px-2">
+                                                    {ledgerEditable && selectableIds.length > 0 ? (
+                                                        <Checkbox
+                                                            checked={
+                                                                allSelected
+                                                                    ? true
+                                                                    : someSelected
+                                                                      ? "indeterminate"
+                                                                      : false
+                                                            }
+                                                            onCheckedChange={(v) =>
+                                                                toggleSelectAll(v === true)
+                                                            }
+                                                            aria-label={
+                                                                allSelected
+                                                                    ? "Deselect all lines"
+                                                                    : "Select all lines"
+                                                            }
+                                                        />
+                                                    ) : null}
+                                                </TableHead>
+                                                <TableHead className="w-8" />
+                                                <TableHead className="text-left font-mono text-xs font-bold uppercase">
+                                                    Line
+                                                </TableHead>
+                                                <TableHead className="text-center font-mono text-xs font-bold uppercase">
+                                                    Billing
+                                                </TableHead>
+                                                <TableHead className="text-center font-mono text-xs font-bold uppercase">
+                                                    Qty
+                                                </TableHead>
+                                                <TableHead className="text-center font-mono text-xs font-bold uppercase">
+                                                    Buy / Unit
+                                                </TableHead>
+                                                <TableHead className="text-center font-mono text-xs font-bold uppercase">
+                                                    Sell / Unit
+                                                </TableHead>
+                                                <TableHead className="text-center font-mono text-xs font-bold uppercase">
+                                                    Margin %
+                                                </TableHead>
+                                                <TableHead className="text-center font-mono text-xs font-bold uppercase">
+                                                    Margin Amount
+                                                </TableHead>
+                                                <TableHead className="text-center font-mono text-xs font-bold uppercase">
+                                                    Visible to logistics
+                                                </TableHead>
+                                                <TableHead className="text-center font-mono text-xs font-bold uppercase">
+                                                    Visible to client
+                                                </TableHead>
+                                                <TableHead className="text-center font-mono text-xs font-bold uppercase">
+                                                    Total
+                                                </TableHead>
+                                                <TableHead className="w-20" />
                                             </TableRow>
-                                        ) : null}
-                                    </TableBody>
-                                </Table>
-                            </div>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {groups.map((group) => (
+                                                <Fragment key={group.key}>
+                                                    <TableRow className="bg-muted/30 hover:bg-muted/30">
+                                                        <TableCell
+                                                            colSpan={13}
+                                                            className="py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
+                                                        >
+                                                            {group.label}
+                                                        </TableCell>
+                                                    </TableRow>
+                                                    {group.items.map((item) => (
+                                                        <PricingLedgerRow
+                                                            key={item.id}
+                                                            item={item}
+                                                            seedMarginPercent={seedMarginPercent}
+                                                            editable={ledgerEditable}
+                                                            allowVisibility={canAdjust && !isNoCost}
+                                                            currency={resolvedCurrency}
+                                                            selectable={isSelectable(item)}
+                                                            selected={selectedIds.has(item.id)}
+                                                            onSelectChange={(checked) =>
+                                                                toggleSelectOne(item.id, checked)
+                                                            }
+                                                            onEdit={() => void openEdit(item)}
+                                                            onVoid={() => handleVoid(item.id)}
+                                                            onToggleVisibility={(next) =>
+                                                                handleToggleVisibility(
+                                                                    item.id,
+                                                                    next
+                                                                )
+                                                            }
+                                                        />
+                                                    ))}
+                                                </Fragment>
+                                            ))}
+
+                                            {/* In-table subtotal — money stays in the Total column (A3) */}
+                                            {adminPricing ? (
+                                                <TableRow className="border-t border-border bg-muted/20 font-semibold hover:bg-muted/20">
+                                                    <TableCell />
+                                                    <TableCell />
+                                                    <TableCell colSpan={7} className="py-2">
+                                                        Subtotal — line sell
+                                                    </TableCell>
+                                                    <TableCell colSpan={2} />
+                                                    <TableCell className="py-2 text-center font-mono text-xs tabular-nums">
+                                                        {money(sellTotal, resolvedCurrency)}
+                                                    </TableCell>
+                                                    <TableCell />
+                                                </TableRow>
+                                            ) : null}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            </>
                         )}
 
                         {/* Advisory warnings */}
@@ -930,6 +1261,19 @@ export function PricingLedger({
                 purposeType={purposeType}
                 entityId={entityId}
                 quietAmend={bulkQuiet}
+            />
+            <AddPercentageLineModal
+                open={pctOpen}
+                onOpenChange={setPctOpen}
+                purposeType={purposeType}
+                entityId={entityId}
+                sourceLineItemIds={Array.from(selectedIds)}
+                summedBuy={selectionSums.buy}
+                summedSell={selectionSums.sell}
+                seedMarginPercent={seedMarginPercent}
+                currency={resolvedCurrency}
+                quietAmend={pctQuiet}
+                onSuccess={clearSelection}
             />
             <NoCostDialog
                 open={noCostOpen}

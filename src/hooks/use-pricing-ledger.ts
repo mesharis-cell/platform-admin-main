@@ -4,6 +4,8 @@ import { apiClient } from "@/lib/api/api-client";
 import { throwApiError } from "@/lib/utils/throw-api-error";
 import { mapArraySnakeToCamel } from "@/lib/utils/helper";
 import type {
+    BulkLineItemActionRequest,
+    CreatePercentageLineRequest,
     OrderLineItem,
     PreviewRole,
     PricingPreviewResponse,
@@ -118,6 +120,73 @@ export function useBulkMargin(purposeType: PurposeType, entityId: string) {
                     margin_percent: marginPercent,
                     ...(reason ? { reason } : {}),
                     ...(quietAmend ? { quiet_amend: true } : {}),
+                });
+                return response.data.data;
+            } catch (error) {
+                throwApiError(error);
+            }
+        },
+        onSuccess: () => invalidateLedgerRelatedQueries(queryClient, purposeType, entityId),
+    });
+}
+
+/**
+ * Bulk ledger action — `POST /operations/v1/line-item/bulk`.
+ *
+ * Applies ONE action (VOID · SET_VISIBILITY · SET_BILLING_MODE) across a
+ * multi-selection of ledger rows in a single transaction + single rebuild. The
+ * server resolves `entity_id` by purpose_type and validates every id belongs to
+ * the entity/platform (all-or-nothing). ADMIN + `pricing:adjust`.
+ *
+ * The caller resolves the QUOTED amend choice ONCE for the whole bulk op and
+ * passes `quiet_amend` through (fallback per-action: SET_VISIBILITY →
+ * REBUILD_ONLY, VOID/SET_BILLING_MODE → REVERT; `quiet_amend: true` overrides to
+ * QUIET_AMEND). The hook sends snake_case verbatim (mirrors useBulkMargin).
+ */
+export function useBulkLineItemAction(purposeType: PurposeType, entityId: string) {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (
+            params: Omit<BulkLineItemActionRequest, "purpose_type" | "entity_id">
+        ) => {
+            try {
+                const response = await apiClient.post(`/operations/v1/line-item/bulk`, {
+                    purpose_type: purposeType,
+                    entity_id: entityId,
+                    ...params,
+                });
+                return response.data.data;
+            } catch (error) {
+                throwApiError(error);
+            }
+        },
+        onSuccess: () => invalidateLedgerRelatedQueries(queryClient, purposeType, entityId),
+    });
+}
+
+/**
+ * Add % line from a selection — `POST /operations/v1/line-item/percentage-line`.
+ *
+ * Creates ONE plain CUSTOM line whose amount is `percent` of the SUMMED buy or
+ * sell total of the selected source lines. The base sum is computed
+ * SERVER-authoritatively from `source_line_item_ids` (any client-sent preview is
+ * display-only). The created line is an unlinked one-time snapshot. Routes
+ * through the normal single-create path, so its rebuild/amend is the standard
+ * create flow (fallback REVERT, quiet_amend honored). ADMIN + `pricing:adjust`.
+ */
+export function useCreatePercentageLine(purposeType: PurposeType, entityId: string) {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (
+            params: Omit<CreatePercentageLineRequest, "purpose_type" | "entity_id">
+        ) => {
+            try {
+                const response = await apiClient.post(`/operations/v1/line-item/percentage-line`, {
+                    purpose_type: purposeType,
+                    entity_id: entityId,
+                    ...params,
                 });
                 return response.data.data;
             } catch (error) {
