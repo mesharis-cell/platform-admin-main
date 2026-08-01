@@ -57,6 +57,8 @@ export function getStatusColor(status: OrderStatus): string {
         DELIVERED: "bg-emerald-500",
         IN_USE: "bg-teal-500",
         DERIG: "bg-purple-600",
+        // RL-007 — badge token `info` in all four applications.
+        PLACED: "bg-sky-500",
         AWAITING_RETURN: "bg-amber-500",
         RETURN_IN_TRANSIT: "bg-orange-500",
         CLOSED: "bg-gray-600",

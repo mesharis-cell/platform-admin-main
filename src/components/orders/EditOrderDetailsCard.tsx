@@ -70,6 +70,7 @@ import {
 } from "./editing/OrderItemsQuantityEditor";
 import { OrderEditFeasibilityHelper } from "./editing/OrderEditFeasibilityHelper";
 import type { NamedAssetSelection } from "@/components/assets/asset-picker/OpsAssetPicker";
+import { NO_RETURN_SCHEDULED, toDateInputValue } from "@/lib/date-display";
 
 interface EditOrderDetailsCardProps {
     order: any;
@@ -84,22 +85,15 @@ type SectionKey = "contact" | "venueContact" | "descriptive" | "eventDates";
 const s = (v: unknown): string => (typeof v === "string" ? v : v == null ? "" : String(v));
 
 // `<Input type="date">` expects YYYY-MM-DD. Event dates arrive as ISO strings;
-// take the calendar-day portion in UTC so the day never drifts by timezone.
-function toDateInputValue(iso: unknown): string {
-    if (typeof iso !== "string" || iso.length === 0) return "";
-    const m = /^(\d{4}-\d{2}-\d{2})/.exec(iso);
-    if (m) return m[1];
-    const parsed = new Date(iso);
-    if (isNaN(parsed.getTime())) return "";
-    const y = parsed.getUTCFullYear();
-    const mo = String(parsed.getUTCMonth() + 1).padStart(2, "0");
-    const d = String(parsed.getUTCDate()).padStart(2, "0");
-    return `${y}-${mo}-${d}`;
-}
+// the shared helper takes the calendar-day portion in UTC so the day never
+// drifts by timezone, and returns "" for a null/unparseable value. RL-025 keeps
+// this as ONE implementation per app — do not re-inline a local copy.
 
-function fmtDisplayDate(iso: unknown): string {
+// RL-025 — a null end date reads as "No return scheduled", never as a blank.
+// `emptyLabel` lets a non-return field ("Start") say "Not set" instead.
+function fmtDisplayDate(iso: unknown, emptyLabel = NO_RETURN_SCHEDULED): string {
     const ymd = toDateInputValue(iso);
-    if (!ymd) return "";
+    if (!ymd) return emptyLabel;
     const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd);
     if (!m) return ymd;
     const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
@@ -926,7 +920,10 @@ export function EditOrderDetailsCard({
                     </>
                 ) : (
                     <div className="grid gap-3 sm:grid-cols-2">
-                        <ReadRow label="Start" value={fmtDisplayDate(order?.event_start_date)} />
+                        <ReadRow
+                            label="Start"
+                            value={fmtDisplayDate(order?.event_start_date, "Not set")}
+                        />
                         <ReadRow label="End" value={fmtDisplayDate(order?.event_end_date)} />
                         {!eventDateInputsEnabled && (
                             <p className="sm:col-span-2 font-mono text-[11px] text-muted-foreground">

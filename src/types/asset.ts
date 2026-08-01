@@ -13,8 +13,15 @@ export type StockMode = "SERIALIZED" | "POOLED";
 // Condition
 export type Condition = "GREEN" | "ORANGE" | "RED";
 
-// Asset Status
-export type AssetStatus = "AVAILABLE" | "BOOKED" | "OUT" | "MAINTENANCE" | "TRANSFORMED";
+// Asset Status.
+//
+// RL-038 — `PLACED` says WHERE the unit is: permanently at a client site, in the
+// client's hands, not in the warehouse, not bookable. The movement reason on the
+// ledger row (CONSUMED / LOST / DAMAGED / OTHER) says WHY, and the two are never
+// conflated. This is a SEPARATE map from the order and self-pickup status maps
+// which happen to share the value name: an asset that is PLACED is unbookable,
+// while an ORDER that is PLACED is open and active for bookings.
+export type AssetStatus = "AVAILABLE" | "BOOKED" | "OUT" | "MAINTENANCE" | "TRANSFORMED" | "PLACED";
 
 // Handling Tags
 export type HandlingTag = "Fragile" | "HighValue" | "HeavyLift" | "AssemblyRequired";

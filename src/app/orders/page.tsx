@@ -47,6 +47,7 @@ import { AdminHeader } from "@/components/admin-header";
 import { useToken } from "@/lib/auth/use-token";
 import { hasPermission } from "@/lib/auth/permissions";
 import { ADMIN_ACTION_PERMISSIONS } from "@/lib/auth/permission-map";
+import { removeUnderScore } from "@/lib/utils/helper";
 
 // Order status display configuration
 const ORDER_STATUS_CONFIG = {
@@ -69,6 +70,8 @@ const ORDER_STATUS_CONFIG = {
     DELIVERED: { label: "Delivered", color: "bg-fuchsia-100 text-fuchsia-700 border-fuchsia-300" },
     IN_USE: { label: "On Site", color: "bg-pink-100 text-pink-700 border-pink-300" },
     DERIG: { label: "Derigging", color: "bg-purple-100 text-purple-700 border-purple-300" },
+    // RL-007 — permanent placement. Badge token `info`.
+    PLACED: { label: "Placed", color: "bg-sky-100 text-sky-700 border-sky-300" },
     AWAITING_RETURN: {
         label: "Awaiting Return",
         color: "bg-rose-100 text-rose-700 border-rose-300",
@@ -541,7 +544,10 @@ export default function AdminOrdersPage() {
                                                                 >
                                                                     {ORDER_STATUS_CONFIG[
                                                                         order.order_status as keyof typeof ORDER_STATUS_CONFIG
-                                                                    ]?.label || order.order_status}
+                                                                    ]?.label ||
+                                                                        removeUnderScore(
+                                                                            order.order_status
+                                                                        )}
                                                                 </Badge>
                                                             </TableCell>
                                                             <TableCell className="text-right">

@@ -243,6 +243,10 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                 return "bg-purple-500/10 text-purple-600 border-purple-500/20";
             case "MAINTENANCE":
                 return "bg-muted-foreground/10 text-muted-foreground border-muted-foreground/20";
+            // RL-038 — the unit is at a client site, out of the warehouse and
+            // unbookable. Badge token `info`.
+            case "PLACED":
+                return "bg-sky-500/10 text-sky-700 border-sky-500/20";
             default:
                 return "bg-gray-500/10 text-gray-600 border-gray-500/20";
         }

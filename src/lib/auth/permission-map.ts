@@ -109,6 +109,12 @@ export const ADMIN_ACTION_PERMISSIONS = {
     // Gate for the inbound admin-approve action — matches the route's requirePermission.
     inboundRequestsUpdate: "inbound_requests:update",
     serviceRequestsCreate: "service_requests:create",
+    // RL-013/RL-015/RL-032/RL-036 — the uplift desk actions (return-to-logistics,
+    // uplift cancel, the write-off decision) all sit under the EXISTING
+    // service_requests:update key. The release adds no new permission key, so the
+    // client gate must be this one and not a new invention, or a policy that
+    // grants it would still hide the buttons.
+    serviceRequestsUpdate: "service_requests:update",
     // Self-pickup actions — mirror orders' naming (SP4 of self-pickup parity sprint).
     selfPickupsRead: "self_pickups:read",
     selfPickupsEditDetails: "self_pickups:edit_details",

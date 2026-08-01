@@ -30,6 +30,13 @@ export default function AdminScanningDashboard() {
 
     const preparationOrders = preparationOrdersData as APIOrdersResponse | undefined;
 
+    // RL-007 — this file hardcodes order statuses but carries NO status map: the
+    // literals below are work-queue filters, not a label/badge lookup. `PLACED` is
+    // deliberately absent from both queues. A placement is not in preparation and
+    // is not in the return flow — its goods are at the client and it becomes
+    // inbound-scannable only once an approved uplift moves it to AWAITING_RETURN.
+    // Adding it here would put orders with nothing to scan in front of the operator.
+
     // Fetch orders in AWAITING_RETURN (ready for inbound scan)
     const { data: returnOrdersData, isLoading: loadingReturn } = useAdminOrders({
         order_status: "AWAITING_RETURN",

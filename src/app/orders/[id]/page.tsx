@@ -30,6 +30,7 @@ import { OrderItemCard } from "@/components/orders/OrderItemCard";
 import { StatusHistoryTimeline } from "@/components/orders/StatusHistoryTimeline";
 import { EditOrderDetailsCard } from "@/components/orders/EditOrderDetailsCard";
 import { OrderChangeHistoryCard } from "@/components/orders/OrderChangeHistoryCard";
+import { PlacementReconcileCard } from "@/components/placement/PlacementReconcileCard";
 import {
     CollapsibleHistoryColumn,
     type HistoryRailEntry,
@@ -80,6 +81,7 @@ import { toast } from "sonner";
 import { DateTimePicker } from "@/components/ui/datetime-picker";
 import { apiClient } from "@/lib/api/api-client";
 import { getOrderPrice, removeUnderScore } from "@/lib/utils/helper";
+import { formatNullableDate, NO_RETURN_SCHEDULED, toDateOrNull } from "@/lib/date-display";
 import { cn } from "@/lib/utils";
 import { addDays, endOfDay, isAfter, isBefore, startOfDay, subDays } from "date-fns";
 import { useToken } from "@/lib/auth/use-token";
@@ -163,6 +165,16 @@ const STATUS_CONFIG: Record<
         color: "bg-purple-500/10 text-purple-700 border-purple-500/20",
         nextStates: ["AWAITING_RETURN"],
     },
+    // RL-007 — a permanent placement. `PLACED -> AWAITING_RETURN` on an ORDER is a
+    // SYSTEM edge reachable only through uplift quote acceptance and is absent
+    // from every status dropdown; `nextStates` is deliberately empty so admin's
+    // status control never offers it. The API's transition validator is
+    // authoritative either way.
+    PLACED: {
+        label: "PLACED",
+        color: "bg-sky-500/10 text-sky-700 border-sky-500/20",
+        nextStates: [],
+    },
     AWAITING_RETURN: {
         label: "AWAITING RET.",
         color: "bg-rose-500/10 text-rose-700 border-rose-500/20",
@@ -199,6 +211,7 @@ const ORDER_STATUS_SEQUENCE = [
     "DELIVERED",
     "IN_USE",
     "DERIG",
+    "PLACED",
     "AWAITING_RETURN",
     "RETURN_IN_TRANSIT",
     "CLOSED",
@@ -544,6 +557,11 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
 
     const { total } = getOrderPrice(order?.data?.pricing);
     const currentStatusConfig = STATUS_CONFIG[order.data.order_status] || STATUS_CONFIG.DRAFT;
+    // RL-013 — admin's order status control stays disabled (`canProgressOrderStatus`
+    // is a hard false above), which is also what satisfies RL-016 here: an order
+    // under a live uplift must never be CLOSED as a generic status mutation, only
+    // through inbound completion. The warehouse map states that exclusion
+    // explicitly because that is where the control is actually offered.
     const allowedNextStates = currentStatusConfig.nextStates || [];
 
     // Order Editing (Phase 1) — descriptive fields are editable only in the
@@ -567,12 +585,11 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
         order?.data?.maintenance_decision_change_requests ?? []
     ).filter((request: any) => request.status === "PENDING");
 
-    const eventStartDate = order?.data?.event_start_date
-        ? new Date(order.data.event_start_date)
-        : undefined;
-    const eventEndDate = order?.data?.event_end_date
-        ? new Date(order.data.event_end_date)
-        : undefined;
+    // RL-025/RL-026 — both anchors are nullable now. `toDateOrNull` returns null
+    // for null, "" and any unparseable value, so an invalid stored string can
+    // never become the 1970 epoch and silently move the selectable band to 1969.
+    const eventStartDate = toDateOrNull(order?.data?.event_start_date) ?? undefined;
+    const eventEndDate = toDateOrNull(order?.data?.event_end_date) ?? undefined;
 
     const deliveryDisabledDays = eventStartDate
         ? (date: Date) =>
@@ -580,6 +597,12 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
               isAfter(date, endOfDay(subDays(eventStartDate, 1)))
         : undefined;
 
+    // A permanent placement has NO event end date, so there is no anchor to
+    // derive a pickup band from. The picker is left fully open — passing
+    // `undefined` rather than a predicate built on a null anchor, which would
+    // disable every day and leave the operator unable to pick anything at all.
+    // `hasNoPickupAnchor` drives the helper text that says why.
+    const hasNoPickupAnchor = !eventEndDate;
     const pickupDisabledDays = eventEndDate
         ? (date: Date) =>
               isBefore(date, startOfDay(addDays(eventEndDate, 1))) ||
@@ -1312,6 +1335,17 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                                         <Label className="font-mono text-sm font-bold">
                                                             PICKUP WINDOW
                                                         </Label>
+                                                        {/* RL-025 Date-input row — helper text
+                                                            whenever there is no end date to derive
+                                                            a selectable band from. */}
+                                                        {hasNoPickupAnchor && (
+                                                            <p className="font-mono text-[11px] text-muted-foreground">
+                                                                {NO_RETURN_SCHEDULED} — this order
+                                                                has no event end date, so no pickup
+                                                                band is suggested. Any day may be
+                                                                selected.
+                                                            </p>
+                                                        )}
                                                         <div className="grid grid-cols-2 gap-4">
                                                             <div className="space-y-2">
                                                                 <Label className="font-mono text-xs text-muted-foreground">
@@ -1468,19 +1502,21 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                             START
                                         </Label>
                                         <p className="font-mono text-sm mt-1">
-                                            {new Date(
-                                                order?.data?.event_start_date
-                                            ).toLocaleDateString()}
+                                            {formatNullableDate(order?.data?.event_start_date, {
+                                                emptyLabel: "Not set",
+                                            })}
                                         </p>
                                     </div>
                                     <div>
                                         <Label className="font-mono text-xs text-muted-foreground">
                                             END
                                         </Label>
+                                        {/* RL-025 — a permanent placement has no end date and the
+                                            API sends null. `new Date(null)` renders 1/1/1970, so
+                                            every read of this field goes through the shared
+                                            nullable-date contract. */}
                                         <p className="font-mono text-sm mt-1">
-                                            {new Date(
-                                                order?.data?.event_end_date
-                                            ).toLocaleDateString()}
+                                            {formatNullableDate(order?.data?.event_end_date)}
                                         </p>
                                     </div>
                                 </div>
@@ -1554,6 +1590,21 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                 )}
                             </CardContent>
                         </Card>
+
+                        {/* RL-003 — the late-placement conversion. Sits directly under
+                            the PERMANENT PLACEMENT badge above, which is the field it
+                            changes. Self-gates: renders nothing unless the order is
+                            ordinary, in a status the route accepts, and the user holds
+                            orders:edit_details. */}
+                        <PlacementReconcileCard
+                            entityType="ORDER"
+                            entityId={order.data.id}
+                            humanId={order.data.order_id}
+                            status={order.data.order_status}
+                            isPermanentPlacement={order.data.is_permanent_placement === true}
+                            companyName={order.data.company?.name}
+                            onReconciled={() => refetch()}
+                        />
 
                         {/* Execution Contact */}
                         <Card>
@@ -1882,6 +1933,14 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                                     {sr.service_request_id}
                                                 </Link>
                                                 <div className="flex items-center gap-2">
+                                                    {/* RL-012/RL-013 — the collection of a
+                                                        permanent placement. Its own desk lives on
+                                                        the service-request detail. */}
+                                                    {sr.request_type === "UPLIFT" && (
+                                                        <Badge className="font-mono text-[10px] border bg-sky-500/10 text-sky-700">
+                                                            Uplift collection
+                                                        </Badge>
+                                                    )}
                                                     {sr.is_repair_before_event && (
                                                         <Badge className="font-mono text-[10px] border bg-orange-500/10 text-orange-700">
                                                             Repair Before Event
@@ -1949,6 +2008,10 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                             "IN_TRANSIT",
                             "DELIVERED",
                             "IN_USE",
+                            // A permanent placement has an outbound scan behind it
+                            // (RL-037's custody exit runs there), so the activity
+                            // timeline is meaningful from PLACED onwards.
+                            "PLACED",
                             "AWAITING_RETURN",
                             "CLOSED",
                             "PRICING_REVIEW",

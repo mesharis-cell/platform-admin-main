@@ -8,6 +8,14 @@
  * - Multiple Collections
  * - 10+ Orders across all lifecycle states with separate financial status
  * - Complete tracking history with realistic scenarios
+ *
+ * RL-007 note: this file is named among the admin files that hardcode order
+ * statuses, but it carries NO status map — the literals below are per-row seed
+ * values on fixture orders, not a label/badge/transition lookup, and nothing
+ * renders from them. There is therefore nothing to add `PLACED` to here. Seeding
+ * a permanent placement would need an open-ended booking and a dispatched
+ * custody exit to be meaningful, which is a fixture change rather than a status
+ * map change and is not part of this release.
  */
 
 import { db } from "@/db";

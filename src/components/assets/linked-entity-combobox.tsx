@@ -56,6 +56,9 @@ const ACTIVE_ORDER_STATUSES = [
     "DELIVERED",
     "IN_USE",
     "DERIG",
+    // RL-005/RL-007 — a PLACED parent is OPEN and active: its bookings are still
+    // held (open-ended), so it is a legitimate link target for a stock movement.
+    "PLACED",
     "AWAITING_RETURN",
     "RETURN_IN_TRANSIT",
 ];
@@ -68,6 +71,7 @@ const ACTIVE_SP_STATUSES = [
     "CONFIRMED",
     "READY_FOR_PICKUP",
     "PICKED_UP",
+    "PLACED",
     "AWAITING_RETURN",
 ];
 
@@ -86,6 +90,9 @@ const STATUS_CHIP: Record<string, string> = {
     PICKED_UP: "bg-emerald-500/10 text-emerald-700 border-emerald-500/20",
     IN_USE: "bg-pink-500/10 text-pink-700 border-pink-500/20",
     DERIG: "bg-fuchsia-500/10 text-fuchsia-700 border-fuchsia-500/20",
+    // RL-007 — badge token `info`, shared by the order and self-pickup maps here
+    // because this chip renders both entity types from one lookup.
+    PLACED: "bg-sky-500/10 text-sky-700 border-sky-500/20",
     AWAITING_RETURN: "bg-rose-500/10 text-rose-700 border-rose-500/20",
     RETURN_IN_TRANSIT: "bg-rose-500/10 text-rose-700 border-rose-500/20",
 };
@@ -172,6 +179,10 @@ function formatWindow(start?: string | null, end?: string | null): string | null
     const s = fmt(start);
     const e = end ? fmt(end) : null;
     if (!s) return null;
+    // RL-025 — an open-ended placement has no end date. Say so rather than
+    // silently rendering a single-day window, which reads as "ends the day it
+    // starts" on exactly the rows that never end.
+    if (!end) return `${s} → ongoing`;
     if (!e || e === s) return s;
     return `${s} → ${e}`;
 }

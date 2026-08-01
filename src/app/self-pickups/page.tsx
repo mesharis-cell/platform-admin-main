@@ -36,6 +36,7 @@ import {
     X,
 } from "lucide-react";
 import { AdminHeader } from "@/components/admin-header";
+import { removeUnderScore } from "@/lib/utils/helper";
 
 const PICKUP_STATUS_CONFIG: Record<string, { label: string; color: string }> = {
     SUBMITTED: { label: "Submitted", color: "bg-blue-100 text-blue-700 border-blue-300" },
@@ -55,6 +56,10 @@ const PICKUP_STATUS_CONFIG: Record<string, { label: string; color: string }> = {
         color: "bg-emerald-100 text-emerald-700 border-emerald-300",
     },
     PICKED_UP: { label: "Picked Up", color: "bg-teal-100 text-teal-700 border-teal-300" },
+    // RL-007/RL-008 — a permanent self-pickup holds stock at the client
+    // indefinitely and leaves only through Start Return, which is enabled from
+    // PICKED_UP **or** PLACED. Badge token `info`.
+    PLACED: { label: "Placed", color: "bg-sky-100 text-sky-700 border-sky-300" },
     AWAITING_RETURN: {
         label: "Awaiting Return",
         color: "bg-amber-100 text-amber-700 border-amber-300",
@@ -326,7 +331,13 @@ export default function SelfPickupsListPage() {
                                                 const statusConfig = PICKUP_STATUS_CONFIG[
                                                     pickup.self_pickup_status
                                                 ] || {
-                                                    label: pickup.self_pickup_status,
+                                                    // RL-007 — an unknown status falls back to a
+                                                    // READABLE version of the raw value, which is
+                                                    // what makes a non-atomic four-app deploy
+                                                    // survivable.
+                                                    label: removeUnderScore(
+                                                        pickup.self_pickup_status
+                                                    ),
                                                     color: "bg-gray-100 text-gray-700",
                                                 };
                                                 const pickupWindow = pickup.pickup_window as any;

@@ -108,6 +108,11 @@ export function CancelOrderButton({ order, orderId }: HybridPricingSectionProps)
     const { user } = useToken();
     const [cancelOpen, setCancelOpen] = useState(false);
 
+    // RL-007 — `PLACED` is deliberately ABSENT. A permanent placement is not
+    // cancelled: its goods are at the client and the only way back is an uplift
+    // collection, which has its own coupled cancel route. The band is otherwise
+    // unchanged (`CANCELLED` was already omitted from several admin status maps —
+    // that is a pre-existing drift this release does not inherit and does not fix).
     const CANCELLABLE_STATUSES = [
         "DRAFT",
         "SUBMITTED",

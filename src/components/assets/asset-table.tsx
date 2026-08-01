@@ -49,6 +49,9 @@ const STATUS_STYLES: Record<string, string> = {
     OUT: "bg-violet-500/10 text-violet-700 border-violet-500/20",
     MAINTENANCE: "bg-amber-500/10 text-amber-700 border-amber-500/20",
     TRANSFORMED: "bg-gray-500/10 text-gray-600 border-gray-500/20",
+    // RL-038 — a unit at the client, out of the warehouse and unbookable. Badge
+    // token `info`; the label reads as a LOCATION, never as a lifecycle stage.
+    PLACED: "bg-sky-500/10 text-sky-700 border-sky-500/20",
 };
 
 const STOCK_MODE_LABELS: Record<string, string> = {
@@ -342,6 +345,7 @@ export function AssetTable() {
                                 <SelectItem value="OUT">Out</SelectItem>
                                 <SelectItem value="MAINTENANCE">Maintenance</SelectItem>
                                 <SelectItem value="TRANSFORMED">Transformed</SelectItem>
+                                <SelectItem value="PLACED">Placed (at client)</SelectItem>
                             </SelectContent>
                         </Select>
                         <Select

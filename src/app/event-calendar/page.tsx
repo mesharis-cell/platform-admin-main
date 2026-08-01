@@ -15,6 +15,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Plus } from "lucide-react";
 import { AdminHeader } from "@/components/admin-header";
+import { formatNullableDate, NO_RETURN_SCHEDULED, toDateOrNull } from "@/lib/date-display";
 import {
     startOfMonth,
     endOfMonth,
@@ -94,6 +95,11 @@ const STATUS_CONFIG: Record<
         label: "ON SITE",
         color: "bg-pink-500/10 text-pink-700 border-pink-500/20",
     },
+    // RL-007 — permanent placement. Badge token `info`.
+    PLACED: {
+        label: "PLACED",
+        color: "bg-sky-500/10 text-sky-700 border-sky-500/20",
+    },
     AWAITING_RETURN: {
         label: "AWAITING RET.",
         color: "bg-rose-500/10 text-rose-700 border-rose-500/20",
@@ -138,17 +144,36 @@ export default function EventCalendarPage() {
     const eventsByDate = useMemo(() => {
         const grouped: Record<string, any[]> = {};
 
-        // Orders (multi-day spread)
+        // Orders (multi-day spread).
+        //
+        // RL-025/RL-026 — a permanent placement has NO end date. The previous
+        // `new Date(event.event_end_date)` yielded the 1970 epoch on null, which
+        // made `currentDate <= endDate` false on the first iteration and dropped
+        // the order from the calendar entirely. An open-ended placement instead
+        // spreads across the whole visible window and is flagged `_ongoing` so
+        // the cell can render it without an end marker.
+        const windowStart = startOfWeek(startOfMonth(new Date(selectedYear, selectedMonth - 1)), {
+            weekStartsOn: 0,
+        });
+        const windowEnd = endOfWeek(endOfMonth(new Date(selectedYear, selectedMonth - 1)), {
+            weekStartsOn: 0,
+        });
+
         if (data?.data) {
             data.data.forEach((event: any) => {
-                const startDate = new Date(event.event_start_date);
-                const endDate = new Date(event.event_end_date);
-                const currentDate = new Date(startDate);
-                while (currentDate <= endDate) {
-                    const dateKey = currentDate.toISOString().split("T")[0];
+                const parsedStart = toDateOrNull(event.event_start_date);
+                const parsedEnd = toDateOrNull(event.event_end_date);
+                const ongoing = parsedEnd === null;
+                // With no start either there is nothing to place on a grid.
+                if (!parsedStart && !ongoing) return;
+                const startDate = parsedStart ?? windowStart;
+                const endDate = parsedEnd ?? windowEnd;
+                const cursor = new Date(startDate);
+                while (cursor <= endDate) {
+                    const dateKey = cursor.toISOString().split("T")[0];
                     if (!grouped[dateKey]) grouped[dateKey] = [];
-                    grouped[dateKey].push({ ...event, _type: "ORDER" });
-                    currentDate.setDate(currentDate.getDate() + 1);
+                    grouped[dateKey].push({ ...event, _type: "ORDER", _ongoing: ongoing });
+                    cursor.setDate(cursor.getDate() + 1);
                 }
             });
         }
@@ -169,7 +194,7 @@ export default function EventCalendarPage() {
         });
 
         return grouped;
-    }, [data, selfPickups]);
+    }, [data, selfPickups, selectedMonth, selectedYear]);
 
     // Generate calendar days for the selected month
     const calendarDays = useMemo(() => {
@@ -338,11 +363,23 @@ export default function EventCalendarPage() {
                                                         >
                                                             <div
                                                                 className={`text-xs p-1.5 rounded border truncate cursor-pointer hover:opacity-80 transition-opacity ${getStatusColor(event.status)}`}
-                                                                title={`${event.order_id} - ${event.venue_name}`}
+                                                                title={
+                                                                    `${event.order_id} - ${event.venue_name}` +
+                                                                    (event._ongoing
+                                                                        ? ` — ${NO_RETURN_SCHEDULED.toLowerCase()}`
+                                                                        : ` — ends ${formatNullableDate(event.event_end_date)}`)
+                                                                }
                                                             >
                                                                 <div className="truncate text-[10px] opacity-80 text-center">
                                                                     {event.venue_name}
                                                                 </div>
+                                                                {/* RL-025 — an open-ended placement carries an
+                                                                    "ongoing" affordance and no end marker. */}
+                                                                {event._ongoing && (
+                                                                    <div className="truncate text-[9px] opacity-70 text-center">
+                                                                        ONGOING
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                             <div className="truncate text-[11px] opacity-80 mt-2 text-center">
                                                                 {event.order_id}

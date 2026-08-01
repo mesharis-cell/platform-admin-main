@@ -32,6 +32,10 @@ import { useToken } from "@/lib/auth/use-token";
 import { hasPermission } from "@/lib/auth/permissions";
 import { ADMIN_ACTION_PERMISSIONS } from "@/lib/auth/permission-map";
 import { cn } from "@/lib/utils";
+import { removeUnderScore } from "@/lib/utils/helper";
+import { formatNullableDate, NO_RETURN_SCHEDULED } from "@/lib/date-display";
+import { RetentionWriteOffCard } from "@/components/self-pickups/RetentionWriteOffCard";
+import { PlacementReconcileCard } from "@/components/placement/PlacementReconcileCard";
 
 // Pre-confirmation editable band — mirrors the order edit band + the API's
 // editSelfPickupSchema gate. The API re-checks (409/400) if the pickup has moved on.
@@ -64,6 +68,10 @@ const PICKUP_STATUS_CONFIG: Record<string, { label: string; color: string }> = {
         color: "bg-emerald-100 text-emerald-700 border-emerald-300",
     },
     PICKED_UP: { label: "Picked Up", color: "bg-teal-100 text-teal-700 border-teal-300" },
+    // RL-007/RL-008 — a permanent self-pickup holds stock at the client
+    // indefinitely and leaves only through Start Return, which is enabled from
+    // PICKED_UP **or** PLACED. Badge token `info`.
+    PLACED: { label: "Placed", color: "bg-sky-100 text-sky-700 border-sky-300" },
     AWAITING_RETURN: {
         label: "Awaiting Return",
         color: "bg-amber-100 text-amber-700 border-amber-300",
@@ -93,7 +101,8 @@ export default function SelfPickupDetailPage({ params }: { params: Promise<{ id:
     const history = historyData?.data || [];
     const historyRailEntries: HistoryRailEntry[] = (history as any[]).map((entry: any) => {
         const cfg = PICKUP_STATUS_CONFIG[entry.status] || {
-            label: entry.status,
+            // RL-007 unknown-status fallback: readable, never blank, never a crash.
+            label: removeUnderScore(entry.status),
             color: "bg-gray-100 text-gray-700 border-gray-300",
         };
         return {
@@ -151,7 +160,7 @@ export default function SelfPickupDetailPage({ params }: { params: Promise<{ id:
     }
 
     const statusConfig = PICKUP_STATUS_CONFIG[pickup.self_pickup_status] || {
-        label: pickup.self_pickup_status,
+        label: removeUnderScore(pickup.self_pickup_status),
         color: "bg-gray-100 text-gray-700",
     };
     const pickupWindow = pickup.pickup_window as any;
@@ -351,23 +360,48 @@ export default function SelfPickupDetailPage({ params }: { params: Promise<{ id:
                                         <span>{pickup.collector_email}</span>
                                     </div>
                                 )}
+                                {/* RL-026 channel 2 — the pickup window is a JSONB blob and either
+                                    end of it can be missing. `new Date(null)` renders 1/1/1970
+                                    rather than throwing, so both ends go through the shared
+                                    nullable-date contract. */}
                                 {pickupWindow && (
                                     <div className="flex items-center gap-2">
                                         <Clock className="h-4 w-4 text-muted-foreground" />
                                         <span>
-                                            Pickup: {new Date(pickupWindow.start).toLocaleString()}{" "}
-                                            - {new Date(pickupWindow.end).toLocaleString()}
+                                            Pickup:{" "}
+                                            {formatNullableDate(pickupWindow.start, {
+                                                emptyLabel: "Not scheduled",
+                                                withTime: true,
+                                            })}{" "}
+                                            -{" "}
+                                            {formatNullableDate(pickupWindow.end, {
+                                                emptyLabel: "Not scheduled",
+                                                withTime: true,
+                                            })}
                                         </span>
                                     </div>
                                 )}
-                                {pickup.expected_return_at && (
+                                {/* RL-025 — a PERMANENT placement reads as "No return scheduled"
+                                    regardless of any residual stored value: its booking is
+                                    open-ended and no cron or report keys on the date. An ordinary
+                                    pickup shows its date, or nothing when it has none. */}
+                                {pickup.is_permanent_placement ? (
                                     <div className="flex items-center gap-2">
                                         <Clock className="h-4 w-4 text-muted-foreground" />
-                                        <span>
-                                            Expected return:{" "}
-                                            {new Date(pickup.expected_return_at).toLocaleString()}
-                                        </span>
+                                        <span>Expected return: {NO_RETURN_SCHEDULED}</span>
                                     </div>
+                                ) : (
+                                    pickup.expected_return_at && (
+                                        <div className="flex items-center gap-2">
+                                            <Clock className="h-4 w-4 text-muted-foreground" />
+                                            <span>
+                                                Expected return:{" "}
+                                                {formatNullableDate(pickup.expected_return_at, {
+                                                    withTime: true,
+                                                })}
+                                            </span>
+                                        </div>
+                                    )
                                 )}
                                 {pickup.notes && (
                                     <p className="text-sm text-muted-foreground mt-2">
@@ -376,6 +410,23 @@ export default function SelfPickupDetailPage({ params }: { params: Promise<{ id:
                                 )}
                             </CardContent>
                         </Card>
+
+                        {/* RL-003 — the late-placement conversion. Sits directly under the
+                            collector card, where the expected-return line it removes is
+                            displayed. Self-gates: renders nothing unless the pickup is
+                            ordinary, in a status the route accepts, and the user holds
+                            self_pickups:edit_details. The route is also feature-gated on
+                            enable_self_pickup, which the app shell already enforces for
+                            every /self-pickups path. */}
+                        <PlacementReconcileCard
+                            entityType="SELF_PICKUP"
+                            entityId={pickup.id}
+                            humanId={pickup.self_pickup_id}
+                            status={pickup.self_pickup_status}
+                            isPermanentPlacement={pickup.is_permanent_placement === true}
+                            companyName={company?.name}
+                            onReconciled={() => refetch()}
+                        />
 
                         {/* Workflows */}
                         <WorkflowRequestsCard entityType="SELF_PICKUP" entityId={pickup.id} />
@@ -387,6 +438,18 @@ export default function SelfPickupDetailPage({ params }: { params: Promise<{ id:
 
                         {/* Attachments */}
                         <EntityAttachmentsCard entityType="SELF_PICKUP" entityId={pickup.id} />
+
+                        {/* RL-032 self-pickup arm — the retention write-off. Renders only on a
+                            PERMANENT placement; an ordinary pickup's shortfall is settled in the
+                            return completion, which is unchanged. */}
+                        <RetentionWriteOffCard
+                            selfPickupId={pickup.id}
+                            selfPickupHumanId={pickup.self_pickup_id}
+                            status={pickup.self_pickup_status}
+                            isPermanentPlacement={pickup.is_permanent_placement === true}
+                            items={items}
+                            onChanged={refetch}
+                        />
 
                         {/* Pickup Items */}
                         <Card>

@@ -229,6 +229,83 @@ export function useApplyServiceRequestFulfillmentOverride() {
     });
 }
 
+// ────────────────────────────────────────────────────────────────────────────
+// Uplift desk (RL-013, RL-015, RL-032, RL-036)
+//
+// Three dedicated routes exist because each one couples the service request to
+// its SOURCE ORDER in a single transaction, which the generic service-request
+// routes know nothing about. All three reject any `request_type` other than
+// UPLIFT with 409, so every existing service request keeps today's behaviour.
+// None of them introduces a permission key — they all sit under the existing
+// `service_requests:update`.
+// ────────────────────────────────────────────────────────────────────────────
+
+/**
+ * RL-036 — admin hands a priced uplift back to logistics for rework instead of
+ * correcting it silently or rejecting the client. Moves operational status
+ * IN_REVIEW → SUBMITTED and leaves commercial status at PENDING_QUOTE; line
+ * items and the pricing breakdown are left exactly as admin left them.
+ *
+ * The note is REQUIRED, 5–500 characters, and INTERNAL: it never reaches
+ * `service_request_status_history`, which the generic service-request detail
+ * returns verbatim to the owning client (RL-023).
+ */
+export function useReturnUpliftToLogistics() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({ id, note }: { id: string; note: string }) => {
+            try {
+                const response = await apiClient.post(
+                    `/operations/v1/service-request/${id}/return-to-logistics`,
+                    { note }
+                );
+                return response.data;
+            } catch (error) {
+                throwApiError(error);
+            }
+        },
+        onSuccess: (_, variables) => {
+            queryClient.invalidateQueries({ queryKey: serviceRequestKeys.detail(variables.id) });
+            queryClient.invalidateQueries({ queryKey: serviceRequestKeys.lists() });
+        },
+    });
+}
+
+/**
+ * RL-015 — ADMIN clears an unapproved uplift, or cancels an approved one while
+ * its order is AWAITING_RETURN. Dedicated because it mutates the service
+ * request AND the source order in one transaction.
+ */
+export function useCancelUplift() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({
+            id,
+            cancellation_reason,
+        }: {
+            id: string;
+            cancellation_reason: string;
+        }) => {
+            try {
+                const response = await apiClient.post(
+                    `/operations/v1/service-request/${id}/uplift-cancel`,
+                    { cancellation_reason }
+                );
+                return response.data;
+            } catch (error) {
+                throwApiError(error);
+            }
+        },
+        onSuccess: (_, variables) => {
+            queryClient.invalidateQueries({ queryKey: serviceRequestKeys.detail(variables.id) });
+            queryClient.invalidateQueries({ queryKey: serviceRequestKeys.lists() });
+            queryClient.invalidateQueries({ queryKey: ["orders"] });
+        },
+    });
+}
+
 export function useDownloadServiceRequestCostEstimate() {
     return useMutation({
         mutationFn: async ({

@@ -34,7 +34,13 @@ import type { AssetsDetails } from "@/types/asset";
 
 const HANDLING_TAGS = ["Fragile", "HighValue", "HeavyLift", "AssemblyRequired"];
 const DEFAULT_CATEGORIES = ["Furniture", "Glassware", "Installation", "Decor"];
-const ASSET_STATUSES = ["AVAILABLE", "BOOKED", "OUT", "MAINTENANCE"];
+// RL-038 — PLACED is an ORDINARY asset status: ADMIN and LOGISTICS may set or
+// clear it by hand on PATCH /operations/v1/asset/:id exactly as they may any
+// other status. There is no Zod rejection and no service-level guard, and the
+// trade-off is stated in the spec: a mis-stamped unit is correctable in the UI
+// in seconds, and in exchange a hand edit can put a unit back into circulation
+// while the platform's own record says it left custody.
+const ASSET_STATUSES = ["AVAILABLE", "BOOKED", "OUT", "MAINTENANCE", "PLACED"];
 
 export type EditAssetTab = "basic" | "photos" | "specs";
 

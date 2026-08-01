@@ -188,8 +188,15 @@ const scanInboundItem = async (data: {
 
 const completeInboundScan = async (data: {
     orderId: string;
+    // RL-018 — the entry shape is unchanged; ONE optional field is added.
+    // `asset_id` present ⇒ a serialized settlement of exactly one unit (and
+    // `returned_quantity` is meaningless there, so it is optional too). Absent ⇒
+    // a pooled settlement, behaving exactly as it does today. Nothing is renamed,
+    // so a stale bundle keeps working across the deploy.
     settlements?: Array<{
         line_id: string;
+        returned_quantity?: number;
+        asset_id?: string;
         write_off_reason: "CONSUMED" | "LOST" | "DAMAGED" | "OTHER";
         note?: string;
     }>;

@@ -1,4 +1,9 @@
-export type ServiceRequestType = "MAINTENANCE" | "RESKIN" | "REFURBISHMENT" | "CUSTOM";
+// RL-011 — `UPLIFT` is a legal `service_request_type` from migration 0076 on, but
+// it is NOT creatable here: the generic create routes reject it with 409 and
+// `POST /client/v1/order/:id/uplift` is the only writer that may create one.
+// Keep it out of any "creatable types" list; it belongs only in filters and
+// read surfaces.
+export type ServiceRequestType = "MAINTENANCE" | "RESKIN" | "REFURBISHMENT" | "CUSTOM" | "UPLIFT";
 
 export type ServiceRequestStatus =
     | "DRAFT"
@@ -71,6 +76,12 @@ export interface ServiceRequest {
     fulfillment_override_applied_at: string | null;
     requested_start_at: string | null;
     requested_due_at: string | null;
+    // Uplift lifecycle timestamps (migration 0078, RL-010). Only ever set on
+    // `request_type = "UPLIFT"`; null on every other request.
+    uplift_requested_at?: string | null;
+    uplift_approved_at?: string | null;
+    // Unified 4-entity waiver. Rejected for an uplift in this release (RL-013).
+    pricing_mode?: "STANDARD" | "NO_COST" | null;
     is_repair_before_event?: boolean;
     created_by: string;
     completed_at: string | null;

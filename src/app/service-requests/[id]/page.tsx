@@ -32,6 +32,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { EntityAttachmentsCard } from "@/components/shared/entity-attachments-card";
 import { WorkflowRequestsCard } from "@/components/shared/workflow-requests-card";
+import { UpliftReviewPanel } from "@/components/service-requests/UpliftReviewPanel";
 
 const STATUS_OPTIONS: ServiceRequestStatus[] = [
     "SUBMITTED",
@@ -58,6 +59,38 @@ const INTERNAL_ONLY_COMMERCIAL_STATUS_OPTIONS: ServiceRequestCommercialStatus[] 
     "CANCELLED",
 ];
 
+/**
+ * RL-013 / RL-014 — what admin may write on an UPLIFT's commercial status.
+ *
+ * `QUOTED` is admin issuing the quote, and `PENDING_QUOTE` is admin re-opening
+ * pricing (RL-015's retry cycle after a failed visit, which then re-issues).
+ * Everything else is refused by the server and is therefore not offered:
+ *   - `QUOTE_APPROVED` belongs to the CLIENT's quote-response route, which opens
+ *     the return flow in the same transaction. Writing it here would move
+ *     commercial status and leave the coupled transitions behind (409).
+ *   - `INVOICED` / `PAID` — the uplift commercial lifecycle ends at
+ *     QUOTE_APPROVED in this release; invoicing is out of scope (409).
+ *   - `INTERNAL` — an uplift is always CLIENT_BILLABLE.
+ *   - `CANCELLED` — an uplift is cancelled through its own coupled route, which
+ *     also moves the source order.
+ */
+const UPLIFT_COMMERCIAL_STATUS_OPTIONS: ServiceRequestCommercialStatus[] = [
+    "PENDING_QUOTE",
+    "QUOTED",
+];
+
+/**
+ * RL-036 — `IN_REVIEW → SUBMITTED` exists on the shared transition map now, but
+ * on an uplift its ONLY writer is the dedicated return-to-logistics route, which
+ * enforces the required rework note, the type guard and the commercial-status
+ * precondition this generic control knows nothing about. The generic route 409s
+ * it, so it is not offered.
+ */
+function upliftStatusOptions(current: ServiceRequestStatus): ServiceRequestStatus[] {
+    if (current !== "IN_REVIEW") return STATUS_OPTIONS;
+    return STATUS_OPTIONS.filter((status) => status !== "SUBMITTED");
+}
+
 export default function ServiceRequestDetailsPage() {
     const params = useParams<{ id: string }>();
     const routeId = Array.isArray(params?.id) ? params.id[0] : params?.id;
@@ -81,9 +114,11 @@ export default function ServiceRequestDetailsPage() {
         if (!request) return;
         setStatusValue(request.request_status);
         const allowedCommercialStatuses =
-            request.billing_mode === "INTERNAL_ONLY"
-                ? INTERNAL_ONLY_COMMERCIAL_STATUS_OPTIONS
-                : COMMERCIAL_STATUS_OPTIONS;
+            request.request_type === "UPLIFT"
+                ? UPLIFT_COMMERCIAL_STATUS_OPTIONS
+                : request.billing_mode === "INTERNAL_ONLY"
+                  ? INTERNAL_ONLY_COMMERCIAL_STATUS_OPTIONS
+                  : COMMERCIAL_STATUS_OPTIONS;
         if (allowedCommercialStatuses.includes(request.commercial_status))
             setCommercialStatusValue(request.commercial_status);
         else setCommercialStatusValue(allowedCommercialStatuses[0]);
@@ -187,10 +222,13 @@ export default function ServiceRequestDetailsPage() {
         return <div className="p-6 text-muted-foreground">Loading service request...</div>;
     if (!request) return <div className="p-6 text-destructive">Service request not found.</div>;
 
-    const commercialStatusOptions =
-        request.billing_mode === "INTERNAL_ONLY"
-            ? INTERNAL_ONLY_COMMERCIAL_STATUS_OPTIONS
-            : COMMERCIAL_STATUS_OPTIONS;
+    const isUplift = request.request_type === "UPLIFT";
+    const commercialStatusOptions = isUplift
+        ? UPLIFT_COMMERCIAL_STATUS_OPTIONS
+        : request.billing_mode === "INTERNAL_ONLY"
+          ? INTERNAL_ONLY_COMMERCIAL_STATUS_OPTIONS
+          : COMMERCIAL_STATUS_OPTIONS;
+    const statusOptions = isUplift ? upliftStatusOptions(request.request_status) : STATUS_OPTIONS;
     const isRepairBeforeEvent = request.is_repair_before_event === true;
     const hasFulfillmentException = !!request.fulfillment_override_applied_at;
     const workPhotoCount = Array.isArray((request as any).photos)
@@ -244,6 +282,11 @@ export default function ServiceRequestDetailsPage() {
             <div className="container mx-auto px-6 py-8">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <div className="lg:col-span-2 space-y-6">
+                        {/* RL-012/RL-013 — the uplift desk. Source-order link, the client's
+                            requested timing, and the three coupled actions the generic
+                            service-request controls cannot express. */}
+                        {isUplift && <UpliftReviewPanel request={request} onChanged={refetch} />}
+
                         {isRepairBeforeEvent && (
                             <Card className="border-orange-500/30 bg-orange-500/5">
                                 <CardHeader>
@@ -415,7 +458,7 @@ export default function ServiceRequestDetailsPage() {
                                                 <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                {STATUS_OPTIONS.map((status) => (
+                                                {statusOptions.map((status) => (
                                                     <SelectItem key={status} value={status}>
                                                         {status.replace(/_/g, " ")}
                                                     </SelectItem>
@@ -453,7 +496,12 @@ export default function ServiceRequestDetailsPage() {
                                         : "Update Operational Status"}
                                 </Button>
 
-                                {!isRepairBeforeEvent && (
+                                {/* RL-015 — the generic cancel route refuses an uplift: cancelling
+                                    one may have to move its source order back to PLACED and must
+                                    first prove nothing has been scanned back in, neither of which
+                                    this route knows about. The coupled control lives on the uplift
+                                    panel above. */}
+                                {!isRepairBeforeEvent && !isUplift && (
                                     <>
                                         <Separator />
 
@@ -541,11 +589,28 @@ export default function ServiceRequestDetailsPage() {
                                             : "Cost Estimate"}
                                     </Button>
                                 </div>
-                                <p className="text-xs text-muted-foreground">
-                                    To waive charges, use the{" "}
-                                    <span className="font-medium">No cost</span> action in the
-                                    Pricing Ledger below (captures the concession reason).
-                                </p>
+                                {isUplift ? (
+                                    /* RL-013/RL-033 — entity-level NO_COST and the concession
+                                       endpoint are rejected for an uplift. A zero-cost collection
+                                       is expressed PER LINE with billing_mode = COMPLIMENTARY,
+                                       which records "this collection was already paid for on the
+                                       source order" on the line an admin, a client and an auditor
+                                       actually read, and leaves a later chargeable addition
+                                       somewhere to go. */
+                                    <p className="text-xs text-muted-foreground">
+                                        A collection that was already paid for on the source order
+                                        is marked <span className="font-medium">Complimentary</span>{" "}
+                                        on its own line in the Pricing Ledger below. Entity-level{" "}
+                                        <span className="font-medium">No cost</span> is not
+                                        available on an uplift.
+                                    </p>
+                                ) : (
+                                    <p className="text-xs text-muted-foreground">
+                                        To waive charges, use the{" "}
+                                        <span className="font-medium">No cost</span> action in the
+                                        Pricing Ledger below (captures the concession reason).
+                                    </p>
+                                )}
                             </CardContent>
                         </Card>
 

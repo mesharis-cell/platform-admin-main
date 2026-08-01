@@ -74,7 +74,18 @@ const emptyDraft = (): SRItemDraft => ({
     notes: "",
 });
 
-const REQUEST_TYPES: ServiceRequestType[] = ["MAINTENANCE", "RESKIN", "REFURBISHMENT", "CUSTOM"];
+// RL-011 — `UPLIFT` is a legal service-request type but is NOT creatable here:
+// the generic create routes reject it with 409 and `POST /client/v1/order/:id/uplift`
+// is the only writer that may create one. So the two lists are deliberately
+// different — the create form offers the four ordinary types, the filter offers
+// UPLIFT as well so an admin can find collections.
+const CREATABLE_REQUEST_TYPES: ServiceRequestType[] = [
+    "MAINTENANCE",
+    "RESKIN",
+    "REFURBISHMENT",
+    "CUSTOM",
+];
+const FILTERABLE_REQUEST_TYPES: ServiceRequestType[] = [...CREATABLE_REQUEST_TYPES, "UPLIFT"];
 const BILLING_MODES: ServiceRequestBillingMode[] = ["INTERNAL_ONLY", "CLIENT_BILLABLE"];
 const STATUS_OPTIONS: ServiceRequestStatus[] = [
     "SUBMITTED",
@@ -351,7 +362,7 @@ export default function ServiceRequestsPage() {
                                                 <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                {REQUEST_TYPES.map((t) => (
+                                                {CREATABLE_REQUEST_TYPES.map((t) => (
                                                     <SelectItem key={t} value={t}>
                                                         {t.replace(/_/g, " ")}
                                                     </SelectItem>
@@ -697,7 +708,7 @@ export default function ServiceRequestsPage() {
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="all">All Types</SelectItem>
-                                        {REQUEST_TYPES.map((t) => (
+                                        {FILTERABLE_REQUEST_TYPES.map((t) => (
                                             <SelectItem key={t} value={t}>
                                                 {t.replace(/_/g, " ")}
                                             </SelectItem>

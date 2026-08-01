@@ -24,6 +24,11 @@ export type OrderStatus =
     | "DELIVERED"
     | "IN_USE"
     | "DERIG"
+    // RL-007 — a permanent placement. The goods are at the client indefinitely
+    // and the order is open and active for bookings; it leaves only through an
+    // approved uplift (order) or Start Return (self-pickup). NOT terminal, not
+    // work-queue active, booking active, client visible.
+    | "PLACED"
     | "AWAITING_RETURN"
     | "RETURN_IN_TRANSIT"
     | "CLOSED"
@@ -604,7 +609,10 @@ export interface APIOrder {
     contact_email: string;
     contact_phone: string;
     event_start_date: string;
-    event_end_date: string;
+    // RL-002/RL-025 — null on a permanent placement (open-ended booking). Never a
+    // placeholder string; render it through `formatNullableDate` from
+    // `@/lib/date-display`, never `new Date(...)` directly.
+    event_end_date: string | null;
     venue_name: string;
     venue_location: {
         city: string;
