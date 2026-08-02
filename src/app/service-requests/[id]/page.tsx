@@ -25,7 +25,20 @@ import {
     useUpdateServiceRequestStatus,
 } from "@/hooks/use-service-requests";
 import type { ServiceRequestCommercialStatus, ServiceRequestStatus } from "@/types/service-request";
-import { ArrowLeft, Download } from "lucide-react";
+import {
+    AlertCircle,
+    ArrowLeft,
+    Ban,
+    CheckCircle2,
+    ClipboardList,
+    Clock,
+    Download,
+    History,
+    Package,
+    PlayCircle,
+    Receipt,
+    Settings2,
+} from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -33,6 +46,19 @@ import { toast } from "sonner";
 import { EntityAttachmentsCard } from "@/components/shared/entity-attachments-card";
 import { WorkflowRequestsCard } from "@/components/shared/workflow-requests-card";
 import { UpliftReviewPanel } from "@/components/service-requests/UpliftReviewPanel";
+import { formatNullableDate } from "@/lib/date-display";
+import {
+    commercialPresentation,
+    detailBadgeClass,
+    serviceRequestDesk,
+    statusPresentation,
+    typePresentation,
+    DESK_BADGE_CLASS,
+    DESK_CARD_CLASS,
+    DESK_ICON_CLASS,
+    DESK_TITLE_CLASS,
+    type DeskTone,
+} from "@/lib/service-request-display";
 
 const STATUS_OPTIONS: ServiceRequestStatus[] = [
     "SUBMITTED",
@@ -90,6 +116,15 @@ function upliftStatusOptions(current: ServiceRequestStatus): ServiceRequestStatu
     if (current !== "IN_REVIEW") return STATUS_OPTIONS;
     return STATUS_OPTIONS.filter((status) => status !== "SUBMITTED");
 }
+
+/** Desk banner glyph, one per tone. Presentation only. */
+const DESK_ICON: Record<DeskTone, typeof AlertCircle> = {
+    waiting: Clock,
+    action: AlertCircle,
+    inflight: PlayCircle,
+    done: CheckCircle2,
+    closed: Ban,
+};
 
 export default function ServiceRequestDetailsPage() {
     const params = useParams<{ id: string }>();
@@ -235,44 +270,70 @@ export default function ServiceRequestDetailsPage() {
         ? (request as any).photos.length
         : 0;
 
+    // Presentation only — the resolved desk, and the two axes it resolves from.
+    const desk = serviceRequestDesk(request);
+    const DeskIcon = DESK_ICON[desk.tone];
+    const opsPresentation = statusPresentation(request.request_status);
+    const comPresentation = commercialPresentation(request.commercial_status);
+    const typeInfo = typePresentation(request.request_type);
+    const itemCount = request.items?.length ?? 0;
+
     return (
         <div className="min-h-screen bg-background">
+            {/* Sticky header — identity on the left, state on the right. */}
             <div className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
                 <div className="container mx-auto px-6 py-4">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div className="flex items-center gap-3">
+                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                        <div className="flex min-w-0 items-center gap-3">
                             <Link href="/service-requests">
                                 <Button variant="ghost" size="sm" className="font-mono gap-2">
                                     <ArrowLeft className="h-4 w-4" />
-                                    SERVICE REQUESTS
+                                    <span className="hidden sm:inline">SERVICE REQUESTS</span>
+                                    <span className="sm:hidden">BACK</span>
                                 </Button>
                             </Link>
                             <Separator orientation="vertical" className="h-6" />
-                            <div>
-                                <h1 className="text-lg font-bold font-mono">
-                                    {request.service_request_id}
-                                </h1>
-                                <p className="text-xs text-muted-foreground font-mono">
+                            <div className="min-w-0">
+                                <div className="flex items-center gap-2">
+                                    <h1 className="truncate text-lg font-bold font-mono">
+                                        {request.service_request_id}
+                                    </h1>
+                                    <Badge
+                                        className={`${detailBadgeClass(typeInfo.tone)} shrink-0 border font-mono text-[10px]`}
+                                    >
+                                        {typeInfo.label}
+                                    </Badge>
+                                </div>
+                                <p className="truncate text-xs text-muted-foreground font-mono">
                                     {request.title}
                                 </p>
                             </div>
                         </div>
-                        <div className="flex gap-2">
+
+                        <div className="flex flex-wrap items-center gap-2 md:justify-end">
                             {isRepairBeforeEvent && (
-                                <Badge className="bg-orange-500/10 text-orange-700 border-orange-500/20">
+                                <Badge className="border-orange-500/20 bg-orange-500/10 font-mono text-[10px] text-orange-700">
                                     Repair Before Event
                                 </Badge>
                             )}
                             {hasFulfillmentException && (
-                                <Badge className="bg-blue-500/10 text-blue-700 border-blue-500/20">
+                                <Badge className="border-blue-500/20 bg-blue-500/10 font-mono text-[10px] text-blue-700">
                                     Exception Approved
                                 </Badge>
                             )}
-                            <Badge variant="secondary">
-                                {request.request_status.replace(/_/g, " ")}
-                            </Badge>
-                            <Badge variant="outline">
-                                {request.commercial_status.replace(/_/g, " ")}
+                            {/* The resolved desk, alone. The two raw axes it
+                                resolves from used to sit here as an `Ops` / `Comm`
+                                pair, which put the same state on screen five times
+                                over — twice here, once on the desk banner below and
+                                once more on the `Currently` row of each action card.
+                                The `Currently` rows are the ones that earn their
+                                place: they sit against the control that changes the
+                                value. Both cards render unconditionally, so no axis
+                                becomes unreadable by dropping the pair. */}
+                            <Badge
+                                className={`${DESK_BADGE_CLASS[desk.tone]} border px-3 py-1 font-mono text-xs`}
+                            >
+                                {desk.label}
                             </Badge>
                         </div>
                     </div>
@@ -282,146 +343,367 @@ export default function ServiceRequestDetailsPage() {
             <div className="container mx-auto px-6 py-8">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <div className="lg:col-span-2 space-y-6">
+                        {/* The one thing to do now. Resolves the dual status into a
+                            single "whose desk is this on" line plus the next step. */}
+                        <Card className={`p-4 ${DESK_CARD_CLASS[desk.tone]}`}>
+                            <div className="flex items-start gap-3">
+                                <DeskIcon
+                                    className={`h-5 w-5 shrink-0 mt-0.5 ${DESK_ICON_CLASS[desk.tone]}`}
+                                />
+                                <div className="min-w-0">
+                                    <p
+                                        className={`font-mono text-sm font-bold ${DESK_TITLE_CLASS[desk.tone]}`}
+                                    >
+                                        {desk.label}
+                                    </p>
+                                    {desk.next && (
+                                        <p className="font-mono text-xs text-muted-foreground mt-1">
+                                            {desk.next}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                        </Card>
+
+                        {isRepairBeforeEvent && (
+                            <Card className="p-4 bg-orange-500/5 border-orange-500/30">
+                                <div className="flex items-start gap-3">
+                                    <AlertCircle className="h-5 w-5 shrink-0 mt-0.5 text-orange-600" />
+                                    <div className="min-w-0 flex-1 space-y-3">
+                                        <div>
+                                            <p className="font-mono text-sm font-bold text-orange-700">
+                                                Repair Before Event
+                                            </p>
+                                            <p className="font-mono text-xs text-muted-foreground mt-1">
+                                                Blocks fulfilment on the linked order until it is
+                                                completed — or an exception is approved from the
+                                                order.
+                                            </p>
+                                        </div>
+                                        <div className="flex flex-wrap gap-x-6 gap-y-1 font-mono text-xs">
+                                            <span className="text-muted-foreground">
+                                                Due{" "}
+                                                <span className="text-foreground">
+                                                    {formatNullableDate(request.requested_due_at, {
+                                                        emptyLabel: "No due date set",
+                                                        withTime: true,
+                                                    })}
+                                                </span>
+                                            </span>
+                                            <span className="text-muted-foreground">
+                                                Work photos{" "}
+                                                <span className="text-foreground">
+                                                    {workPhotoCount}
+                                                </span>
+                                            </span>
+                                        </div>
+                                        {hasFulfillmentException && (
+                                            <div className="rounded border border-blue-500/20 bg-blue-500/5 p-3">
+                                                <p className="font-mono text-xs font-bold text-blue-700">
+                                                    Exception approved
+                                                </p>
+                                                <p className="mt-1 text-xs text-muted-foreground">
+                                                    {request.fulfillment_override_reason}
+                                                </p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </Card>
+                        )}
+
                         {/* RL-012/RL-013 — the uplift desk. Source-order link, the client's
                             requested timing, and the three coupled actions the generic
                             service-request controls cannot express. */}
                         {isUplift && <UpliftReviewPanel request={request} onChanged={refetch} />}
 
-                        {isRepairBeforeEvent && (
-                            <Card className="border-orange-500/30 bg-orange-500/5">
-                                <CardHeader>
-                                    <CardTitle className="font-mono text-sm uppercase tracking-wide text-orange-700">
-                                        Repair Before Event
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent className="space-y-2 text-sm">
-                                    <p className="text-muted-foreground">
-                                        This is an internal repair task linked to an order item. It
-                                        blocks fulfillment until completed or exception-approved
-                                        from the order blocker panel.
-                                    </p>
-                                    <p>
-                                        Due:{" "}
-                                        {request.requested_due_at
-                                            ? new Date(request.requested_due_at).toLocaleString()
-                                            : "Delivery not scheduled"}
-                                    </p>
-                                    <p>Work photos: {workPhotoCount}</p>
-                                    {hasFulfillmentException && (
-                                        <div className="rounded border border-blue-500/20 bg-blue-500/5 p-3">
-                                            <p className="font-medium text-blue-700">
-                                                Exception approved
-                                            </p>
-                                            <p className="mt-1 text-muted-foreground">
-                                                {request.fulfillment_override_reason}
-                                            </p>
-                                        </div>
-                                    )}
-                                </CardContent>
-                            </Card>
-                        )}
-
                         <Card>
                             <CardHeader>
-                                <CardTitle className="font-mono text-sm uppercase tracking-wide">
-                                    Request Details
+                                <CardTitle className="font-mono text-sm flex items-center gap-2">
+                                    <ClipboardList className="h-4 w-4 text-primary" />
+                                    REQUEST DETAILS
                                 </CardTitle>
                             </CardHeader>
-                            <CardContent className="grid md:grid-cols-2 gap-4 text-sm">
+                            <CardContent className="space-y-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <Label className="font-mono text-xs text-muted-foreground">
+                                            TYPE
+                                        </Label>
+                                        <p className="font-mono text-sm mt-1">{typeInfo.label}</p>
+                                    </div>
+                                    <div>
+                                        <Label className="font-mono text-xs text-muted-foreground">
+                                            BILLING
+                                        </Label>
+                                        <p className="font-mono text-sm mt-1">
+                                            {request.billing_mode === "CLIENT_BILLABLE"
+                                                ? "Client billable"
+                                                : "Internal only"}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <Label className="font-mono text-xs text-muted-foreground">
+                                            LINK MODE
+                                        </Label>
+                                        <p className="font-mono text-sm mt-1">
+                                            {request.link_mode.replace(/_/g, " ")}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <Label className="font-mono text-xs text-muted-foreground">
+                                            BLOCKS FULFILMENT
+                                        </Label>
+                                        <div className="mt-1">
+                                            <Badge
+                                                className={`font-mono text-xs px-3 py-1 border ${
+                                                    request.blocks_fulfillment
+                                                        ? "border-orange-500/40 bg-orange-500/5 text-orange-700"
+                                                        : "border-border bg-muted/20 text-muted-foreground"
+                                                }`}
+                                            >
+                                                {request.blocks_fulfillment ? "YES" : "NO"}
+                                            </Badge>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <Separator />
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <Label className="font-mono text-xs text-muted-foreground">
+                                            REQUESTED START
+                                        </Label>
+                                        <p className="font-mono text-sm mt-1">
+                                            {formatNullableDate(request.requested_start_at, {
+                                                emptyLabel: "Not set",
+                                                withTime: true,
+                                            })}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <Label className="font-mono text-xs text-muted-foreground">
+                                            REQUESTED DUE
+                                        </Label>
+                                        <p className="font-mono text-sm mt-1">
+                                            {formatNullableDate(request.requested_due_at, {
+                                                emptyLabel: "Not set",
+                                                withTime: true,
+                                            })}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <Label className="font-mono text-xs text-muted-foreground">
+                                            CREATED
+                                        </Label>
+                                        <p className="font-mono text-sm mt-1">
+                                            {formatNullableDate(request.created_at, {
+                                                emptyLabel: "—",
+                                                withTime: true,
+                                            })}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <Separator />
+
                                 <div>
-                                    <p className="text-muted-foreground">Type</p>
-                                    <p className="font-medium">
-                                        {request.request_type.replace(/_/g, " ")}
+                                    <Label className="font-mono text-xs text-muted-foreground">
+                                        DESCRIPTION
+                                    </Label>
+                                    <p className="text-sm mt-1 leading-relaxed">
+                                        {request.description || (
+                                            <span className="font-mono text-muted-foreground">
+                                                —
+                                            </span>
+                                        )}
                                     </p>
-                                </div>
-                                <div>
-                                    <p className="text-muted-foreground">Billing</p>
-                                    <p className="font-medium">
-                                        {request.billing_mode.replace(/_/g, " ")}
-                                    </p>
-                                </div>
-                                <div>
-                                    <p className="text-muted-foreground">Link Mode</p>
-                                    <p className="font-medium">
-                                        {request.link_mode.replace(/_/g, " ")}
-                                    </p>
-                                </div>
-                                <div>
-                                    <p className="text-muted-foreground">Blocks Fulfillment</p>
-                                    <p className="font-medium">
-                                        {request.blocks_fulfillment ? "Yes" : "No"}
-                                    </p>
-                                </div>
-                                <div>
-                                    <p className="text-muted-foreground">Company ID</p>
-                                    <p className="font-mono">{request.company_id}</p>
-                                </div>
-                                <div>
-                                    <p className="text-muted-foreground">Created</p>
-                                    <p>{new Date(request.created_at).toLocaleString()}</p>
-                                </div>
-                                <div>
-                                    <p className="text-muted-foreground">Requested Start</p>
-                                    <p>
-                                        {request.requested_start_at
-                                            ? new Date(request.requested_start_at).toLocaleString()
-                                            : "Not set"}
-                                    </p>
-                                </div>
-                                <div>
-                                    <p className="text-muted-foreground">Requested Due</p>
-                                    <p>
-                                        {request.requested_due_at
-                                            ? new Date(request.requested_due_at).toLocaleString()
-                                            : "Not set"}
-                                    </p>
-                                </div>
-                                <div className="md:col-span-2">
-                                    <p className="text-muted-foreground">Description</p>
-                                    <p>{request.description || "No description"}</p>
                                 </div>
                             </CardContent>
                         </Card>
 
                         <Card>
                             <CardHeader>
-                                <CardTitle className="font-mono text-sm uppercase tracking-wide">
-                                    Requested Items
+                                <CardTitle className="font-mono text-sm flex items-center gap-2">
+                                    <Package className="h-4 w-4 text-primary" />
+                                    SERVICE ITEMS ({itemCount})
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-3">
-                                {request.items?.length ? (
-                                    request.items.map((item) => (
-                                        <div key={item.id} className="rounded-md bg-muted/40 p-3">
-                                            <div className="flex items-center justify-between">
+                                {itemCount ? (
+                                    request.items?.map((item) => (
+                                        <div
+                                            key={item.id}
+                                            className="rounded border bg-muted/30 p-3 space-y-1"
+                                        >
+                                            <div className="flex items-start justify-between gap-3">
                                                 {item.asset_id ? (
                                                     <Link
                                                         href={`/assets/${item.asset_id}`}
-                                                        className="font-medium hover:underline text-primary"
+                                                        className="font-mono text-sm font-bold text-primary hover:underline"
                                                     >
                                                         {item.asset_name}
                                                     </Link>
                                                 ) : (
-                                                    <p className="font-medium">{item.asset_name}</p>
+                                                    <p className="font-mono text-sm font-bold">
+                                                        {item.asset_name}
+                                                    </p>
                                                 )}
-                                                <p className="text-sm text-muted-foreground">
-                                                    Qty: {item.quantity}
-                                                </p>
+                                                <Badge
+                                                    variant="outline"
+                                                    className="shrink-0 font-mono text-[10px]"
+                                                >
+                                                    QTY {item.quantity}
+                                                </Badge>
                                             </div>
                                             {item.refurb_days_estimate !== null && (
-                                                <p className="text-sm text-muted-foreground mt-1">
-                                                    Refurb days: {item.refurb_days_estimate}
+                                                <p className="font-mono text-[11px] text-muted-foreground">
+                                                    Refurb {item.refurb_days_estimate} day
+                                                    {item.refurb_days_estimate === 1 ? "" : "s"}
                                                 </p>
                                             )}
                                             {item.notes && (
-                                                <p className="text-sm mt-1">{item.notes}</p>
+                                                <p className="text-xs text-muted-foreground">
+                                                    {item.notes}
+                                                </p>
                                             )}
                                         </div>
                                     ))
                                 ) : (
-                                    <p className="text-muted-foreground">
-                                        No items on this request.
-                                    </p>
+                                    <div className="rounded border-2 border-dashed bg-muted/20 p-8 text-center">
+                                        <Package className="mx-auto mb-2 h-8 w-8 text-muted-foreground/50" />
+                                        <p className="font-mono text-xs uppercase text-muted-foreground">
+                                            No items on this request
+                                        </p>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+
+                        {/* Operational lifecycle — the work. Kept apart from the
+                            commercial control below so the two are not read as one
+                            undifferentiated pile of dropdowns. */}
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="font-mono text-sm flex items-center gap-2">
+                                    <Settings2 className="h-4 w-4 text-primary" />
+                                    OPERATIONAL STATUS
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="flex items-center gap-2 font-mono text-xs text-muted-foreground">
+                                    Currently
+                                    <Badge
+                                        className={`${detailBadgeClass(opsPresentation.tone)} border font-mono text-[10px]`}
+                                    >
+                                        {opsPresentation.label}
+                                    </Badge>
+                                </div>
+
+                                <div className="grid md:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label className="font-mono text-xs text-muted-foreground">
+                                            MOVE TO
+                                        </Label>
+                                        <Select
+                                            value={statusValue}
+                                            onValueChange={(value) =>
+                                                setStatusValue(value as ServiceRequestStatus)
+                                            }
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {statusOptions.map((status) => (
+                                                    <SelectItem key={status} value={status}>
+                                                        {statusPresentation(status).label}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="font-mono text-xs text-muted-foreground">
+                                            NOTE (OPTIONAL)
+                                        </Label>
+                                        <Input
+                                            value={statusNote}
+                                            onChange={(e) => setStatusNote(e.target.value)}
+                                            placeholder="Why is it moving?"
+                                        />
+                                    </div>
+                                </div>
+
+                                {statusValue === "COMPLETED" && (
+                                    <div className="space-y-2">
+                                        <Label className="font-mono text-xs text-muted-foreground">
+                                            COMPLETION NOTES
+                                            {isRepairBeforeEvent && (
+                                                <span className="text-destructive"> *</span>
+                                            )}
+                                        </Label>
+                                        <Textarea
+                                            value={completionNotes}
+                                            onChange={(e) => setCompletionNotes(e.target.value)}
+                                            placeholder="What was done?"
+                                        />
+                                        {/* Stated before the click, not after it. The rule
+                                            itself is unchanged and still enforced on submit. */}
+                                        {isRepairBeforeEvent && (
+                                            <p className="font-mono text-[11px] text-muted-foreground">
+                                                Notes and at least one saved work photo are
+                                                required. Saved photos: {workPhotoCount}.
+                                            </p>
+                                        )}
+                                    </div>
+                                )}
+
+                                <Button
+                                    onClick={handleStatusUpdate}
+                                    disabled={updateStatus.isPending}
+                                    className="gap-2 font-mono text-xs"
+                                >
+                                    {updateStatus.isPending ? "UPDATING..." : "UPDATE STATUS"}
+                                </Button>
+
+                                {/* RL-015 — the generic cancel route refuses an uplift: cancelling
+                                    one may have to move its source order back to PLACED and must
+                                    first prove nothing has been scanned back in, neither of which
+                                    this route knows about. The coupled control lives on the uplift
+                                    panel above. */}
+                                {!isRepairBeforeEvent && !isUplift && (
+                                    <>
+                                        <Separator />
+
+                                        <div className="rounded-md border border-destructive/30 bg-destructive/5 p-4 space-y-2">
+                                            <Label className="font-mono text-xs font-bold text-destructive">
+                                                CANCEL REQUEST
+                                            </Label>
+                                            <Textarea
+                                                value={cancellationReason}
+                                                onChange={(e) =>
+                                                    setCancellationReason(e.target.value)
+                                                }
+                                                placeholder="Why is this being cancelled?"
+                                            />
+                                            <p className="font-mono text-[11px] text-muted-foreground">
+                                                Reason required, at least 10 characters. Cancelling
+                                                is final.
+                                            </p>
+                                            <Button
+                                                variant="destructive"
+                                                onClick={handleCancel}
+                                                disabled={cancelRequest.isPending}
+                                                className="gap-2 font-mono text-xs"
+                                            >
+                                                {cancelRequest.isPending
+                                                    ? "CANCELLING..."
+                                                    : "CANCEL REQUEST"}
+                                            </Button>
+                                        </div>
+                                    </>
                                 )}
                             </CardContent>
                         </Card>
@@ -438,107 +720,50 @@ export default function ServiceRequestDetailsPage() {
                             title="Supporting Documents"
                         />
 
+                        {/* The single editable money table: line items + role-preview
+                            lenses + footer totals + add / bulk-margin / no-cost
+                            actions. SR money editability keys off the COMMERCIAL
+                            status (dual-status model): the ledger self-gates editable
+                            pre-QUOTE_APPROVED and locks at QUOTE_APPROVED / INVOICED /
+                            PAID, mirroring the API's getLineItemEditability SR branch.
+                            The `◎ No cost` footer action captures the concession reason
+                            and posts the SR concession route (P1-8). No approve slot —
+                            SR commercial status is driven by the card below, which is
+                            deliberately adjacent so the number and the decision read
+                            as one block. */}
+                        <PricingLedger
+                            purposeType="SERVICE_REQUEST"
+                            entityId={request.id}
+                            entityStatus={request.commercial_status}
+                            billingMode={request.billing_mode}
+                            pricingMode={
+                                (request as { pricing_mode?: "STANDARD" | "NO_COST" })
+                                    .pricing_mode || "STANDARD"
+                            }
+                        />
+
                         <Card>
                             <CardHeader>
-                                <CardTitle className="font-mono text-sm uppercase tracking-wide">
-                                    Operational Actions
+                                <CardTitle className="font-mono text-sm flex items-center gap-2">
+                                    <Receipt className="h-4 w-4 text-primary" />
+                                    QUOTE &amp; BILLING
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-4">
-                                <div className="grid md:grid-cols-2 gap-3">
-                                    <div>
-                                        <Label>Operational Status</Label>
-                                        <Select
-                                            value={statusValue}
-                                            onValueChange={(value) =>
-                                                setStatusValue(value as ServiceRequestStatus)
-                                            }
-                                        >
-                                            <SelectTrigger>
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {statusOptions.map((status) => (
-                                                    <SelectItem key={status} value={status}>
-                                                        {status.replace(/_/g, " ")}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div>
-                                        <Label>Note</Label>
-                                        <Input
-                                            value={statusNote}
-                                            onChange={(e) => setStatusNote(e.target.value)}
-                                            placeholder="Optional status note"
-                                        />
-                                    </div>
+                                <div className="flex items-center gap-2 font-mono text-xs text-muted-foreground">
+                                    Currently
+                                    <Badge
+                                        className={`${detailBadgeClass(comPresentation.tone)} border font-mono text-[10px]`}
+                                    >
+                                        {comPresentation.label}
+                                    </Badge>
                                 </div>
 
-                                {statusValue === "COMPLETED" && (
-                                    <div>
-                                        <Label>Completion Notes</Label>
-                                        <Textarea
-                                            value={completionNotes}
-                                            onChange={(e) => setCompletionNotes(e.target.value)}
-                                            placeholder="Add completion details..."
-                                        />
-                                    </div>
-                                )}
-
-                                <Button
-                                    onClick={handleStatusUpdate}
-                                    disabled={updateStatus.isPending}
-                                >
-                                    {updateStatus.isPending
-                                        ? "Updating..."
-                                        : "Update Operational Status"}
-                                </Button>
-
-                                {/* RL-015 — the generic cancel route refuses an uplift: cancelling
-                                    one may have to move its source order back to PLACED and must
-                                    first prove nothing has been scanned back in, neither of which
-                                    this route knows about. The coupled control lives on the uplift
-                                    panel above. */}
-                                {!isRepairBeforeEvent && !isUplift && (
-                                    <>
-                                        <Separator />
-
-                                        <div className="space-y-2">
-                                            <Label>Cancel Request</Label>
-                                            <Textarea
-                                                value={cancellationReason}
-                                                onChange={(e) =>
-                                                    setCancellationReason(e.target.value)
-                                                }
-                                                placeholder="Cancellation reason (minimum 10 characters)"
-                                            />
-                                            <Button
-                                                variant="destructive"
-                                                onClick={handleCancel}
-                                                disabled={cancelRequest.isPending}
-                                            >
-                                                {cancelRequest.isPending
-                                                    ? "Cancelling..."
-                                                    : "Cancel Request"}
-                                            </Button>
-                                        </div>
-                                    </>
-                                )}
-                            </CardContent>
-                        </Card>
-
-                        <Card>
-                            <CardHeader>
-                                <CardTitle className="font-mono text-sm uppercase tracking-wide">
-                                    Commercial Actions
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                <div className="grid md:grid-cols-2 gap-3">
-                                    <div>
-                                        <Label>Commercial Status</Label>
+                                <div className="grid md:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label className="font-mono text-xs text-muted-foreground">
+                                            MOVE TO
+                                        </Label>
                                         <Select
                                             value={commercialStatusValue}
                                             onValueChange={(value) =>
@@ -553,93 +778,60 @@ export default function ServiceRequestDetailsPage() {
                                             <SelectContent>
                                                 {commercialStatusOptions.map((status) => (
                                                     <SelectItem key={status} value={status}>
-                                                        {status.replace(/_/g, " ")}
+                                                        {commercialPresentation(status).label}
                                                     </SelectItem>
                                                 ))}
                                             </SelectContent>
                                         </Select>
                                     </div>
-                                    <div>
-                                        <Label>Commercial Note</Label>
+                                    <div className="space-y-2">
+                                        <Label className="font-mono text-xs text-muted-foreground">
+                                            NOTE (OPTIONAL)
+                                        </Label>
                                         <Input
                                             value={commercialNote}
                                             onChange={(e) => setCommercialNote(e.target.value)}
-                                            placeholder="Optional note"
+                                            placeholder="Internal note"
                                         />
                                     </div>
                                 </div>
 
-                                <div className="flex flex-wrap gap-2">
+                                <div className="flex flex-wrap items-center gap-2">
+                                    {/* Same mutation, same payload — the label just names
+                                        what the selected transition actually does. */}
                                     <Button
                                         onClick={handleCommercialUpdate}
                                         disabled={updateCommercialStatus.isPending}
+                                        className="gap-2 font-mono text-xs"
                                     >
                                         {updateCommercialStatus.isPending
-                                            ? "Updating..."
-                                            : "Update Commercial Status"}
+                                            ? "UPDATING..."
+                                            : commercialStatusValue === "QUOTED"
+                                              ? "ISSUE QUOTE TO CLIENT"
+                                              : "UPDATE COMMERCIAL STATUS"}
                                     </Button>
                                     <Button
-                                        variant="secondary"
+                                        variant="outline"
                                         onClick={handleDownloadCostEstimate}
                                         disabled={downloadCostEstimate.isPending}
+                                        className="gap-2 font-mono text-xs"
                                     >
-                                        <Download className="h-4 w-4 mr-1" />
+                                        <Download className="h-3.5 w-3.5" />
                                         {downloadCostEstimate.isPending
-                                            ? "Downloading..."
-                                            : "Cost Estimate"}
+                                            ? "DOWNLOADING..."
+                                            : "COST ESTIMATE"}
                                     </Button>
                                 </div>
-                                {isUplift ? (
-                                    /* RL-013/RL-033 — entity-level NO_COST and the concession
-                                       endpoint are rejected for an uplift. A zero-cost collection
-                                       is expressed PER LINE with billing_mode = COMPLIMENTARY,
-                                       which records "this collection was already paid for on the
-                                       source order" on the line an admin, a client and an auditor
-                                       actually read, and leaves a later chargeable addition
-                                       somewhere to go. */
-                                    <p className="text-xs text-muted-foreground">
-                                        A collection that was already paid for on the source order
-                                        is marked <span className="font-medium">Complimentary</span>{" "}
-                                        on its own line in the Pricing Ledger below. Entity-level{" "}
-                                        <span className="font-medium">No cost</span> is not
-                                        available on an uplift.
-                                    </p>
-                                ) : (
-                                    <p className="text-xs text-muted-foreground">
-                                        To waive charges, use the{" "}
-                                        <span className="font-medium">No cost</span> action in the
-                                        Pricing Ledger below (captures the concession reason).
-                                    </p>
-                                )}
                             </CardContent>
                         </Card>
-
-                        {/* The single editable money table: line items + role-preview
-                            lenses + footer totals + add / bulk-margin / no-cost
-                            actions. SR money editability keys off the COMMERCIAL
-                            status (dual-status model): the ledger self-gates editable
-                            pre-QUOTE_APPROVED and locks at QUOTE_APPROVED / INVOICED /
-                            PAID, mirroring the API's getLineItemEditability SR branch.
-                            The `◎ No cost` footer action captures the concession reason
-                            and posts the SR concession route (P1-8). No approve slot —
-                            SR commercial status is driven by the dropdown above. */}
-                        <PricingLedger
-                            purposeType="SERVICE_REQUEST"
-                            entityId={request.id}
-                            entityStatus={request.commercial_status}
-                            billingMode={request.billing_mode}
-                            pricingMode={
-                                (request as { pricing_mode?: "STANDARD" | "NO_COST" })
-                                    .pricing_mode || "STANDARD"
-                            }
-                        />
                     </div>
 
                     <div className="lg:col-span-1">
                         <Card className="lg:sticky lg:top-24">
                             <CardHeader>
-                                <CardTitle className="font-mono text-sm uppercase tracking-wide">
-                                    Status History
+                                <CardTitle className="font-mono text-sm flex items-center gap-2">
+                                    <History className="h-4 w-4 text-primary" />
+                                    STATUS HISTORY
                                 </CardTitle>
                             </CardHeader>
                             <CardContent>
@@ -648,8 +840,8 @@ export default function ServiceRequestDetailsPage() {
                                         (entry, idx, arr) => ({
                                             id: entry.id,
                                             label: entry.from_status
-                                                ? `${entry.from_status.replace(/_/g, " ")} → ${entry.to_status.replace(/_/g, " ")}`
-                                                : entry.to_status.replace(/_/g, " "),
+                                                ? `${statusPresentation(entry.from_status).label} → ${statusPresentation(entry.to_status).label}`
+                                                : statusPresentation(entry.to_status).label,
                                             timestamp: entry.changed_at,
                                             user:
                                                 entry.changed_by_user?.name ||

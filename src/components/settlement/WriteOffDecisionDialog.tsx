@@ -177,11 +177,8 @@ export function WriteOffDecisionDialog({
                         RECORD WRITE-OFF DECISION
                     </DialogTitle>
                     <DialogDescription>
-                        {parentLabel} — record the units that will <strong>not</strong> be collected
-                        after all, so the next return completion can close the load and credit
-                        everything that did come back. This is terminal: the units leave the
-                        platform&apos;s custody record, their booking is reduced by the same amount,
-                        and nothing is credited back to availability. Nothing reverses it.
+                        {parentLabel} — these units will <strong>not</strong> be collected. This is
+                        permanent and cannot be undone. Nothing is credited back to availability.
                     </DialogDescription>
                 </DialogHeader>
 
@@ -273,9 +270,9 @@ export function WriteOffDecisionDialog({
                                                 )}
                                                 {isChecked && line.stock_mode === "SERIALIZED" && (
                                                     <p className="font-mono text-[11px] text-muted-foreground">
-                                                        {max} individual unit{max === 1 ? "" : "s"}{" "}
-                                                        will be written off and marked as placed
-                                                        with the client.
+                                                        {max} unit{max === 1 ? "" : "s"} will be
+                                                        written off and marked placed with the
+                                                        client.
                                                     </p>
                                                 )}
                                             </div>
@@ -285,9 +282,9 @@ export function WriteOffDecisionDialog({
                             </div>
                             {outstandingLines.some((l) => l.settledUnknown) && (
                                 <p className="font-mono text-[11px] text-muted-foreground">
-                                    Units already settled by an earlier decision are netted off by
-                                    the server; if a line shows more outstanding here than it really
-                                    has, the request is refused naming the true figure.
+                                    An earlier decision may already have settled some of these, so a
+                                    count here can read high — the server nets them off and refuses
+                                    the request naming the true figure.
                                 </p>
                             )}
                         </div>
@@ -326,9 +323,7 @@ export function WriteOffDecisionDialog({
                                     a neutral entry and nothing more, and the client is not
                                     notified that its stock was written off. */}
                                 <p className="font-mono text-[11px] text-muted-foreground">
-                                    Internal. The reason, this note and the unit list are recorded
-                                    on the internal audit trail only — the client is not notified
-                                    and sees nothing but a neutral history entry.
+                                    Internal — the client is not notified.
                                 </p>
                             </div>
                         </div>

@@ -561,7 +561,7 @@ export function PricingLedger({
     const postQuoteCopy =
         purposeType === "ORDER"
             ? "This quote has been sent. Editing a line pulls the order back to admin re-approval, marks the quote as being revised, and notifies the client — their estimate download pauses until you re-approve."
-            : "This quote has been sent. Editing a line will revise it and re-notify the recipient.";
+            : "Quote already sent — editing a line revises it and re-notifies the client.";
     // Non-ORDER amend-dialog body (2-action pull-back confirm). ORDER uses the
     // Proposal-B option-card layout below instead of a prose description.
     const amendDescription = postQuoteCopy;
@@ -609,8 +609,7 @@ export function PricingLedger({
                 <div className="flex items-start gap-2 border-b border-border bg-muted/40 px-5 py-2.5 text-xs text-muted-foreground">
                     <Info className="mt-0.5 h-4 w-4 shrink-0" />
                     <span>
-                        This entity is marked no-cost. All pricing is zeroed and locked; the client
-                        sees a zero total.
+                        Marked no-cost — pricing is zeroed and locked. The client sees a zero total.
                     </span>
                 </div>
             ) : null}

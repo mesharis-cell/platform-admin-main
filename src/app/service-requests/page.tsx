@@ -45,7 +45,6 @@ import type {
     ServiceRequestType,
 } from "@/types/service-request";
 import {
-    Calendar,
     ChevronLeft,
     ChevronRight,
     ClipboardList,
@@ -53,10 +52,16 @@ import {
     Plus,
     Search,
     Trash2,
-    Wrench,
     X,
 } from "lucide-react";
 import { toast } from "sonner";
+import {
+    commercialPresentation,
+    listBadgeClass,
+    serviceRequestDesk,
+    statusPresentation,
+    typePresentation,
+} from "@/lib/service-request-display";
 
 interface SRItemDraft {
     asset_id?: string;
@@ -95,29 +100,6 @@ const STATUS_OPTIONS: ServiceRequestStatus[] = [
     "COMPLETED",
     "CANCELLED",
 ];
-
-const SR_STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-    DRAFT: { label: "Draft", color: "bg-gray-100 text-gray-700 border-gray-300" },
-    SUBMITTED: { label: "Submitted", color: "bg-blue-100 text-blue-700 border-blue-300" },
-    IN_REVIEW: { label: "In Review", color: "bg-yellow-100 text-yellow-700 border-yellow-300" },
-    APPROVED: { label: "Approved", color: "bg-green-100 text-green-700 border-green-300" },
-    IN_PROGRESS: { label: "In Progress", color: "bg-cyan-100 text-cyan-700 border-cyan-300" },
-    COMPLETED: { label: "Completed", color: "bg-teal-100 text-teal-700 border-teal-300" },
-    CANCELLED: { label: "Cancelled", color: "bg-red-100 text-red-700 border-red-300" },
-};
-
-const COMMERCIAL_STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-    INTERNAL: { label: "Internal", color: "bg-muted text-muted-foreground border-border" },
-    PENDING_QUOTE: { label: "Pending Quote", color: "bg-blue-100 text-blue-700 border-blue-300" },
-    QUOTED: { label: "Quoted", color: "bg-purple-100 text-purple-700 border-purple-300" },
-    QUOTE_APPROVED: {
-        label: "Quote Approved",
-        color: "bg-green-100 text-green-700 border-green-300",
-    },
-    INVOICED: { label: "Invoiced", color: "bg-amber-100 text-amber-700 border-amber-300" },
-    PAID: { label: "Paid", color: "bg-emerald-100 text-emerald-700 border-emerald-300" },
-    CANCELLED: { label: "Cancelled", color: "bg-red-100 text-red-700 border-red-300" },
-};
 
 export default function ServiceRequestsPage() {
     const { user } = useToken();
@@ -304,7 +286,7 @@ export default function ServiceRequestsPage() {
             <AdminHeader
                 icon={ClipboardList}
                 title="SERVICE REQUESTS"
-                description="Manage · Track · Fulfill"
+                description="Repairs · Reskins · Collections"
                 stats={data ? { label: "TOTAL REQUESTS", value: totalRequests } : undefined}
                 actions={
                     canCreateServiceRequest ? (
@@ -325,8 +307,7 @@ export default function ServiceRequestsPage() {
                                 <DialogHeader>
                                     <DialogTitle>Create Service Request</DialogTitle>
                                     <DialogDescription>
-                                        Create a standalone maintenance/reskin request with one
-                                        starter item.
+                                        Raise a request against one or more assets.
                                     </DialogDescription>
                                 </DialogHeader>
 
@@ -758,7 +739,7 @@ export default function ServiceRequestsPage() {
                                         <SelectItem value="all">All Statuses</SelectItem>
                                         {STATUS_OPTIONS.map((s) => (
                                             <SelectItem key={s} value={s}>
-                                                {SR_STATUS_CONFIG[s]?.label ?? s}
+                                                {statusPresentation(s).label}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
@@ -766,18 +747,19 @@ export default function ServiceRequestsPage() {
                             </div>
                             <div className="space-y-2">
                                 <label className="text-xs font-medium text-foreground uppercase tracking-wide">
-                                    Repair Tasks
+                                    Flags
                                 </label>
                                 <Button
                                     type="button"
                                     variant={repairBeforeEventOnly ? "default" : "outline"}
-                                    className="w-full justify-start font-mono text-xs"
+                                    className="w-full justify-between font-mono text-xs"
                                     onClick={() => {
                                         setRepairBeforeEventOnly((value) => !value);
                                         setPage(1);
                                     }}
                                 >
                                     Repair Before Event
+                                    {repairBeforeEventOnly && <X className="h-3.5 w-3.5" />}
                                 </Button>
                             </div>
                             <div className="space-y-2 pt-4 border-t border-slate-100">
@@ -810,58 +792,11 @@ export default function ServiceRequestsPage() {
                         </CardContent>
                     </Card>
 
-                    {/* Main Content */}
+                    {/* Main Content — the table is the triage surface, so it sits at
+                        the top of the column. The three summary tiles that used to
+                        live here restated the header's TOTAL REQUESTS stat and the
+                        pagination footer's "showing x to y of z" verbatim. */}
                     <div className="lg:col-span-3 space-y-4">
-                        {data?.data && (
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <Card className="border-border shadow-sm">
-                                    <CardContent className="pt-6">
-                                        <div className="flex items-center justify-between">
-                                            <div>
-                                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                                                    Total Requests
-                                                </p>
-                                                <p className="text-2xl font-bold text-foreground mt-1">
-                                                    {totalRequests}
-                                                </p>
-                                            </div>
-                                            <Wrench className="h-8 w-8 text-muted-foreground/60" />
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                                <Card className="border-border shadow-sm">
-                                    <CardContent className="pt-6">
-                                        <div className="flex items-center justify-between">
-                                            <div>
-                                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                                                    Current Page
-                                                </p>
-                                                <p className="text-2xl font-bold text-foreground mt-1">
-                                                    {page} of {totalPages}
-                                                </p>
-                                            </div>
-                                            <Calendar className="h-8 w-8 text-muted-foreground/60" />
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                                <Card className="border-border shadow-sm">
-                                    <CardContent className="pt-6">
-                                        <div className="flex items-center justify-between">
-                                            <div>
-                                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                                                    Showing
-                                                </p>
-                                                <p className="text-2xl font-bold text-foreground mt-1">
-                                                    {requests.length} requests
-                                                </p>
-                                            </div>
-                                            <ClipboardList className="h-8 w-8 text-muted-foreground/60" />
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            </div>
-                        )}
-
                         <Card className="border-border shadow-sm">
                             <CardContent className="p-0">
                                 {isLoading ? (
@@ -895,14 +830,14 @@ export default function ServiceRequestsPage() {
                                                     <TableHead className="font-semibold">
                                                         Type
                                                     </TableHead>
+                                                    {/* The desk is the resolved answer; the two raw
+                                                        statuses sit under it as secondary detail so
+                                                        the reader is not asked to join them. */}
+                                                    <TableHead className="font-semibold">
+                                                        Desk &amp; Status
+                                                    </TableHead>
                                                     <TableHead className="font-semibold">
                                                         Billing
-                                                    </TableHead>
-                                                    <TableHead className="font-semibold">
-                                                        Operational
-                                                    </TableHead>
-                                                    <TableHead className="font-semibold">
-                                                        Commercial
                                                     </TableHead>
                                                     <TableHead className="font-semibold">
                                                         Created
@@ -914,90 +849,97 @@ export default function ServiceRequestsPage() {
                                             </TableHeader>
                                             <TableBody>
                                                 {requests.map((request) => {
-                                                    const opsCfg =
-                                                        SR_STATUS_CONFIG[request.request_status];
-                                                    const comCfg =
-                                                        COMMERCIAL_STATUS_CONFIG[
-                                                            request.commercial_status
-                                                        ];
+                                                    const ops = statusPresentation(
+                                                        request.request_status
+                                                    );
+                                                    const com = commercialPresentation(
+                                                        request.commercial_status
+                                                    );
+                                                    const type = typePresentation(
+                                                        request.request_type
+                                                    );
+                                                    const desk = serviceRequestDesk(request);
                                                     return (
                                                         <TableRow
                                                             key={request.id}
                                                             className="group hover:bg-muted/50"
                                                         >
-                                                            <TableCell>
-                                                                <p className="font-mono text-xs font-medium">
+                                                            <TableCell className="align-top">
+                                                                <p className="font-mono text-xs font-bold">
                                                                     {request.service_request_id}
                                                                 </p>
-                                                                <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+                                                                <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1 max-w-[22rem]">
                                                                     {request.title}
                                                                 </p>
                                                                 {(request.is_repair_before_event ||
                                                                     request.fulfillment_override_applied_at) && (
-                                                                    <div className="mt-1 flex flex-wrap gap-1">
+                                                                    <div className="mt-1.5 flex flex-wrap gap-1">
                                                                         {request.is_repair_before_event && (
-                                                                            <Badge className="text-[10px] bg-orange-500/10 text-orange-700 border-orange-500/20">
+                                                                            <Badge className="font-mono text-[10px] bg-orange-500/10 text-orange-700 border-orange-500/20">
                                                                                 Repair Before Event
                                                                             </Badge>
                                                                         )}
                                                                         {request.fulfillment_override_applied_at && (
-                                                                            <Badge className="text-[10px] bg-blue-500/10 text-blue-700 border-blue-500/20">
+                                                                            <Badge className="font-mono text-[10px] bg-blue-500/10 text-blue-700 border-blue-500/20">
                                                                                 Exception Approved
                                                                             </Badge>
                                                                         )}
                                                                     </div>
                                                                 )}
                                                             </TableCell>
-                                                            <TableCell>
+                                                            <TableCell className="align-top">
                                                                 <Badge
                                                                     variant="outline"
-                                                                    className="text-xs whitespace-nowrap"
+                                                                    className={`${listBadgeClass(type.tone)} font-medium border whitespace-nowrap`}
                                                                 >
-                                                                    {request.request_type.replace(
-                                                                        /_/g,
-                                                                        " "
-                                                                    )}
+                                                                    {type.label}
                                                                 </Badge>
                                                             </TableCell>
-                                                            <TableCell className="text-sm text-foreground">
-                                                                {request.billing_mode.replace(
-                                                                    /_/g,
-                                                                    " "
-                                                                )}
+                                                            <TableCell className="align-top">
+                                                                <p className="text-sm font-semibold whitespace-nowrap">
+                                                                    {desk.label}
+                                                                </p>
+                                                                <div className="mt-1.5 flex flex-wrap gap-1">
+                                                                    <Badge
+                                                                        variant="outline"
+                                                                        className={`${listBadgeClass(ops.tone)} font-mono text-[10px] font-medium border whitespace-nowrap`}
+                                                                    >
+                                                                        {ops.label}
+                                                                    </Badge>
+                                                                    <Badge
+                                                                        variant="outline"
+                                                                        className={`${listBadgeClass(com.tone)} font-mono text-[10px] font-medium border whitespace-nowrap`}
+                                                                    >
+                                                                        {com.label}
+                                                                    </Badge>
+                                                                </div>
                                                             </TableCell>
-                                                            <TableCell>
-                                                                <Badge
-                                                                    variant="outline"
-                                                                    className={`${opsCfg?.color || "bg-gray-100 text-gray-700 border-gray-300"} font-medium border whitespace-nowrap`}
-                                                                >
-                                                                    {opsCfg?.label ||
-                                                                        request.request_status}
-                                                                </Badge>
+                                                            <TableCell className="align-top text-sm text-muted-foreground whitespace-nowrap">
+                                                                {request.billing_mode ===
+                                                                "CLIENT_BILLABLE"
+                                                                    ? "Client billable"
+                                                                    : "Internal only"}
                                                             </TableCell>
-                                                            <TableCell>
-                                                                <Badge
-                                                                    variant="outline"
-                                                                    className={`${comCfg?.color || "bg-gray-100 text-gray-700 border-gray-300"} font-medium border whitespace-nowrap`}
-                                                                >
-                                                                    {comCfg?.label ||
-                                                                        request.commercial_status}
-                                                                </Badge>
-                                                            </TableCell>
-                                                            <TableCell className="text-sm text-muted-foreground">
+                                                            <TableCell className="align-top text-sm text-muted-foreground whitespace-nowrap">
                                                                 {new Date(
                                                                     request.created_at
                                                                 ).toLocaleDateString()}
                                                             </TableCell>
-                                                            <TableCell className="text-right">
+                                                            <TableCell className="align-top text-right">
                                                                 <Link
                                                                     href={`/service-requests/${request.id}`}
                                                                 >
+                                                                    {/* Always visible: the row is not
+                                                                        a link, so a hover-only control
+                                                                        is a dead end on touch and for
+                                                                        keyboard traversal. */}
                                                                     <Button
-                                                                        variant="ghost"
+                                                                        variant="outline"
                                                                         size="sm"
-                                                                        className="opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                        className="gap-1 font-mono text-xs"
                                                                     >
-                                                                        View Details
+                                                                        OPEN
+                                                                        <ChevronRight className="h-3.5 w-3.5" />
                                                                     </Button>
                                                                 </Link>
                                                             </TableCell>
