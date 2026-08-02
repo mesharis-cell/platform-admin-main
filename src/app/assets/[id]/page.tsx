@@ -636,26 +636,11 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                                                     {availabilityStats.data.available_quantity}
                                                 </span>
                                             </div>
-                                            {/* Out is nested under Booked rather than listed
-                                                beside it: a scanned-out unit is still held by its
-                                                booking, so it is a subset of Booked. As siblings
-                                                the rows read like they should sum to Total, which
-                                                they never did. */}
-                                            <div className="space-y-1">
-                                                <div className="flex items-center justify-between text-sm font-mono">
-                                                    <span className="text-amber-600">Booked</span>
-                                                    <span className="font-semibold text-amber-600">
-                                                        {availabilityStats.data.booked_quantity}
-                                                    </span>
-                                                </div>
-                                                <div className="ml-1 flex items-center justify-between border-l-2 border-amber-600/30 pl-3 text-xs font-mono">
-                                                    <span className="text-purple-600">
-                                                        of which Out
-                                                    </span>
-                                                    <span className="font-semibold text-purple-600">
-                                                        {availabilityStats.data.out_quantity}
-                                                    </span>
-                                                </div>
+                                            <div className="flex items-center justify-between text-sm font-mono">
+                                                <span className="text-amber-600">Booked</span>
+                                                <span className="font-semibold text-amber-600">
+                                                    {availabilityStats.data.booked_quantity}
+                                                </span>
                                             </div>
                                             <div className="flex items-center justify-between text-sm font-mono">
                                                 <span className="text-muted-foreground">
@@ -678,11 +663,33 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                                                     </span>
                                                 </div>
                                             )}
-                                            <p className="pt-1 text-[10px] font-mono leading-relaxed text-muted-foreground">
-                                                Out is counted inside Booked — a unit scanned out is
-                                                still held by its booking, so it is never deducted
-                                                from Available twice.
-                                            </p>
+                                            {/* A rule separates this from the rows above because it
+                                                answers a different question: those are the live
+                                                state of the stock, this is an all-time scan tally.
+                                                It is not a subset of Booked — presenting it as one
+                                                produced "Booked 0 / of which Out 144". */}
+                                            <div className="space-y-1 border-t border-border/40 pt-2">
+                                                <div className="flex items-center justify-between text-sm font-mono">
+                                                    <span className="text-purple-600">
+                                                        Scanned Out − Returned{" "}
+                                                        <span className="text-[10px] text-muted-foreground">
+                                                            (all time)
+                                                        </span>
+                                                    </span>
+                                                    <span className="font-semibold text-purple-600">
+                                                        {availabilityStats.data.out_quantity}
+                                                    </span>
+                                                </div>
+                                                <p className="text-[10px] font-mono leading-relaxed text-muted-foreground">
+                                                    Every outbound scan for this asset minus every
+                                                    inbound one, over its whole history — not part
+                                                    of Booked and not a count of units currently
+                                                    out. Units written off as consumed, lost, or
+                                                    left permanently on site stay counted here,
+                                                    because no return scan is ever recorded for
+                                                    them.
+                                                </p>
+                                            </div>
                                         </div>
                                     ) : availabilityStatsError ? (
                                         <div className="p-3 bg-muted/40 border border-border rounded-md">
