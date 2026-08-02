@@ -72,6 +72,11 @@ export interface PlacementReconcileResult {
     return_date_cleared: boolean;
     /** Order arm only — the collection window is cleared on the same rule as the return date. */
     pickup_window_cleared: boolean;
+    /**
+     * Order arm only — the window the CLIENT originally requested is a separate
+     * column from the confirmed one above, so it is reported separately.
+     */
+    requested_pickup_window_cleared: boolean;
     bookings_made_open_ended: number;
     /**
      * RL-037's custody exit, present only when the goods were already dispatched.

@@ -636,17 +636,26 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                                                     {availabilityStats.data.available_quantity}
                                                 </span>
                                             </div>
-                                            <div className="flex items-center justify-between text-sm font-mono">
-                                                <span className="text-amber-600">Booked</span>
-                                                <span className="font-semibold text-amber-600">
-                                                    {availabilityStats.data.booked_quantity}
-                                                </span>
-                                            </div>
-                                            <div className="flex items-center justify-between text-sm font-mono">
-                                                <span className="text-purple-600">Out</span>
-                                                <span className="font-semibold text-purple-600">
-                                                    {availabilityStats.data.out_quantity}
-                                                </span>
+                                            {/* Out is nested under Booked rather than listed
+                                                beside it: a scanned-out unit is still held by its
+                                                booking, so it is a subset of Booked. As siblings
+                                                the rows read like they should sum to Total, which
+                                                they never did. */}
+                                            <div className="space-y-1">
+                                                <div className="flex items-center justify-between text-sm font-mono">
+                                                    <span className="text-amber-600">Booked</span>
+                                                    <span className="font-semibold text-amber-600">
+                                                        {availabilityStats.data.booked_quantity}
+                                                    </span>
+                                                </div>
+                                                <div className="ml-1 flex items-center justify-between border-l-2 border-amber-600/30 pl-3 text-xs font-mono">
+                                                    <span className="text-purple-600">
+                                                        of which Out
+                                                    </span>
+                                                    <span className="font-semibold text-purple-600">
+                                                        {availabilityStats.data.out_quantity}
+                                                    </span>
+                                                </div>
                                             </div>
                                             <div className="flex items-center justify-between text-sm font-mono">
                                                 <span className="text-muted-foreground">
@@ -669,6 +678,11 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                                                     </span>
                                                 </div>
                                             )}
+                                            <p className="pt-1 text-[10px] font-mono leading-relaxed text-muted-foreground">
+                                                Out is counted inside Booked — a unit scanned out is
+                                                still held by its booking, so it is never deducted
+                                                from Available twice.
+                                            </p>
                                         </div>
                                     ) : availabilityStatsError ? (
                                         <div className="p-3 bg-muted/40 border border-border rounded-md">

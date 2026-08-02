@@ -417,6 +417,12 @@ export function PlacementReconcileCard({
                                                     placement is never collected.
                                                 </li>
                                             )}
+                                            {result.requested_pickup_window_cleared && (
+                                                <li>
+                                                    The collection window the client originally
+                                                    requested was cleared — same reason.
+                                                </li>
+                                            )}
                                             {custody && custody.total_units_written_off > 0 && (
                                                 <li>
                                                     {custody.total_units_written_off} pooled unit

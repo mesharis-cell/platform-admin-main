@@ -599,7 +599,17 @@ export function EditOrderDetailsCard({
         draft.descriptive.permit.requires_permit &&
         draft.descriptive.permit.permit_owner === "UNKNOWN";
 
+    // RL-025 — a permanent placement has no return date, so the END input is
+    // cleared + disabled (the API's contradiction guard rejects one anyway).
+    // Read off the SAVED order, not the descriptive draft: only one section is
+    // open at a time, so the flag can't be mid-edit while these inputs are live.
+    const isPermanentPlacement = order?.is_permanent_placement === true;
+
+    // Gated the same way as the editor's own hint — a placement can carry a
+    // residual end date the input no longer shows, and blocking save on an
+    // invisible field would be an unexplainable dead Save button.
     const endBeforeStart =
+        !isPermanentPlacement &&
         !!draft.eventDates.event_start_date &&
         !!draft.eventDates.event_end_date &&
         draft.eventDates.event_end_date < draft.eventDates.event_start_date;
@@ -885,6 +895,7 @@ export function EditOrderDetailsCard({
                             }
                             disabled={saving}
                             minDate={minDate}
+                            permanentPlacement={isPermanentPlacement}
                             helper={
                                 <OrderEditFeasibilityHelper
                                     isLoading={feasibilityLoading}

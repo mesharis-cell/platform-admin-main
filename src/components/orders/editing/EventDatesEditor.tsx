@@ -20,6 +20,7 @@ import type { ReactNode } from "react";
 import { Calendar } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { NO_RETURN_SCHEDULED } from "@/lib/date-display";
 
 export interface EventDatesDraft {
     event_start_date: string; // "YYYY-MM-DD" or ""
@@ -32,6 +33,7 @@ export function EventDatesEditor({
     disabled,
     minDate,
     helper,
+    permanentPlacement = false,
 }: {
     value: EventDatesDraft;
     onChange: (patch: Partial<EventDatesDraft>) => void;
@@ -40,10 +42,19 @@ export function EventDatesEditor({
     minDate?: string;
     /** Advisory feasibility helper node, rendered below the inputs. */
     helper?: ReactNode;
+    /**
+     * RL-025: a permanent placement has no return date. The END input is
+     * cleared, disabled and annotated — the API's contradiction guard rejects
+     * an end date on a permanent order, so an editable field could only ever
+     * hand the admin a 400. The START stays editable: a placement still starts.
+     */
+    permanentPlacement?: boolean;
 }) {
     // Client-side guard only: end must not precede start. The server is
     // authoritative and 409s on availability — this is purely a friendly hint.
+    // Moot on a placement, where the end is cleared and can't be picked.
     const endBeforeStart =
+        !permanentPlacement &&
         !!value.event_start_date &&
         !!value.event_end_date &&
         value.event_end_date < value.event_start_date;
@@ -81,12 +92,17 @@ export function EventDatesEditor({
                         <Input
                             type="date"
                             className="font-mono text-sm pl-10"
-                            value={value.event_end_date}
+                            value={permanentPlacement ? "" : value.event_end_date}
                             min={value.event_start_date || minDate || undefined}
-                            disabled={disabled}
+                            disabled={disabled || permanentPlacement}
                             onChange={(e) => onChange({ event_end_date: e.target.value })}
                         />
                     </div>
+                    {permanentPlacement && (
+                        <p className="font-mono text-[10px] text-muted-foreground">
+                            {NO_RETURN_SCHEDULED}
+                        </p>
+                    )}
                 </div>
             </div>
 

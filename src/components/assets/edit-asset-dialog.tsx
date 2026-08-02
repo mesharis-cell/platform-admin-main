@@ -7,7 +7,10 @@ import { useWarehouses } from "@/hooks/use-warehouses";
 import { useZones } from "@/hooks/use-zones";
 import { useBrands } from "@/hooks/use-brands";
 import { useAddAssetUnits, useUpdateAsset, useUploadImage } from "@/hooks/use-assets";
-import { X, Loader2, Save, Check } from "lucide-react";
+import { useToken } from "@/lib/auth/use-token";
+import { hasPermission } from "@/lib/auth/permissions";
+import { ADMIN_ACTION_PERMISSIONS } from "@/lib/auth/permission-map";
+import { X, Loader2, Save, Check, AlertTriangle } from "lucide-react";
 import { PhotoCaptureStrip, PhotoEntry } from "@/components/shared/photo-capture-strip";
 import { Button } from "@/components/ui/button";
 import {
@@ -40,7 +43,48 @@ const DEFAULT_CATEGORIES = ["Furniture", "Glassware", "Installation", "Decor"];
 // trade-off is stated in the spec: a mis-stamped unit is correctable in the UI
 // in seconds, and in exchange a hand edit can put a unit back into circulation
 // while the platform's own record says it left custody.
-const ASSET_STATUSES = ["AVAILABLE", "BOOKED", "OUT", "MAINTENANCE", "PLACED"];
+//
+// B13 — that correction had no control in ops at all, so the trade-off was only
+// ever paid, never collected. The targets below are deliberately NARROWER than
+// asset_status: only the states a human authors are offered.
+//   - BOOKED / OUT are DERIVED, not authored. resyncAssetStatuses re-derives any
+//     row sitting in BOOKED/OUT/AVAILABLE from the live booking rows on every
+//     release, cancel, settlement and reconcile, and OUT is otherwise written
+//     only by an outbound scan. Offering them lets an operator assert a booking
+//     the ledger does not have, and the next release silently undoes it.
+//   - TRANSFORMED is a terminal hard-block with no writer left anywhere in the
+//     API and no flow that leads back out of it. It is not a correction.
+// A row already sitting in an excluded state still renders it, disabled, so the
+// control is never blank — you can move off such a status, just not onto it.
+const ASSET_STATUS_TARGETS = ["AVAILABLE", "MAINTENANCE", "PLACED"] as const;
+
+const ASSET_STATUS_LABELS: Record<string, string> = {
+    AVAILABLE: "Available",
+    BOOKED: "Booked",
+    OUT: "Out",
+    MAINTENANCE: "In maintenance",
+    TRANSFORMED: "Transformed",
+    PLACED: "Placed with client",
+};
+
+// Shown next to a status that cannot be chosen, so the operator reads WHY it is
+// greyed rather than assuming the control is broken.
+const ASSET_STATUS_LOCKED_REASON: Record<string, string> = {
+    BOOKED: "set by bookings",
+    OUT: "set by scanning",
+    TRANSFORMED: "terminal",
+};
+
+// What the operator is actually buying by picking each target. Every line is
+// about the RECORD — none of these move stock, and saying so per-target is what
+// stops the control reading like a write-off or a booking release.
+const ASSET_STATUS_CONSEQUENCE: Record<string, string> = {
+    AVAILABLE:
+        "Puts this unit back in circulation and bookable from now on. No stock is returned and no booking is released. If it still has live bookings the system re-derives its status as Booked the next time those bookings change, and this edit is lost.",
+    MAINTENANCE:
+        "Holds this unit out of circulation. On pooled stock it labels the row only — a pooled row is a quantity, not a unit, so the pool goes on fulfilling as before.",
+    PLACED: "Marks this unit as permanently at a client site and unbookable, and keeps it that way through booking releases. It does not write anything off, does not close an order, and does not record why the unit left — do that on the order or the stock ledger.",
+};
 
 export type EditAssetTab = "basic" | "photos" | "specs";
 
@@ -150,6 +194,23 @@ export function EditAssetDialog({
     const updateMutation = useUpdateAsset();
     const addUnitsMutation = useAddAssetUnits();
     const imageUploadMutation = useUploadImage();
+
+    const { user } = useToken();
+    // The status change rides on PATCH /operations/v1/asset/:id, which enforces
+    // requirePermission(ASSETS_UPDATE). Gating on the same key is the only way the
+    // control and the API agree — anything else either shows a control the API
+    // refuses or hides one it would have accepted.
+    const canEditStatus = hasPermission(user, ADMIN_ACTION_PERMISSIONS.assetsUpdate);
+
+    // PLACED says a physical unit is standing at a client site. A pooled row is a
+    // quantity and not a unit, so it is never a target for pooled stock even
+    // though the API's Zod would take it.
+    const statusTargets = ASSET_STATUS_TARGETS.filter(
+        (status) => status !== "PLACED" || asset.stock_mode === "SERIALIZED"
+    );
+    const statusOptions = statusTargets.includes(asset.status)
+        ? statusTargets
+        : [asset.status, ...statusTargets];
 
     function toggleHandlingTag(tag: string) {
         setFormData((prev) => ({
@@ -270,7 +331,13 @@ export function EditAssetDialog({
                         : {}),
                     handling_tags: formData.handling_tags,
                     packaging: formData.packaging || null,
-                    status: formData.status,
+                    // Only sent when an operator actually moved it. The dialog
+                    // otherwise round-trips whatever the row already had, which
+                    // turns every unrelated edit — a photo, a dimension — into a
+                    // status write that can race a scan or a booking release.
+                    ...(canEditStatus && formData.status !== asset.status
+                        ? { status: formData.status }
+                        : {}),
                 } as any,
             });
 
@@ -513,6 +580,61 @@ export function EditAssetDialog({
                                     </div>
                                 )}
                             </div>
+
+                            {canEditStatus && (
+                                <div className="space-y-3 rounded-lg border border-border p-4">
+                                    <div className="space-y-2">
+                                        <Label className="font-mono text-xs">Status</Label>
+                                        <Select
+                                            value={formData.status}
+                                            onValueChange={(value) =>
+                                                setFormData({ ...formData, status: value as any })
+                                            }
+                                        >
+                                            <SelectTrigger className="font-mono">
+                                                <SelectValue placeholder="Select status" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {statusOptions.map((option) => {
+                                                    const lockedReason =
+                                                        ASSET_STATUS_LOCKED_REASON[option];
+                                                    return (
+                                                        <SelectItem
+                                                            key={option}
+                                                            value={option}
+                                                            disabled={Boolean(lockedReason)}
+                                                        >
+                                                            {ASSET_STATUS_LABELS[option] ?? option}
+                                                            {lockedReason
+                                                                ? ` — ${lockedReason}`
+                                                                : ""}
+                                                        </SelectItem>
+                                                    );
+                                                })}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
+                                    <div className="space-y-2 rounded-md border border-amber-500/30 bg-amber-500/5 p-3">
+                                        <Label className="flex items-center gap-1.5 font-mono text-xs text-amber-700">
+                                            <AlertTriangle className="h-3.5 w-3.5" />
+                                            CORRECTS THE RECORD ONLY
+                                        </Label>
+                                        <p className="text-sm text-muted-foreground">
+                                            Setting a status by hand relabels this unit and nothing
+                                            else. It creates no booking and releases none, moves no
+                                            stock, and writes nothing to the stock ledger. Use it
+                                            when the system recorded the wrong status — not to take
+                                            a unit off an order or to write it off.
+                                        </p>
+                                        {formData.status !== asset.status && (
+                                            <p className="text-sm text-amber-800">
+                                                {ASSET_STATUS_CONSEQUENCE[formData.status]}
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
