@@ -312,11 +312,18 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
     if (order) {
         if (!jobNumber && order?.data?.job_number) setJobNumber(order?.data?.job_number);
         if (!timeWindows.deliveryWindowStart && order?.data?.delivery_window?.start) {
+            // A permanent placement is never collected: it has no pickup window
+            // and the API rejects one outright. Prefilling from an absent window
+            // also produced `new Date(undefined)` — an Invalid Date sitting in a
+            // picker — on every order that had only a delivery window saved.
+            const pickup = order?.data?.is_permanent_placement
+                ? null
+                : (order?.data?.pickup_window ?? null);
             setTimeWindows({
                 deliveryWindowStart: new Date(order?.data?.delivery_window?.start),
                 deliveryWindowEnd: new Date(order?.data?.delivery_window?.end),
-                pickupWindowStart: new Date(order?.data?.pickup_window?.start),
-                pickupWindowEnd: new Date(order?.data?.pickup_window?.end),
+                pickupWindowStart: pickup?.start ? new Date(pickup.start) : undefined,
+                pickupWindowEnd: pickup?.end ? new Date(pickup.end) : undefined,
             });
         }
     }
@@ -448,13 +455,17 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
     const handleTimeWindowsSave = async () => {
         if (!order?.data) return;
 
-        // Validate all windows are set
-        if (
-            !timeWindows.deliveryWindowStart ||
-            !timeWindows.deliveryWindowEnd ||
-            !timeWindows.pickupWindowStart ||
-            !timeWindows.pickupWindowEnd
-        ) {
+        // A permanent placement is never collected, so it has no pickup window
+        // to set and the API refuses one. Requiring — and sending — the pair
+        // regardless is how a placement acquired a fabricated collection date
+        // that then reached the client by email.
+        const isPermanent = order.data.is_permanent_placement === true;
+
+        if (!timeWindows.deliveryWindowStart || !timeWindows.deliveryWindowEnd) {
+            toast.error("Please set the delivery window");
+            return;
+        }
+        if (!isPermanent && (!timeWindows.pickupWindowStart || !timeWindows.pickupWindowEnd)) {
             toast.error("Please set all delivery and pickup windows");
             return;
         }
@@ -464,8 +475,12 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
             await apiClient.patch(`/client/v1/order/${order.data.id}/time-windows`, {
                 delivery_window_start: timeWindows.deliveryWindowStart.toISOString(),
                 delivery_window_end: timeWindows.deliveryWindowEnd.toISOString(),
-                pickup_window_start: timeWindows.pickupWindowStart.toISOString(),
-                pickup_window_end: timeWindows.pickupWindowEnd.toISOString(),
+                ...(isPermanent
+                    ? {}
+                    : {
+                          pickup_window_start: timeWindows.pickupWindowStart!.toISOString(),
+                          pickup_window_end: timeWindows.pickupWindowEnd!.toISOString(),
+                      }),
             });
 
             toast.success("Delivery schedule updated");
@@ -603,6 +618,11 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
     // disable every day and leave the operator unable to pick anything at all.
     // `hasNoPickupAnchor` drives the helper text that says why.
     const hasNoPickupAnchor = !eventEndDate;
+    // A permanent placement is never collected. The flag stays authoritative
+    // over any residual `pickup_window` a pre-fix save left on the row, so no
+    // surface on this page can present a collection date for goods that are not
+    // coming back — and no picker can produce one, because the API refuses it.
+    const isPermanentPlacement = order?.data?.is_permanent_placement === true;
     const pickupDisabledDays = eventEndDate
         ? (date: Date) =>
               isBefore(date, startOfDay(addDays(eventEndDate, 1))) ||
@@ -1329,66 +1349,89 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                                         </div>
                                                     </div>
 
-                                                    <Separator />
+                                                    {/* No pickup section at all on a permanent
+                                                        placement: it is never collected, and the
+                                                        API rejects a pickup window on one. */}
+                                                    {isPermanentPlacement ? (
+                                                        <>
+                                                            <Separator />
+                                                            <p className="font-mono text-[11px] text-muted-foreground">
+                                                                {NO_RETURN_SCHEDULED} — this is a
+                                                                permanent placement, so only a
+                                                                delivery window is set.
+                                                            </p>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Separator />
 
-                                                    <div className="space-y-3">
-                                                        <Label className="font-mono text-sm font-bold">
-                                                            PICKUP WINDOW
-                                                        </Label>
-                                                        {/* RL-025 Date-input row — helper text
+                                                            <div className="space-y-3">
+                                                                <Label className="font-mono text-sm font-bold">
+                                                                    PICKUP WINDOW
+                                                                </Label>
+                                                                {/* RL-025 Date-input row — helper text
                                                             whenever there is no end date to derive
                                                             a selectable band from. */}
-                                                        {hasNoPickupAnchor && (
-                                                            <p className="font-mono text-[11px] text-muted-foreground">
-                                                                {NO_RETURN_SCHEDULED} — this order
-                                                                has no event end date, so no pickup
-                                                                band is suggested. Any day may be
-                                                                selected.
-                                                            </p>
-                                                        )}
-                                                        <div className="grid grid-cols-2 gap-4">
-                                                            <div className="space-y-2">
-                                                                <Label className="font-mono text-xs text-muted-foreground">
-                                                                    START
-                                                                </Label>
-                                                                <DateTimePicker
-                                                                    value={
-                                                                        timeWindows.pickupWindowStart
-                                                                    }
-                                                                    onChange={(date) =>
-                                                                        setTimeWindows((prev) => ({
-                                                                            ...prev,
-                                                                            pickupWindowStart: date,
-                                                                        }))
-                                                                    }
-                                                                    placeholder="Select pickup start"
-                                                                    disabledDays={
-                                                                        pickupDisabledDays
-                                                                    }
-                                                                />
+                                                                {hasNoPickupAnchor && (
+                                                                    <p className="font-mono text-[11px] text-muted-foreground">
+                                                                        {NO_RETURN_SCHEDULED} — this
+                                                                        order has no event end date,
+                                                                        so no pickup band is
+                                                                        suggested. Any day may be
+                                                                        selected.
+                                                                    </p>
+                                                                )}
+                                                                <div className="grid grid-cols-2 gap-4">
+                                                                    <div className="space-y-2">
+                                                                        <Label className="font-mono text-xs text-muted-foreground">
+                                                                            START
+                                                                        </Label>
+                                                                        <DateTimePicker
+                                                                            value={
+                                                                                timeWindows.pickupWindowStart
+                                                                            }
+                                                                            onChange={(date) =>
+                                                                                setTimeWindows(
+                                                                                    (prev) => ({
+                                                                                        ...prev,
+                                                                                        pickupWindowStart:
+                                                                                            date,
+                                                                                    })
+                                                                                )
+                                                                            }
+                                                                            placeholder="Select pickup start"
+                                                                            disabledDays={
+                                                                                pickupDisabledDays
+                                                                            }
+                                                                        />
+                                                                    </div>
+                                                                    <div className="space-y-2">
+                                                                        <Label className="font-mono text-xs text-muted-foreground">
+                                                                            END
+                                                                        </Label>
+                                                                        <DateTimePicker
+                                                                            value={
+                                                                                timeWindows.pickupWindowEnd
+                                                                            }
+                                                                            onChange={(date) =>
+                                                                                setTimeWindows(
+                                                                                    (prev) => ({
+                                                                                        ...prev,
+                                                                                        pickupWindowEnd:
+                                                                                            date,
+                                                                                    })
+                                                                                )
+                                                                            }
+                                                                            placeholder="Select pickup end"
+                                                                            disabledDays={
+                                                                                pickupDisabledDays
+                                                                            }
+                                                                        />
+                                                                    </div>
+                                                                </div>
                                                             </div>
-                                                            <div className="space-y-2">
-                                                                <Label className="font-mono text-xs text-muted-foreground">
-                                                                    END
-                                                                </Label>
-                                                                <DateTimePicker
-                                                                    value={
-                                                                        timeWindows.pickupWindowEnd
-                                                                    }
-                                                                    onChange={(date) =>
-                                                                        setTimeWindows((prev) => ({
-                                                                            ...prev,
-                                                                            pickupWindowEnd: date,
-                                                                        }))
-                                                                    }
-                                                                    placeholder="Select pickup end"
-                                                                    disabledDays={
-                                                                        pickupDisabledDays
-                                                                    }
-                                                                />
-                                                            </div>
-                                                        </div>
-                                                    </div>
+                                                        </>
+                                                    )}
                                                 </div>
 
                                                 <DialogFooter>
@@ -1441,28 +1484,41 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                                     })}
                                                 </p>
                                             </div>
+                                            {/* The pickup box used to render
+                                                unconditionally beside the delivery one. On a
+                                                placement (pickup_window null) that produced
+                                                "Invalid Date → Invalid Date"; the honest
+                                                answer is that no collection is scheduled. */}
                                             <div className="p-3 bg-orange-500/5 border border-orange-500/20 rounded">
                                                 <Label className="font-mono text-[10px] text-muted-foreground">
                                                     PICKUP
                                                 </Label>
                                                 <p className="font-mono text-xs mt-1">
-                                                    {new Date(
-                                                        order?.data?.pickup_window?.start
-                                                    ).toLocaleString("en-US", {
-                                                        month: "short",
-                                                        day: "numeric",
-                                                        hour: "2-digit",
-                                                        minute: "2-digit",
-                                                    })}
-                                                    {" → "}
-                                                    {new Date(
-                                                        order?.data?.pickup_window?.end
-                                                    ).toLocaleString("en-US", {
-                                                        month: "short",
-                                                        day: "numeric",
-                                                        hour: "2-digit",
-                                                        minute: "2-digit",
-                                                    })}
+                                                    {isPermanentPlacement ||
+                                                    !order?.data?.pickup_window?.start ||
+                                                    !order?.data?.pickup_window?.end ? (
+                                                        NO_RETURN_SCHEDULED
+                                                    ) : (
+                                                        <>
+                                                            {new Date(
+                                                                order.data.pickup_window.start
+                                                            ).toLocaleString("en-US", {
+                                                                month: "short",
+                                                                day: "numeric",
+                                                                hour: "2-digit",
+                                                                minute: "2-digit",
+                                                            })}
+                                                            {" → "}
+                                                            {new Date(
+                                                                order.data.pickup_window.end
+                                                            ).toLocaleString("en-US", {
+                                                                month: "short",
+                                                                day: "numeric",
+                                                                hour: "2-digit",
+                                                                minute: "2-digit",
+                                                            })}
+                                                        </>
+                                                    )}
                                                 </p>
                                             </div>
                                         </>
@@ -1664,11 +1720,14 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                             </Card>
                         )}
 
-                        {/* Fulfillment Windows (delivery in, pickup out) */}
+                        {/* Fulfillment Windows (delivery in, pickup out).
+                            A permanent placement contributes no pickup half — the
+                            flag suppresses it whatever the row still stores. */}
                         {(order?.data?.requested_delivery_window ||
                             order?.data?.delivery_window ||
-                            order?.data?.requested_pickup_window ||
-                            order?.data?.pickup_window) && (
+                            (!isPermanentPlacement &&
+                                (order?.data?.requested_pickup_window ||
+                                    order?.data?.pickup_window))) && (
                             <Card>
                                 <CardHeader>
                                     <CardTitle className="font-mono text-sm flex items-center gap-2">
@@ -1727,53 +1786,69 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                                         </div>
                                     )}
 
-                                    {/* Pickup */}
-                                    {(order?.data?.requested_pickup_window ||
-                                        order?.data?.pickup_window) && (
+                                    {/* Pickup — replaced by the plain fact on a
+                                        permanent placement, which is never collected. */}
+                                    {isPermanentPlacement && (
                                         <div className="space-y-2 pt-2 border-t border-border/40">
                                             <p className="text-[10px] font-mono uppercase tracking-[0.15em] text-muted-foreground">
                                                 Pickup
                                             </p>
-                                            {order?.data?.requested_pickup_window && (
-                                                <div>
-                                                    <p className="text-xs text-muted-foreground">
-                                                        Client Requested
-                                                    </p>
-                                                    <p className="font-mono text-sm">
-                                                        {new Date(
-                                                            (
-                                                                order.data
-                                                                    .requested_pickup_window as any
-                                                            ).start
-                                                        ).toLocaleString()}{" "}
-                                                        –{" "}
-                                                        {new Date(
-                                                            (
-                                                                order.data
-                                                                    .requested_pickup_window as any
-                                                            ).end
-                                                        ).toLocaleString()}
-                                                    </p>
-                                                </div>
-                                            )}
-                                            {order?.data?.pickup_window && (
-                                                <div>
-                                                    <p className="text-xs text-muted-foreground">
-                                                        Confirmed by Logistics
-                                                    </p>
-                                                    <p className="font-mono text-sm font-bold">
-                                                        {new Date(
-                                                            (order.data.pickup_window as any).start
-                                                        ).toLocaleString()}{" "}
-                                                        –{" "}
-                                                        {new Date(
-                                                            (order.data.pickup_window as any).end
-                                                        ).toLocaleString()}
-                                                    </p>
-                                                </div>
-                                            )}
+                                            <p className="font-mono text-sm">
+                                                {NO_RETURN_SCHEDULED}
+                                            </p>
                                         </div>
                                     )}
+                                    {!isPermanentPlacement &&
+                                        (order?.data?.requested_pickup_window ||
+                                            order?.data?.pickup_window) && (
+                                            <div className="space-y-2 pt-2 border-t border-border/40">
+                                                <p className="text-[10px] font-mono uppercase tracking-[0.15em] text-muted-foreground">
+                                                    Pickup
+                                                </p>
+                                                {order?.data?.requested_pickup_window && (
+                                                    <div>
+                                                        <p className="text-xs text-muted-foreground">
+                                                            Client Requested
+                                                        </p>
+                                                        <p className="font-mono text-sm">
+                                                            {new Date(
+                                                                (
+                                                                    order.data
+                                                                        .requested_pickup_window as any
+                                                                ).start
+                                                            ).toLocaleString()}{" "}
+                                                            –{" "}
+                                                            {new Date(
+                                                                (
+                                                                    order.data
+                                                                        .requested_pickup_window as any
+                                                                ).end
+                                                            ).toLocaleString()}
+                                                        </p>
+                                                    </div>
+                                                )}
+                                                {order?.data?.pickup_window && (
+                                                    <div>
+                                                        <p className="text-xs text-muted-foreground">
+                                                            Confirmed by Logistics
+                                                        </p>
+                                                        <p className="font-mono text-sm font-bold">
+                                                            {new Date(
+                                                                (
+                                                                    order.data.pickup_window as any
+                                                                ).start
+                                                            ).toLocaleString()}{" "}
+                                                            –{" "}
+                                                            {new Date(
+                                                                (
+                                                                    order.data.pickup_window as any
+                                                                ).end
+                                                            ).toLocaleString()}
+                                                        </p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
                                 </CardContent>
                             </Card>
                         )}

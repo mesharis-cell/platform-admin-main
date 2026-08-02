@@ -85,6 +85,9 @@ type Reason = SettlementEntry["write_off_reason"];
  */
 const REASONS_REQUIRING_NOTE: Reason[] = ["CONSUMED", "LOST", "OTHER"];
 
+/** Matches the API's `settlementEntrySchema`, so an accepted note is never 400'd. */
+const MIN_NOTE_LENGTH = 5;
+
 function isSerialized(line: UnsettledLine): boolean {
     return line.stock_mode === "SERIALIZED";
 }
@@ -174,7 +177,11 @@ export function PooledSettlementModal({
         for (let i = 0; i < count; i++) {
             const state = rows[rowKey(line, i)];
             const reason = state?.write_off_reason || "CONSUMED";
-            if (REASONS_REQUIRING_NOTE.includes(reason) && !state?.note?.trim()) return true;
+            if (
+                REASONS_REQUIRING_NOTE.includes(reason) &&
+                (state?.note ?? "").trim().length < MIN_NOTE_LENGTH
+            )
+                return true;
         }
         return false;
     });
@@ -239,7 +246,12 @@ export function PooledSettlementModal({
                 </div>
 
                 <div className="space-y-2">
-                    <Label>Note{noteRequired ? " (required)" : " (optional)"}</Label>
+                    <Label>
+                        Note
+                        {noteRequired
+                            ? ` (required — at least ${MIN_NOTE_LENGTH} characters)`
+                            : " (optional)"}
+                    </Label>
                     <Textarea
                         placeholder="Add details about the shortfall..."
                         value={state?.note || ""}
