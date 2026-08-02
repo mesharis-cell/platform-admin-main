@@ -70,6 +70,8 @@ export interface PlacementReconcileResult {
     /** true when the same call also moved the entity to PLACED. */
     placed: boolean;
     return_date_cleared: boolean;
+    /** Order arm only — the collection window is cleared on the same rule as the return date. */
+    pickup_window_cleared: boolean;
     bookings_made_open_ended: number;
     /**
      * RL-037's custody exit, present only when the goods were already dispatched.
