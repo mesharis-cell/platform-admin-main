@@ -13,8 +13,8 @@
  *   IN_REVIEW  + PENDING_QUOTE  → with admin    (review, edit lines, then issue)
  *   IN_REVIEW  + QUOTED         → with the client
  *
- * Admin's two exits from IN_REVIEW are ISSUING the quote — which happens on the
- * QUOTE & BILLING card at the foot of this page, directly under the pricing
+ * Admin's two exits from IN_REVIEW are ISSUING the quote — which happens in the
+ * commercial-status control at the foot of this page, directly under the pricing
  * ledger it acts on — and RETURNING it to logistics for rework, which is the
  * control below because it carries a required internal note that no generic
  * route enforces.
@@ -319,8 +319,9 @@ export function UpliftReviewPanel({ request, onChanged }: UpliftReviewPanelProps
                     <Separator />
 
                     {/* The exceptional paths only. Issuing the quote — the happy path —
-                        lives on QUOTE & BILLING at the foot of the page, under the
-                        ledger it acts on. Each control states why it is greyed. */}
+                        lives in the commercial-status control at the foot of the page,
+                        under the ledger it acts on. Each control states why it is
+                        greyed. */}
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                         <div className="flex flex-wrap gap-4">
                             <div className="space-y-1">
@@ -378,7 +379,7 @@ export function UpliftReviewPanel({ request, onChanged }: UpliftReviewPanelProps
 
             {/* RL-036 — the rework note is required, 5–500 characters, and internal. */}
             <Dialog open={reworkOpen} onOpenChange={setReworkOpen}>
-                <DialogContent>
+                <DialogContent className="sm:max-w-md">
                     <DialogHeader>
                         <DialogTitle className="font-mono">RETURN TO LOGISTICS</DialogTitle>
                         <DialogDescription>
@@ -416,7 +417,7 @@ export function UpliftReviewPanel({ request, onChanged }: UpliftReviewPanelProps
             </Dialog>
 
             <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>
-                <DialogContent>
+                <DialogContent className="sm:max-w-md">
                     <DialogHeader>
                         <DialogTitle className="font-mono">CANCEL UPLIFT</DialogTitle>
                         <DialogDescription>

@@ -5,6 +5,15 @@ import { PricingLedger } from "@/components/pricing";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -15,6 +24,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { usePlatform } from "@/contexts/platform-context";
 import {
@@ -29,15 +39,13 @@ import {
     AlertCircle,
     ArrowLeft,
     Ban,
+    Boxes,
     CheckCircle2,
     ClipboardList,
     Clock,
     Download,
-    History,
     Package,
     PlayCircle,
-    Receipt,
-    Settings2,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -45,15 +53,19 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { EntityAttachmentsCard } from "@/components/shared/entity-attachments-card";
 import { WorkflowRequestsCard } from "@/components/shared/workflow-requests-card";
+import {
+    CollapsibleHistoryColumn,
+    type HistoryRailEntry,
+} from "@/components/shared/collapsible-history-column";
 import { UpliftReviewPanel } from "@/components/service-requests/UpliftReviewPanel";
 import { formatNullableDate } from "@/lib/date-display";
+import { cn } from "@/lib/utils";
 import {
     commercialPresentation,
     detailBadgeClass,
     serviceRequestDesk,
     statusPresentation,
     typePresentation,
-    DESK_BADGE_CLASS,
     DESK_CARD_CLASS,
     DESK_ICON_CLASS,
     DESK_TITLE_CLASS,
@@ -142,6 +154,13 @@ export default function ServiceRequestDetailsPage() {
         useState<ServiceRequestCommercialStatus>("INTERNAL");
     const [commercialNote, setCommercialNote] = useState("");
     const [cancellationReason, setCancellationReason] = useState("");
+    // Pure UI state — which dialog is open, and whether the history rail is
+    // collapsed. Mirrors the order detail page (`statusDialogOpen`, page.tsx:279;
+    // `historyCollapsed`, page.tsx:251, default collapsed and never persisted).
+    const [statusDialogOpen, setStatusDialogOpen] = useState(false);
+    const [commercialDialogOpen, setCommercialDialogOpen] = useState(false);
+    const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+    const [historyCollapsed, setHistoryCollapsed] = useState(true);
 
     const request = data?.data;
 
@@ -188,6 +207,7 @@ export default function ServiceRequestDetailsPage() {
             setStatusNote("");
             setCompletionNotes("");
             toast.success("Operational status updated");
+            setStatusDialogOpen(false);
             refetch();
         } catch (error: any) {
             toast.error(error.message || "Failed to update status");
@@ -207,6 +227,7 @@ export default function ServiceRequestDetailsPage() {
             });
             setCommercialNote("");
             toast.success("Commercial status updated");
+            setCommercialDialogOpen(false);
             refetch();
         } catch (error: any) {
             toast.error(error.message || "Failed to update commercial status");
@@ -225,6 +246,7 @@ export default function ServiceRequestDetailsPage() {
             });
             setCancellationReason("");
             toast.success("Service request cancelled");
+            setCancelDialogOpen(false);
             refetch();
         } catch (error: any) {
             toast.error(error.message || "Failed to cancel request");
@@ -253,9 +275,27 @@ export default function ServiceRequestDetailsPage() {
         }
     };
 
-    if (isLoading)
-        return <div className="p-6 text-muted-foreground">Loading service request...</div>;
-    if (!request) return <div className="p-6 text-destructive">Service request not found.</div>;
+    if (isLoading) {
+        return (
+            <div className="p-8">
+                <Skeleton className="h-96 w-full" />
+            </div>
+        );
+    }
+
+    if (!request) {
+        return (
+            <div className="p-8 text-center">
+                <Package className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                <p className="font-mono text-sm">Service request not found</p>
+                <Link href="/service-requests">
+                    <Button variant="outline" className="mt-4">
+                        Back
+                    </Button>
+                </Link>
+            </div>
+        );
+    }
 
     const isUplift = request.request_type === "UPLIFT";
     const commercialStatusOptions = isUplift
@@ -278,73 +318,300 @@ export default function ServiceRequestDetailsPage() {
     const typeInfo = typePresentation(request.request_type);
     const itemCount = request.items?.length ?? 0;
 
+    // Compact-rail projection of the same status history the timeline renders —
+    // mirrors the order page's `historyRailEntries` (page.tsx:252-268).
+    const historyRailEntries: HistoryRailEntry[] = (request.status_history || []).map(
+        (entry, idx, arr) => ({
+            id: entry.id,
+            label: statusPresentation(entry.to_status).label,
+            badgeClassName: detailBadgeClass(statusPresentation(entry.to_status).tone),
+            timestamp: entry.changed_at,
+            user: entry.changed_by_user?.name || entry.changed_by || "System",
+            isActive: idx === arr.length - 1,
+        })
+    );
+
     return (
         <div className="min-h-screen bg-background">
-            {/* Sticky header — identity on the left, state on the right. */}
+            {/* Sticky Header */}
             <div className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
                 <div className="container mx-auto px-6 py-4">
+                    {/* The wrap geometry is the warehouse order header's
+                        (warehouse orders/[id]/page.tsx:784-803), not the admin order
+                        header's. An order header carries one status badge and at most
+                        three controls; this one carries a type badge, up to two
+                        qualifiers, both lifecycle axes and three controls — a longer
+                        run than any order header, and one that overflows the sidebar-
+                        inset container well before the viewport runs out. So: the row
+                        stacks below md, the identity block gets `min-w-0` so the title
+                        can shrink instead of shoving the cluster off-screen, and the
+                        cluster wraps. */}
                     <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                        <div className="flex min-w-0 items-center gap-3">
+                        <div className="flex items-center gap-4 min-w-0">
                             <Link href="/service-requests">
-                                <Button variant="ghost" size="sm" className="font-mono gap-2">
+                                <Button variant="ghost" size="sm" className="gap-2 font-mono">
                                     <ArrowLeft className="h-4 w-4" />
-                                    <span className="hidden sm:inline">SERVICE REQUESTS</span>
-                                    <span className="sm:hidden">BACK</span>
+                                    SERVICE REQUESTS
                                 </Button>
                             </Link>
-                            <Separator orientation="vertical" className="h-6" />
+                            <Separator orientation="vertical" className="h-6 hidden md:block" />
                             <div className="min-w-0">
-                                <div className="flex items-center gap-2">
-                                    <h1 className="truncate text-lg font-bold font-mono">
-                                        {request.service_request_id}
-                                    </h1>
-                                    <Badge
-                                        className={`${detailBadgeClass(typeInfo.tone)} shrink-0 border font-mono text-[10px]`}
-                                    >
-                                        {typeInfo.label}
-                                    </Badge>
-                                </div>
-                                <p className="truncate text-xs text-muted-foreground font-mono">
+                                <h1 className="text-lg font-bold font-mono">
+                                    {request.service_request_id}
+                                </h1>
+                                {/* The sub-line here is the request TITLE — free text of
+                                    arbitrary length — where an order header carries a
+                                    company name. It truncates. */}
+                                <p className="text-xs text-muted-foreground font-mono truncate">
                                     {request.title}
                                 </p>
                             </div>
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-2 md:justify-end">
+                        <div className="flex items-center gap-2 flex-wrap md:justify-end">
+                            {/* The badge run: type, then qualifiers, then the two
+                                lifecycle axes — the sequence the order page uses for
+                                this same entity on its LINKED SERVICE REQUESTS card
+                                (page.tsx:2010-2035). The axes take the header badge
+                                geometry the order page gives `order_status`
+                                (page.tsx:657-661) — bare, unlabelled, same classes. */}
+                            <Badge
+                                className={`${detailBadgeClass(typeInfo.tone)} border font-mono text-xs px-3 py-1`}
+                            >
+                                {typeInfo.label}
+                            </Badge>
                             {isRepairBeforeEvent && (
-                                <Badge className="border-orange-500/20 bg-orange-500/10 font-mono text-[10px] text-orange-700">
+                                <Badge className="border-orange-500/20 bg-orange-500/10 font-mono text-xs text-orange-700">
                                     Repair Before Event
                                 </Badge>
                             )}
                             {hasFulfillmentException && (
-                                <Badge className="border-blue-500/20 bg-blue-500/10 font-mono text-[10px] text-blue-700">
+                                <Badge className="border-blue-500/20 bg-blue-500/10 font-mono text-xs text-blue-700">
                                     Exception Approved
                                 </Badge>
                             )}
-                            {/* The resolved desk, alone. The two raw axes it
-                                resolves from used to sit here as an `Ops` / `Comm`
-                                pair, which put the same state on screen five times
-                                over — twice here, once on the desk banner below and
-                                once more on the `Currently` row of each action card.
-                                The `Currently` rows are the ones that earn their
-                                place: they sit against the control that changes the
-                                value. Both cards render unconditionally, so no axis
-                                becomes unreadable by dropping the pair. */}
+                            {/* Money axis first, work axis second — the pair order the
+                                warehouse order header uses for `financial_status` then
+                                `order_status` (warehouse orders/[id]/page.tsx:804-815),
+                                which is the platform's only dual-status header. The
+                                warehouse service-request header renders the same pair in
+                                the same order, so an admin who works in both apps reads
+                                one vocabulary. */}
                             <Badge
-                                className={`${DESK_BADGE_CLASS[desk.tone]} border px-3 py-1 font-mono text-xs`}
+                                className={`${detailBadgeClass(comPresentation.tone)} border font-mono text-xs px-3 py-1`}
                             >
-                                {desk.label}
+                                {comPresentation.label}
                             </Badge>
+                            <Badge
+                                className={`${detailBadgeClass(opsPresentation.tone)} border font-mono text-xs px-3 py-1`}
+                            >
+                                {opsPresentation.label}
+                            </Badge>
+
+                            {/* Cancel — the order page's `CancelOrderButton` slot
+                                (page.tsx:664 → hybrid-sections.tsx:107-149): a
+                                destructive header button whose reason capture lives in
+                                a dialog. RL-015 — the generic cancel route refuses an
+                                uplift and a repair-before-event task; that guard is
+                                unchanged, it just travels with the button. */}
+                            {!isRepairBeforeEvent && !isUplift && (
+                                <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+                                    <DialogTrigger asChild>
+                                        <Button variant="destructive">Cancel Request</Button>
+                                    </DialogTrigger>
+                                    <DialogContent className="sm:max-w-md">
+                                        <DialogHeader>
+                                            <DialogTitle className="font-mono">
+                                                CANCEL SERVICE REQUEST
+                                            </DialogTitle>
+                                            <DialogDescription className="font-mono text-xs">
+                                                {request.service_request_id} → CANCELLED
+                                            </DialogDescription>
+                                        </DialogHeader>
+
+                                        <div className="space-y-2">
+                                            <Label className="font-mono text-xs">REASON</Label>
+                                            <Textarea
+                                                value={cancellationReason}
+                                                onChange={(e) =>
+                                                    setCancellationReason(e.target.value)
+                                                }
+                                                placeholder="Why is this being cancelled?"
+                                                className="font-mono text-sm"
+                                                rows={4}
+                                            />
+                                            {/* Stated before the click, not after it. */}
+                                            <p className="font-mono text-[11px] text-muted-foreground">
+                                                Reason required, at least 10 characters. Cancelling
+                                                is final.
+                                            </p>
+                                        </div>
+
+                                        <DialogFooter>
+                                            <Button
+                                                variant="outline"
+                                                onClick={() => setCancelDialogOpen(false)}
+                                                disabled={cancelRequest.isPending}
+                                                className="font-mono text-xs"
+                                            >
+                                                BACK
+                                            </Button>
+                                            <Button
+                                                variant="destructive"
+                                                onClick={handleCancel}
+                                                disabled={cancelRequest.isPending}
+                                                className="font-mono text-xs"
+                                            >
+                                                {cancelRequest.isPending
+                                                    ? "CANCELLING..."
+                                                    : "CANCEL REQUEST"}
+                                            </Button>
+                                        </DialogFooter>
+                                    </DialogContent>
+                                </Dialog>
+                            )}
+
+                            {/* The document download — the order page's DOWNLOAD GOODS
+                                FORM slot (page.tsx:666-679), same classes, same glyph
+                                size, same pending label. */}
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                className="gap-2 font-mono text-xs"
+                                onClick={handleDownloadCostEstimate}
+                                disabled={downloadCostEstimate.isPending}
+                            >
+                                <Download className="h-3.5 w-3.5" />
+                                {downloadCostEstimate.isPending
+                                    ? "DOWNLOADING..."
+                                    : "COST ESTIMATE"}
+                            </Button>
+
+                            {/* Status advance — the order page's PROGRESS slot
+                                (page.tsx:681-849): a primary header button opening a
+                                `sm:max-w-md` dialog whose body is a single column of
+                                fields plus one conditional sub-field. */}
+                            <Dialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
+                                <DialogTrigger asChild>
+                                    <Button size="sm" className="gap-2 font-mono text-xs">
+                                        <PlayCircle className="h-3.5 w-3.5" />
+                                        PROGRESS
+                                    </Button>
+                                </DialogTrigger>
+                                <DialogContent className="sm:max-w-md">
+                                    <DialogHeader>
+                                        <DialogTitle className="font-mono">
+                                            UPDATE OPERATIONAL STATUS
+                                        </DialogTitle>
+                                        <DialogDescription className="font-mono text-xs">
+                                            Current: {opsPresentation.label} → Select next status
+                                        </DialogDescription>
+                                    </DialogHeader>
+
+                                    <div className="space-y-4 py-4">
+                                        <div className="space-y-2">
+                                            <Label className="font-mono text-xs">MOVE TO</Label>
+                                            <Select
+                                                value={statusValue}
+                                                onValueChange={(value) =>
+                                                    setStatusValue(value as ServiceRequestStatus)
+                                                }
+                                            >
+                                                <SelectTrigger>
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {statusOptions.map((status) => (
+                                                        <SelectItem key={status} value={status}>
+                                                            {statusPresentation(status).label}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label className="font-mono text-xs">
+                                                NOTE (Optional)
+                                            </Label>
+                                            <Input
+                                                value={statusNote}
+                                                onChange={(e) => setStatusNote(e.target.value)}
+                                                placeholder="Why is it moving?"
+                                                className="font-mono text-sm"
+                                            />
+                                        </div>
+
+                                        {statusValue === "COMPLETED" && (
+                                            <div className="space-y-2">
+                                                <Label className="font-mono text-xs">
+                                                    COMPLETION NOTES
+                                                    {isRepairBeforeEvent && (
+                                                        <span className="text-destructive"> *</span>
+                                                    )}
+                                                </Label>
+                                                <Textarea
+                                                    value={completionNotes}
+                                                    onChange={(e) =>
+                                                        setCompletionNotes(e.target.value)
+                                                    }
+                                                    placeholder="What was done?"
+                                                    className="font-mono text-sm"
+                                                    rows={3}
+                                                />
+                                                {/* Stated before the click, not after it. The
+                                                    rule itself is unchanged and still enforced
+                                                    on submit. */}
+                                                {isRepairBeforeEvent && (
+                                                    <p className="font-mono text-[11px] text-muted-foreground">
+                                                        Notes and at least one saved work photo are
+                                                        required. Saved photos: {workPhotoCount}.
+                                                    </p>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <DialogFooter>
+                                        <Button
+                                            variant="outline"
+                                            onClick={() => setStatusDialogOpen(false)}
+                                            disabled={updateStatus.isPending}
+                                            className="font-mono text-xs"
+                                        >
+                                            CANCEL
+                                        </Button>
+                                        <Button
+                                            onClick={handleStatusUpdate}
+                                            disabled={updateStatus.isPending}
+                                            className="font-mono text-xs"
+                                        >
+                                            {updateStatus.isPending
+                                                ? "UPDATING..."
+                                                : "UPDATE STATUS"}
+                                        </Button>
+                                    </DialogFooter>
+                                </DialogContent>
+                            </Dialog>
                         </div>
                     </div>
                 </div>
             </div>
 
             <div className="container mx-auto px-6 py-8">
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div className="lg:col-span-2 space-y-6">
+                <div
+                    className={cn(
+                        "grid grid-cols-1 gap-6",
+                        historyCollapsed ? "lg:grid-cols-[minmax(0,1fr)_128px]" : "lg:grid-cols-3"
+                    )}
+                >
+                    {/* Main Content */}
+                    <div className={cn("space-y-6", historyCollapsed ? "" : "lg:col-span-2")}>
                         {/* The one thing to do now. Resolves the dual status into a
-                            single "whose desk is this on" line plus the next step. */}
+                            single "whose desk is this on" line plus the next step —
+                            the order page's tinted p-4 alert-banner grammar
+                            (page.tsx:1025-1041), at the top of the column where the
+                            order page puts its own alert band. */}
                         <Card className={`p-4 ${DESK_CARD_CLASS[desk.tone]}`}>
                             <div className="flex items-start gap-3">
                                 <DeskIcon
@@ -414,9 +681,14 @@ export default function ServiceRequestDetailsPage() {
 
                         {/* RL-012/RL-013 — the uplift desk. Source-order link, the client's
                             requested timing, and the three coupled actions the generic
-                            service-request controls cannot express. */}
+                            service-request controls cannot express. Sits where the order
+                            page puts its tinted domain-blocker cards (page.tsx:864-1023):
+                            directly after the alert band. */}
                         {isUplift && <UpliftReviewPanel request={request} onChanged={refetch} />}
 
+                        {/* The entity's fact sheet — the order page's EVENT & VENUE slot
+                            (page.tsx:1547-1648): grid of Label/value cells, Separators
+                            between groups, one Badge-in-a-labelled-cell, free text last. */}
                         <Card>
                             <CardHeader>
                                 <CardTitle className="font-mono text-sm flex items-center gap-2">
@@ -523,14 +795,29 @@ export default function ServiceRequestDetailsPage() {
                             </CardContent>
                         </Card>
 
+                        <WorkflowRequestsCard
+                            entityType="SERVICE_REQUEST"
+                            entityId={request.id}
+                            title="Workflows"
+                        />
+
+                        <EntityAttachmentsCard
+                            entityType="SERVICE_REQUEST"
+                            entityId={request.id}
+                            title="Supporting Documents"
+                        />
+
+                        {/* Items — the order page's ITEMS slot (page.tsx:2051-2077):
+                            second-to-last block, `NOUN ({n})` heading, `<Boxes/>`,
+                            `CardContent space-y-2`. */}
                         <Card>
                             <CardHeader>
                                 <CardTitle className="font-mono text-sm flex items-center gap-2">
-                                    <Package className="h-4 w-4 text-primary" />
+                                    <Boxes className="h-4 w-4 text-primary" />
                                     SERVICE ITEMS ({itemCount})
                                 </CardTitle>
                             </CardHeader>
-                            <CardContent className="space-y-3">
+                            <CardContent className="space-y-2">
                                 {itemCount ? (
                                     request.items?.map((item) => (
                                         <div
@@ -581,257 +868,135 @@ export default function ServiceRequestDetailsPage() {
                             </CardContent>
                         </Card>
 
-                        {/* Operational lifecycle — the work. Kept apart from the
-                            commercial control below so the two are not read as one
-                            undifferentiated pile of dropdowns. */}
-                        <Card>
-                            <CardHeader>
-                                <CardTitle className="font-mono text-sm flex items-center gap-2">
-                                    <Settings2 className="h-4 w-4 text-primary" />
-                                    OPERATIONAL STATUS
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                <div className="flex items-center gap-2 font-mono text-xs text-muted-foreground">
-                                    Currently
-                                    <Badge
-                                        className={`${detailBadgeClass(opsPresentation.tone)} border font-mono text-[10px]`}
-                                    >
-                                        {opsPresentation.label}
-                                    </Badge>
-                                </div>
+                        {/* The money block — last in the main column, exactly where the
+                            order page puts it (page.tsx:2107-2127 → hybrid-sections.tsx:
+                            60-101): the ledger, then one right-aligned outline secondary
+                            beneath it, then the dialog that secondary opens. */}
+                        <div className="space-y-6">
+                            {/* The single editable money table: line items + role-preview
+                                lenses + footer totals + add / bulk-margin / no-cost
+                                actions. SR money editability keys off the COMMERCIAL
+                                status (dual-status model): the ledger self-gates editable
+                                pre-QUOTE_APPROVED and locks at QUOTE_APPROVED / INVOICED /
+                                PAID, mirroring the API's getLineItemEditability SR branch.
+                                No approve slot — SR commercial status is driven by the
+                                control directly beneath, so the number and the decision
+                                still read as one block. */}
+                            <PricingLedger
+                                purposeType="SERVICE_REQUEST"
+                                entityId={request.id}
+                                entityStatus={request.commercial_status}
+                                billingMode={request.billing_mode}
+                                pricingMode={
+                                    (request as { pricing_mode?: "STANDARD" | "NO_COST" })
+                                        .pricing_mode || "STANDARD"
+                                }
+                            />
 
-                                <div className="grid md:grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label className="font-mono text-xs text-muted-foreground">
-                                            MOVE TO
-                                        </Label>
-                                        <Select
-                                            value={statusValue}
-                                            onValueChange={(value) =>
-                                                setStatusValue(value as ServiceRequestStatus)
-                                            }
-                                        >
-                                            <SelectTrigger>
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {statusOptions.map((status) => (
-                                                    <SelectItem key={status} value={status}>
-                                                        {statusPresentation(status).label}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label className="font-mono text-xs text-muted-foreground">
-                                            NOTE (OPTIONAL)
-                                        </Label>
-                                        <Input
-                                            value={statusNote}
-                                            onChange={(e) => setStatusNote(e.target.value)}
-                                            placeholder="Why is it moving?"
-                                        />
-                                    </div>
-                                </div>
-
-                                {statusValue === "COMPLETED" && (
-                                    <div className="space-y-2">
-                                        <Label className="font-mono text-xs text-muted-foreground">
-                                            COMPLETION NOTES
-                                            {isRepairBeforeEvent && (
-                                                <span className="text-destructive"> *</span>
-                                            )}
-                                        </Label>
-                                        <Textarea
-                                            value={completionNotes}
-                                            onChange={(e) => setCompletionNotes(e.target.value)}
-                                            placeholder="What was done?"
-                                        />
-                                        {/* Stated before the click, not after it. The rule
-                                            itself is unchanged and still enforced on submit. */}
-                                        {isRepairBeforeEvent && (
-                                            <p className="font-mono text-[11px] text-muted-foreground">
-                                                Notes and at least one saved work photo are
-                                                required. Saved photos: {workPhotoCount}.
-                                            </p>
-                                        )}
-                                    </div>
-                                )}
-
+                            {/* Not a pricing action, so it sits beside the ledger, not
+                                inside it — the order page's Return-to-Logistics slot. */}
+                            <div className="flex justify-end">
                                 <Button
-                                    onClick={handleStatusUpdate}
-                                    disabled={updateStatus.isPending}
-                                    className="gap-2 font-mono text-xs"
+                                    variant="outline"
+                                    onClick={() => setCommercialDialogOpen(true)}
                                 >
-                                    {updateStatus.isPending ? "UPDATING..." : "UPDATE STATUS"}
+                                    Update Commercial Status
                                 </Button>
+                            </div>
 
-                                {/* RL-015 — the generic cancel route refuses an uplift: cancelling
-                                    one may have to move its source order back to PLACED and must
-                                    first prove nothing has been scanned back in, neither of which
-                                    this route knows about. The coupled control lives on the uplift
-                                    panel above. */}
-                                {!isRepairBeforeEvent && !isUplift && (
-                                    <>
-                                        <Separator />
+                            <Dialog
+                                open={commercialDialogOpen}
+                                onOpenChange={setCommercialDialogOpen}
+                            >
+                                <DialogContent className="sm:max-w-md">
+                                    <DialogHeader>
+                                        <DialogTitle className="font-mono">
+                                            UPDATE COMMERCIAL STATUS
+                                        </DialogTitle>
+                                        <DialogDescription className="font-mono text-xs">
+                                            Current: {comPresentation.label} → Select next status
+                                        </DialogDescription>
+                                    </DialogHeader>
 
-                                        <div className="rounded-md border border-destructive/30 bg-destructive/5 p-4 space-y-2">
-                                            <Label className="font-mono text-xs font-bold text-destructive">
-                                                CANCEL REQUEST
-                                            </Label>
-                                            <Textarea
-                                                value={cancellationReason}
-                                                onChange={(e) =>
-                                                    setCancellationReason(e.target.value)
+                                    <div className="space-y-4 py-4">
+                                        <div className="space-y-2">
+                                            <Label className="font-mono text-xs">MOVE TO</Label>
+                                            <Select
+                                                value={commercialStatusValue}
+                                                onValueChange={(value) =>
+                                                    setCommercialStatusValue(
+                                                        value as ServiceRequestCommercialStatus
+                                                    )
                                                 }
-                                                placeholder="Why is this being cancelled?"
-                                            />
-                                            <p className="font-mono text-[11px] text-muted-foreground">
-                                                Reason required, at least 10 characters. Cancelling
-                                                is final.
-                                            </p>
-                                            <Button
-                                                variant="destructive"
-                                                onClick={handleCancel}
-                                                disabled={cancelRequest.isPending}
-                                                className="gap-2 font-mono text-xs"
                                             >
-                                                {cancelRequest.isPending
-                                                    ? "CANCELLING..."
-                                                    : "CANCEL REQUEST"}
-                                            </Button>
+                                                <SelectTrigger>
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {commercialStatusOptions.map((status) => (
+                                                        <SelectItem key={status} value={status}>
+                                                            {commercialPresentation(status).label}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
                                         </div>
-                                    </>
-                                )}
-                            </CardContent>
-                        </Card>
 
-                        <WorkflowRequestsCard
-                            entityType="SERVICE_REQUEST"
-                            entityId={request.id}
-                            title="Workflows"
-                        />
+                                        <div className="space-y-2">
+                                            <Label className="font-mono text-xs">
+                                                NOTE (Optional)
+                                            </Label>
+                                            <Input
+                                                value={commercialNote}
+                                                onChange={(e) => setCommercialNote(e.target.value)}
+                                                placeholder="Internal note"
+                                                className="font-mono text-sm"
+                                            />
+                                        </div>
+                                    </div>
 
-                        <EntityAttachmentsCard
-                            entityType="SERVICE_REQUEST"
-                            entityId={request.id}
-                            title="Supporting Documents"
-                        />
-
-                        {/* The single editable money table: line items + role-preview
-                            lenses + footer totals + add / bulk-margin / no-cost
-                            actions. SR money editability keys off the COMMERCIAL
-                            status (dual-status model): the ledger self-gates editable
-                            pre-QUOTE_APPROVED and locks at QUOTE_APPROVED / INVOICED /
-                            PAID, mirroring the API's getLineItemEditability SR branch.
-                            The `◎ No cost` footer action captures the concession reason
-                            and posts the SR concession route (P1-8). No approve slot —
-                            SR commercial status is driven by the card below, which is
-                            deliberately adjacent so the number and the decision read
-                            as one block. */}
-                        <PricingLedger
-                            purposeType="SERVICE_REQUEST"
-                            entityId={request.id}
-                            entityStatus={request.commercial_status}
-                            billingMode={request.billing_mode}
-                            pricingMode={
-                                (request as { pricing_mode?: "STANDARD" | "NO_COST" })
-                                    .pricing_mode || "STANDARD"
-                            }
-                        />
-
-                        <Card>
-                            <CardHeader>
-                                <CardTitle className="font-mono text-sm flex items-center gap-2">
-                                    <Receipt className="h-4 w-4 text-primary" />
-                                    QUOTE &amp; BILLING
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                <div className="flex items-center gap-2 font-mono text-xs text-muted-foreground">
-                                    Currently
-                                    <Badge
-                                        className={`${detailBadgeClass(comPresentation.tone)} border font-mono text-[10px]`}
-                                    >
-                                        {comPresentation.label}
-                                    </Badge>
-                                </div>
-
-                                <div className="grid md:grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label className="font-mono text-xs text-muted-foreground">
-                                            MOVE TO
-                                        </Label>
-                                        <Select
-                                            value={commercialStatusValue}
-                                            onValueChange={(value) =>
-                                                setCommercialStatusValue(
-                                                    value as ServiceRequestCommercialStatus
-                                                )
-                                            }
+                                    <DialogFooter>
+                                        <Button
+                                            variant="outline"
+                                            onClick={() => setCommercialDialogOpen(false)}
+                                            disabled={updateCommercialStatus.isPending}
+                                            className="font-mono text-xs"
                                         >
-                                            <SelectTrigger>
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {commercialStatusOptions.map((status) => (
-                                                    <SelectItem key={status} value={status}>
-                                                        {commercialPresentation(status).label}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label className="font-mono text-xs text-muted-foreground">
-                                            NOTE (OPTIONAL)
-                                        </Label>
-                                        <Input
-                                            value={commercialNote}
-                                            onChange={(e) => setCommercialNote(e.target.value)}
-                                            placeholder="Internal note"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="flex flex-wrap items-center gap-2">
-                                    {/* Same mutation, same payload — the label just names
-                                        what the selected transition actually does. */}
-                                    <Button
-                                        onClick={handleCommercialUpdate}
-                                        disabled={updateCommercialStatus.isPending}
-                                        className="gap-2 font-mono text-xs"
-                                    >
-                                        {updateCommercialStatus.isPending
-                                            ? "UPDATING..."
-                                            : commercialStatusValue === "QUOTED"
-                                              ? "ISSUE QUOTE TO CLIENT"
-                                              : "UPDATE COMMERCIAL STATUS"}
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        onClick={handleDownloadCostEstimate}
-                                        disabled={downloadCostEstimate.isPending}
-                                        className="gap-2 font-mono text-xs"
-                                    >
-                                        <Download className="h-3.5 w-3.5" />
-                                        {downloadCostEstimate.isPending
-                                            ? "DOWNLOADING..."
-                                            : "COST ESTIMATE"}
-                                    </Button>
-                                </div>
-                            </CardContent>
-                        </Card>
+                                            CANCEL
+                                        </Button>
+                                        {/* Same mutation, same payload — the label just names
+                                            what the selected transition actually does. */}
+                                        <Button
+                                            onClick={handleCommercialUpdate}
+                                            disabled={updateCommercialStatus.isPending}
+                                            className="font-mono text-xs"
+                                        >
+                                            {updateCommercialStatus.isPending
+                                                ? "UPDATING..."
+                                                : commercialStatusValue === "QUOTED"
+                                                  ? "ISSUE QUOTE TO CLIENT"
+                                                  : "UPDATE COMMERCIAL STATUS"}
+                                        </Button>
+                                    </DialogFooter>
+                                </DialogContent>
+                            </Dialog>
+                        </div>
                     </div>
 
-                    <div className="lg:col-span-1">
-                        <Card className="lg:sticky lg:top-24">
+                    {/* Right: Status History Timeline — collapses to a compact rail on
+                        desktop so the main column widens. Below lg it stacks
+                        full-width as before. */}
+                    <CollapsibleHistoryColumn
+                        collapsed={historyCollapsed}
+                        onToggle={() => setHistoryCollapsed((prev) => !prev)}
+                        railEntries={historyRailEntries}
+                        railTitle="History"
+                    >
+                        <Card>
                             <CardHeader>
                                 <CardTitle className="font-mono text-sm flex items-center gap-2">
-                                    <History className="h-4 w-4 text-primary" />
-                                    STATUS HISTORY
+                                    <Clock className="h-4 w-4 text-primary" />
+                                    HISTORY
                                 </CardTitle>
                             </CardHeader>
                             <CardContent>
@@ -854,7 +1019,7 @@ export default function ServiceRequestDetailsPage() {
                                 />
                             </CardContent>
                         </Card>
-                    </div>
+                    </CollapsibleHistoryColumn>
                 </div>
             </div>
         </div>
