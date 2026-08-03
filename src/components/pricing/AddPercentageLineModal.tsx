@@ -18,9 +18,10 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { DescriptionSuggestInput } from "@/components/pricing/DescriptionSuggestInput";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useCreatePercentageLine } from "@/hooks/use-pricing-ledger";
@@ -306,58 +307,31 @@ export function AddPercentageLineModal({
                         </div>
                     </div>
 
-                    {/* Visibility — same labeled eye affordance as the ledger table. */}
+                    {/* Visibility — the same labelled Switch rows the custom-line modal
+                        uses (AddCustomLineItemModal.tsx:1127-1158): decorative eye, the
+                        audience named, the consequence of "off" said next to it, and the
+                        switch as the control. The eye is NOT the control here — an eye
+                        that is also a button reads as a preview, not a setting.
+
+                        Logistics first, then client: the line is priced on the buy side
+                        before it is shown to the client, so the audiences run in the
+                        order the money does. Same order as the ledger table's two
+                        visibility columns (PricingLedger.tsx:883-888). */}
                     <div className="flex items-center gap-3 rounded-md border border-border px-3 py-2">
-                        <Label className="text-sm">Visible to client</Label>
-                        <button
-                            type="button"
-                            onClick={() => setClientVisible((v) => !v)}
-                            className={cn(
-                                "ml-auto inline-flex",
-                                clientVisible ? "text-primary" : "text-muted-foreground/50"
-                            )}
-                            aria-label={
-                                clientVisible ? "Hide line from client" : "Show line to client"
-                            }
-                            title={
-                                clientVisible
-                                    ? "Visible to client — click to hide"
-                                    : "Hidden from client — click to show"
-                            }
-                        >
-                            {clientVisible ? (
-                                <Eye className="h-4 w-4" />
-                            ) : (
-                                <EyeOff className="h-4 w-4" />
-                            )}
-                        </button>
+                        <Eye className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        <Label className="text-sm">Visible to logistics</Label>
+                        <span className="ml-auto mr-2 text-[11px] text-muted-foreground">
+                            off = hidden from the warehouse view
+                        </span>
+                        <Switch checked={logisticsVisible} onCheckedChange={setLogisticsVisible} />
                     </div>
                     <div className="flex items-center gap-3 rounded-md border border-border px-3 py-2">
-                        <Label className="text-sm">Visible to logistics</Label>
-                        <button
-                            type="button"
-                            onClick={() => setLogisticsVisible((v) => !v)}
-                            className={cn(
-                                "ml-auto inline-flex",
-                                logisticsVisible ? "text-primary" : "text-muted-foreground/50"
-                            )}
-                            aria-label={
-                                logisticsVisible
-                                    ? "Hide line from logistics"
-                                    : "Show line to logistics"
-                            }
-                            title={
-                                logisticsVisible
-                                    ? "Visible to logistics — click to hide"
-                                    : "Hidden from logistics — click to show"
-                            }
-                        >
-                            {logisticsVisible ? (
-                                <Eye className="h-4 w-4" />
-                            ) : (
-                                <EyeOff className="h-4 w-4" />
-                            )}
-                        </button>
+                        <Eye className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        <Label className="text-sm">Visible to client</Label>
+                        <span className="ml-auto mr-2 text-[11px] text-muted-foreground">
+                            off = hidden from the client&rsquo;s estimate
+                        </span>
+                        <Switch checked={clientVisible} onCheckedChange={setClientVisible} />
                     </div>
 
                     <div>

@@ -663,33 +663,6 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                                                     </span>
                                                 </div>
                                             )}
-                                            {/* A rule separates this from the rows above because it
-                                                answers a different question: those are the live
-                                                state of the stock, this is an all-time scan tally.
-                                                It is not a subset of Booked — presenting it as one
-                                                produced "Booked 0 / of which Out 144". */}
-                                            <div className="space-y-1 border-t border-border/40 pt-2">
-                                                <div className="flex items-center justify-between text-sm font-mono">
-                                                    <span className="text-purple-600">
-                                                        Scanned Out − Returned{" "}
-                                                        <span className="text-[10px] text-muted-foreground">
-                                                            (all time)
-                                                        </span>
-                                                    </span>
-                                                    <span className="font-semibold text-purple-600">
-                                                        {availabilityStats.data.out_quantity}
-                                                    </span>
-                                                </div>
-                                                <p className="text-[10px] font-mono leading-relaxed text-muted-foreground">
-                                                    Every outbound scan for this asset minus every
-                                                    inbound one, over its whole history — not part
-                                                    of Booked and not a count of units currently
-                                                    out. Units written off as consumed, lost, or
-                                                    left permanently on site stay counted here,
-                                                    because no return scan is ever recorded for
-                                                    them.
-                                                </p>
-                                            </div>
                                         </div>
                                     ) : availabilityStatsError ? (
                                         <div className="p-3 bg-muted/40 border border-border rounded-md">
@@ -960,6 +933,32 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                                                                                 .condition
                                                                         }
                                                                     </span>
+                                                                </div>
+                                                            ) : record.settlement ? (
+                                                                <div>
+                                                                    <p className="text-xs font-mono font-bold text-amber-600">
+                                                                        NOT RETURNED
+                                                                    </p>
+                                                                    <p className="text-xs text-muted-foreground">
+                                                                        Written off
+                                                                        {record.settlement
+                                                                            .write_off_reason
+                                                                            ? ` (${record.settlement.write_off_reason.replace(/_/g, " ").toLowerCase()})`
+                                                                            : ""}{" "}
+                                                                        on{" "}
+                                                                        {new Date(
+                                                                            record.settlement.settled_at
+                                                                        ).toLocaleDateString()}
+                                                                    </p>
+                                                                    {record.settlement
+                                                                        .write_off_note && (
+                                                                        <p className="text-xs text-muted-foreground italic">
+                                                                            {
+                                                                                record.settlement
+                                                                                    .write_off_note
+                                                                            }
+                                                                        </p>
+                                                                    )}
                                                                 </div>
                                                             ) : (
                                                                 <p className="text-xs text-muted-foreground italic">

@@ -36,6 +36,7 @@ import {
     Eye,
     EyeOff,
     Info,
+    Lock,
     Percent,
     Plus,
     RefreshCw,
@@ -77,6 +78,23 @@ export interface PricingLedgerProps {
     // SERVICE_REQUEST only: its billing mode. An INTERNAL_ONLY SR is never
     // client-billed, so the API rejects "mark no-cost" on it — hide the action.
     billingMode?: string;
+    /**
+     * Desk ownership (owner item 4). Non-null when the ledger is currently on the
+     * OTHER role's desk, carrying the API's sentence verbatim
+     * (`ledger_desk_lock_reason` on the entity read; the same string arrives per
+     * line as `lock_reason` once lines exist).
+     *
+     * It is passed rather than derived because the moment it matters most is an
+     * EMPTY ledger — no line to carry the verdict, and the "add a line" button is
+     * exactly what has to be gated. Omitted on ORDER / SELF_PICKUP /
+     * INBOUND_REQUEST: the API resolves those to SHARED and sends no key.
+     *
+     * A desk lock takes the WHOLE ledger, not just the money columns — while the
+     * request is with the other desk, admin may not add, edit, void, re-note or
+     * re-audience a line. The API enforces this with a 403; this only stops the
+     * control being offered.
+     */
+    deskLockReason?: string | null;
     // The entity page supplies the approve mutation + label (approve stays one
     // click, never a gate — decision 8). Omit to hide the approve slot.
     onApprove?: () => void;
@@ -139,6 +157,7 @@ export function PricingLedger({
     entityStatus,
     pricingMode,
     billingMode,
+    deskLockReason,
     onApprove,
     approveLabel = "Approve & send quote",
     approveDisabled,
@@ -184,7 +203,18 @@ export function PricingLedger({
     const isNoCost = pricingMode === "NO_COST";
     const isPostQuote = POST_QUOTE_STATUSES.has(entityStatus);
     const statusEditable = PRICING_EDITABLE_STATUSES.has(entityStatus);
-    const ledgerEditable = canAdjust && statusEditable && !isNoCost;
+    const deskLocked = Boolean(deskLockReason);
+    // Two gates, deliberately separate. `ledgerActionsApplicable` is everything
+    // EXCEPT the desk — it decides whether the footer's add / bulk-margin /
+    // no-cost row RENDERS AT ALL. `ledgerEditable` is the real mutability gate
+    // and folds the desk in.
+    //
+    // The split exists so a desk lock reads as LOCKED rather than as absent: the
+    // buttons stay on screen, disabled and captioned with the reason, the way the
+    // ledger already treats a no-cost entity (banner + inert controls) rather
+    // than silently dropping the whole action row the way a status lock does.
+    const ledgerActionsApplicable = canAdjust && statusEditable && !isNoCost;
+    const ledgerEditable = ledgerActionsApplicable && !deskLocked;
     const isOrder = purposeType === "ORDER";
 
     // ── F1 / F7 — shared quote-amend gate ───────────────────────────────────
@@ -613,6 +643,22 @@ export function PricingLedger({
                     </span>
                 </div>
             ) : null}
+            {/* Desk lock (owner item 4). Same shell as the no-cost banner above —
+                the ledger's existing "this table is read-only right now, and here
+                is why" treatment — with a padlock instead of an info glyph. Says
+                who has it and what puts it back in this desk's hands. Suppressed
+                under a no-cost lock: that one is the stronger statement and
+                "it's with logistics" would be a misleading thing to say about a
+                comped request (the API suppresses it in the same order). */}
+            {deskLocked && !isNoCost ? (
+                <div
+                    data-testid="ledger-desk-lock-banner"
+                    className="flex items-start gap-2 border-b border-border bg-muted/40 px-5 py-2.5 text-xs text-muted-foreground"
+                >
+                    <Lock className="mt-0.5 h-4 w-4 shrink-0" />
+                    <span>{deskLockReason}</span>
+                </div>
+            ) : null}
 
             <div className="p-4">
                 <Tabs value={lens} className="w-full">
@@ -909,7 +955,15 @@ export function PricingLedger({
                                                             item={item}
                                                             seedMarginPercent={seedMarginPercent}
                                                             editable={ledgerEditable}
-                                                            allowVisibility={canAdjust && !isNoCost}
+                                                            // The row eyes are a ledger
+                                                            // mutation like any other — the
+                                                            // desk lock takes them too, and
+                                                            // the API 403s them.
+                                                            allowVisibility={
+                                                                canAdjust &&
+                                                                !isNoCost &&
+                                                                !deskLocked
+                                                            }
                                                             currency={resolvedCurrency}
                                                             selectable={isSelectable(item)}
                                                             selected={selectedIds.has(item.id)}
@@ -1106,15 +1160,21 @@ export function PricingLedger({
                     </div>
                 )}
 
-                {/* Actions + approve — handlers unchanged, only repositioned */}
-                {(lens === "edit" && ledgerEditable) || onApprove ? (
+                {/* Actions + approve — handlers unchanged, only repositioned.
+                    Under a desk lock the row still renders: every button is
+                    disabled and carries the reason as its tooltip, alongside the
+                    banner at the head of the card. */}
+                {(lens === "edit" && ledgerActionsApplicable) || onApprove ? (
                     <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
                         <div className="flex flex-wrap items-center gap-2">
-                            {lens === "edit" && ledgerEditable ? (
+                            {lens === "edit" && ledgerActionsApplicable ? (
                                 <>
                                     <Button
                                         size="sm"
                                         variant="softPrimary"
+                                        disabled={deskLocked}
+                                        title={deskLockReason ?? undefined}
+                                        className="disabled:pointer-events-auto disabled:cursor-not-allowed"
                                         onClick={() => void openAdd("catalog")}
                                     >
                                         <Plus className="mr-1 h-4 w-4" /> Catalog
@@ -1122,6 +1182,9 @@ export function PricingLedger({
                                     <Button
                                         size="sm"
                                         variant="softPrimary"
+                                        disabled={deskLocked}
+                                        title={deskLockReason ?? undefined}
+                                        className="disabled:pointer-events-auto disabled:cursor-not-allowed"
                                         onClick={() => void openAdd("custom")}
                                     >
                                         <Plus className="mr-1 h-4 w-4" /> Custom
@@ -1129,6 +1192,9 @@ export function PricingLedger({
                                     <Button
                                         size="sm"
                                         variant="softPrimary"
+                                        disabled={deskLocked}
+                                        title={deskLockReason ?? undefined}
+                                        className="disabled:pointer-events-auto disabled:cursor-not-allowed"
                                         onClick={() => void openBulk()}
                                     >
                                         <Percent className="mr-1 h-4 w-4" /> Bulk margin…
@@ -1137,6 +1203,9 @@ export function PricingLedger({
                                         <Button
                                             size="sm"
                                             variant="softPrimary"
+                                            disabled={deskLocked}
+                                            title={deskLockReason ?? undefined}
+                                            className="disabled:pointer-events-auto disabled:cursor-not-allowed"
                                             onClick={() => setNoCostOpen(true)}
                                         >
                                             <Ban className="mr-1 h-4 w-4" /> No cost

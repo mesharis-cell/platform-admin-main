@@ -82,6 +82,21 @@ export interface ServiceRequest {
     uplift_approved_at?: string | null;
     // Unified 4-entity waiver. Rejected for an uplift in this release (RL-013).
     pricing_mode?: "STANDARD" | "NO_COST" | null;
+    /**
+     * Ledger desk ownership — whose turn it is on the pricing ledger, and the
+     * reason THIS caller may not touch it. Detail read only, and never sent to a
+     * CLIENT: the desks are an internal handoff between logistics and admin.
+     *
+     * Resolved server-side from `request_type` + `request_status`
+     * (`resolveServiceRequestLedgerDesk`, api/src/app/utils/commercial-policy.ts:247):
+     * an UPLIFT is with LOGISTICS at SUBMITTED and with ADMIN at IN_REVIEW;
+     * everything else, and every other request type, is SHARED.
+     * `ledger_desk_lock_reason` is non-null only when the desk is the other
+     * role's — the same sentence the API returns as each line's `lock_reason`
+     * and as the body of the 403 on a mutation.
+     */
+    ledger_desk?: "LOGISTICS" | "ADMIN" | "SHARED";
+    ledger_desk_lock_reason?: string | null;
     is_repair_before_event?: boolean;
     created_by: string;
     completed_at: string | null;

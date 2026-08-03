@@ -388,7 +388,18 @@ export function serviceRequestCommercialActions(
         result.primary = {
             key: `${request.commercial_status}->QUOTED`,
             toStatus: "QUOTED",
-            label: isUplift ? "Issue Collection Quote to Client" : "Issue Quote to Client",
+            // Word-for-word the order page's approve action
+            // (`orders/[id]/hybrid-sections.tsx:79`). It takes the SAME slot in
+            // the SAME shared ledger footer, so a different phrasing read as a
+            // different control and a different button width. It IS the same
+            // decision — admin signs off the priced lines and the client is sent
+            // the quote — so it gets the same words.
+            //
+            // The uplift's old "Issue Collection Quote to Client" is gone
+            // deliberately: an uplift page already says UPLIFT COLLECTION in its
+            // header, its desk banner and its ledger context, so the qualifier
+            // bought nothing and cost the match.
+            label: "Approve & Send Quote to Client",
             description:
                 "Generates the cost estimate and sends the client the quote. They accept or decline it themselves.",
             blockedReason: upliftDeskBlock,

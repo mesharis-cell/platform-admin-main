@@ -769,6 +769,15 @@ export default function ServiceRequestDetailsPage() {
                                 entityStatus={request.commercial_status}
                                 billingMode={request.billing_mode}
                                 pricingMode={request.pricing_mode || "STANDARD"}
+                                // Owner item 4 — the ledger belongs to one desk at a
+                                // time. While a collection is with logistics for buy
+                                // pricing (SUBMITTED) the API 403s every line mutation
+                                // from admin; the ledger renders locked, banner and
+                                // all, rather than offering controls that will bounce.
+                                // Read from the entity rather than a line, because an
+                                // empty ledger is exactly when "add a line" needs
+                                // gating and there is no line to carry the verdict.
+                                deskLockReason={request.ledger_desk_lock_reason ?? null}
                                 onApprove={commercialActions.primary ? handleIssueQuote : undefined}
                                 approveLabel={commercialActions.primary?.label ?? ""}
                                 approveDisabled={!!commercialActions.primary?.blockedReason}
