@@ -870,8 +870,8 @@ export default function ServiceRequestDetailsPage() {
 
                         {/* The money block — last in the main column, exactly where the
                             order page puts it (page.tsx:2107-2127 → hybrid-sections.tsx:
-                            60-101): the ledger, then one right-aligned outline secondary
-                            beneath it, then the dialog that secondary opens. */}
+                            60-101): the ledger carrying the commercial decision in its
+                            own footer, then the dialog that decision opens. */}
                         <div className="space-y-6">
                             {/* The single editable money table: line items + role-preview
                                 lenses + footer totals + add / bulk-margin / no-cost
@@ -879,9 +879,17 @@ export default function ServiceRequestDetailsPage() {
                                 status (dual-status model): the ledger self-gates editable
                                 pre-QUOTE_APPROVED and locks at QUOTE_APPROVED / INVOICED /
                                 PAID, mirroring the API's getLineItemEditability SR branch.
-                                No approve slot — SR commercial status is driven by the
-                                control directly beneath, so the number and the decision
-                                still read as one block. */}
+
+                                The commercial decision takes the ledger's approve slot —
+                                the same footer position, variant and size the order page
+                                gives "Approve & Send Quote to Client"
+                                (hybrid-sections.tsx:73-82), so the number and the decision
+                                read as one block. The slot is only a trigger: it opens the
+                                same dialog the button beneath used to open, with the same
+                                picker and the same mutation. It is passed unconditionally
+                                because the old button was rendered unconditionally, and no
+                                `approveDisabled` / `approveBusy` is supplied because the
+                                old button had no disabled state. */}
                             <PricingLedger
                                 purposeType="SERVICE_REQUEST"
                                 entityId={request.id}
@@ -891,18 +899,17 @@ export default function ServiceRequestDetailsPage() {
                                     (request as { pricing_mode?: "STANDARD" | "NO_COST" })
                                         .pricing_mode || "STANDARD"
                                 }
+                                onApprove={() => setCommercialDialogOpen(true)}
+                                approveLabel="Update Commercial Status"
                             />
 
-                            {/* Not a pricing action, so it sits beside the ledger, not
-                                inside it — the order page's Return-to-Logistics slot. */}
-                            <div className="flex justify-end">
-                                <Button
-                                    variant="outline"
-                                    onClick={() => setCommercialDialogOpen(true)}
-                                >
-                                    Update Commercial Status
-                                </Button>
-                            </div>
+                            {/* The order page's Return-to-Logistics slot — right-aligned
+                                outline, outside and below the card — is deliberately empty
+                                here. The service-request step-back (an uplift's RETURN TO
+                                LOGISTICS) already exists, but inside the uplift desk card
+                                above, coupled to its own permission gate, precondition and
+                                required-note dialog. Relocating it is not a placement
+                                change; see the note in the handover. */}
 
                             <Dialog
                                 open={commercialDialogOpen}
