@@ -13,6 +13,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
+import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
     AlertDialog,
@@ -34,7 +35,6 @@ import {
     Ban,
     ChevronDown,
     Eye,
-    EyeOff,
     Info,
     Lock,
     Percent,
@@ -86,8 +86,11 @@ export interface PricingLedgerProps {
      *
      * It is passed rather than derived because the moment it matters most is an
      * EMPTY ledger — no line to carry the verdict, and the "add a line" button is
-     * exactly what has to be gated. Omitted on ORDER / SELF_PICKUP /
-     * INBOUND_REQUEST: the API resolves those to SHARED and sends no key.
+     * exactly what has to be gated. Two entities narrow the desk and so supply
+     * this: an UPLIFT service request, and an ORDER (LOGISTICS at PRICING_REVIEW,
+     * ADMIN at PENDING_APPROVAL / QUOTED — so for this ADMIN-only app it is
+     * non-null at PRICING_REVIEW and nowhere else). Omitted on SELF_PICKUP /
+     * INBOUND_REQUEST: the API resolves those to SHARED and sends a null reason.
      *
      * A desk lock takes the WHOLE ledger, not just the money columns — while the
      * request is with the other desk, admin may not add, edit, void, re-note or
@@ -213,6 +216,14 @@ export function PricingLedger({
     // buttons stay on screen, disabled and captioned with the reason, the way the
     // ledger already treats a no-cost entity (banner + inert controls) rather
     // than silently dropping the whole action row the way a status lock does.
+    //
+    // The BULK-ACTION BAR takes the same split, for the same reason. It used to
+    // mount on `ledgerEditable`, so a desk lock removed it outright — and with it
+    // the only route to "Add % line", which lives nowhere else. Now it mounts on
+    // `ledgerActionsApplicable` and renders every control disabled + captioned
+    // under a lock. (Its rows are unselectable under a lock — `isSelectable`
+    // folds in the desk — so the bar can never carry a live selection there; the
+    // locked bar states that plainly instead of counting zero.)
     const ledgerActionsApplicable = canAdjust && statusEditable && !isNoCost;
     const ledgerEditable = ledgerActionsApplicable && !deskLocked;
     const isOrder = purposeType === "ORDER";
@@ -375,6 +386,13 @@ export function PricingLedger({
     const selectedCount = selectedIds.size;
     const allSelected = selectableIds.length > 0 && selectedCount === selectableIds.length;
     const someSelected = selectedCount > 0 && !allSelected;
+    // Bulk-bar presentation. `bulkBarIdle` is the zero-layout-shift placeholder
+    // state (mounted, `invisible`) — deliberately NOT entered under a desk lock,
+    // where the bar has to be seen to be seen as locked. `bulkActionsDisabled`
+    // inerts every control in the bar; the desk lock is a real reason for it, so
+    // it folds in alongside an in-flight mutation.
+    const bulkBarIdle = !deskLocked && selectedCount === 0;
+    const bulkActionsDisabled = bulkAction.isPending || deskLocked;
     const clearSelection = () => setSelectedIds(new Set());
     const toggleSelectOne = (id: string, checked: boolean) =>
         setSelectedIds((prev) => {
@@ -679,84 +697,118 @@ export function PricingLedger({
                                     whole selection (runBulk), then calls the single bulk
                                     endpoint. Add-% opens the popup instead.
 
-                                    LAYOUT: the bar is ALWAYS mounted while the ledger is
-                                    editable and merely made `invisible` (NOT `hidden`) at
-                                    zero selection, so it keeps occupying its box and
+                                    LAYOUT: the bar is ALWAYS mounted while the ledger's
+                                    actions apply and merely made `invisible` (NOT `hidden`)
+                                    at zero selection, so it keeps occupying its box and
                                     selecting the first row causes ZERO layout shift. The
                                     children render identically in both states, so the
                                     reserved height is exactly the populated height;
                                     `visibility:hidden` also drops it from hit-testing and
-                                    the tab order, so the idle bar is inert. */}
-                                {ledgerEditable ? (
+                                    the tab order, so the idle bar is inert.
+
+                                    Under a DESK LOCK it is never made invisible: it stays
+                                    on screen with every control disabled and captioned
+                                    with the reason, matching the footer action row. A
+                                    locked ledger has no selectable rows, so "0 selected"
+                                    would be a true but useless caption — the leading slot
+                                    says it is locked instead. */}
+                                {ledgerActionsApplicable ? (
                                     <div
                                         data-testid="bulk-action-bar"
-                                        aria-hidden={selectedCount === 0}
+                                        data-locked={deskLocked ? "true" : undefined}
+                                        aria-hidden={bulkBarIdle}
                                         className={cn(
-                                            "mb-3 flex min-h-[50px] flex-wrap items-center gap-2 rounded-md border border-primary/40 bg-primary/5 px-3 py-2",
-                                            selectedCount === 0 && "invisible"
+                                            "mb-3 flex min-h-[50px] flex-wrap items-center gap-2 rounded-md border px-3 py-2",
+                                            deskLocked
+                                                ? "border-border bg-muted/40"
+                                                : "border-primary/40 bg-primary/5",
+                                            bulkBarIdle && "invisible"
                                         )}
                                     >
-                                        <span className="text-xs font-semibold">
-                                            {selectedCount} selected
-                                        </span>
+                                        {deskLocked ? (
+                                            <span
+                                                className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground"
+                                                title={deskLockReason ?? undefined}
+                                            >
+                                                <Lock className="h-3.5 w-3.5 shrink-0" />
+                                                Bulk actions locked
+                                            </span>
+                                        ) : (
+                                            <span className="text-xs font-semibold">
+                                                {selectedCount} selected
+                                            </span>
+                                        )}
                                         <div className="ml-auto flex flex-wrap items-center gap-2">
-                                            {/* Visibility — ONE dropdown holding the two eye
-                                                toggles. Each row flips its own indicator and
-                                                applies that state across the selection; the
-                                                menu stays OPEN on select (onSelect
-                                                preventDefault) so both toggles can be worked
-                                                without re-opening. */}
+                                            {/* Visibility — ONE dropdown holding the two
+                                                audience toggles. Each switch flips its own
+                                                indicator AND applies that state across the
+                                                whole selection immediately; the selection is
+                                                held (runBulk keepSelection) so both can be
+                                                worked in one pass.
+
+                                                The control is a plain Switch, matching the
+                                                percentage-line + custom-line modals
+                                                (AddPercentageLineModal.tsx:320-335): eye as a
+                                                decorative glyph, the audience named, the
+                                                consequence of "off" said next to it. An eye
+                                                that is ALSO the button reads as a preview
+                                                rather than a setting — the eye stays a
+                                                control only in the table's own two
+                                                visibility columns, where it is the row's
+                                                live state.
+
+                                                The ROW stays the click target and the switch
+                                                rides on it as `pointer-events-none`, rather
+                                                than being the interactive control it is in
+                                                the modal. That is forced by Radix, not
+                                                taste: an open menu calls preventDefault on
+                                                Tab (react-menu MenuContentImpl), and arrow
+                                                keys only traverse registered items — a bare
+                                                Switch dropped into the content would be
+                                                unreachable by keyboard entirely. As a
+                                                DropdownMenuItem the row keeps arrow + Enter
+                                                navigation, and the pointer still lands on
+                                                the switch because the click falls through to
+                                                the row beneath it. `menuitemcheckbox` +
+                                                aria-checked carry the on/off state to a
+                                                screen reader, which a decorative switch
+                                                cannot. The menu is held OPEN on select so
+                                                both audiences can be set in one pass.
+
+                                                Logistics first, then client — the line is
+                                                priced on the buy side before it is shown to
+                                                the client, so the audiences run in the order
+                                                the money does. Same order as the table's two
+                                                visibility columns. */}
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
                                                     <Button
                                                         size="sm"
                                                         variant="outline"
-                                                        disabled={bulkAction.isPending}
+                                                        disabled={bulkActionsDisabled}
+                                                        title={deskLockReason ?? undefined}
+                                                        className="disabled:pointer-events-auto disabled:cursor-not-allowed"
                                                     >
                                                         Visibility
                                                         <ChevronDown className="ml-1 h-3.5 w-3.5" />
                                                     </Button>
                                                 </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end" className="w-56">
-                                                    <DropdownMenuItem
-                                                        data-testid="bulk-visibility-client"
-                                                        disabled={bulkAction.isPending}
-                                                        // Keep the menu open so the admin can
-                                                        // flip both toggles in one pass.
-                                                        onSelect={(e) => {
-                                                            e.preventDefault();
-                                                            const next = !bulkClientVisible;
-                                                            setBulkClientVisible(next);
-                                                            void handleBulkVisibility(
-                                                                { client_visible: next },
-                                                                next
-                                                                    ? "Shown to client"
-                                                                    : "Hidden from client"
-                                                            );
-                                                        }}
-                                                        className="justify-between gap-3"
-                                                        aria-label={
-                                                            bulkClientVisible
-                                                                ? "Hide selected lines from client"
-                                                                : "Show selected lines to client"
-                                                        }
-                                                    >
-                                                        <span>Visible to client</span>
-                                                        {bulkClientVisible ? (
-                                                            <Eye
-                                                                data-testid="bulk-visibility-client-on"
-                                                                className="h-4 w-4 text-primary"
-                                                            />
-                                                        ) : (
-                                                            <EyeOff
-                                                                data-testid="bulk-visibility-client-off"
-                                                                className="h-4 w-4 text-muted-foreground/50"
-                                                            />
-                                                        )}
-                                                    </DropdownMenuItem>
+                                                <DropdownMenuContent
+                                                    align="end"
+                                                    className="w-72 p-1.5"
+                                                >
+                                                    <p className="px-2 pb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                                        Apply to {selectedCount} selected line
+                                                        {selectedCount === 1 ? "" : "s"}
+                                                    </p>
                                                     <DropdownMenuItem
                                                         data-testid="bulk-visibility-logistics"
-                                                        disabled={bulkAction.isPending}
+                                                        role="menuitemcheckbox"
+                                                        aria-checked={bulkLogisticsVisible}
+                                                        disabled={bulkActionsDisabled}
+                                                        className="items-center gap-3 px-2 py-2"
+                                                        // Held open so both audiences can be
+                                                        // set without re-opening the menu.
                                                         onSelect={(e) => {
                                                             e.preventDefault();
                                                             const next = !bulkLogisticsVisible;
@@ -768,25 +820,59 @@ export function PricingLedger({
                                                                     : "Hidden from logistics"
                                                             );
                                                         }}
-                                                        className="justify-between gap-3"
-                                                        aria-label={
-                                                            bulkLogisticsVisible
-                                                                ? "Hide selected lines from logistics"
-                                                                : "Show selected lines to logistics"
-                                                        }
                                                     >
-                                                        <span>Visible to logistics</span>
-                                                        {bulkLogisticsVisible ? (
-                                                            <Eye
-                                                                data-testid="bulk-visibility-logistics-on"
-                                                                className="h-4 w-4 text-primary"
-                                                            />
-                                                        ) : (
-                                                            <EyeOff
-                                                                data-testid="bulk-visibility-logistics-off"
-                                                                className="h-4 w-4 text-muted-foreground/50"
-                                                            />
-                                                        )}
+                                                        <Eye className="h-4 w-4 shrink-0 text-muted-foreground" />
+                                                        <div className="min-w-0">
+                                                            <p className="text-sm">
+                                                                Visible to logistics
+                                                            </p>
+                                                            <p className="text-[11px] text-muted-foreground">
+                                                                off = hidden from the warehouse view
+                                                            </p>
+                                                        </div>
+                                                        <Switch
+                                                            data-testid="bulk-visibility-logistics-switch"
+                                                            className="pointer-events-none ml-auto shrink-0"
+                                                            checked={bulkLogisticsVisible}
+                                                            tabIndex={-1}
+                                                            aria-hidden
+                                                        />
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem
+                                                        data-testid="bulk-visibility-client"
+                                                        role="menuitemcheckbox"
+                                                        aria-checked={bulkClientVisible}
+                                                        disabled={bulkActionsDisabled}
+                                                        className="items-center gap-3 px-2 py-2"
+                                                        onSelect={(e) => {
+                                                            e.preventDefault();
+                                                            const next = !bulkClientVisible;
+                                                            setBulkClientVisible(next);
+                                                            void handleBulkVisibility(
+                                                                { client_visible: next },
+                                                                next
+                                                                    ? "Shown to client"
+                                                                    : "Hidden from client"
+                                                            );
+                                                        }}
+                                                    >
+                                                        <Eye className="h-4 w-4 shrink-0 text-muted-foreground" />
+                                                        <div className="min-w-0">
+                                                            <p className="text-sm">
+                                                                Visible to client
+                                                            </p>
+                                                            <p className="text-[11px] text-muted-foreground">
+                                                                off = hidden from the client&rsquo;s
+                                                                estimate
+                                                            </p>
+                                                        </div>
+                                                        <Switch
+                                                            data-testid="bulk-visibility-client-switch"
+                                                            className="pointer-events-none ml-auto shrink-0"
+                                                            checked={bulkClientVisible}
+                                                            tabIndex={-1}
+                                                            aria-hidden
+                                                        />
                                                     </DropdownMenuItem>
                                                 </DropdownMenuContent>
                                             </DropdownMenu>
@@ -797,7 +883,9 @@ export function PricingLedger({
                                                     <Button
                                                         size="sm"
                                                         variant="outline"
-                                                        disabled={bulkAction.isPending}
+                                                        disabled={bulkActionsDisabled}
+                                                        title={deskLockReason ?? undefined}
+                                                        className="disabled:pointer-events-auto disabled:cursor-not-allowed"
                                                     >
                                                         Billing
                                                         <ChevronDown className="ml-1 h-3.5 w-3.5" />
@@ -828,12 +916,16 @@ export function PricingLedger({
                                                 </DropdownMenuContent>
                                             </DropdownMenu>
 
-                                            {/* Add % line */}
+                                            {/* Add % line — reachable ONLY from this bar, so
+                                                it must survive a desk lock as a disabled
+                                                control rather than vanish with it. */}
                                             <Button
                                                 size="sm"
                                                 variant="outline"
                                                 onClick={() => void openAddPercent()}
-                                                disabled={bulkAction.isPending}
+                                                disabled={bulkActionsDisabled}
+                                                title={deskLockReason ?? undefined}
+                                                className="disabled:pointer-events-auto disabled:cursor-not-allowed"
                                             >
                                                 <Percent className="mr-1 h-4 w-4" /> Add % line
                                             </Button>
@@ -842,9 +934,10 @@ export function PricingLedger({
                                             <Button
                                                 size="sm"
                                                 variant="outline"
-                                                className="text-destructive hover:text-destructive"
+                                                className="text-destructive hover:text-destructive disabled:pointer-events-auto disabled:cursor-not-allowed"
                                                 onClick={() => void handleBulkVoid()}
-                                                disabled={bulkAction.isPending}
+                                                disabled={bulkActionsDisabled}
+                                                title={deskLockReason ?? undefined}
                                             >
                                                 <Trash2 className="mr-1 h-4 w-4" /> Delete
                                             </Button>
@@ -853,7 +946,9 @@ export function PricingLedger({
                                                 size="sm"
                                                 variant="ghost"
                                                 onClick={clearSelection}
-                                                disabled={bulkAction.isPending}
+                                                disabled={bulkActionsDisabled}
+                                                title={deskLockReason ?? undefined}
+                                                className="disabled:pointer-events-auto disabled:cursor-not-allowed"
                                             >
                                                 Clear
                                             </Button>

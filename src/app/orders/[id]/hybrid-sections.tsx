@@ -75,6 +75,18 @@ export function PendingApprovalSection({ order, orderId, onRefresh }: HybridPric
                 entityId={orderId}
                 entityStatus={order.order_status}
                 pricingMode={order.pricing_mode || "STANDARD"}
+                // Owner item 4 — the ledger belongs to one desk at a time. An
+                // order at PRICING_REVIEW is with logistics for buy pricing and
+                // the API now 403s every line mutation from admin; the ledger
+                // renders locked, banner and all, rather than offering controls
+                // that will bounce. (PENDING_APPROVAL and QUOTED are admin's own
+                // desk, so this resolves null there and nothing changes.)
+                //
+                // Read from the entity rather than a line: an order with no lines
+                // yet is exactly when "add a line" needs gating, and there is no
+                // line to carry the verdict. Same wiring as the service-request
+                // page (service-requests/[id]/page.tsx:780).
+                deskLockReason={order.ledger_desk_lock_reason ?? null}
                 onApprove={showAdminActions ? handleApprove : undefined}
                 approveLabel="Approve & Send Quote to Client"
                 approveDisabled={pendingDecisionRequests.length > 0}

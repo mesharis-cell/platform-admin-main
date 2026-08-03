@@ -2104,27 +2104,25 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                             </Card>
                         )}
 
-                        {order.data.order_status === "PRICING_REVIEW" ? (
-                            <Card className="border border-amber-500/30 bg-amber-500/5">
-                                <CardHeader>
-                                    <CardTitle className="text-sm font-mono">
-                                        Logistics-Owned Stage
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent className="text-sm text-muted-foreground">
-                                    Order is in `PRICING_REVIEW`. Line item preparation and
-                                    submission are handled by Logistics. Admin review becomes
-                                    available at `PENDING_APPROVAL`.
-                                </CardContent>
-                            </Card>
-                        ) : (
-                            <PendingApprovalSection
-                                order={order.data}
-                                orderId={order.data.id}
-                                onRefresh={refetch}
-                                isRefetching={isFetching}
-                            />
-                        )}
+                        {/* Owner item 1 — the ledger renders at EVERY status, including
+                            PRICING_REVIEW.
+
+                            PRICING_REVIEW used to swap the whole pricing section for a
+                            prose card ("Logistics-Owned Stage"), which meant the one
+                            status where the API's desk lock actually bites for admin was
+                            also the one status where admin could not see the money at
+                            all — the strongest form of "silently missing". The ledger now
+                            carries that statement itself: a padlock banner with the
+                            server's own sentence, the lines still readable, and every
+                            control on screen but disabled and captioned with the reason.
+                            Same treatment the service-request page gives a request
+                            sitting on the logistics desk. */}
+                        <PendingApprovalSection
+                            order={order.data}
+                            orderId={order.data.id}
+                            onRefresh={refetch}
+                            isRefetching={isFetching}
+                        />
                     </div>
 
                     {/* Right: Status History Timeline — collapses to a compact rail on
