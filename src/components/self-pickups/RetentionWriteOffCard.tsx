@@ -147,15 +147,20 @@ export function RetentionWriteOffCard({
                 lines={outstandingLines}
                 isPending={recordWriteOff.isPending}
                 blockedReason={blockedReason}
+                // Deliberately NOT wrapped in a try/catch — see the same call site
+                // on `UpliftReviewPanel`. The dialog owns the future-booking
+                // guard's 409 (it becomes the override step) and reports every
+                // other failure itself.
                 onConfirm={async (payload) => {
-                    try {
-                        await recordWriteOff.mutateAsync({ selfPickupId, payload });
-                        setOpen(false);
-                        toast.success("Write-off decision recorded");
-                        onChanged();
-                    } catch (error: any) {
-                        toast.error(error?.message || "Failed to record the write-off decision");
-                    }
+                    const result = await recordWriteOff.mutateAsync({ selfPickupId, payload });
+                    setOpen(false);
+                    const overridden = result?.data?.overridden_bookings?.length ?? 0;
+                    toast.success("Write-off decision recorded", {
+                        description: overridden
+                            ? `${overridden} competing booking${overridden === 1 ? "" : "s"} overridden — recorded on the audit trail.`
+                            : undefined,
+                    });
+                    onChanged();
                 }}
             />
         </>

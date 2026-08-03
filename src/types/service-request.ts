@@ -171,6 +171,14 @@ export interface UpdateServiceRequestStatusPayload {
 export interface UpdateServiceRequestCommercialStatusPayload {
     commercial_status: ServiceRequestCommercialStatus;
     note?: string;
+    /**
+     * Carried by `service_request.quote_revised` and the client's revised-quote
+     * mail on a QUOTED -> PENDING_QUOTE move
+     * (`api .../service-request.services.ts:1022`). Accepted by the route's
+     * schema (`service-request.schemas.ts:93`) and ignored on every other
+     * transition.
+     */
+    revision_reason?: string;
 }
 
 export interface RespondServiceRequestQuotePayload {

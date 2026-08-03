@@ -22,10 +22,31 @@
  * every entry against `expected_quantity − settled_quantity − returned_quantity`
  * inside the acting transaction; anything over-claimed comes back as a 409
  * naming the offending unit and its true outstanding quantity.
+ *
+ * ── The future-booking guard, and overriding it ──────────────────────────────
+ *
+ * A named SERIALIZED unit that is already committed to somebody else is refused
+ * by default: the decision writes the unit off `total_quantity` and stamps the
+ * asset as placed with this client, so a competing booking would be quietly
+ * broken. The server answers 409 with `code =
+ * SERIALIZED_UNIT_BOOKED_ELSEWHERE` and a `blocked_units[]` naming every unit,
+ * the competing order or pickup, its company and its held window.
+ *
+ * That is not a dead end. The operator may override it deliberately — the same
+ * shape as the platform's other destructive override
+ * (`PlacementReconcileCard`): the competing bookings are listed in full, an
+ * explicit acknowledgement is ticked, and a mandatory reason is captured. The
+ * reason goes onto the stock-movement note of every overridden unit AND onto
+ * the audit event, so the override is a record rather than a bypass.
+ *
+ * The affordance is keyed off `code`, never off the message text, and the
+ * override is never offered pre-emptively — it only appears once the server has
+ * actually refused, so an ordinary decision never sees it.
  */
 
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle } from "lucide-react";
+import { toast } from "sonner";
+import { AlertTriangle, ShieldAlert } from "lucide-react";
 import {
     Dialog,
     DialogContent,
@@ -47,11 +68,13 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { isWriteOffBlockedError, type BlockedWriteOffUnit } from "@/hooks/use-write-off-decision";
 import type {
     WriteOffDecisionPayload,
     WriteOffDecisionUnit,
     WriteOffReason,
 } from "@/hooks/use-write-off-decision";
+import { formatBookingWindow } from "@/lib/date-display";
 
 /** One candidate line, already joined from the parent's items + scan progress. */
 export interface OutstandingLine {
@@ -90,8 +113,16 @@ interface WriteOffDecisionDialogProps {
     isPending?: boolean;
     /** Non-null when the caller knows the action is currently refused. */
     blockedReason?: string | null;
-    onConfirm: (payload: WriteOffDecisionPayload) => void;
+    /**
+     * MUST throw on failure — this dialog owns the guard's 409 and turns it into
+     * the override step, and it cannot do that if the caller swallows the error.
+     * On success the caller closes the dialog.
+     */
+    onConfirm: (payload: WriteOffDecisionPayload) => Promise<void>;
 }
+
+const OVERRIDE_REASON_MIN_LENGTH = 5;
+const OVERRIDE_REASON_MAX_LENGTH = 500;
 
 export function WriteOffDecisionDialog({
     open,
@@ -108,21 +139,52 @@ export function WriteOffDecisionDialog({
     // because a serialized entry is exactly one unit and carries no quantity.
     const [selected, setSelected] = useState<Record<string, boolean>>({});
     const [quantities, setQuantities] = useState<Record<string, string>>({});
+    // Set only by the server's guard 409, and only for the selection that
+    // produced it.
+    const [blockedUnits, setBlockedUnits] = useState<BlockedWriteOffUnit[]>([]);
+    const [overrideAcknowledged, setOverrideAcknowledged] = useState(false);
+    const [overrideReason, setOverrideReason] = useState("");
 
     const outstandingLines = useMemo(
         () => lines.filter((line) => outstandingOf(line) > 0),
         [lines]
     );
 
+    const resetOverride = () => {
+        setBlockedUnits([]);
+        setOverrideAcknowledged(false);
+        setOverrideReason("");
+    };
+
+    /**
+     * CONTENT key, not the array identity.
+     *
+     * `outstandingLines` derives from the caller's queries, so its identity
+     * changes on every background refetch even when nothing about the load has
+     * moved. Keying the reset on identity meant a refetch mid-decision silently
+     * cleared the operator's selection — and, now that there is an override step,
+     * would also clear a block list they were part-way through acknowledging.
+     * Keyed on content, the reset still fires when the dialog opens and when the
+     * outstanding set genuinely changes (including the first load arriving after
+     * the dialog is already open), and never merely because data was re-fetched.
+     */
+    const outstandingKey = outstandingLines
+        .map((line) => `${line.line_id}:${outstandingOf(line)}`)
+        .join("|");
+
     useEffect(() => {
         if (!open) return;
         setReason("CONSUMED");
         setNote("");
         setSelected({});
+        resetOverride();
         setQuantities(
             Object.fromEntries(outstandingLines.map((l) => [l.line_id, String(outstandingOf(l))]))
         );
-    }, [open, outstandingLines]);
+        // `outstandingLines` is read fresh on the render this fires from; the key
+        // above is what decides WHEN it fires.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [open, outstandingKey]);
 
     const units: WriteOffDecisionUnit[] = useMemo(() => {
         const built: WriteOffDecisionUnit[] = [];
@@ -160,12 +222,62 @@ export function WriteOffDecisionDialog({
 
     const noteTrimmed = note.trim();
     const noteInvalid = noteTrimmed.length < 5 || noteTrimmed.length > 500;
-    const canSubmit =
-        !isPending && !blockedReason && units.length > 0 && !quantityError && !noteInvalid;
 
-    const handleConfirm = () => {
+    const overrideReasonTrimmed = overrideReason.trim();
+    const overrideReasonInvalid =
+        overrideReasonTrimmed.length < OVERRIDE_REASON_MIN_LENGTH ||
+        overrideReasonTrimmed.length > OVERRIDE_REASON_MAX_LENGTH;
+    const isOverriding = blockedUnits.length > 0;
+    const overrideIncomplete = isOverriding && (!overrideAcknowledged || overrideReasonInvalid);
+
+    const canSubmit =
+        !isPending &&
+        !blockedReason &&
+        units.length > 0 &&
+        !quantityError &&
+        !noteInvalid &&
+        !overrideIncomplete;
+
+    /**
+     * Changing WHICH units are being written off invalidates a block list the
+     * server produced for a different set, so the override collapses back to
+     * nothing and has to be re-earned by a fresh refusal. Keyed on the built
+     * payload rather than the raw selection so a quantity edit counts too.
+     */
+    const unitsKey = JSON.stringify(units);
+    useEffect(() => {
+        resetOverride();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [unitsKey]);
+
+    const handleConfirm = async () => {
         if (!canSubmit) return;
-        onConfirm({ reason, note: noteTrimmed, units });
+        try {
+            await onConfirm({
+                reason,
+                note: noteTrimmed,
+                units,
+                ...(isOverriding
+                    ? {
+                          booking_override: {
+                              acknowledge_competing_booking: true as const,
+                              reason: overrideReasonTrimmed,
+                          },
+                      }
+                    : {}),
+            });
+        } catch (error) {
+            // The guard's refusal is not an error to dismiss — it is the next
+            // step. Everything else is reported and the dialog stays put so the
+            // selection is not lost.
+            if (isWriteOffBlockedError(error)) {
+                setBlockedUnits(error.blockedUnits);
+                setOverrideAcknowledged(false);
+                setOverrideReason("");
+                return;
+            }
+            toast.error((error as Error)?.message || "Failed to record the write-off decision");
+        }
     };
 
     return (
@@ -333,6 +445,113 @@ export function WriteOffDecisionDialog({
                                 {quantityError}
                             </p>
                         )}
+
+                        {/* The guard's refusal, and the deliberate way past it.
+                            Rendered only after the server has actually refused —
+                            an ordinary decision never sees any of this. */}
+                        {isOverriding && (
+                            <div className="space-y-3 rounded-md border border-destructive/40 bg-destructive/5 p-3">
+                                <div className="flex items-start gap-2">
+                                    <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+                                    <div className="min-w-0 space-y-1">
+                                        <p className="font-mono text-xs font-bold text-destructive">
+                                            ALREADY COMMITTED TO SOMEBODY ELSE
+                                        </p>
+                                        <p className="text-sm text-muted-foreground">
+                                            Nothing has been written off. These units are held by a
+                                            later booking, and writing them off takes them out of
+                                            stock for good — the booking below would be broken with
+                                            no warning to whoever made it.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    {blockedUnits.map((unit) => (
+                                        <div
+                                            key={`${unit.line_id}-${unit.blocking_booking_id}-${unit.asset_id}`}
+                                            className="rounded border bg-background/60 p-2"
+                                        >
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <span className="font-medium">
+                                                    {unit.asset_name}
+                                                </span>
+                                                {unit.asset_qr_code && (
+                                                    <Badge
+                                                        variant="outline"
+                                                        className="font-mono text-[10px]"
+                                                    >
+                                                        {unit.asset_qr_code}
+                                                    </Badge>
+                                                )}
+                                            </div>
+                                            <p className="font-mono text-[11px] text-muted-foreground">
+                                                Booked on {unit.blocking_parent_human_id} (
+                                                {unit.blocking_company_name}) ·{" "}
+                                                {formatBookingWindow(
+                                                    unit.blocked_from,
+                                                    unit.blocked_until
+                                                )}
+                                            </p>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label className="font-mono text-xs">
+                                        WHY IS THAT BOOKING BEING OVERRIDDEN (REQUIRED,{" "}
+                                        {OVERRIDE_REASON_MIN_LENGTH}–{OVERRIDE_REASON_MAX_LENGTH}{" "}
+                                        CHARACTERS)
+                                    </Label>
+                                    <Textarea
+                                        value={overrideReason}
+                                        maxLength={OVERRIDE_REASON_MAX_LENGTH}
+                                        rows={3}
+                                        placeholder="State who decided these units are not coming back and what happens to the competing booking."
+                                        onChange={(event) => setOverrideReason(event.target.value)}
+                                    />
+                                    <div className="flex items-center justify-between gap-3">
+                                        <p className="font-mono text-[11px] text-muted-foreground">
+                                            Recorded on each unit&apos;s stock history and on the
+                                            audit trail.
+                                        </p>
+                                        <p
+                                            className={`shrink-0 font-mono text-[11px] ${
+                                                overrideReasonInvalid
+                                                    ? "text-destructive"
+                                                    : "text-muted-foreground"
+                                            }`}
+                                        >
+                                            {overrideReasonTrimmed.length}/
+                                            {OVERRIDE_REASON_MAX_LENGTH}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-start gap-3 rounded-md border bg-background/60 p-3">
+                                    <Checkbox
+                                        id="acknowledge-competing-booking"
+                                        checked={overrideAcknowledged}
+                                        onCheckedChange={(value) =>
+                                            setOverrideAcknowledged(value === true)
+                                        }
+                                        className="mt-0.5"
+                                    />
+                                    <Label
+                                        htmlFor="acknowledge-competing-booking"
+                                        className="cursor-pointer text-sm font-normal leading-snug"
+                                    >
+                                        I am overriding{" "}
+                                        {blockedUnits.length === 1
+                                            ? "another commitment"
+                                            : "other commitments"}{" "}
+                                        on {blockedUnits.length === 1 ? "this unit" : "these units"}
+                                        , and I understand the booking above will no longer be
+                                        fulfillable.
+                                    </Label>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
 
@@ -347,7 +566,9 @@ export function WriteOffDecisionDialog({
                     <Button variant="destructive" onClick={handleConfirm} disabled={!canSubmit}>
                         {isPending
                             ? "Recording..."
-                            : `Write off ${units.length} unit${units.length === 1 ? "" : "s"}`}
+                            : isOverriding
+                              ? `Override and write off ${units.length} unit${units.length === 1 ? "" : "s"}`
+                              : `Write off ${units.length} unit${units.length === 1 ? "" : "s"}`}
                     </Button>
                 </DialogFooter>
             </DialogContent>

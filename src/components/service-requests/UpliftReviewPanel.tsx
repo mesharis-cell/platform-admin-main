@@ -463,18 +463,23 @@ export function UpliftReviewPanel({ request, onChanged }: UpliftReviewPanelProps
                 lines={outstandingLines}
                 isPending={recordWriteOff.isPending}
                 blockedReason={writeOffBlockedReason}
+                // Deliberately NOT wrapped in a try/catch: the dialog owns the
+                // future-booking guard's 409 and turns it into the override step,
+                // and it reports every other failure itself. Swallowing here
+                // would strand the operator on a generic toast.
                 onConfirm={async (payload) => {
-                    try {
-                        await recordWriteOff.mutateAsync({
-                            serviceRequestId: request.id,
-                            payload,
-                        });
-                        setWriteOffOpen(false);
-                        toast.success("Write-off decision recorded");
-                        onChanged();
-                    } catch (error: any) {
-                        toast.error(error?.message || "Failed to record the write-off decision");
-                    }
+                    const result = await recordWriteOff.mutateAsync({
+                        serviceRequestId: request.id,
+                        payload,
+                    });
+                    setWriteOffOpen(false);
+                    const overridden = result?.data?.overridden_bookings?.length ?? 0;
+                    toast.success("Write-off decision recorded", {
+                        description: overridden
+                            ? `${overridden} competing booking${overridden === 1 ? "" : "s"} overridden — recorded on the audit trail.`
+                            : undefined,
+                    });
+                    onChanged();
                 }}
             />
         </>

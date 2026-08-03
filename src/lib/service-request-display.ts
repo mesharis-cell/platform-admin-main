@@ -287,16 +287,20 @@ export function serviceRequestDesk(request: DeskInput): ServiceRequestDesk {
             next: "Quote issued — waiting on the client's answer.",
             tone: "waiting",
         };
+    // These two sentences name the buttons the detail page actually renders for
+    // the state (`serviceRequestOpsActions`). They used to say "set its
+    // operational and commercial status", which described the two enum pickers
+    // that page no longer has.
     if (ops === "IN_REVIEW")
         return {
             label: "With admin",
-            next: "Review the request, then set its operational and commercial status.",
+            next: "Review the request, then approve it or send it back to logistics.",
             tone: "action",
         };
     if (ops === "SUBMITTED")
         return {
             label: "With logistics",
-            next: "Logistics starts the work. Move it to In Review only if it needs a decision here.",
+            next: "Logistics starts the work. Bring it to admin review only if it needs a decision here.",
             tone: "waiting",
         };
 

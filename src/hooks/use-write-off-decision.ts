@@ -42,11 +42,105 @@ export interface WriteOffDecisionUnit {
     quantity?: number;
 }
 
+/**
+ * A deliberate override of the future-booking guard, on the DECISION route only.
+ * Presence of the block is the flag; the reason is mandatory and is what makes
+ * the override auditable rather than a silent bypass. Shaped exactly like the
+ * platform's other destructive override, `placementReconcileSchema` — a literal
+ * acknowledgement that cannot be produced by a stray truthy value, plus a
+ * reason (`api .../scanning.schemas.ts:144-156`).
+ *
+ * It overrides the GUARD only. Every other refusal — nothing outstanding, a
+ * quantity above the true outstanding, the wrong stock mode, the wrong parent
+ * status — still stands and carries no `code`.
+ */
+export interface WriteOffBookingOverride {
+    acknowledge_competing_booking: true;
+    /** Required, 5–500 characters. Written to the ledger row and the audit event. */
+    reason: string;
+}
+
 export interface WriteOffDecisionPayload {
     reason: WriteOffReason;
     /** Required, 5–500 characters. Internal: never written to status history. */
     note: string;
     units: WriteOffDecisionUnit[];
+    booking_override?: WriteOffBookingOverride;
+}
+
+/**
+ * One serialized unit the decision refused to write off because it is already
+ * committed to somebody else. Mirrors `BlockedWriteOffUnit`
+ * (`api/src/app/shared/settlement/settlement.core.ts:668-681`).
+ */
+export interface BlockedWriteOffUnit {
+    line_id: string;
+    asset_id: string;
+    asset_name: string;
+    asset_qr_code: string | null;
+    blocking_booking_id: string;
+    blocking_parent_type: "ORDER" | "SELF_PICKUP";
+    blocking_parent_entity_id: string;
+    blocking_parent_human_id: string;
+    blocking_company_name: string;
+    blocked_from: string;
+    blocked_until: string | null;
+    message: string;
+}
+
+/**
+ * The machine-readable discriminator on the guard's 409
+ * (`settlement.core.ts:687`). Key the override affordance off THIS, never off
+ * the message text.
+ */
+export const WRITE_OFF_BLOCKED_CODE = "SERIALIZED_UNIT_BOOKED_ELSEWHERE";
+
+/**
+ * The guard's 409, kept structured.
+ *
+ * `throwApiError` deliberately flattens every failure to `new Error(message)`,
+ * which is right for a toast and useless here — the whole point of this refusal
+ * is the LIST of units and their competing bookings. So the two write-off
+ * mutations use their own thrower: this class when the body carries the guard's
+ * `code`, and `throwApiError` unchanged for everything else, so no other
+ * failure shape changes.
+ */
+export class WriteOffBlockedError extends Error {
+    readonly code = WRITE_OFF_BLOCKED_CODE;
+    readonly blockedUnits: BlockedWriteOffUnit[];
+
+    constructor(message: string, blockedUnits: BlockedWriteOffUnit[]) {
+        super(message);
+        this.name = "WriteOffBlockedError";
+        this.blockedUnits = blockedUnits;
+    }
+}
+
+export function isWriteOffBlockedError(error: unknown): error is WriteOffBlockedError {
+    return error instanceof WriteOffBlockedError;
+}
+
+/**
+ * `code` and `blocked_units` are TOP-LEVEL on the body — the global error
+ * handler spreads `CustomizedError.data` at the root, not under `data`.
+ */
+function throwWriteOffError(error: unknown): never {
+    const body = (
+        error as {
+            response?: {
+                data?: { code?: string; message?: string; blocked_units?: BlockedWriteOffUnit[] };
+            };
+        }
+    )?.response?.data;
+
+    if (body?.code === WRITE_OFF_BLOCKED_CODE && Array.isArray(body.blocked_units)) {
+        throw new WriteOffBlockedError(
+            body.message || "Some of these units are booked elsewhere.",
+            body.blocked_units
+        );
+    }
+
+    return throwApiError(error);
 }
 
 /**
@@ -76,7 +170,7 @@ export function useRecordUpliftWriteOff() {
                 );
                 return response.data;
             } catch (error) {
-                throwApiError(error);
+                return throwWriteOffError(error);
             }
         },
         onSuccess: (_, variables) => {
@@ -123,7 +217,7 @@ export function useRecordSelfPickupRetentionWriteOff() {
                 );
                 return response.data;
             } catch (error) {
-                throwApiError(error);
+                return throwWriteOffError(error);
             }
         },
         onSuccess: (_, variables) => {

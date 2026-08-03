@@ -14,15 +14,7 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
@@ -32,9 +24,7 @@ import {
     useDownloadServiceRequestCostEstimate,
     useServiceRequestDetails,
     useUpdateServiceRequestCommercialStatus,
-    useUpdateServiceRequestStatus,
 } from "@/hooks/use-service-requests";
-import type { ServiceRequestCommercialStatus, ServiceRequestStatus } from "@/types/service-request";
 import {
     AlertCircle,
     ArrowLeft,
@@ -49,7 +39,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { EntityAttachmentsCard } from "@/components/shared/entity-attachments-card";
 import { WorkflowRequestsCard } from "@/components/shared/workflow-requests-card";
@@ -58,7 +48,12 @@ import {
     type HistoryRailEntry,
 } from "@/components/shared/collapsible-history-column";
 import { UpliftReviewPanel } from "@/components/service-requests/UpliftReviewPanel";
+import { ServiceRequestOpsActions } from "@/components/service-requests/ServiceRequestOpsActions";
 import { formatNullableDate } from "@/lib/date-display";
+import { useToken } from "@/lib/auth/use-token";
+import { hasPermission } from "@/lib/auth/permissions";
+import { ADMIN_ACTION_PERMISSIONS } from "@/lib/auth/permission-map";
+import { serviceRequestCommercialActions } from "@/lib/service-request-actions";
 import { cn } from "@/lib/utils";
 import {
     commercialPresentation,
@@ -72,62 +67,19 @@ import {
     type DeskTone,
 } from "@/lib/service-request-display";
 
-const STATUS_OPTIONS: ServiceRequestStatus[] = [
-    "SUBMITTED",
-    "IN_REVIEW",
-    "APPROVED",
-    "IN_PROGRESS",
-    "COMPLETED",
-    "CANCELLED",
-];
-
-const COMMERCIAL_STATUS_OPTIONS: ServiceRequestCommercialStatus[] = [
-    "INTERNAL",
-    "PENDING_QUOTE",
-    "QUOTED",
-    "QUOTE_APPROVED",
-    "INVOICED",
-    "PAID",
-    "CANCELLED",
-];
-const INTERNAL_ONLY_COMMERCIAL_STATUS_OPTIONS: ServiceRequestCommercialStatus[] = [
-    "INTERNAL",
-    "INVOICED",
-    "PAID",
-    "CANCELLED",
-];
-
 /**
- * RL-013 / RL-014 — what admin may write on an UPLIFT's commercial status.
- *
- * `QUOTED` is admin issuing the quote, and `PENDING_QUOTE` is admin re-opening
- * pricing (RL-015's retry cycle after a failed visit, which then re-issues).
- * Everything else is refused by the server and is therefore not offered:
- *   - `QUOTE_APPROVED` belongs to the CLIENT's quote-response route, which opens
- *     the return flow in the same transaction. Writing it here would move
- *     commercial status and leave the coupled transitions behind (409).
- *   - `INVOICED` / `PAID` — the uplift commercial lifecycle ends at
- *     QUOTE_APPROVED in this release; invoicing is out of scope (409).
- *   - `INTERNAL` — an uplift is always CLIENT_BILLABLE.
- *   - `CANCELLED` — an uplift is cancelled through its own coupled route, which
- *     also moves the source order.
+ * The two flat enum pickers this page used to carry — six operational options
+ * and seven commercial ones, neither a function of the current status — are
+ * gone. What may be done to a request now comes from
+ * `@/lib/service-request-actions`, which mirrors the API's transition maps and
+ * its route-level refusals and returns NAMED decisions. Nothing on this page
+ * enumerates a status enum any more; see that module for the derivation and the
+ * server citations behind every entry.
  */
-const UPLIFT_COMMERCIAL_STATUS_OPTIONS: ServiceRequestCommercialStatus[] = [
-    "PENDING_QUOTE",
-    "QUOTED",
-];
 
-/**
- * RL-036 — `IN_REVIEW → SUBMITTED` exists on the shared transition map now, but
- * on an uplift its ONLY writer is the dedicated return-to-logistics route, which
- * enforces the required rework note, the type guard and the commercial-status
- * precondition this generic control knows nothing about. The generic route 409s
- * it, so it is not offered.
- */
-function upliftStatusOptions(current: ServiceRequestStatus): ServiceRequestStatus[] {
-    if (current !== "IN_REVIEW") return STATUS_OPTIONS;
-    return STATUS_OPTIONS.filter((status) => status !== "SUBMITTED");
-}
+/** Reopen-pricing reason bounds. `revision_reason` is `max(1000)` on the API. */
+const REVISION_REASON_MIN_LENGTH = 5;
+const REVISION_REASON_MAX_LENGTH = 1000;
 
 /** Desk banner glyph, one per tone. Presentation only. */
 const DESK_ICON: Record<DeskTone, typeof AlertCircle> = {
@@ -143,94 +95,90 @@ export default function ServiceRequestDetailsPage() {
     const routeId = Array.isArray(params?.id) ? params.id[0] : params?.id;
     const { platform } = usePlatform();
     const { data, isLoading, refetch } = useServiceRequestDetails(routeId || null);
-    const updateStatus = useUpdateServiceRequestStatus();
+    const { user } = useToken();
     const updateCommercialStatus = useUpdateServiceRequestCommercialStatus();
     const cancelRequest = useCancelServiceRequest();
     const downloadCostEstimate = useDownloadServiceRequestCostEstimate();
-    const [statusValue, setStatusValue] = useState<ServiceRequestStatus>("SUBMITTED");
-    const [statusNote, setStatusNote] = useState("");
-    const [completionNotes, setCompletionNotes] = useState("");
-    const [commercialStatusValue, setCommercialStatusValue] =
-        useState<ServiceRequestCommercialStatus>("INTERNAL");
-    const [commercialNote, setCommercialNote] = useState("");
     const [cancellationReason, setCancellationReason] = useState("");
+    const [revisionReason, setRevisionReason] = useState("");
     // Pure UI state — which dialog is open, and whether the history rail is
-    // collapsed. Mirrors the order detail page (`statusDialogOpen`, page.tsx:279;
-    // `historyCollapsed`, page.tsx:251, default collapsed and never persisted).
-    const [statusDialogOpen, setStatusDialogOpen] = useState(false);
-    const [commercialDialogOpen, setCommercialDialogOpen] = useState(false);
+    // collapsed. Mirrors the order detail page (`historyCollapsed`, page.tsx:251,
+    // default collapsed and never persisted).
+    const [reopenPricingOpen, setReopenPricingOpen] = useState(false);
     const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
     const [historyCollapsed, setHistoryCollapsed] = useState(true);
 
     const request = data?.data;
 
-    useEffect(() => {
-        if (!request) return;
-        setStatusValue(request.request_status);
-        const allowedCommercialStatuses =
-            request.request_type === "UPLIFT"
-                ? UPLIFT_COMMERCIAL_STATUS_OPTIONS
-                : request.billing_mode === "INTERNAL_ONLY"
-                  ? INTERNAL_ONLY_COMMERCIAL_STATUS_OPTIONS
-                  : COMMERCIAL_STATUS_OPTIONS;
-        if (allowedCommercialStatuses.includes(request.commercial_status))
-            setCommercialStatusValue(request.commercial_status);
-        else setCommercialStatusValue(allowedCommercialStatuses[0]);
-    }, [request]);
+    /**
+     * The gate this page never had. Every write it can perform — the operational
+     * decisions, the commercial decisions and the cancel — goes to a route
+     * carrying `requirePermission(PERMISSIONS.SERVICE_REQUESTS_UPDATE)`
+     * (`service-request.routes.ts:110`, `:120`, `:140`), so one key covers all
+     * three. Read exactly as the order page reads its own action gates
+     * (`orders/[id]/page.tsx:303`, `:308`) — no new permission key is invented,
+     * because a policy granting an invented one would still hide the controls.
+     */
+    const canManage = hasPermission(user, ADMIN_ACTION_PERMISSIONS.serviceRequestsUpdate);
 
-    const handleStatusUpdate = async () => {
+    const handleReopenPricing = async () => {
         if (!request) return;
-        if (request.is_repair_before_event && statusValue === "COMPLETED") {
-            const photos = Array.isArray((request as any).photos) ? (request as any).photos : [];
-            if (!completionNotes.trim()) {
-                toast.error("Completion notes are required for Repair Before Event tasks");
-                return;
-            }
-            if (photos.length === 0) {
-                toast.error("At least one work photo is required before completion");
-                return;
-            }
+        // Floor under the disabled button, same as `handleIssueQuote`.
+        const action = serviceRequestCommercialActions(request, { canAct: canManage }).secondary;
+        if (!action || action.blockedReason) return;
+        const reason = revisionReason.trim();
+        if (
+            reason.length < REVISION_REASON_MIN_LENGTH ||
+            reason.length > REVISION_REASON_MAX_LENGTH
+        ) {
+            toast.error(
+                `The reason must be between ${REVISION_REASON_MIN_LENGTH} and ${REVISION_REASON_MAX_LENGTH} characters`
+            );
+            return;
         }
-
-        try {
-            await updateStatus.mutateAsync({
-                id: request.id,
-                payload: {
-                    to_status: statusValue,
-                    note: statusNote.trim() || undefined,
-                    completion_notes:
-                        statusValue === "COMPLETED"
-                            ? completionNotes.trim() || undefined
-                            : undefined,
-                },
-            });
-            setStatusNote("");
-            setCompletionNotes("");
-            toast.success("Operational status updated");
-            setStatusDialogOpen(false);
-            refetch();
-        } catch (error: any) {
-            toast.error(error.message || "Failed to update status");
-        }
-    };
-
-    const handleCommercialUpdate = async () => {
-        if (!request) return;
 
         try {
             await updateCommercialStatus.mutateAsync({
                 id: request.id,
                 payload: {
-                    commercial_status: commercialStatusValue,
-                    note: commercialNote.trim() || undefined,
+                    commercial_status: action.toStatus,
+                    note: reason,
+                    // Feeds `service_request.quote_revised` and the client's
+                    // revised-quote mail (`service-request.services.ts:1022`).
+                    // Only emitted on QUOTED -> PENDING_QUOTE; harmless from
+                    // QUOTE_APPROVED, where the API ignores it.
+                    revision_reason: reason,
                 },
             });
-            setCommercialNote("");
-            toast.success("Commercial status updated");
-            setCommercialDialogOpen(false);
+            setRevisionReason("");
+            toast.success("Pricing reopened — the quote has been withdrawn");
+            setReopenPricingOpen(false);
             refetch();
         } catch (error: any) {
-            toast.error(error.message || "Failed to update commercial status");
+            toast.error(error.message || "Failed to reopen pricing");
+        }
+    };
+
+    /**
+     * The forward money decision. One named action posting the one transition,
+     * with no picker in front of it — the shape `adminApproveQuote` has on the
+     * order page (`orders/[id]/hybrid-sections.tsx:50-58`).
+     */
+    const handleIssueQuote = async () => {
+        if (!request) return;
+        // The ledger slot is already gated + disabled on the same expression;
+        // this is the floor under it, not the gate.
+        const action = serviceRequestCommercialActions(request, { canAct: canManage }).primary;
+        if (!action || action.blockedReason) return;
+        try {
+            await updateCommercialStatus.mutateAsync({
+                id: request.id,
+                payload: { commercial_status: action.toStatus },
+            });
+            toast.success("Quote issued and sent to the client");
+            refetch();
+        } catch (error: any) {
+            toast.error(error.message || "Failed to issue the quote");
         }
     };
 
@@ -298,17 +246,21 @@ export default function ServiceRequestDetailsPage() {
     }
 
     const isUplift = request.request_type === "UPLIFT";
-    const commercialStatusOptions = isUplift
-        ? UPLIFT_COMMERCIAL_STATUS_OPTIONS
-        : request.billing_mode === "INTERNAL_ONLY"
-          ? INTERNAL_ONLY_COMMERCIAL_STATUS_OPTIONS
-          : COMMERCIAL_STATUS_OPTIONS;
-    const statusOptions = isUplift ? upliftStatusOptions(request.request_status) : STATUS_OPTIONS;
     const isRepairBeforeEvent = request.is_repair_before_event === true;
     const hasFulfillmentException = !!request.fulfillment_override_applied_at;
     const workPhotoCount = Array.isArray((request as any).photos)
         ? (request as any).photos.length
         : 0;
+
+    /**
+     * The money decisions, derived from the API's commercial map and its
+     * route-level refusals. `primary` takes the pricing ledger's footer slot;
+     * `secondary` takes the slot beside the ledger the order page gives
+     * Return-to-Logistics. Both are null on an INTERNAL_ONLY request in every
+     * state — see `serviceRequestCommercialActions` — which is exactly why the
+     * footer slot is passed conditionally rather than always.
+     */
+    const commercialActions = serviceRequestCommercialActions(request, { canAct: canManage });
 
     // Presentation only — the resolved desk, and the two axes it resolves from.
     const desk = serviceRequestDesk(request);
@@ -413,8 +365,15 @@ export default function ServiceRequestDetailsPage() {
                                 destructive header button whose reason capture lives in
                                 a dialog. RL-015 — the generic cancel route refuses an
                                 uplift and a repair-before-event task; that guard is
-                                unchanged, it just travels with the button. */}
-                            {!isRepairBeforeEvent && !isUplift && (
+                                unchanged, it just travels with the button.
+
+                                Cancellation is the ONLY way to reach CANCELLED from
+                                this page: the generic status route 409s the target
+                                outright (`service-request.services.ts:690`) because it
+                                writes the status alone — no reason, no actor, no
+                                commercial cascade — so no operational control offers
+                                it. An uplift is cancelled from its own desk panel. */}
+                            {canManage && !isRepairBeforeEvent && !isUplift && (
                                 <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
                                     <DialogTrigger asChild>
                                         <Button variant="destructive">Cancel Request</Button>
@@ -487,112 +446,18 @@ export default function ServiceRequestDetailsPage() {
                                     : "COST ESTIMATE"}
                             </Button>
 
-                            {/* Status advance — the order page's PROGRESS slot
-                                (page.tsx:681-849): a primary header button opening a
-                                `sm:max-w-md` dialog whose body is a single column of
-                                fields plus one conditional sub-field. */}
-                            <Dialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
-                                <DialogTrigger asChild>
-                                    <Button size="sm" className="gap-2 font-mono text-xs">
-                                        <PlayCircle className="h-3.5 w-3.5" />
-                                        PROGRESS
-                                    </Button>
-                                </DialogTrigger>
-                                <DialogContent className="sm:max-w-md">
-                                    <DialogHeader>
-                                        <DialogTitle className="font-mono">
-                                            UPDATE OPERATIONAL STATUS
-                                        </DialogTitle>
-                                        <DialogDescription className="font-mono text-xs">
-                                            Current: {opsPresentation.label} → Select next status
-                                        </DialogDescription>
-                                    </DialogHeader>
-
-                                    <div className="space-y-4 py-4">
-                                        <div className="space-y-2">
-                                            <Label className="font-mono text-xs">MOVE TO</Label>
-                                            <Select
-                                                value={statusValue}
-                                                onValueChange={(value) =>
-                                                    setStatusValue(value as ServiceRequestStatus)
-                                                }
-                                            >
-                                                <SelectTrigger>
-                                                    <SelectValue />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {statusOptions.map((status) => (
-                                                        <SelectItem key={status} value={status}>
-                                                            {statusPresentation(status).label}
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-
-                                        <div className="space-y-2">
-                                            <Label className="font-mono text-xs">
-                                                NOTE (Optional)
-                                            </Label>
-                                            <Input
-                                                value={statusNote}
-                                                onChange={(e) => setStatusNote(e.target.value)}
-                                                placeholder="Why is it moving?"
-                                                className="font-mono text-sm"
-                                            />
-                                        </div>
-
-                                        {statusValue === "COMPLETED" && (
-                                            <div className="space-y-2">
-                                                <Label className="font-mono text-xs">
-                                                    COMPLETION NOTES
-                                                    {isRepairBeforeEvent && (
-                                                        <span className="text-destructive"> *</span>
-                                                    )}
-                                                </Label>
-                                                <Textarea
-                                                    value={completionNotes}
-                                                    onChange={(e) =>
-                                                        setCompletionNotes(e.target.value)
-                                                    }
-                                                    placeholder="What was done?"
-                                                    className="font-mono text-sm"
-                                                    rows={3}
-                                                />
-                                                {/* Stated before the click, not after it. The
-                                                    rule itself is unchanged and still enforced
-                                                    on submit. */}
-                                                {isRepairBeforeEvent && (
-                                                    <p className="font-mono text-[11px] text-muted-foreground">
-                                                        Notes and at least one saved work photo are
-                                                        required. Saved photos: {workPhotoCount}.
-                                                    </p>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    <DialogFooter>
-                                        <Button
-                                            variant="outline"
-                                            onClick={() => setStatusDialogOpen(false)}
-                                            disabled={updateStatus.isPending}
-                                            className="font-mono text-xs"
-                                        >
-                                            CANCEL
-                                        </Button>
-                                        <Button
-                                            onClick={handleStatusUpdate}
-                                            disabled={updateStatus.isPending}
-                                            className="font-mono text-xs"
-                                        >
-                                            {updateStatus.isPending
-                                                ? "UPDATING..."
-                                                : "UPDATE STATUS"}
-                                        </Button>
-                                    </DialogFooter>
-                                </DialogContent>
-                            </Dialog>
+                            {/* The operational decisions — the order page's PROGRESS
+                                slot (page.tsx:681-849), but decision-shaped rather than
+                                a picker. What renders is derived from the API's
+                                transition map for the CURRENT status, so a target the
+                                server would refuse is never offered; on a terminal
+                                request, an uplift, or without the permission, nothing
+                                renders at all. See `ServiceRequestOpsActions`. */}
+                            <ServiceRequestOpsActions
+                                request={request}
+                                canAct={canManage}
+                                onChanged={refetch}
+                            />
                         </div>
                     </div>
                 </div>
@@ -880,109 +745,151 @@ export default function ServiceRequestDetailsPage() {
                                 pre-QUOTE_APPROVED and locks at QUOTE_APPROVED / INVOICED /
                                 PAID, mirroring the API's getLineItemEditability SR branch.
 
-                                The commercial decision takes the ledger's approve slot —
-                                the same footer position, variant and size the order page
+                                The FORWARD money decision takes the ledger's approve slot
+                                — the same footer position, variant and size the order page
                                 gives "Approve & Send Quote to Client"
                                 (hybrid-sections.tsx:73-82), so the number and the decision
-                                read as one block. The slot is only a trigger: it opens the
-                                same dialog the button beneath used to open, with the same
-                                picker and the same mutation. It is passed unconditionally
-                                because the old button was rendered unconditionally, and no
-                                `approveDisabled` / `approveBusy` is supplied because the
-                                old button had no disabled state. */}
+                                read as one block. It is one named action posting the one
+                                transition, not a trigger for a picker.
+
+                                The slot is GATED, as the order page gates its own
+                                (`showAdminActions = isPendingApproval && canApproveQuote`,
+                                hybrid-sections.tsx:43): passed only when the current
+                                commercial state actually has a forward decision. On an
+                                INTERNAL_ONLY request that is never — its whole map reduces
+                                to INVOICED / PAID / CANCELLED, and all three are refused —
+                                so an internal maintenance task no longer renders a lone
+                                loud money button it can never use. `approveDisabled`
+                                carries the uplift desk precondition (RL-013: a collection
+                                quote is issued only from IN_REVIEW / IN_PROGRESS) and
+                                `approveBusy` the in-flight state. */}
                             <PricingLedger
                                 purposeType="SERVICE_REQUEST"
                                 entityId={request.id}
                                 entityStatus={request.commercial_status}
                                 billingMode={request.billing_mode}
-                                pricingMode={
-                                    (request as { pricing_mode?: "STANDARD" | "NO_COST" })
-                                        .pricing_mode || "STANDARD"
-                                }
-                                onApprove={() => setCommercialDialogOpen(true)}
-                                approveLabel="Update Commercial Status"
+                                pricingMode={request.pricing_mode || "STANDARD"}
+                                onApprove={commercialActions.primary ? handleIssueQuote : undefined}
+                                approveLabel={commercialActions.primary?.label ?? ""}
+                                approveDisabled={!!commercialActions.primary?.blockedReason}
+                                approveBusy={updateCommercialStatus.isPending}
                             />
 
-                            {/* The order page's Return-to-Logistics slot — right-aligned
-                                outline, outside and below the card — is deliberately empty
-                                here. The service-request step-back (an uplift's RETURN TO
-                                LOGISTICS) already exists, but inside the uplift desk card
-                                above, coupled to its own permission gate, precondition and
-                                required-note dialog. Relocating it is not a placement
-                                change; see the note in the handover. */}
+                            {/* Why the forward decision is greyed, said next to it rather
+                                than as a toast after the click — the same treatment the
+                                uplift desk gives each of its own blocked controls. */}
+                            {commercialActions.primary?.blockedReason && (
+                                <p className="text-right font-mono text-[11px] text-muted-foreground">
+                                    {commercialActions.primary.blockedReason}
+                                </p>
+                            )}
 
+                            {/* The order page's Return-to-Logistics slot — right-aligned
+                                outline, outside and below the card (hybrid-sections.tsx:
+                                85-92). The service request's equivalent step-back is the
+                                one that belongs here: reopening pricing withdraws the
+                                quote and unlocks the ledger, so it is a decision ABOUT the
+                                money table rather than an edit inside it.
+
+                                An uplift's RETURN TO LOGISTICS is a different action and
+                                stays in the uplift desk card above, coupled to its own
+                                precondition and required-note dialog. */}
+                            {commercialActions.secondary && (
+                                <div className="flex flex-col items-end gap-1">
+                                    <Button
+                                        variant="outline"
+                                        className="disabled:pointer-events-auto disabled:cursor-not-allowed"
+                                        disabled={
+                                            !!commercialActions.secondary.blockedReason ||
+                                            updateCommercialStatus.isPending
+                                        }
+                                        title={
+                                            commercialActions.secondary.blockedReason ||
+                                            commercialActions.secondary.description
+                                        }
+                                        onClick={() => {
+                                            setRevisionReason("");
+                                            setReopenPricingOpen(true);
+                                        }}
+                                    >
+                                        {commercialActions.secondary.label}
+                                    </Button>
+                                    {commercialActions.secondary.blockedReason && (
+                                        <p className="max-w-md text-right font-mono text-[11px] text-muted-foreground">
+                                            {commercialActions.secondary.blockedReason}
+                                        </p>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* The one commercial decision that needs input. The reason is
+                                NOT internal: it is written to the status history, which the
+                                service-request detail returns verbatim to the owning client
+                                (RL-023), and it is carried by the revised-quote mail. Said
+                                on the field. */}
                             <Dialog
-                                open={commercialDialogOpen}
-                                onOpenChange={setCommercialDialogOpen}
+                                open={reopenPricingOpen}
+                                onOpenChange={(open) => {
+                                    if (updateCommercialStatus.isPending) return;
+                                    setReopenPricingOpen(open);
+                                    if (!open) setRevisionReason("");
+                                }}
                             >
                                 <DialogContent className="sm:max-w-md">
                                     <DialogHeader>
                                         <DialogTitle className="font-mono">
-                                            UPDATE COMMERCIAL STATUS
+                                            {(
+                                                commercialActions.secondary?.label ??
+                                                "Reopen Pricing"
+                                            ).toUpperCase()}
                                         </DialogTitle>
-                                        <DialogDescription className="font-mono text-xs">
-                                            Current: {comPresentation.label} → Select next status
+                                        <DialogDescription>
+                                            {commercialActions.secondary?.description}
                                         </DialogDescription>
                                     </DialogHeader>
 
-                                    <div className="space-y-4 py-4">
-                                        <div className="space-y-2">
-                                            <Label className="font-mono text-xs">MOVE TO</Label>
-                                            <Select
-                                                value={commercialStatusValue}
-                                                onValueChange={(value) =>
-                                                    setCommercialStatusValue(
-                                                        value as ServiceRequestCommercialStatus
-                                                    )
-                                                }
-                                            >
-                                                <SelectTrigger>
-                                                    <SelectValue />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {commercialStatusOptions.map((status) => (
-                                                        <SelectItem key={status} value={status}>
-                                                            {commercialPresentation(status).label}
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-
-                                        <div className="space-y-2">
-                                            <Label className="font-mono text-xs">
-                                                NOTE (Optional)
-                                            </Label>
-                                            <Input
-                                                value={commercialNote}
-                                                onChange={(e) => setCommercialNote(e.target.value)}
-                                                placeholder="Internal note"
-                                                className="font-mono text-sm"
-                                            />
-                                        </div>
+                                    <div className="space-y-2 py-2">
+                                        <Label className="font-mono text-xs">
+                                            WHY IS IT BEING REPRICED
+                                            <span className="text-destructive"> *</span>
+                                        </Label>
+                                        <Textarea
+                                            value={revisionReason}
+                                            maxLength={REVISION_REASON_MAX_LENGTH}
+                                            onChange={(e) => setRevisionReason(e.target.value)}
+                                            placeholder="State what is changing on the quote."
+                                            className="font-mono text-sm"
+                                            rows={4}
+                                        />
+                                        {/* Stated before the click, not after it. */}
+                                        <p className="font-mono text-[11px] text-muted-foreground">
+                                            Required, {REVISION_REASON_MIN_LENGTH}–
+                                            {REVISION_REASON_MAX_LENGTH} characters. The client sees
+                                            this on the request history and in the revised-quote
+                                            email.
+                                        </p>
                                     </div>
 
                                     <DialogFooter>
                                         <Button
                                             variant="outline"
-                                            onClick={() => setCommercialDialogOpen(false)}
+                                            onClick={() => setReopenPricingOpen(false)}
                                             disabled={updateCommercialStatus.isPending}
                                             className="font-mono text-xs"
                                         >
-                                            CANCEL
+                                            BACK
                                         </Button>
-                                        {/* Same mutation, same payload — the label just names
-                                            what the selected transition actually does. */}
                                         <Button
-                                            onClick={handleCommercialUpdate}
+                                            onClick={handleReopenPricing}
                                             disabled={updateCommercialStatus.isPending}
                                             className="font-mono text-xs"
                                         >
                                             {updateCommercialStatus.isPending
-                                                ? "UPDATING..."
-                                                : commercialStatusValue === "QUOTED"
-                                                  ? "ISSUE QUOTE TO CLIENT"
-                                                  : "UPDATE COMMERCIAL STATUS"}
+                                                ? "WORKING..."
+                                                : (
+                                                      commercialActions.secondary?.label ??
+                                                      "Reopen Pricing"
+                                                  ).toUpperCase()}
                                         </Button>
                                     </DialogFooter>
                                 </DialogContent>
