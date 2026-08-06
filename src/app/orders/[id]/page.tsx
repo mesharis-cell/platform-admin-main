@@ -2084,8 +2084,8 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                             "DELIVERED",
                             "IN_USE",
                             // A permanent placement has an outbound scan behind it
-                            // (RL-037's custody exit runs there), so the activity
-                            // timeline is meaningful from PLACED onwards.
+                            // (RL-037's serialized PLACED stamp runs there), so the
+                            // activity timeline is meaningful from PLACED onwards.
                             "PLACED",
                             "AWAITING_RETURN",
                             "CLOSED",

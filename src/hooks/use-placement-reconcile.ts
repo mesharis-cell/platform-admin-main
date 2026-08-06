@@ -79,9 +79,12 @@ export interface PlacementReconcileResult {
     requested_pickup_window_cleared: boolean;
     bookings_made_open_ended: number;
     /**
-     * RL-037's custody exit, present only when the goods were already dispatched.
-     * Pooled stock leaves the custody record (it was consumed on site); serialized
-     * asset rows are stamped PLACED.
+     * RL-037's dispatch work, present only when the goods were already dispatched.
+     * Serialized asset rows are stamped PLACED; pooled stock STAYS HELD on its
+     * open-ended booking — the dispatch write-off was reversed by owner decision
+     * on 2026-08-06, so `pooled_written_off` is always [] and
+     * `total_units_written_off` is always 0. The keys survive for payload-shape
+     * continuity, and the card's write-off panel (keyed on `> 0`) never renders.
      */
     custody_exit: {
         pooled_written_off: Array<{
@@ -134,9 +137,11 @@ export function usePlacementReconcile(parentType: PlacementParentType, entityId:
                 queryClient.invalidateQueries({ queryKey: selfPickupKeys.changeHistory(entityId) });
             }
 
-            // Bookings became open-ended, and a dispatched entity also took the
-            // custody exit — so availability, asset rows and the stock ledger are
-            // all stale regardless of which arm ran.
+            // Bookings became open-ended, and a dispatched entity also had its
+            // serialized assets stamped PLACED — so availability and asset rows
+            // are stale regardless of which arm ran. (The stock-movements
+            // invalidation is a harmless leftover from the retired dispatch
+            // write-off era — this path writes no movements since 2026-08-06.)
             queryClient.invalidateQueries({ queryKey: ["assets"] });
             queryClient.invalidateQueries({ queryKey: ["asset-availability-stats"] });
             queryClient.invalidateQueries({ queryKey: ["stock-movements"] });

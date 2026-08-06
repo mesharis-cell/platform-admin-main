@@ -83,7 +83,11 @@ const ORDER_ELIGIBLE_STATUSES = [
 
 /**
  * The statuses whose goods are already dispatched AND whose placement COMPLETES
- * in the same call — the entity moves to PLACED and takes RL-037's custody exit.
+ * in the same call — the entity moves to PLACED, its serialized units are
+ * stamped as placed with the client, and every booking (pooled included) is
+ * made open-ended. Nothing is written off: the pooled dispatch write-off was
+ * reversed by owner decision on 2026-08-06 (SRS RL-037) — consumption is
+ * recorded only when a person settles it at the return scan.
  * READY_FOR_DELIVERY and IN_TRANSIT are deliberately absent even though their
  * outbound scan has run: they keep their status and are placed at delivery.
  */
@@ -272,9 +276,10 @@ export function PlacementReconcileCard({
                                         {willPlace && (
                                             <li>
                                                 Its goods are already out, so this also moves it
-                                                straight to PLACED, writes the pooled (consumable)
-                                                stock on it off the custody record, and stamps its
-                                                serialized units as placed with the client.
+                                                straight to PLACED. Every unit stays held on its
+                                                open-ended hold — nothing is written off — and its
+                                                serialized units are stamped as placed with the
+                                                client.
                                             </li>
                                         )}
                                     </ul>
