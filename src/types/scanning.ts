@@ -393,6 +393,12 @@ export interface APIInboundAsset {
     required_quantity: number; // This is often "total expected to return"
     scanned_quantity: number;
     is_complete: boolean;
+    /**
+     * Additive: true on pooled rows while a live uplift exists — the units stay
+     * placed at the client site, the row is scannable but not required, and the
+     * header totals exclude it.
+     */
+    collection_optional?: boolean;
 }
 
 export interface APIInboundProgressData {

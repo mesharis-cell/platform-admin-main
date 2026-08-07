@@ -91,6 +91,13 @@ export default function InboundScanningPage() {
     const [manualQRInput, setManualQRInput] = useState("");
     const [showSettlementModal, setShowSettlementModal] = useState(false);
     const [unsettledLines, setUnsettledLines] = useState<UnsettledLine[]>([]);
+    // Collection episode (serialized uplift): pooled units stayed placed at the
+    // client site and the order returned to PLACED instead of closing. Holds
+    // the response's closure nudge for the complete step.
+    const [placementNotice, setPlacementNotice] = useState<{
+        units: number;
+        message: string;
+    } | null>(null);
     const [isScanning, setIsScanning] = useState(false);
 
     const videoRef = useRef<HTMLVideoElement>(null);
@@ -566,18 +573,35 @@ export default function InboundScanningPage() {
             onSuccess: (data: any) => {
                 setShowSettlementModal(false);
                 setStep("complete");
+                const responseData = data.data || data;
                 const newStatus =
                     data.data?.new_status ||
                     data.new_status ||
                     data.data?.order_status ||
                     data.order_status ||
                     "CLOSED";
-                toast.success("Return scan complete", {
-                    description: `Order ${newStatus}`,
-                });
-                setTimeout(() => {
-                    router.push(`/orders/${orderId}`);
-                }, 2000);
+                if (responseData?.placement_continues) {
+                    // Collection episode: pooled stock stays placed on its live
+                    // hold and the order returns to PLACED. The response
+                    // message carries the closure nudge — prompt, never force.
+                    setPlacementNotice({
+                        units: responseData.pooled_remaining?.total_units ?? 0,
+                        message: data.message || "",
+                    });
+                    toast.success("Collection complete", {
+                        description: "Pooled stock remains placed — order stays PLACED",
+                    });
+                } else {
+                    toast.success("Return scan complete", {
+                        description: `Order ${newStatus}`,
+                    });
+                }
+                setTimeout(
+                    () => {
+                        router.push(`/orders/${orderId}`);
+                    },
+                    responseData?.placement_continues ? 8000 : 2000
+                );
             },
             onError: (error: any) => {
                 const requiresSettlement =
@@ -771,6 +795,12 @@ export default function InboundScanningPage() {
                                         </div>
                                         <div className="text-xs text-muted-foreground">
                                             QR: {asset.qr_code} • {asset.stock_mode}
+                                            {asset.collection_optional && (
+                                                <span className="text-amber-600 dark:text-amber-400">
+                                                    {" "}
+                                                    • OPTIONAL — remains placed
+                                                </span>
+                                            )}
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-2">
@@ -1295,12 +1325,26 @@ export default function InboundScanningPage() {
                         </div>
                         <div>
                             <h2 className="text-2xl font-bold font-mono mb-2">
-                                RETURN SCAN COMPLETE
+                                {placementNotice ? "COLLECTION COMPLETE" : "RETURN SCAN COMPLETE"}
                             </h2>
                             <p className="text-sm text-muted-foreground">
-                                Order closed. Redirecting to order details...
+                                {placementNotice
+                                    ? "Order stays PLACED. Redirecting to order details..."
+                                    : "Order closed. Redirecting to order details..."}
                             </p>
                         </div>
+                        {placementNotice && (
+                            <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 text-left text-sm space-y-1">
+                                <div className="font-mono font-bold text-amber-600 dark:text-amber-400">
+                                    {placementNotice.units} POOLED UNIT
+                                    {placementNotice.units === 1 ? "" : "S"} REMAIN PLACED
+                                </div>
+                                <p className="text-muted-foreground">
+                                    {placementNotice.message ||
+                                        "The remaining pooled stock stays placed at the client site on its live hold. If the client is keeping it, record a write-off decision to close the placement; otherwise the order stays Placed."}
+                                </p>
+                            </div>
+                        )}
                         <div className="space-y-2 text-sm font-mono">
                             <div className="flex justify-between">
                                 <span className="text-muted-foreground">Items Inspected:</span>
